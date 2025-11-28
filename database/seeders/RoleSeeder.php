@@ -44,7 +44,12 @@ class RoleSeeder extends Seeder
         $operator = Role::create([
             'name'          => 'operator'
         ]);
-        
+         $techncian = Role::create([
+            'name'          => 'technician'
+        ]);
+ $magasinier = Role::create([
+            'name'          => 'magasinier'
+        ]);
         $operator->givePermissionTo([
             'read user',
             'create user',

@@ -14,7 +14,7 @@ class EnginController extends Controller
      */
     public function index()
     {
-        $query = Engin::query();
+        $query = Engin::with('region');
 
         if (request()->has('search')) {
             $query->where('designation', 'like', '%' . request('search') . '%')
@@ -24,7 +24,7 @@ class EnginController extends Controller
 
         return Inertia::render('Configurations/Engins', [
             'engins' => $query->get(),
-            'regions'=> Region::query()->get(),
+            'regions'=> Region::get(),
             'filters' => request()->only(['search']),
         ]);
     }
@@ -49,6 +49,7 @@ class EnginController extends Controller
             'date_mise_en_service' => 'nullable|date',
             'etat' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'region_id' => 'nullable'
         ]);
         $engin = Engin::create($validated);
 
@@ -85,6 +86,7 @@ class EnginController extends Controller
             'date_mise_en_service' => 'nullable|date',
             'etat' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+             'region_id' => 'nullable'
         ]);
         $engin->update($validated);
 

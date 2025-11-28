@@ -18,5 +18,8 @@ class Region extends Model
 {
     return $this->hasMany(Engin::class);
 }
-
+    public function technicians()
+{
+    return $this->hasMany(User::class);
+}
 }

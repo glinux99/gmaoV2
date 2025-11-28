@@ -24,6 +24,12 @@ class User extends Authenticatable
         'password',
          'provider_name',
         'provider_id',
+        'fonction',
+        'numero',
+        'region_id',
+        'pointure',
+        'size',
+        'profile_photo',
 
     ];
 
@@ -68,4 +74,21 @@ class User extends Authenticatable
             return [$pr['name'] => true];
         });
     }
+        public function region()
+{
+    return $this->belongsTo(Region::class);
+}
+
+// Dans app/Models/User.php
+
+/**
+ * Les équipes auxquelles l'utilisateur appartient.
+ */
+
+public function teams()
+{
+    return $this->belongsToMany(Team::class);
+}
+
+
 }

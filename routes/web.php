@@ -2,6 +2,11 @@
 
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\EnginController;
+use App\Http\Controllers\EquipmentCharacteristicController;
+use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\EquipmentMovementController;
+use App\Http\Controllers\EquipmentTypeController;
+use App\Http\Controllers\SparePartController;
 use App\Models\User;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -13,7 +18,11 @@ use Spatie\Permission\Models\Permission;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\LabelController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\RegionController;
+use App\Http\Controllers\SparePartMovementController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\UnityController;
 
 /*
@@ -76,6 +85,15 @@ Route::get('/list', function () {
     'unities'=> UnityController::class,
     'engins'=> EnginController::class,
     'regions'=> RegionController::class,
+    'technicians' => TechnicianController::class,
+    'teams'=> TeamController::class,
+    'spare-parts'=> SparePartController ::class,
+    'spare-part-movements'=> SparePartMovementController ::class,
+    'equipments'=> EquipmentController::class,
+    'equipment-movements'=> EquipmentMovementController ::class,
+    'equipment-types'=> EquipmentTypeController::class,
+    'equipment-characteristics'=> EquipmentCharacteristicController ::class,
+    'maintenances'=> MaintenanceController::class,
   ]);
 
 // Route::get('/', function () {

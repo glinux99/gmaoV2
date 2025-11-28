@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Label;
+use App\Models\LabelCharacteristic;
 use Illuminate\Http\Request;
 
 use Inertia\Inertia;
@@ -14,7 +15,7 @@ class LabelController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Label::query();
+        $query = Label::with('labelCharacteristics');
 
         if ($request->has('search')) {
             $query->where('designation', 'like', '%' . $request->search . '%')
@@ -22,7 +23,7 @@ class LabelController extends Controller
         }
 
         return Inertia::render('Configurations/Labels', [
-            'labels' => $query->get(),
+            'labels' => $query->paginate(10),
             'filters' => $request->only(['search']),
         ]);
     }
@@ -44,8 +45,18 @@ class LabelController extends Controller
             'designation' => 'required|string|max:255',
             'description' => 'nullable|string',
             'color' => 'required|string|max:7',
+            'characteristics' => 'nullable|array',
+            'characteristics.*.name' => 'required|string|max:255',
+            'characteristics.*.type' => 'required|string|in:text,number,date,boolean,select',
+            'characteristics.*.is_required' => 'required|boolean',
         ]);
         $label = Label::create($validated);
+
+        if (isset($validated['characteristics'])) {
+            foreach ($validated['characteristics'] as $char) {
+                $label->labelCharacteristics()->create($char);
+            }
+        }
 
         return redirect()->route('labels.index')->with('success', 'Label créé avec succès.');
     }
@@ -56,7 +67,7 @@ class LabelController extends Controller
     public function edit(Label $label)
     {
         return Inertia::render('Labels', [
-            'label' => $label,
+            'label' => $label->load('labelCharacteristics'),
         ]);
     }
 
@@ -69,9 +80,32 @@ class LabelController extends Controller
             'designation' => 'required|string|max:255',
             'description' => 'nullable|string',
             'color' => 'required|string|max:7',
+            'characteristics' => 'nullable|array',
+            'characteristics.*.id' => 'nullable|integer',
+            'characteristics.*.name' => 'required|string|max:255',
+            'characteristics.*.type' => 'required|string|in:text,number,date,boolean,select',
+            'characteristics.*.is_required' => 'required|boolean',
         ]);
         $label->update($validated);
 
+        if (isset($validated['characteristics'])) {
+            $incomingIds = collect($validated['characteristics'])->pluck('id')->filter();
+
+            // Supprimer les caractéristiques qui ne sont plus présentes
+            $label->labelCharacteristics()->whereNotIn('id', $incomingIds)->delete();
+
+            foreach ($validated['characteristics'] as $charData) {
+                // Mettre à jour ou créer une nouvelle caractéristique
+                $label->labelCharacteristics()->updateOrCreate( // Gérer les mises à jour des caractéristiques
+                    ['id' => $charData['id']],
+                    [
+                        'name' => $charData['name'],
+                        'type' => $charData['type'],
+                        'is_required' => $charData['is_required'],
+                    ]
+                );
+            }
+        }
         return redirect()->route('labels.index')->with('success', 'Label mis à jour avec succès.');
     }
 
@@ -80,6 +114,7 @@ class LabelController extends Controller
      */
     public function destroy(Label $label)
     {
+        $label->labelCharacteristics()->delete();
         $label->delete();
         return redirect()->route('labels.index')->with('success', 'Label supprimé avec succès.');
     }

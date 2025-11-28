@@ -10,6 +10,15 @@ const props = defineProps({
     filters: Object,
 });
 
+const characteristicTypes = ref([
+    { label: 'Texte', value: 'text' },
+    { label: 'Nombre', value: 'number' },
+    { label: 'Date', value: 'date' },
+    { label: 'image', value: 'text' },
+    { label: 'Boolean', value: 'boolean' },
+    { label: 'Liste déroulante', value: 'select' },
+]);
+
 const toast = useToast();
 const confirm = useConfirm();
 
@@ -23,6 +32,7 @@ const form = useForm({
     designation: '',
     description: '',
     color: 'ff0000',
+    characteristics: [], // Ajouter pour gérer les caractéristiques
 });
 
 const openNew = () => {
@@ -42,6 +52,8 @@ const editLabel = (label) => {
     form.designation = label.designation;
     form.description = label.description;
     form.color = label.color.replace('#', '');
+    // Cloner les caractéristiques pour éviter la mutation directe du prop
+    form.characteristics = label.label_characteristics ? JSON.parse(JSON.stringify(label.label_characteristics)) : [];
     editing.value = true;
     labelDialog.value = true;
 };
@@ -52,12 +64,33 @@ const saveLabel = () => {
         return;
     }
 
+    const hasChangedCharacteristics = form.isDirty && (
+        JSON.stringify(form.characteristics) !== JSON.stringify(props.labels.data.find(l => l.id === form.id)?.label_characteristics || [])
+    );
+
+    if (editing.value && hasChangedCharacteristics) {
+        confirm.require({
+            message: 'Vous avez modifié des caractéristiques. La modification ou la suppression de caractéristiques peut affecter les données existantes. Voulez-vous continuer ?',
+            header: 'Confirmation de modification',
+            icon: 'pi pi-exclamation-triangle',
+            acceptClass: 'p-button-warning',
+            accept: () => {
+                submitForm();
+            },
+        });
+    } else {
+        submitForm();
+    }
+};
+
+const submitForm = () => {
     const url = editing.value ? route('labels.update', form.id) : route('labels.store');
     const method = editing.value ? 'put' : 'post';
 
     form.transform(data => ({
         ...data,
-        color: '#' + data.color
+        color: '#' + data.color,
+        characteristics: data.characteristics.filter(c => c.name.trim() !== '') // Filtrer les caractéristiques vides
     })).submit(method, url, {
         onSuccess: () => {
             labelDialog.value = false;
@@ -93,6 +126,29 @@ const deleteLabel = (label) => {
     });
 };
 
+// Fonctions pour gérer les caractéristiques dans le formulaire
+const addCharacteristic = () => {
+    form.characteristics.push({ id: null, name: '', type: 'text', is_required: false });
+};
+
+const removeCharacteristic = (index) => {
+    const characteristic = form.characteristics[index];
+    confirm.require({
+        message: `Êtes-vous sûr de vouloir supprimer la caractéristique "${characteristic.name || 'vide'}" ? Cette action est irréversible.`,
+        header: 'Confirmation de suppression',
+        icon: 'pi pi-info-circle',
+        rejectClass: 'p-button-secondary p-button-outlined',
+        rejectLabel: 'Annuler',
+        acceptLabel: 'Supprimer',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            form.characteristics.splice(index, 1);
+            toast.add({ severity: 'info', summary: 'Information', detail: 'La caractéristique sera supprimée lors de la sauvegarde du label.', life: 4000 });
+        },
+    });
+};
+
+
 const dt = ref();
 const exportCSV = () => {
     dt.value.exportCSV();
@@ -110,7 +166,9 @@ const performSearch = () => {
 };
 
 onMounted(() => {
-    // Vous pouvez initialiser des choses ici si nécessaire
+    // Pour que l'édition fonctionne, le contrôleur doit retourner les caractéristiques avec chaque label
+    // via la pagination d'Inertia.
+    // Le contrôleur a été mis à jour avec Label::with('labelCharacteristics').
 });
 
 const dialogTitle = computed(() => editing.value ? 'Modifier le Label' : 'Créer un nouveau Label');
@@ -143,7 +201,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Label' : 'Créer
                         </template>
                     </Toolbar>
 
-                    <DataTable ref="dt" :value="labels" dataKey="id" :paginator="true" :rows="10"
+                    <DataTable ref="dt" :value="labels.data" dataKey="id" :paginator="true" :rows="10"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                         :rowsPerPageOptions="[5, 10, 25]"
                         currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} labels"
@@ -152,7 +210,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Label' : 'Créer
 
                         </template>
 
-                        <Column field="designation" header="Nom" :sortable="true" headerStyle="width:30%; min-width:10rem;">
+                        <Column field="designation" header="Nom" :sortable="true" headerStyle="width:20%; min-width:10rem;">
                             <template #body="slotProps">
 
                                 {{ slotProps.data.designation }}
@@ -166,9 +224,16 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Label' : 'Créer
                                 </div>
                             </template>
                         </Column>
-                        <Column field="description" header="Description" headerStyle="width:40%; min-width:10rem;">
+                        <Column field="description" header="Description" headerStyle="width:30%; min-width:10rem;">
                             <template #body="slotProps">
                                 {{ slotProps.data.description }}
+                            </template>
+                        </Column>
+                        <Column header="Caractéristiques" headerStyle="width:25%; min-width:10rem;">
+                            <template #body="slotProps">
+                                <div class="flex flex-wrap gap-1">
+                                    <Tag v-for="char in slotProps.data.label_characteristics" :key="char.id" :value="char.name" severity="success"></Tag>
+                                </div>
                             </template>
                         </Column>
                         <Column headerStyle="min-width:10rem;" header="Actions">
@@ -207,6 +272,37 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Label' : 'Créer
                             </div>
                         </div>
                         <small class="p-error" v-if="form.errors.color">{{ form.errors.color }}</small>
+
+                        <Divider />
+
+                        <!-- Section pour les caractéristiques -->
+                        <div class="field">
+                            <label class="font-semibold">Caractéristiques</label>
+                            <div v-for="(characteristic, index) in form.characteristics" :key="index" class="flex items-center gap-2 mb-2">
+                                <!--
+                                    Pour implémenter la modification conditionnelle, vous pouvez ajouter la prop :disabled ici.
+                                    Exemple : :disabled="shouldBeDisabled(characteristic)"
+                                    La fonction shouldBeDisabled(characteristic) vérifierait (probablement via un appel API)
+                                    si des valeurs ont déjà été enregistrées pour cette caractéristique.
+                                -->
+                                <InputText v-model="characteristic.name" placeholder="Nom" class="w-1/2" />
+                                <Dropdown v-model="characteristic.type" :options="characteristicTypes" optionLabel="label" optionValue="value" placeholder="Type" class="w-1/3" :disabled="characteristic.id !== null"
+                                 />
+                                <div class="flex items-center w-auto gap-2">
+                                    <Checkbox v-model="characteristic.is_required" :binary="true" :inputId="`required-${index}`" />
+                                    <label :for="`required-${index}`">Requis</label>
+                                </div>
+
+                                <Button icon="pi pi-trash" class="p-button-rounded " severity="error" @click="removeCharacteristic(index)" />
+                            </div>
+                             <small class="p-error" v-if="form.errors.characteristics">{{ form.errors.characteristics }}</small>
+
+                            <Button label="Ajouter une caractéristique" icon="pi pi-plus" class="p-button-text mt-2" @click="addCharacteristic" />
+                        </div>
+
+
+                        <Divider />
+
 
                         <div class="flex justify-end gap-2">
                             <Button type="button" label="Annuler" severity="secondary" @click="hideDialog"></Button>

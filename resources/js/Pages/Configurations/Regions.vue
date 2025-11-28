@@ -53,7 +53,7 @@ const saveRegion = () => {
     }
 
 
-    const url = editing.value ? route('engins.update', form.id) : route('engins.store');
+    const url = editing.value ? route('regions.update', form.id) : route('regions.store');
     const method = editing.value ? 'put' : 'post';
 
     form.submit(method, url, {
@@ -198,7 +198,9 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Région' : 'Cré
 
                         <div class="flex items-center gap-4 mb-4">
                             <label for="puissance_centrale" class="font-semibold w-24">Puissance Centrale (MW)</label>
-                            <InputNumber id="puissance_centrale" v-model="form.puissance_centrale" mode="decimal" :min="0" :maxFractionDigits="2" class="flex-auto" />
+                            <InputNumber id="puissance_centrale" v-model="form.puissance_centrale" mode="decimal" :min="0" :maxFractionDigits="2" class="flex-auto" >
+                              <template #incrementbuttonicon></template>
+                            </InputNumber>
                         </div>
                         <small class="p-error" v-if="form.errors.puissance_centrale">{{ form.errors.puissance_centrale }}</small>
 

@@ -11,10 +11,10 @@ const model = ref([
     {
         label: 'Gestions des Actifs',
         items: [
-            { label: 'Inventaires', icon: 'pi pi-fw pi-inbox', to: '/inventories', /*can: 'inventories'*/ },
-            { label: 'Sortie', icon: 'pi pi-fw pi-arrow-circle-up', to: '/sorties', /*can: 'sorties'*/ },
-            { label: 'Entrée', icon: 'pi pi-fw pi-arrow-circle-down', to: '/entries', /*can: 'entries'*/ },
-            { label: 'Piece detachees', icon: 'pi pi-fw pi-book', to: '/categories', /*can: 'categories'*/ }
+            { label: 'Inventaires', icon: 'pi pi-fw pi-sync', to: '/spare-part-movements', /*can: 'inventories'*/ },
+            // { label: 'Sortie', icon: 'pi pi-fw pi-arrow-circle-up', to: '/sorties', /*can: 'sorties'*/ },
+            // { label: 'Entrée', icon: 'pi pi-fw pi-arrow-circle-down', to: '/entries', /*can: 'entries'*/ },
+            { label: 'Piece detachees', icon: 'pi pi-fw pi-book', to: '/spare-parts', /*can: 'categories'*/ }
        , { label: 'Equipements', icon: 'pi pi-fw pi-cog', to: '/equipments', /*can: 'equipment'*/ }
 
         ]
@@ -22,10 +22,10 @@ const model = ref([
     {
         label: 'Gestion de taches',
         items: [
-            { label: 'Agenda', icon: 'pi pi-fw pi-calendar', to: '/projects', /*can: 'projects'*/ },
-            { label: 'Mes activités', icon: 'pi pi-fw pi-list', to: '/projects', /*can: 'projects'*/ },
-            { label: 'Tâches', icon: 'pi pi-fw pi-check-square', to: '/projects', /*can: 'projects'*/ },
-            { label: 'Plan de maintenance', icon: 'pi pi-fw pi-wrench', to: '/projects', /*can: 'projects'*/ },
+            { label: 'Agenda', icon: 'pi pi-fw pi-calendar', to: '/agenda', /*can: 'projects'*/ },
+            { label: 'Mes activités', icon: 'pi pi-fw pi-list', to: '/activities', /*can: 'projects'*/ },
+            { label: 'Tâches', icon: 'pi pi-fw pi-check-square', to: '/tasks', /*can: 'projects'*/ },
+            { label: 'Plan de maintenance', icon: 'pi pi-fw pi-wrench', to: '/maintenances', /*can: 'projects'*/ },
           ]
     },
     {

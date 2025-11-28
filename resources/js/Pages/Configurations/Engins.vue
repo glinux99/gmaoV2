@@ -217,7 +217,8 @@ const dialogTitle = computed(() => editing.value ? 'Modifier l\'Engin' : 'Créer
                         </Column>
                         <Column field="region.nom" header="Région" headerStyle="width:15%; min-width:8rem;">
                             <template #body="slotProps">
-                                {{ slotProps.data.region ? slotProps.data.region.nom : 'N/A' }}
+
+                                {{ slotProps.data.region ? slotProps.data.region.designation : 'N/A' }}
                             </template>
                         </Column>
                         <Column field="date_mise_en_service" header="Date d'Acquisition" headerStyle="width:15%; min-width:8rem;">
@@ -264,7 +265,8 @@ const dialogTitle = computed(() => editing.value ? 'Modifier l\'Engin' : 'Créer
 
                         <div class="flex items-center gap-4 mb-4">
                             <label for="region" class="font-semibold w-24">Région</label>
-                            <Dropdown id="region" v-model="form.region_id" :options="regions" optionLabel="nom" optionValue="id" placeholder="Sélectionner une région" class="flex-auto" />
+                            <Dropdown id="region" v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" placeholder="Sélectionner une région" class="flex-auto" />
+
                         </div>
                         <small class="p-error" v-if="form.errors.region_id">{{ form.errors.region_id }}</small>
 
