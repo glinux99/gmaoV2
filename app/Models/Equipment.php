@@ -27,11 +27,14 @@ class Equipment extends Model
         'user_id',
         'parent_id',
         'quantity',
+        'label_id',
+        'characteristics'
     ];
 
     protected $casts = [
         'purchase_date' => 'date',
         'warranty_end_date' => 'date',
+        'characteristics'=> 'array'
     ];
 
     // --- RELATIONS BELONGS TO ---
@@ -86,7 +89,11 @@ class Equipment extends Model
         // Ceci suppose l'existence d'une table pivot 'equipment_maintenance'
         return $this->belongsToMany(Maintenance::class);
     }
-
+ public function tasks(): BelongsToMany
+    {
+        // Ceci suppose l'existence d'une table pivot 'equipment_maintenance'
+        return $this->belongsToMany(Task::class);
+    }
     // Si la table pivot a un nom non conventionnel, utilisez:
     // public function maintenances(): BelongsToMany
     // {

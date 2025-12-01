@@ -21,6 +21,7 @@ use App\Http\Controllers\LabelController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SparePartMovementController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\UnityController;
@@ -94,6 +95,7 @@ Route::get('/list', function () {
     'equipment-types'=> EquipmentTypeController::class,
     'equipment-characteristics'=> EquipmentCharacteristicController ::class,
     'maintenances'=> MaintenanceController::class,
+    'tasks'=>TaskController::class
   ]);
 
 // Route::get('/', function () {

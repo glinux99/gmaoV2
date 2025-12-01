@@ -4,44 +4,70 @@ namespace App\Http\Controllers;
 
 use App\Models\Equipment;
 use App\Models\EquipmentType;
+use App\Models\Label;
+use App\Models\EquipmentMovement;
 use App\Models\Region;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Builder;
 
 class EquipmentController extends Controller
 {
+    /**
+     * Affiche la liste des équipements avec pagination et filtres.
+     */
     public function index()
     {
+        $query = Equipment::with(['equipmentType', 'region', 'user', 'parent']);
 
-        $query = Equipment::with(['equipmentType', 'region', 'user', 'parent', 'characteristics']);
-
-        if (request()->has('search')) {
-            $search = request('search');
-            $query->where('brand', 'like', '%' . $search . '%')
-                ->orWhere('model', 'like', '%' . $search . '%')
-                ->orWhere('serial_number', 'like', '%' . $search . '%')
-                ->orWhereHas('equipmentType', fn ($q) => $q->where('name', 'like', '%' . $search . '%'))
-                ->orWhereHas('region', fn ($q) => $q->where('name', 'like', '%' . $search . '%'));
+        // --- Logique de recherche (Filtre global) ---
+        if (request()->has('search') && $search = request('search')) {
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('tag', 'like', '%' . $search . '%')
+                  ->orWhere('designation', 'like', '%' . $search . '%')
+                  ->orWhere('brand', 'like', '%' . $search . '%')
+                  ->orWhere('model', 'like', '%' . $search . '%')
+                  ->orWhere('serial_number', 'like', '%' . $search . '%')
+                  ->orWhere('location', 'like', '%' . $search . '%')
+                  // Recherche dans la relation EquipmentType
+                  ->orWhereHas('equipmentType', fn ($sq) => $sq->where('name', 'like', '%' . $search . '%'))
+                  // Recherche dans la relation Region
+                  ->orWhereHas('region', fn ($sq) => $sq->where('designation', 'like', '%' . $search . '%'));
+            });
         }
 
+        // --- Chargement des équipements parents disponibles pour la création d'enfants ---
+        $parentEquipments = Equipment::whereNull('parent_id') // Équipements qui ne sont pas des enfants
+                                    ->where('status', 'en stock') // Seulement ceux qui sont en stock
+                                    ->where('quantity', '>', 0) // Dont la quantité est supérieure à 0
+                                    ->get(['id', 'tag', 'designation', 'brand', 'model', 'equipment_type_id', 'region_id', 'quantity', 'status', 'characteristics']);
+
         return Inertia::render('Actifs/Equipments', [
+            // Correction: Ajout de withQueryString() pour conserver le filtre de recherche lors de la pagination
             'equipments' => $query->paginate(10),
             'filters' => request()->only(['search']),
             'equipmentTypes' => EquipmentType::all(),
             'regions' => Region::get(),
             'users' => User::all(['id', 'name']),
-            'parentEquipments' => $this->getEquipments()->load('characteristics'),
+            'labels' => Label::with('labelCharacteristics')->get(),
+            'parentEquipments' => $parentEquipments,
         ]);
     }
 
+    /**
+     * Crée un nouvel équipement (parent ou enfant).
+     */
     public function store(Request $request)
     {
+        // Validation (Correction des noms de table pour 'unique')
         $validated = $request->validate([
             'tag' => 'nullable|string|max:255|unique:equipment,tag',
-            'designation' => 'nullable|string|max:255',
+            'designation' => 'required|string|max:255',
             'brand' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
             'serial_number' => 'nullable|string|max:255|unique:equipment,serial_number',
@@ -53,61 +79,94 @@ class EquipmentController extends Controller
             'equipment_type_id' => 'required|exists:equipment_types,id',
             'region_id' => 'nullable|exists:regions,id',
             'parent_id' => 'nullable|exists:equipment,id',
+            // Validation spécifique pour la création d'enfants
+            'child_quantity' => 'nullable|integer|min:1|required_with:parent_id',
             'characteristics' => 'nullable|array',
-            'characteristics.*.name' => 'required_with:characteristics|string',
-            'characteristics.*.value' => 'nullable|string',
-            'child_quantity' => 'nullable|integer|min:1', // Quantité demandée pour un enfant
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $equipmentData = $request->except(['child_quantity', 'characteristics']);
+            // Retirer les champs non persistants de la collection de données principale
+            $equipmentData = collect($validated)->except(['characteristics', 'child_quantity', 'label_id'])->all();
             $equipmentData['user_id'] = Auth::id();
 
-            // Si l'équipement a un parent
-            if (!empty($validated['parent_id'])) {
-                $parent = Equipment::findOrFail($validated['parent_id']);
-                $requestedQuantity = $validated['child_quantity'] ?? 1;
+            $requestedQuantity = $validated['child_quantity'] ?? 1;
 
-                if ($parent->quantity < $requestedQuantity) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'child_quantity' => 'La quantité du parent est insuffisante.',
+            // Gestion de la création d'équipements enfants (à partir d'un parent en stock)
+            if (!empty($validated['parent_id'])) {
+                $parent = Equipment::find($validated['parent_id']);
+
+                if (!$parent) {
+                    throw ValidationException::withMessages(['parent_id' => 'Le parent spécifié est introuvable.']);
+                }
+
+                if ($parent->status !== 'en stock' || $parent->quantity < $requestedQuantity) {
+                    throw ValidationException::withMessages([
+                        'child_quantity' => 'La quantité du parent est insuffisante ou le parent n\'est pas en stock.',
                     ]);
                 }
 
-                // Générer un tag unique pour l'enfant
-                $baseTag = $parent->tag ?? $parent->designation ?? 'equip';
-                $i = 1;
-                do {
-                    $equipmentData['tag'] = $baseTag . '-' . ($parent->children()->count() + $i);
-                } while (Equipment::where('tag', $equipmentData['tag'])->exists() && $i++);
-                $equipmentData['user_id'] = Auth::id(); // Ensure user_id is set for child equipment
+                // Création des enfants
+                for ($i = 0; $i < $requestedQuantity; $i++) {
+                    $equipmentChildData = $equipmentData;
 
+                    // Les enfants ne doivent pas hériter du tag ou du serial_number du parent
+                    $equipmentChildData['tag'] = null;
+                    $equipmentChildData['serial_number'] = null;
+                    $equipmentChildData['location'] = null; // Un enfant a sa propre location s'il quitte le stock
+
+                    // Générer un tag unique pour l'enfant
+                    $baseTag = $parent->tag ?: $parent->designation;
+                    $suffix = Equipment::where('parent_id', $parent->id)->count() + $i + 1;
+                    $equipmentChildData['tag'] = $this->generateUniqueTag($baseTag, $suffix);
+
+                    // Les enfants sont 'en service' par défaut lors de la sortie de stock
+                    $equipmentChildData['status'] = 'en service';
+                    $equipmentChildData['quantity'] = 1; // Chaque enfant créé est une unité
+
+                    // Traiter les caractéristiques (héritage des données soumises)
+                    $equipmentChildData['characteristics'] = $this->processCharacteristics($validated['characteristics'] ?? [], $request);
+
+                    $childEquipment = Equipment::create($equipmentChildData);
+
+                    // Log creation movement
+                    EquipmentMovement::create([
+                        'equipment_id' => $childEquipment->id,
+                        'user_id' => Auth::id(),
+                        'type' => 'création',
+                        'description' => 'Équipement enfant créé à partir du parent ' . $parent->tag . ' avec le statut : ' . $childEquipment->status,
+                    ]);
+                }
+
+                // Décrémenter la quantité du parent
                 $parent->decrement('quantity', $requestedQuantity);
-                $equipmentData['quantity'] = $requestedQuantity;
+
+            } else {
+                // Création d'un équipement parent (ou un équipement simple)
+                $equipmentData['characteristics'] = $this->processCharacteristics($validated['characteristics'] ?? [], $request);
+                $equipment = Equipment::create($equipmentData);
+
+                // Log creation movement
+                EquipmentMovement::create([
+                    'equipment_id' => $equipment->id,
+                    'user_id' => Auth::id(),
+                    'type' => 'création',
+                    'description' => 'Équipement créé avec le statut : ' . $equipment->status,
+                ]);
             }
-
-            $equipment = Equipment::create($equipmentData);
-
-            if (!empty($validated['characteristics']) && is_array($validated['characteristics'])) {
-                $equipment->characteristics()->createMany($validated['characteristics']);
-            }
-
-            // Log creation movement
-            $equipment->movements()->create([
-                'user_id' => Auth::id(),
-                'type' => 'creation',
-                'description' => 'Équipement créé avec le statut : ' . $equipment->status,
-            ]);
         });
 
-        return redirect()->route('equipments.index')->with('success', 'Équipement créé avec succès.');
+        return redirect()->route('equipments.index')->with('success', 'Équipement(s) créé(s) avec succès.');
     }
 
+    /**
+     * Met à jour un équipement existant.
+     */
     public function update(Request $request, Equipment $equipment)
     {
+        // Correction: Ajout de l'ID pour la règle unique
         $validated = $request->validate([
             'tag' => 'nullable|string|max:255|unique:equipment,tag,' . $equipment->id,
-            'designation' => 'nullable|string|max:255',
+            'designation' => 'required|string|max:255',
             'brand' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
             'serial_number' => 'nullable|string|max:255|unique:equipment,serial_number,' . $equipment->id,
@@ -119,68 +178,161 @@ class EquipmentController extends Controller
             'equipment_type_id' => 'required|exists:equipment_types,id',
             'region_id' => 'nullable|exists:regions,id',
             'parent_id' => 'nullable|exists:equipment,id',
+            'label_id' => 'nullable|exists:labels,id',
             'characteristics' => 'nullable|array',
-            'characteristics.*.id' => 'nullable|integer',
-            'characteristics.*.name' => 'required_with:characteristics|string',
-            'characteristics.*.value' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($equipment, $validated) {
+        DB::transaction(function () use ($equipment, $validated, $request) {
             $originalStatus = $equipment->status;
             $originalParentId = $equipment->parent_id;
             $originalQuantity = $equipment->quantity;
 
-            // Si le parent change, ajuster les quantités des anciens et nouveaux parents
-            if (array_key_exists('parent_id', $validated) && $validated['parent_id'] !== $originalParentId) {
-                // Rétablir la quantité de l'ancien parent
+            $newParentId = $validated['parent_id'] ?? null;
+            $newQuantity = $validated['quantity'] ?? $originalQuantity;
+
+            // --- Gestion du changement de parent ---
+            if ($newParentId !== $originalParentId) {
+                // 1. Rétablir la quantité à l'ancien parent si l'équipement était un enfant
                 if ($originalParentId) {
-                    Equipment::find($originalParentId)->increment('quantity', $originalQuantity);
+                    $oldParent = Equipment::find($originalParentId);
+                    if ($oldParent && $originalParentId !== $equipment->id) {
+                        $oldParent->increment('quantity', $originalQuantity);
+                    }
                 }
-                // Décrémenter la quantité du nouveau parent
-                if ($validated['parent_id']) {
-                    Equipment::find($validated['parent_id'])->decrement('quantity', $validated['quantity'] ?? $originalQuantity);
+
+                // 2. Décrémenter la quantité du nouveau parent si l'équipement devient un enfant
+                if ($newParentId) {
+                    $newParent = Equipment::find($newParentId);
+
+                    if ($newParent && $newParentId !== $equipment->id) {
+                        if ($newParent->status !== 'en stock' || $newParent->quantity < $newQuantity) {
+                            throw ValidationException::withMessages(['parent_id' => 'La quantité du nouveau parent est insuffisante ou il n\'est pas en stock.']);
+                        }
+                        $newParent->decrement('quantity', $newQuantity);
+                    }
                 }
             }
-            $equipment->update($validated);
 
-            if ($originalStatus !== $validated['status']) {
-                $equipment->movements()->create([
+            // Mise à jour des données principales (sans les caractéristiques)
+            $equipment->fill(collect($validated)->except(['characteristics'])->all());
+
+            // Gérer les logs de changement de statut
+            if ($equipment->isDirty('status')) {
+                EquipmentMovement::create([
+                    'equipment_id' => $equipment->id,
                     'user_id' => Auth::id(),
                     'type' => 'changement_statut',
                     'description' => "Statut changé de '{$originalStatus}' à '{$validated['status']}'.",
                 ]);
             }
 
-            if (!empty($validated['characteristics'])) {
-                foreach ($validated['characteristics'] as $charData) {
-                    $equipment->characteristics()->updateOrCreate(
-                        ['id' => $charData['id'] ?? null],
-                        ['name' => $charData['name'], 'value' => $charData['value']]
-                    );
-                }
-            }
+            // Traiter et mettre à jour les caractéristiques
+            $equipment->characteristics = $this->processCharacteristics($validated['characteristics'] ?? [], $request, $equipment->characteristics);
+            $equipment->save();
         });
 
         return redirect()->route('equipments.index')->with('success', 'Équipement mis à jour avec succès.');
     }
 
+    /**
+     * Supprime un équipement.
+     */
     public function destroy(Equipment $equipment)
     {
         DB::transaction(function () use ($equipment) {
-            // Log deletion movement before deleting
-            $equipment->movements()->create([
+            // Loguer la suppression
+            EquipmentMovement::create([
+                'equipment_id' => $equipment->id,
                 'user_id' => Auth::id(),
                 'type' => 'suppression',
                 'description' => 'Équipement ' . $equipment->tag . ' supprimé.',
             ]);
+
+            // Correction: Si l'équipement supprimé est un enfant, restaurer la quantité au parent
+            if ($equipment->parent_id) {
+                $parent = $equipment->parent;
+                if ($parent) {
+                    // On incrémente le parent avec la quantité de l'équipement supprimé
+                    $parent->increment('quantity', $equipment->quantity ?? 1);
+                }
+            }
+
+            // Supprimer l'équipement
             $equipment->delete();
         });
 
         return redirect()->route('equipments.index')->with('success', 'Équipement supprimé avec succès.');
     }
 
-    public function getEquipments()
+    // --- Fonctions utilitaires ---
+
+    /**
+     * Fonction utilitaire pour synchroniser les caractéristiques et gérer les fichiers.
+     * @param array $characteristics
+     * @param Request $request
+     * @param array|null $existingCharacteristics
+     * @return array
+     */
+    private function processCharacteristics(array $characteristics, Request $request, ?array $existingCharacteristics = []): array
     {
-        return Equipment::all();
+        $processedCharacteristics = [];
+
+        // Convertir les caractéristiques existantes en tableau associatif par 'name' pour un accès facile
+        $existingByName = collect($existingCharacteristics)->keyBy('name')->all();
+
+        foreach ($characteristics as $index => $charData) {
+            // Ignorer les caractéristiques vides (si l'utilisateur a laissé la ligne vide dans le formulaire)
+            if (empty($charData['name'])) {
+                continue;
+            }
+
+            $value = $charData['value'] ?? null;
+            $charName = $charData['name'];
+
+            if ($charData['type'] === 'file') {
+                // Si un nouveau fichier est uploadé pour cette caractéristique
+                if ($request->hasFile("characteristics.{$index}.value")) {
+                    $file = $request->file("characteristics.{$index}.value");
+                    // Supprimer l'ancien fichier s'il existe
+                    if (isset($existingByName[$charName]['value']) && $existingByName[$charName]['value']) {
+                        Storage::disk('public')->delete($existingByName[$charName]['value']);
+                    }
+                    $value = $file->store('equipments_files', 'public');
+                } else {
+                    // Conserver l'ancienne valeur si aucun nouveau fichier n'est envoyé
+                    $value = $existingByName[$charName]['value'] ?? null;
+                }
+            } else if ($charData['type'] === 'boolean') {
+                // Convertir la valeur booléenne (peut être reçue comme 'true' ou 'false' string, ou null)
+                $value = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            }
+
+            $processedCharacteristics[] = [
+                'name' => $charData['name'],
+                'type' => $charData['type'],
+                'value' => $value,
+            ];
+        }
+        return $processedCharacteristics;
+    }
+
+    /**
+     * Fonction utilitaire pour générer un tag unique.
+     * @param string $baseTag
+     * @param int $suffix
+     * @return string
+     */
+    private function generateUniqueTag(string $baseTag, int $suffix): string
+    {
+        $i = $suffix;
+        // Nettoyer le tag de base et supprimer les caractères spéciaux ou espaces
+        $cleanBaseTag = trim(strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', $baseTag)));
+
+        do {
+            $tag = $cleanBaseTag . '-' . str_pad($i, 3, '0', STR_PAD_LEFT); // Ex: PC-001, PC-002
+            $i++;
+        } while (Equipment::where('tag', $tag)->exists());
+
+        return $tag;
     }
 }

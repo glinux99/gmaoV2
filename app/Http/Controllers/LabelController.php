@@ -47,7 +47,7 @@ class LabelController extends Controller
             'color' => 'required|string|max:7',
             'characteristics' => 'nullable|array',
             'characteristics.*.name' => 'required|string|max:255',
-            'characteristics.*.type' => 'required|string|in:text,number,date,boolean,select',
+            'characteristics.*.type' => 'required|string|in:text,number,date,boolean,select,file',
             'characteristics.*.is_required' => 'required|boolean',
         ]);
         $label = Label::create($validated);
@@ -83,7 +83,7 @@ class LabelController extends Controller
             'characteristics' => 'nullable|array',
             'characteristics.*.id' => 'nullable|integer',
             'characteristics.*.name' => 'required|string|max:255',
-            'characteristics.*.type' => 'required|string|in:text,number,date,boolean,select',
+            'characteristics.*.type' => 'required|string|in:text,number,date,boolean,select,file',
             'characteristics.*.is_required' => 'required|boolean',
         ]);
         $label->update($validated);

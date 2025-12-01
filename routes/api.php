@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\TaskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
  // Correction de la route API Resource
-Route::apiResource("maintenancesx", MaintenanceController::class);Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::apiResource("maintenancesx", TaskController::class);Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

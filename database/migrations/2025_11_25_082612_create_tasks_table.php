@@ -16,18 +16,14 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->enum('status', [
-                Task::STATUS_PLANNED,
-                Task::STATUS_IN_PROGRESS,
-                Task::STATUS_COMPLETED,
-                Task::STATUS_CANCELLED,
-                Task::STATUS_LATE,
-                Task::STATUS_STARTED_LATE,
-            ])->default(Task::STATUS_PLANNED);
-
-            $table->enum('priority', ['Basse', 'Moyenne', 'Haute', 'Critique'])->default('Moyenne');
-            $table->enum('maintenance_type', ['Préventive', 'Corrective', 'Améliorative'])->nullable();
-
+            $table->string('status')->nullable();
+            $table->nullableMorphs('assignable'); // Crée assignable_id et assignable_type
+            $table->string('priority')->nullable();
+            $table->string('maintenance_type')->nullable();
+            $table->string('recurrence_type')->nullable();
+            $table->string('recurrence_interval')->nullable();
+            $table->string('estimated_duration')->nullable();
+            $table->string('estimated_cost')->nullable();
             $table->timestamp('planned_start_date')->nullable();
             $table->timestamp('planned_end_date')->nullable();
             $table->timestamp('actual_start_date')->nullable();
@@ -35,10 +31,10 @@ return new class extends Migration
 
             $table->integer('time_spent')->nullable()->comment('Temps passé en minutes');
 
-            $table->foreignId('equipment_id')->nullable()->constrained('equipments')->onDelete('set null');
-            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('team_id')->nullable()->constrained('teams')->onDelete('set null');
-
+            $table->foreignId('equipment_id')->nullable()->constrained('equipment')->onDelete('set null');
+            $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null'); // Ajout de la clé étrangère pour l'utilisateur
+            $table->foreignId('maintenance_id')->nullable()->constrained('maintenances')->onDelete('set null');
             $table->timestamps();
         });
     }

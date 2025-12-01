@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Task extends Model
 {
@@ -30,17 +32,23 @@ class Task extends Model
     protected $fillable = [
         'title',
         'description',
+        'assignable_type', // Ajouté pour la relation polymorphe
+        'assignable_id', // Ajouté pour la relation polymorphe
         'status',
         'priority',
-        'maintenance_type',
-        'planned_start_date',
+        'maintenance_type', // Renommé de maintenance_type à type pour être plus générique
+        'planned_start_date', // Renommé de planned_start_date à scheduled_start_date
         'planned_end_date',
         'actual_start_date',
         'actual_end_date',
+        'estimated_cost',
+        'estimated_duration',
         'time_spent', // En minutes
         'equipment_id',
         'user_id',
         'team_id',
+        'region_id', // Ajouté pour la région
+        'maintenance_id', // Ajouté pour la relation avec Maintenance
     ];
 
     /**
@@ -49,11 +57,19 @@ class Task extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'planned_start_date' => 'datetime',
+        'scheduled_start_date' => 'datetime',
         'planned_end_date' => 'datetime',
         'actual_start_date' => 'datetime',
         'actual_end_date' => 'datetime',
     ];
+
+    /**
+     * Get the parent assignable model (User, Team, etc.).
+     */
+    public function assignable(): MorphTo
+    {
+        return $this->morphTo();
+    }
 
     /**
      * Récupère l'utilisateur assigné à la tâche.
@@ -72,12 +88,28 @@ class Task extends Model
     }
 
     /**
+     * Récupère la région associée à la tâche.
+     */
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    /**
+     * Récupère la maintenance à laquelle cette tâche est associée.
+     */
+    public function maintenance(): BelongsTo
+    {
+        return $this->belongsTo(Maintenance::class);
+    }
+
+    /**
      * Récupère l'équipement concerné par la tâche.
      */
-    public function equipment(): BelongsTo
+      public function equipments(): BelongsToMany
     {
-        // Assurez-vous d'avoir un modèle Equipment
-        return $this->belongsTo(Equipment::class);
+        // Supposons une table pivot 'equipment_maintenance'
+        return $this->belongsToMany(Equipment::class);
     }
 
     /**
@@ -85,8 +117,15 @@ class Task extends Model
      */
     public function activities(): HasMany
     {
-        // Assurez-vous d'avoir un modèle Activity
         return $this->hasMany(Activity::class);
+    }
+
+    /**
+     * Récupère les instructions associées à la tâche.
+     */
+    public function instructions(): HasMany
+    {
+        return $this->hasMany(TaskInstruction::class);
     }
 
     /**

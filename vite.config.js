@@ -5,6 +5,7 @@ import { PrimeVueResolver } from '@primevue/auto-import-resolver';
 import Components from 'unplugin-vue-components/vite';
 
 export default defineConfig({
+
     plugins: [
         laravel({
             input: 'resources/js/app.js',

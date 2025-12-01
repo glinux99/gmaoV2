@@ -130,7 +130,7 @@ const months = ref([
 ]);
 
 // Réinitialiser l'assignable_id quand le type change
-watch(() => form.assignable_type, (newValue) => { form.assignable_id = null; });
+// watch(() => form.assignable_type, (newValue) => { form.assignable_id = null; });
 watch(() => form.recurrence_type, (newValue) => {
     form.recurrence_interval = null;
     form.recurrence_days = [];
@@ -637,10 +637,20 @@ const transformedEquipmentTree = computed(() => {
                     </Toolbar>
 
                     <DataTable :value="maintenances.data" dataKey="id" :paginator="true" :rows="10"
-                        responsiveLayout="scroll">
+                        responsiveLayout="scroll" :row-class="() => 'cursor-pointer'">
                         <Column field="title" header="Titre" :sortable="true" style="min-width: 12rem;"></Column>
-                        <Column field="equipment.designation" header="Équipement" :sortable="true"
-                            style="min-width: 10rem;"></Column>
+                        <Column header="Équipement(s)" :sortable="true" style="min-width: 12rem;">
+                            <template #body="slotProps">
+                                <div v-if="slotProps.data.equipments && slotProps.data.equipments.length > 0">
+                                    <template v-if="slotProps.data.equipments.length === 1">
+                                        {{ slotProps.data.equipments[0].designation }}
+                                    </template>
+                                    <template v-else>
+                                        <Tag v-for="equipment in slotProps.data.equipments" :key="equipment.id" :value="equipment.designation" class="mr-1 mb-1" />
+                                    </template>
+                                </div>
+                            </template>
+                        </Column>
                         <Column field="assignable.name" header="Assigné à" :sortable="true" style="min-width: 10rem;">
                             <template #body="slotProps">
                                 <Tag v-if="slotProps.data.assignable" :value="slotProps.data.assignable.name" />
@@ -659,9 +669,9 @@ const transformedEquipmentTree = computed(() => {
                             </template>
                         </Column>
                         <Column field="scheduled_start_date" header="Début Planifié" :sortable="true"
-                            style="min-width: 10rem;">
+                        style="min-width: 12rem;">
                             <template #body="slotProps">
-                                {{ new Date(slotProps.data.scheduled_start_date).toLocaleDateString() }}
+                            <span class="text-sm">{{ new Date(slotProps.data.scheduled_start_date).toLocaleString() }}</span>
                             </template>
                         </Column>
                         <Column headerStyle="min-width:8rem;" header="Actions">

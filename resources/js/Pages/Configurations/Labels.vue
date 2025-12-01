@@ -14,7 +14,7 @@ const characteristicTypes = ref([
     { label: 'Texte', value: 'text' },
     { label: 'Nombre', value: 'number' },
     { label: 'Date', value: 'date' },
-    { label: 'image', value: 'text' },
+    { label: 'Fichier', value: 'file' },
     { label: 'Boolean', value: 'boolean' },
     { label: 'Liste déroulante', value: 'select' },
 ]);

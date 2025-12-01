@@ -23,6 +23,9 @@ class InterventionRequest extends Model
         'status', // Ex: 'Ouverte', 'En cours', 'Fermée'
         'priority', // Ex: 'Faible', 'Moyenne', 'Urgent'
         'reported_at', // Date et heure de signalement
+        'validator_id',
+        'validated_at',
+        'validation_notes',
         'closed_at', // Date et heure de résolution
     ];
 
@@ -30,6 +33,7 @@ class InterventionRequest extends Model
     protected $casts = [
         'reported_at' => 'datetime',
         'closed_at' => 'datetime',
+        'validated_at' => 'datetime',
     ];
 
     // --- RELATIONS ---
@@ -48,6 +52,14 @@ class InterventionRequest extends Model
     public function region(): BelongsTo
     {
         return $this->belongsTo(Region::class);
+    }
+
+    /**
+     * Obtient le superviseur qui a validé la demande.
+     */
+    public function validator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'validator_id');
     }
 
     /**
