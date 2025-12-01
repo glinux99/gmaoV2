@@ -60,6 +60,9 @@ const form = useForm({ // Changed from maintenance to task
     recurrence_month: null, // Nouvelle propriété pour le mois (pour annuel)
     reminder_days: null, // Jours de rappel avant exécution
     custom_recurrence_config: null, // Pour la récurrence personnalisée
+    requester_name: '', // Nom du demandeur
+    department: '', // Service destinateur
+    requires_shutdown: true, // Équipement hors tension (Oui/Non, par défaut Oui)
     node_instructions: {}, // Pour les instructions spécifiques aux noeuds,
     images: [], // Pour les images liées à la tâche
     related_equipments: {}, // Pour les équipements liés (TreeSelect model)
@@ -219,6 +222,9 @@ const editTask = (maintenance) => { // Changed from maintenance to task
     form.recurrence_month = maintenance.recurrence_month;
     form.reminder_days = maintenance.reminder_days;
     form.custom_recurrence_config = maintenance.custom_recurrence_config;
+    form.requester_name = maintenance.requester_name;
+    form.department = maintenance.department;
+    form.requires_shutdown = maintenance.requires_shutdown ?? true; // Default to true if null/undefined
 
     form.images = maintenance.images || [];
     // Transformer les équipements pour le TreeSelect
@@ -276,7 +282,7 @@ const data = {
         router.put(route('tasks.update', form.id), data, { // Changed from maintenances.update to tasks.update
             onSuccess: () => {
                 maintenanceDialog.value = false; // Changed from maintenanceDialog to taskDialog
-                toast.add({ severity: 'success', summary: 'Succès', detail: 'Tâche mise à jour avec succès.', life: 3000 });
+                toast.add({ severity: 'success', summary: 'Succès', detail: 'Ordre de Travail mise à jour avec succès.', life: 3000 });
                 form.reset();
             },
             onError: (errors) => {
@@ -290,7 +296,7 @@ const data = {
         router.post(route('tasks.store'), data, { // Changed from maintenances.store to tasks.store
         onSuccess: () => {
             maintenanceDialog.value = false; // Changed from maintenanceDialog to taskDialog
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Tâche créée avec succès.', life: 3000 });
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Ordre de Travail créée avec succès.', life: 3000 });
             form.reset();
         },
         onError: (errors) => {
@@ -312,7 +318,7 @@ const deleteTask = (task) => { // Changed from deleteTask to deleteTask
         accept: () => { // Changed from maintenance to task
             router.delete(route('tasks.destroy', task.id), { // Changed from maintenances.destroy to tasks.destroy
                 onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: 'Tâche supprimée.', life: 3000 });
+                    toast.add({ severity: 'success', summary: 'Succès', detail: 'Ordre de Travail supprimée.', life: 3000 });
                 }
             });
         },
@@ -340,7 +346,7 @@ const getPrioritySeverity = (priority) => {
     return severities[priority] || null;
 };
 
-const dialogTitle = computed(() => editing.value ? 'Modifier la Tâche' : 'Créer une nouvelle Tâche'); // Changed from Maintenance to Tâche
+const dialogTitle = computed(() => editing.value ? 'Modifier la Ordre de Travail' : 'Créer une nouvelle Ordre de Travail'); // Changed from Maintenance to Ordre de Travail
 
 // Récupère les nœuds pour lesquels on peut configurer des instructions.
 // Si un parent est sélectionné, on prend ses enfants.
@@ -621,9 +627,9 @@ const transformedEquipmentTree = computed(() => {
 </script>
 
 <template>
-    <AppLayout title="Gestion des Tâches">
+    <AppLayout title="Gestion des Ordre de Travails">
 
-        <Head title="Tâches" />
+        <Head title="Ordre de Travails" />
 
         <div class="grid">
             <div class="col-12">
@@ -632,7 +638,7 @@ const transformedEquipmentTree = computed(() => {
                     <ConfirmDialog></ConfirmDialog>
                     <Toolbar class="mb-4">
                         <template #start>
-                            <Button label="Nouvelle Tâche" icon="pi pi-plus" class="p-button-success mr-2"
+                            <Button label="Nouvelle Ordre de Travail" icon="pi pi-plus" class="p-button-success mr-2"
                                 @click="openNew" />
                         </template>
                         <template #end>
@@ -733,7 +739,7 @@ const transformedEquipmentTree = computed(() => {
 
                             <div class="grid grid-cols-2 gap-2">
                                 <div class="field">
-                                    <label for="type" class="font-semibold">Type de Tâche</label>
+                                    <label for="type" class="font-semibold">Type de Ordre de Travail</label>
                                     <Dropdown id="type" class="w-full" v-model="form.maintenance_type" :options="taskTypes"
                                         placeholder="Sélectionner un type" />
                                     <small class="p-error">{{ form.errors.type }}</small>
@@ -890,6 +896,36 @@ const transformedEquipmentTree = computed(() => {
                                     placeholder="Ex: 'every 2 weeks on Monday and Friday'" />
                             </div>
                         </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="field">
+                                <label for="requester_name" class="font-semibold">Demandeur</label>
+                                <InputText id="requester_name" class="w-full" v-model.trim="form.requester_name"
+                                    :class="{ 'p-invalid': form.errors.requester_name }" />
+                                <small class="p-error">{{ form.errors.requester_name }}</small>
+                            </div>
+                            <div class="field">
+                                <label for="department" class="font-semibold">Service Destinateur</label>
+                                <InputText id="department" class="w-full" v-model.trim="form.department"
+                                    :class="{ 'p-invalid': form.errors.department }" />
+                                <small class="p-error">{{ form.errors.department }}</small>
+                            </div>
+                        </div>
+
+                        <div class="field flex items-center mt-3">
+                            <Checkbox
+                                id="requires_shutdown"
+                                v-model="form.requires_shutdown"
+                                :binary="true"
+                                :class="{ 'p-invalid': form.errors.requires_shutdown }"
+                            />
+                            <label for="requires_shutdown" class="ml-2 font-semibold">
+                                L'équipement doit être mis hors tension
+                            </label>
+                            <small class="p-error">{{ form.errors.requires_shutdown }}</small>
+                        </div>
+
+
                         <div class="field">
                             <!-- <label for="images" class="font-semibold">Images</label>
                             <FileUpload
