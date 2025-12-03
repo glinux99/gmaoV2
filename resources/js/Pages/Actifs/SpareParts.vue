@@ -78,7 +78,7 @@ const editSparePart = (sparePart) => { // Changed from editLabel to editSparePar
 
 const saveSparePart = () => { // Changed from saveLabel to saveSparePart
     submitted.value = true;
-    if (!form.reference || form.quantity === null || form.min_quantity === null || !form.label_id || !form.user_id) {
+    if (!form.reference || form.quantity === null || form.min_quantity === null ||  !form.user_id) {
         return;
     }
 
@@ -292,7 +292,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                         <div class="flex items-center gap-4 mb-4">
                             <label for="region_id" class="font-semibold w-24">Région</label>
                             <Dropdown id="region_id" v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" placeholder="Sélectionner une région" class="flex-auto"
-                                :class="{ 'p-invalid': submitted && !form.region_id }" />
+                                />
                         </div>
                         <small class="p-invalid" v-if="submitted && !form.region_id">La région est requise.</small>
                         <small class="p-error" v-if="form.errors.region_id">{{ form.errors.region_id }}</small>
@@ -300,7 +300,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                         <div class="flex items-center gap-4 mb-4">
                             <label for="label_id" class="font-semibold w-24">Type de Pièce</label>
                             <Dropdown id="label_id" v-model="form.label_id" :options="labels" optionLabel="designation" optionValue="id" placeholder="Sélectionner un type" class="flex-auto"
-                                :class="{ 'p-invalid': submitted && !form.label_id }" />
+                                />
                         </div>
                         <small class="p-invalid" v-if="submitted && !form.label_id">Le type de pièce est requis.</small>
                         <small class="p-error" v-if="form.errors.label_id">{{ form.errors.label_id }}</small>

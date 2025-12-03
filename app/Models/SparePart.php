@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 class SparePart extends Model
 {
-    use HasFactory;
+    use HasFactory,InteractsWithMedia;
 
     /**
      * The attributes that are mass assignable.
@@ -67,4 +68,10 @@ class SparePart extends Model
     {
         return $this->belongsTo(Unity::class);
     }
+
+public function spareParts()
+{
+    return $this->belongsToMany(SparePart::class)->withPivot('quantity_used')->withTimestamps();
+}
+
 }

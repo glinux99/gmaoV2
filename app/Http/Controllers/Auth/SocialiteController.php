@@ -60,15 +60,15 @@ class SocialiteController extends Controller
             ]);
 
             // Assign a default role, e.g., 'student'
-            $newUser->assignRole('student');
+
 
             Auth::login($newUser);
-
+             $newUser->assignRole('visitor');
             return redirect()->intended('/dashboard');
 
         } catch (\Exception $e) {
             // Handle exceptions, e.g., user denied access
-
+            dd($e);
             return redirect('/login')->with('error', 'Une erreur est survenue lors de l\'authentification.');
         }
     }

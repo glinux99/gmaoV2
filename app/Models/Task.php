@@ -49,6 +49,7 @@ class Task extends Model
         'team_id',
         'region_id', // Ajouté pour la région
         'maintenance_id', // Ajouté pour la relation avec Maintenance
+        'jobber'
     ];
 
     /**
@@ -164,4 +165,9 @@ class Task extends Model
                $this->planned_end_date &&
                $this->actual_end_date->isAfter($this->planned_end_date);
     }
+    public function spareParts()
+{
+    return $this->belongsToMany(SparePart::class)->withPivot('quantity_used')->withTimestamps();
+}
+
 }

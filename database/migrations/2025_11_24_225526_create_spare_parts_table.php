@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('location')->nullable();
 
             // Foreign keys
-            $table->foreignId('label_id')->constrained('labels')->onDelete('cascade');
+            $table->foreignId('label_id')->nullable()->constrained('labels')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
             $table->foreignId('unity_id')->nullable()->constrained('unities')->onDelete('set null');

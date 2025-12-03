@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\EnginController;
 use App\Http\Controllers\EquipmentCharacteristicController;
@@ -60,6 +61,23 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::resource('/role', RoleController::class)->except('create', 'show', 'edit');
 
     Route::resource('/permission', PermissionController::class)->except('create', 'show', 'edit');
+      Route::resources([
+    'labels'=>LabelController::class,
+    'unities'=> UnityController::class,
+    'engins'=> EnginController::class,
+    'regions'=> RegionController::class,
+    'technicians' => TechnicianController::class,
+    'teams'=> TeamController::class,
+    'spare-parts'=> SparePartController ::class,
+    'spare-part-movements'=> SparePartMovementController ::class,
+    'equipments'=> EquipmentController::class,
+    'equipment-movements'=> EquipmentMovementController ::class,
+    'equipment-types'=> EquipmentTypeController::class,
+    'equipment-characteristics'=> EquipmentCharacteristicController ::class,
+    'maintenances'=> MaintenanceController::class,
+    'tasks'=>TaskController::class,
+    'activities'=> ActivityController::class
+  ]);
 
 });
 Route::get('/auth/{provider}/redirect', [SocialiteController ::class, 'redirect'])->name('socialite.redirect');
@@ -81,22 +99,7 @@ Route::get('/list', function () {
 // ... autres routes
 
 
-  Route::resources([
-    'labels'=>LabelController::class,
-    'unities'=> UnityController::class,
-    'engins'=> EnginController::class,
-    'regions'=> RegionController::class,
-    'technicians' => TechnicianController::class,
-    'teams'=> TeamController::class,
-    'spare-parts'=> SparePartController ::class,
-    'spare-part-movements'=> SparePartMovementController ::class,
-    'equipments'=> EquipmentController::class,
-    'equipment-movements'=> EquipmentMovementController ::class,
-    'equipment-types'=> EquipmentTypeController::class,
-    'equipment-characteristics'=> EquipmentCharacteristicController ::class,
-    'maintenances'=> MaintenanceController::class,
-    'tasks'=>TaskController::class
-  ]);
+
 
 // Route::get('/', function () {
 //     return Inertia::render('Welcome', [

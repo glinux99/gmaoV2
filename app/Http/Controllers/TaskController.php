@@ -7,6 +7,8 @@ use App\Models\Equipment;
 use App\Models\User;
 use App\Models\Team;
 use App\Models\Region;
+use App\Models\SparePart;
+use App\Models\Activity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -20,6 +22,65 @@ class TaskController extends Controller
     /**
      * Display a listing of the resource.
      */
+    private function getDepartmentsData()
+    {
+        return [
+            [
+                "label" => "Direction",
+                "children" => [
+                    ["label" => "Directeur Général"],
+                    ["label" => "Directeur Exécutif"]
+                ]
+            ],
+            [
+                "label" => "Départements Rattachés",
+                "children" => [
+                    ["label" => "Département Affaires Publiques & Communautés"],
+                    ["label" => "Service Affaires Juridiques"]
+                ]
+            ],
+            [
+                "label" => "Pôles Opérationnels & Supports",
+                "children" => [
+                    ["label" => "Directeur Construction Centrales"],
+                    ["label" => "Chef du Département Construction Réseau"],
+                    [
+                        "label" => "Directeur HSE",
+                        "children" => [
+                            ["label" => "Département HSE"],
+                            ["label" => "Service Médical (VF)"]
+                        ]
+                    ],
+                    [
+                        "label" => "Directeur des Opérations",
+                        "children" => [
+                            ["label" => "Sites Support Logistique"],
+                            ["label" => "Centrales Production"],
+                            ["label" => "Réseaux"],
+                            ["label" => "Technologie Informatique"]
+                        ]
+                    ],
+                    [
+                        "label" => "Chef Département Commercial",
+                        "children" => [
+                            ["label" => "Service Commercial"],
+                            ["label" => "Service Communication"],
+                            ["label" => "Service Centre d'Appels"]
+                        ]
+                    ],
+                    [
+                        "label" => "Directeur Administratif & Financier",
+                        "children" => [
+                            ["label" => "Département Finances-Admi-Taxes"],
+                            ["label" => "Département Contrôle de Gestion & Trésorerie"],
+                            ["label" => "Département Achat-Logistique"]
+                        ]
+                    ],
+                    ["label" => "Chef de Département Ressources Humaines"]
+                ]
+            ]
+        ];
+    }
     public function index(Request $request)
     {
         $tasks = Task::with(['assignable', 'equipments', 'instructions', 'team', 'instructions', 'region'])
@@ -38,6 +99,8 @@ class TaskController extends Controller
             'users' => User::all(),
             'teams' => Team::all(),
             'regions' => Region::all(),
+            'departments'=>$this->getDepartmentsData(),
+            'spareParts'=>SparePart::all(),
                  'equipmentTree' => $transformedEquipmentTree,
         ]);
     }
@@ -76,6 +139,7 @@ private function transformForTreeSelect($equipments)
             'time_spent' => 'nullable|integer',
             'cost' => 'nullable|numeric',
             'region_id' => 'nullable|exists:regions,id',
+            'jobber'=> 'nullable|integer',
                 // Validation corrigée: permet des entiers ou des chaînes pour les IDs
             'equipment_ids' => 'nullable|array',
             'equipment_ids.*' => 'nullable|numeric|exists:equipment,id', // Assure que c'est un nombre ET qu'il existe
@@ -101,8 +165,27 @@ private function transformForTreeSelect($equipments)
             $task->equipments()->attach($equipmentIds);
             } catch (\Throwable $th) {
                 //throw $th;
+                DB::rollBack();
                 return $th;
             }
+
+           try {
+
+             Activity::create([
+                'task_id' => $task['id'],
+                'problem_resolution_description' => $validatedData['description'] ?? null,
+                'actual_start_time' => $validatedData['scheduled_start_date'] ?? null,
+                'actual_end_time' => $validatedData['scheduled_end_date'] ?? null,
+                'assignable_type' => $validatedData['assignable_type'] ?? null,
+                'assignable_id' => $validatedData['assignable_id'] ?? null,
+                'jobber' => $validatedData['jobber'], // Assuming jobber is not directly from task creation, or needs to be set later
+                'status' => $validatedData['status'] ?? 'pending', // Default status or from validated data
+            ]);
+             return $validatedData['scheduled_start_date'];
+           } catch (\Throwable $th) {
+            //throw $th;
+            return $th;
+           }
 
             if (isset($validatedData['instructions'])) {
                 foreach ($validatedData['instructions'] as $instructionData) {

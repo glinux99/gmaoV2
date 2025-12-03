@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, reactive } from 'vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
@@ -12,9 +12,12 @@ const props = defineProps({ // Changed from maintenances to tasks
     users: Array,
     teams: Object,
     regions: Array,
+    departments: Array,
     equipmentTree: Array,
+    spareParts: Array, // Ajout des pièces détachées
     // Vous devrez ajouter les sous-traitants (subcontractors) ici quand ils seront disponibles
 
+    categories: Array,
     // subcontractors: Array,
 });
 const toast = useToast();
@@ -36,6 +39,10 @@ const selectedCopyTargets = ref({}); // Will hold the selection from TreeSelect
 
 // État pour les groupes d'instructions dépliés/repliés
 const expandedInstructionGroups = ref({});
+
+// Dialog pour la création de pièce détachée
+const sparePartDialog = ref(false);
+const sparePartForm = useForm({ name: '', reference: '', category_id: null, stock_quantity: 0, unit_cost: 0 });
 
 
 const form = useForm({ // Changed from maintenance to task
@@ -60,12 +67,14 @@ const form = useForm({ // Changed from maintenance to task
     recurrence_month: null, // Nouvelle propriété pour le mois (pour annuel)
     reminder_days: null, // Jours de rappel avant exécution
     custom_recurrence_config: null, // Pour la récurrence personnalisée
-    requester_name: '', // Nom du demandeur
+    requester_department: null, // Nom du demandeur
     department: '', // Service destinateur
     requires_shutdown: true, // Équipement hors tension (Oui/Non, par défaut Oui)
     node_instructions: {}, // Pour les instructions spécifiques aux noeuds,
     images: [], // Pour les images liées à la tâche
-    related_equipments: {}, // Pour les équipements liés (TreeSelect model)
+    related_equipments: {}, // Pour les équipements liés (TreeSelect model),
+    jobber: 0,
+    spare_parts: [], // Pour les pièces détachées
 });
 
 // Options pour les listes déroulantes
@@ -222,7 +231,7 @@ const editTask = (maintenance) => { // Changed from maintenance to task
     form.recurrence_month = maintenance.recurrence_month;
     form.reminder_days = maintenance.reminder_days;
     form.custom_recurrence_config = maintenance.custom_recurrence_config;
-    form.requester_name = maintenance.requester_name;
+    form.requester_department = maintenance.requester_department;
     form.department = maintenance.department;
     form.requires_shutdown = maintenance.requires_shutdown ?? true; // Default to true if null/undefined
 
@@ -268,6 +277,10 @@ const equipmentIds = form.related_equipments
     // Dans saveMaintenance:
 const data = {
     ...form.data(),
+    spare_parts: form.spare_parts.map(sp => ({
+        id: sp.id,
+        quantity_used: sp.quantity_used
+    })),
     equipment_ids: equipmentIds,
     planned_start_date: form.planned_start_date ? new Date(form.planned_start_date).toISOString().slice(0, 19).replace('T', ' ') : null,
     planned_end_date: form.planned_end_date ? new Date(form.planned_end_date).toISOString().slice(0, 19).replace('T', ' ') : null,
@@ -623,6 +636,50 @@ const transformedEquipmentTree = computed(() => {
     return Object.values(props.equipmentTree).map(transformNode).filter(n => n);
 });
 
+// Transformation de l'arbre des départements pour TreeSelect
+const transformedDepartments = computed(() => {
+    if (!props.departments || !Array.isArray(props.departments)) {
+        return [];
+    }
+
+    const transformNode = (node) => {
+        if (!node) return null;
+        return {
+            key: node.label, // Utilise le label comme clé unique
+            label: node.label,
+            children: node.children ? node.children.map(transformNode).filter(n => n) : []
+        };
+    };
+
+    return props.departments.map(transformNode).filter(n => n);
+});
+
+const addSparePart = () => {
+    form.spare_parts.push({ id: null, quantity_used: 1 });
+};
+
+const removeSparePart = (index) => {
+    form.spare_parts.splice(index, 1);
+};
+
+const openNewSparePart = () => {
+    sparePartForm.reset();
+    sparePartDialog.value = true;
+};
+
+const createSparePart = () => {
+    sparePartForm.post(route('spare-parts.store'), {
+        onSuccess: () => {
+            sparePartDialog.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Pièce détachée créée avec succès.', life: 3000 });
+            // Recharger les pièces détachées si nécessaire, ou ajouter la nouvelle à la liste props.spareParts
+            router.reload({ only: ['spareParts'] });
+        },
+        onError: (errors) => {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la création de la pièce détachée.', life: 3000 });
+        }
+    });
+};
 
 </script>
 
@@ -864,7 +921,6 @@ const transformedEquipmentTree = computed(() => {
                                 <InputNumber id="reminder_days" class="w-full" v-model="form.reminder_days" :min="0" />
                                 <small class="p-error">{{ form.errors.reminder_days }}</small>
                             </div>
-
                             <!-- Exemple pour trimestriel/semestriel/annuel avec choix du mois et jour: -->
                             <!-- Vous devrez définir `months` dans votre script setup si vous utilisez ce bloc -->
 
@@ -899,17 +955,18 @@ const transformedEquipmentTree = computed(() => {
 
                         <div class="grid grid-cols-2 gap-2">
                             <div class="field">
-                                <label for="requester_name" class="font-semibold">Demandeur</label>
-                                <InputText id="requester_name" class="w-full" v-model.trim="form.requester_name"
-                                    :class="{ 'p-invalid': form.errors.requester_name }" />
-                                <small class="p-error">{{ form.errors.requester_name }}</small>
+                                <label for="requester_department" class="font-semibold">Département Demandeur</label>
+                                <TreeSelect id="requester_department" v-model="form.requester_department" :options="transformedDepartments"
+                                    placeholder="Sélectionner un département" class="w-full" />
+                                <small class="p-error">{{ form.errors.requester_department }}</small>
                             </div>
                             <div class="field">
-                                <label for="department" class="font-semibold">Service Destinateur</label>
-                                <InputText id="department" class="w-full" v-model.trim="form.department"
-                                    :class="{ 'p-invalid': form.errors.department }" />
+                                <label for="requester_department" class="font-semibold">Service Destinateur</label>
+                                <TreeSelect id="requester_department" v-model="form.department" :options="transformedDepartments"
+                                    placeholder="Sélectionner un département" class="w-full" />
                                 <small class="p-error">{{ form.errors.department }}</small>
                             </div>
+
                         </div>
 
                         <div class="field flex items-center mt-3">
@@ -925,6 +982,47 @@ const transformedEquipmentTree = computed(() => {
                             <small class="p-error">{{ form.errors.requires_shutdown }}</small>
                         </div>
 
+                        <Divider class="my-4" />
+
+                        <!-- Section Pièces Détachées -->
+                        <div class="field">
+                            <h4 class="font-semibold mb-3">Pièces Détachées Requises</h4>
+                            <div v-for="(part, index) in form.spare_parts" :key="index" class="grid grid-cols-12 gap-2 items-center mb-2">
+                                <div class="col-span-8">
+                                    <Dropdown
+                                        v-model="part.id"
+                                        :options="props.spareParts"
+                                        optionLabel="reference"
+                                        optionValue="id"
+                                        placeholder="Sélectionner une pièce"
+                                        class="w-full"
+                                        filter
+                                    />
+                                    <small class="p-error">{{ form.errors[`spare_parts.${index}.id`] }}</small>
+                                </div>
+                                <div class="col-span-3">
+                                    <InputNumber v-model="part.quantity_used" placeholder="Qté" :min="1" class="w-full" />
+                                </div>
+                                <div class="col-span-1">
+                                    <Button
+                                        icon="pi pi-trash"
+                                        class="p-button-danger p-button-text p-button-rounded"
+                                        @click="removeSparePart(index)"
+                                    />
+                                </div>
+                            </div>
+                            <Button
+                                label="Ajouter une pièce"
+                                icon="pi pi-plus"
+                                class="p-button-text mt-2"
+                                @click="addSparePart"
+                            />
+                            <Button
+                                label="Créer une nouvelle pièce"
+                                icon="pi pi-plus"
+                                class="p-button-text mt-2 ml-2" @click="openNewSparePart"
+                            />
+                        </div>
 
                         <div class="field">
                             <!-- <label for="images" class="font-semibold">Images</label>
@@ -1085,6 +1183,49 @@ const transformedEquipmentTree = computed(() => {
                             <Button label="Annuler" icon="pi pi-times" @click="hideDialog" class="p-button-text" />
                             <Button label="Sauvegarder" icon="pi pi-check" @click="saveMaintenance"
                                 :loading="form.processing" />
+                        </template>
+                    </Dialog>
+
+                    <!-- Dialog pour créer une nouvelle pièce détachée -->
+                    <Dialog v-model:visible="sparePartDialog" modal header="Créer une nouvelle pièce détachée" :style="{ width: '30rem' }">
+                        <div class="p-fluid">
+                            <div class="field">
+                                <label for="spare_part_name" class="font-semibold">Nom</label>
+                                <InputText id="spare_part_name" v-model.trim="sparePartForm.name" :class="{ 'p-invalid': sparePartForm.errors.name }" />
+                                <small class="p-error">{{ sparePartForm.errors.name }}</small>
+                            </div>
+                            <div class="field">
+                                <label for="spare_part_reference" class="font-semibold">Référence</label>
+                                <InputText id="spare_part_reference" v-model.trim="sparePartForm.reference" :class="{ 'p-invalid': sparePartForm.errors.reference }" />
+                                <small class="p-error">{{ sparePartForm.errors.reference }}</small>
+                            </div>
+                            <div class="field">
+                                <label for="spare_part_category" class="font-semibold">Catégorie</label>
+                                <Dropdown
+                                    id="spare_part_category"
+                                    v-model="sparePartForm.category_id"
+                                    :options="props.categories"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    placeholder="Sélectionner une catégorie"
+                                    :class="{ 'p-invalid': sparePartForm.errors.category_id }"
+                                />
+                                <small class="p-error">{{ sparePartForm.errors.category_id }}</small>
+                            </div>
+                            <div class="field">
+                                <label for="spare_part_stock_quantity" class="font-semibold">Quantité en stock</label>
+                                <InputNumber id="spare_part_stock_quantity" v-model="sparePartForm.stock_quantity" :min="0" :class="{ 'p-invalid': sparePartForm.errors.stock_quantity }" />
+                                <small class="p-error">{{ sparePartForm.errors.stock_quantity }}</small>
+                            </div>
+                            <div class="field">
+                                <label for="spare_part_unit_cost" class="font-semibold">Coût unitaire</label>
+                                <InputNumber id="spare_part_unit_cost" v-model="sparePartForm.unit_cost" mode="currency" currency="XOF" locale="fr-FR" :min="0" :class="{ 'p-invalid': sparePartForm.errors.unit_cost }" />
+                                <small class="p-error">{{ sparePartForm.errors.unit_cost }}</small>
+                            </div>
+                        </div>
+                        <template #footer>
+                            <Button label="Annuler" icon="pi pi-times" @click="sparePartDialog = false" class="p-button-text" />
+                            <Button label="Créer" icon="pi pi-check" @click="createSparePart" :loading="sparePartForm.processing" />
                         </template>
                     </Dialog>
                 </div>

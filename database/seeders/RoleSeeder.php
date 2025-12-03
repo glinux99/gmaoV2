@@ -47,6 +47,9 @@ class RoleSeeder extends Seeder
          $techncian = Role::create([
             'name'          => 'technician'
         ]);
+          $visitor = Role::create([
+            'name'          => 'visitor'
+        ]);
  $magasinier = Role::create([
             'name'          => 'magasinier'
         ]);
