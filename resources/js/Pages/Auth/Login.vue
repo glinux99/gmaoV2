@@ -22,7 +22,7 @@ const submit = () => {
                 <div class="w-full bg-surface-0 light:bg-surface-900 py-10 px-8 sm:px-12 shadow-lg" style="border-radius: 10px">
                     <div class="text-center mb-8">
                         <img src="/assets/media/logos/logo.png" alt="" class="h-16 inline-block mb-4">
-                        <div class="text-surface-900 light:text-surface-0 text-2xl font-medium mb-2">Bienvenue sur GMAO</div>
+                        <div class="text-surface-900 light:text-surface-0 text-2xl font-medium mb-2">Bienvenue sur MaintVE</div>
                         <span class="text-muted-color font-medium text-sm">Connectez-vous pour continuer</span>
                     </div>
 
@@ -44,7 +44,7 @@ const submit = () => {
                                 <a class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Mot de passe oublié ?</a>
 
                             </div>
-                               <Button type="submit" label="Se connecter" class="w-full"></Button>
+                               <Button type="submit" label="Se connecter" class="w-full" :loading="form.processing"></Button>
                                <div class="my-4 flex items-center">
                 <div class="flex-grow border-t border-gray-300"></div>
                 <span class="mx-4 flex-shrink text-sm text-gray-500">OU</span>

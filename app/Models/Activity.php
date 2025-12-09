@@ -67,4 +67,13 @@ class Activity extends Model
         return $this->belongsTo(Team::class);
     }
 
+    /**
+     * Get all of the instruction answers for the Activity.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function instructionAnswers(): HasMany
+    {
+        return $this->hasMany(InstructionAnswer::class);
+    }
 }

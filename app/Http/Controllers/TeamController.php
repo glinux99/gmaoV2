@@ -49,30 +49,38 @@ class TeamController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+  public function store(Request $request)
     {
+        // 1. Validation des données
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'team_leader_id' => 'nullable|exists:users,id',
-            'members' => 'array',
-            'members.*' => 'exists:users,id',
+           'name' => 'required|string|max:255',
+           // S'assurer que le leader est un ID utilisateur valide ou null
+           'team_leader_id' => 'nullable|exists:users,id',
+           // Le champ 'members' est un tableau d'IDs
+           'members' => 'array',
+           // Chaque élément du tableau 'members' doit exister dans la table 'users'
+           'members.*' => 'exists:users,id',
         ]);
 
-        // If team_leader_id is not provided, set the current authenticated user as the team leader
+        // 2. Définir le leader si non fourni
         if (empty($validated['team_leader_id'])) {
             $validated['team_leader_id'] = Auth::id();
         }
 
+        // 3. Création de la nouvelle équipe
         $team = Team::create([
             'name' => $validated['name'],
             'team_leader_id' => $validated['team_leader_id'],
         ]);
 
-        if (isset($validated['members'])) {
-            $teamUser = TeamUser::where('team_id', $team->id)->first();
-            $teamUser->members()->sync($validated['members']);
+        // 4. Attacher les membres (Correction majeure ici)
+        if (!empty($validated['members'])) {
+
+
+            $team->members()->attach($validated['members']);
         }
 
+        // 5. Redirection
         return redirect()->route('teams.index')->with('success', 'Équipe créée avec succès.');
     }
 

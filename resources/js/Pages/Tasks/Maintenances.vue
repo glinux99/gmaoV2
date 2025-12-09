@@ -5,6 +5,10 @@ import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 
+// Importations ajoutées pour la sélection de colonnes et l'export
+import OverlayPanel from 'primevue/overlaypanel';
+import MultiSelect from 'primevue/multiselect';
+
 const props = defineProps({
     maintenances: Object,
     filters: Object,
@@ -24,6 +28,35 @@ const maintenanceDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
+const dt = ref(); // Référence au DataTable pour l'export
+const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonnes
+
+// Colonnes pour la sélection
+const allColumns = ref([
+    { field: 'title', header: 'Titre' },
+    { field: 'equipments', header: 'Équipement(s)' },
+    { field: 'assignable', header: 'Assigné à' },
+    { field: 'status', header: 'Statut' },
+    { field: 'priority', header: 'Priorité' },
+    { field: 'type', header: 'Type' },
+    { field: 'description', header: 'Description' },
+    { field: 'estimated_duration', header: 'Durée Estimée' },
+    { field: 'cost', header: 'Coût' },
+    { field: 'region.designation', header: 'Région' },
+    { field: 'recurrence_type', header: 'Récurrence' },
+    { field: 'recurrence_interval', header: 'Intervalle Récurrence' },
+    { field: 'recurrence_month_interval', header: 'Intervalle Mois' },
+    { field: 'recurrence_days', header: 'Jours Récurrence' },
+    { field: 'recurrence_day_of_month', header: 'Jour du Mois' },
+    { field: 'recurrence_month', header: 'Mois Récurrence' },
+    { field: 'scheduled_start_date', header: 'Début Planifié' },
+]);
+const visibleColumns = ref(allColumns.value.slice(0, 5).map(col => col.field)); // Affiche les 5 premières par défaut
+
+const toggleColumnSelection = (event) => {
+    op.value.toggle(event);
+};
+
 
 // État pour les enfants sélectionnés pour les instructions
 const selectedChildrenForInstructions = ref({});
@@ -321,6 +354,10 @@ const performSearch = () => {
             replace: true,
         });
     }, 300);
+};
+
+const exportCSV = () => {
+    dt.value.exportCSV();
 };
 
 const getStatusSeverity = (status) => {
@@ -625,21 +662,52 @@ const transformedEquipmentTree = computed(() => {
                     <ConfirmDialog></ConfirmDialog>
                     <Toolbar class="mb-4">
                         <template #start>
-                            <Button label="Nouvelle Maintenance" icon="pi pi-plus" class="p-button-success mr-2"
+                            <Button label="Nouvelle Maintenance" icon="pi pi-plus" class="mr-2"
                                 @click="openNew" />
                         </template>
                         <template #end>
-                            <span class="p-input-icon-left">
-                                <i class="pi pi-search" />
-                                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-                            </span>
+                            <div class="flex items-center gap-2">
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
+                                </IconField>
+
+                                <Button
+                                    label="Exporter"
+                                    icon="pi pi-download"
+                                    class="p-button-help"
+                                    @click="exportCSV($event)"
+                                />
+
+                                <Button
+                                    icon="pi pi-ellipsis-v"
+                                    class="p-button-secondary p-button-text"
+                                    @click="toggleColumnSelection"
+                                    aria-haspopup="true"
+                                    aria-controls="column_op"
+                                />
+
+                                <OverlayPanel ref="op" appendTo="body" id="column_op" class="p-4">
+                                    <div class="font-semibold mb-3">Sélectionner les colonnes :</div>
+                                    <MultiSelect
+                                        v-model="visibleColumns"
+                                        :options="allColumns"
+                                        optionLabel="header"
+                                        optionValue="field"
+                                        display="chip"
+                                        placeholder="Choisir les colonnes"
+                                        class="w-full max-w-xs"  />
+                                </OverlayPanel>
+                            </div>
                         </template>
                     </Toolbar>
 
-                    <DataTable :value="maintenances.data" dataKey="id" :paginator="true" :rows="10"
+                    <DataTable :value="maintenances.data" ref="dt" dataKey="id" :paginator="true" :rows="10"
                         responsiveLayout="scroll" :row-class="() => 'cursor-pointer'">
-                        <Column field="title" header="Titre" :sortable="true" style="min-width: 12rem;"></Column>
-                        <Column header="Équipement(s)" :sortable="true" style="min-width: 12rem;">
+                        <Column v-if="visibleColumns.includes('title')" field="title" header="Titre" :sortable="true" style="min-width: 12rem;"></Column>
+                        <Column v-if="visibleColumns.includes('equipments')" header="Équipement(s)" field="equipments" :sortable="true" style="min-width: 12rem;">
                             <template #body="slotProps">
                                 <div v-if="slotProps.data.equipments && slotProps.data.equipments.length > 0">
                                     <template v-if="slotProps.data.equipments.length === 1">
@@ -651,29 +719,84 @@ const transformedEquipmentTree = computed(() => {
                                 </div>
                             </template>
                         </Column>
-                        <Column field="assignable.name" header="Assigné à" :sortable="true" style="min-width: 10rem;">
+                        <Column v-if="visibleColumns.includes('assignable')" field="assignable.name" header="Assigné à" :sortable="true" style="min-width: 10rem;">
                             <template #body="slotProps">
                                 <Tag v-if="slotProps.data.assignable" :value="slotProps.data.assignable.name" />
                             </template>
                         </Column>
-                        <Column field="status" header="Statut" :sortable="true" style="min-width: 8rem;">
+                        <Column v-if="visibleColumns.includes('status')" field="status" header="Statut" :sortable="true" style="min-width: 8rem;">
                             <template #body="slotProps">
                                 <Tag :value="slotProps.data.status"
                                     :severity="getStatusSeverity(slotProps.data.status)" />
                             </template>
                         </Column>
-                        <Column field="priority" header="Priorité" :sortable="true" style="min-width: 8rem;">
+                        <Column v-if="visibleColumns.includes('priority')" field="priority" header="Priorité" :sortable="true" style="min-width: 8rem;">
                             <template #body="slotProps">
                                 <Tag :value="slotProps.data.priority"
                                     :severity="getPrioritySeverity(slotProps.data.priority)" />
                             </template>
                         </Column>
-                        <Column field="scheduled_start_date" header="Début Planifié" :sortable="true"
+                        <Column v-if="visibleColumns.includes('scheduled_start_date')" field="scheduled_start_date" header="Début Planifié" :sortable="true"
                         style="min-width: 12rem;">
                             <template #body="slotProps">
                             <span class="text-sm">{{ new Date(slotProps.data.scheduled_start_date).toLocaleString() }}</span>
                             </template>
                         </Column>
+                        <Column v-if="visibleColumns.includes('type')" field="type" header="Type" :sortable="true" style="min-width: 10rem;"></Column>
+                        <Column v-if="visibleColumns.includes('description')" field="description" header="Description" :sortable="true" style="min-width: 15rem;"></Column>
+                        <Column v-if="visibleColumns.includes('estimated_duration')" field="estimated_duration" header="Durée Estimée" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                {{ slotProps.data.estimated_duration }} min
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('cost')" field="cost" header="Coût" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                {{ slotProps.data.cost }} XOF
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('region.designation')" field="region.designation" header="Région" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                {{ slotProps.data.region ? slotProps.data.region.designation : 'N/A' }}
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('recurrence_type')" field="recurrence_type" header="Récurrence" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                {{ slotProps.data.recurrence_type || 'Aucune' }}
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('recurrence_interval')" field="recurrence_interval" header="Intervalle Récurrence" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                {{ slotProps.data.recurrence_interval || 'N/A' }}
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('recurrence_month_interval')" field="recurrence_month_interval" header="Intervalle Mois" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                {{ slotProps.data.recurrence_month_interval || 'N/A' }}
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('recurrence_days')" field="recurrence_days" header="Jours Récurrence" :sortable="true" style="min-width: 12rem;">
+                            <template #body="slotProps">
+                                <span v-if="slotProps.data.recurrence_days && slotProps.data.recurrence_days.length > 0">
+                                    {{ slotProps.data.recurrence_days.map(day => daysOfWeek.find(d => d.value === day)?.label).join(', ') }}
+                                </span>
+                                <span v-else>N/A</span>
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('recurrence_day_of_month')" field="recurrence_day_of_month" header="Jour du Mois" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                {{ slotProps.data.recurrence_day_of_month || 'N/A' }}
+                            </template>
+                        </Column>
+                        <Column v-if="visibleColumns.includes('recurrence_month')" field="recurrence_month" header="Mois Récurrence" :sortable="true" style="min-width: 10rem;">
+                            <template #body="slotProps">
+                                <span v-if="slotProps.data.recurrence_month">
+                                    {{ months.find(m => m.value === slotProps.data.recurrence_month)?.label }}
+                                </span>
+                                <span v-else>N/A</span>
+                            </template>
+                        </Column>
+
+
                         <Column headerStyle="min-width:8rem;" header="Actions">
                             <template #body="slotProps">
                                 <Button icon="pi pi-pencil" class="p-button-rounded p-button-info mr-2"
@@ -684,7 +807,7 @@ const transformedEquipmentTree = computed(() => {
                         </Column>
                     </DataTable>
 
-                    <Dialog v-model:visible="maintenanceDialog" modal :header="dialogTitle" :style="{ width: '50rem' }">
+                    <Dialog v-model:visible="maintenanceDialog" modal :header="dialogTitle" :style="{ width: '65rem' }">
                         <div class="p-fluid">
                             <div class="grid grid-cols-2 gap-2">
                                 <div class="field">
@@ -886,118 +1009,113 @@ const transformedEquipmentTree = computed(() => {
                         </div>
 
                         <!-- Section de Configuration Avancée pour les Noeuds -->
-                        <div class="field mt-4">
-                            <Button label="Configurer les instructions avancées" icon="pi pi-cog"
-                                class="p-button-secondary p-button-text"
-                                @click="showAdvancedInstructions = !showAdvancedInstructions" />
+                        <div class="field mt-6">
+                            <Button :label="showAdvancedInstructions ? 'Masquer les instructions avancées' : 'Configurer les instructions avancées'"
+                                    :icon="showAdvancedInstructions ? 'pi pi-chevron-up' : 'pi pi-cog'"
+                                    class="p-button-secondary p-button-text"
+                                    @click="showAdvancedInstructions = !showAdvancedInstructions" />
                         </div>
 
-                        <div v-if="showAdvancedInstructions" class="p-4 shadow-lg bg-white rounded-lg mt-4 border border-gray-200">
+                        <div v-if="showAdvancedInstructions" class="p-4 mt-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50/50">
 
-    <h3 class="text-xl font-bold mb-4 flex items-center text-gray-900 border-b border-gray-200 pb-3">
-        <i class="pi pi-cog mr-2 text-blue-600"></i> Configuration des Instructions
-    </h3>
+                            <h3 class="text-lg font-bold mb-4 flex items-center text-gray-800 border-b pb-2">
+                                <i class="pi pi-sitemap mr-2 text-primary-600"></i>
+                                Configuration des Instructions par Équipement
+                            </h3>
 
-    <div v-if="!configurableNodes || configurableNodes.length === 0" class="p-3 mb-4 bg-gray-50 rounded border border-gray-300">
-        <p class="text-sm text-gray-700 m-0">
-            <i class="pi pi-info-circle mr-2 text-blue-600"></i> Veuillez **sélectionner des équipements** pour activer la configuration des instructions.
-        </p>
-    </div>
-
-    <div v-else>
-        <div v-for="group in groupedConfigurableNodes" :key="group.parent.key" class="mb-4 border border-gray-300 rounded overflow-hidden">
-
-            <div
-                class="flex justify-between items-center p-3 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer border-b border-gray-300"
-                @click="toggleInstructionGroup(group.parent.key)"
-            >
-                <h4 class="font-bold text-lg m-0 text-gray-900">
-                    <i class="pi pi-folder-open mr-2 text-blue-600"></i> {{ group.parent.label }}
-                </h4>
-                <Button
-                    :icon="isGroupExpanded(group.parent.key) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-                    class="p-button-text p-button-secondary p-button-rounded"
-                />
-            </div>
-
-            <div v-if="isGroupExpanded(group.parent.key)" class="p-4 bg-white">
-
-                <div v-for="child in group.children" :key="child.key">
-
-                    <div class="mb-4 p-3 border border-gray-200 rounded bg-gray-50">
-
-                        <div class="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
-                            <h6 class="font-bold text-lg m-0 text-blue-600">{{ child.label }}</h6>
-
-                            <div class="flex justify-end space-x-2">
-                                <Button
-                                    v-if="form.node_instructions[child.key] && form.node_instructions[child.key].length > 0"
-                                    icon="pi pi-copy"
-                                    label="Copier"
-                                    class="p-button-sm p-button-outlined p-button-secondary"
-                                    @click="openCopyDialog(child.key)"
-                                />
-                                <Button
-                                    icon="pi pi-plus"
-                                    label="Ajouter"
-                                    class="p-button-sm p-button-primary"
-                                    @click="addInstruction(child.key)"
-                                />
+                            <div v-if="!configurableNodes || configurableNodes.length === 0" class="p-3 mb-4 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                                <p class="text-sm m-0 flex items-center">
+                                    <i class="pi pi-info-circle mr-2"></i>
+                                    <span>Veuillez <strong>sélectionner des équipements</strong> pour configurer leurs instructions.</span>
+                                </p>
                             </div>
-                        </div>
 
-                        <div v-if="form.node_instructions[child.key] && form.node_instructions[child.key].length > 0" class="flex flex-col space-y-3">
-                            <div v-for="(instruction, index) in form.node_instructions[child.key]" :key="index" class="p-3 border border-gray-300 rounded bg-white">
+                            <div v-else class="space-y-4">
+                                <div v-for="group in groupedConfigurableNodes" :key="group.parent.key" class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
 
-                                <div class="grid grid-cols-12 gap-x-2 items-center">
-
-                                    <div class="col-span-12 md:col-span-5">
-                                        <InputText v-model="instruction.label" placeholder="Libellé de l'instruction" class="w-full" />
-                                    </div>
-                                    <small class="p-error">{{ form.errors[`node_instructions.${child.key}.${index}.label`] }}</small>
-                                    <div class="col-span-12 md:col-span-3">
-                                        <Dropdown
-                                            v-model="instruction.type"
-                                            :options="instructionValueTypes"
-                                            optionLabel="label"
-                                            optionValue="value"
-                                            placeholder="Type de Valeur"
-                                            class="w-full"
-                                        />
-                                    </div>
-
-                                    <div class="col-span-12 md:col-span-2 flex items-center">
-                                        <Checkbox
-                                            v-model="instruction.is_required"
-                                            :binary="true"
-                                            :inputId="`required-${child.key}-${index}`"
-                                            class="mr-2"
-                                        />
-                                        <label :for="`required-${child.key}-${index}`" class="text-sm font-medium text-gray-700">Requis</label>
-                                    </div>
-
-                                    <div class="col-span-12 md:col-span-1 flex justify-end">
+                                    <div
+                                        class="flex justify-between items-center p-3 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                                        @click="toggleInstructionGroup(group.parent.key)"
+                                    >
+                                        <h4 class="font-semibold text-md m-0 text-gray-800 flex items-center">
+                                            <i class="pi pi-folder mr-2 text-gray-500"></i>
+                                            {{ group.parent.label }}
+                                        </h4>
                                         <Button
-                                            icon="pi pi-trash"
-                                            class="p-button-danger p-button-text p-button-rounded"
-                                            @click="removeInstruction(child.key, index)"
-                                            v-tooltip.top="'Supprimer cette instruction'"
+                                            :icon="isGroupExpanded(group.parent.key) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+                                            class="p-button-text p-button-secondary p-button-rounded"
                                         />
+                                    </div>
+
+                                    <div v-if="isGroupExpanded(group.parent.key)" class="p-4 border-t border-gray-200">
+                                        <div class="space-y-6">
+                                            <div v-for="child in group.children" :key="child.key">
+                                                <div class="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                                                    <div class="flex justify-between items-center pb-3 border-b mb-3">
+                                                        <h6 class="font-bold text-md m-0 text-primary-700">{{ child.label }}</h6>
+                                                        <div class="flex items-center space-x-2">
+                                                            <Button
+                                                                v-if="form.node_instructions[child.key] && form.node_instructions[child.key].length > 0"
+                                                                icon="pi pi-copy"
+                                                                label="Copier"
+                                                                class="p-button-sm p-button-outlined p-button-secondary"
+                                                                @click="openCopyDialog(child.key)"
+                                                            />
+                                                            <Button
+                                                                icon="pi pi-plus"
+                                                                label="Ajouter"
+                                                                class="p-button-sm p-button-primary"
+                                                                @click="addInstruction(child.key)"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div v-if="form.node_instructions[child.key] && form.node_instructions[child.key].length > 0" class="space-y-4">
+                                                        <div v-for="(instruction, index) in form.node_instructions[child.key]" :key="index" class="p-4 border rounded-md bg-white shadow-sm">
+                                                            <div class="flex justify-between items-start">
+                                                                <span class="font-medium text-gray-600">Instruction #{{ index + 1 }}</span>
+                                                                <Button
+                                                                    icon="pi pi-trash"
+                                                                    class="p-button-danger p-button-text p-button-rounded -mt-2 -mr-2"
+                                                                    @click="removeInstruction(child.key, index)"
+                                                                    v-tooltip.top="'Supprimer cette instruction'"
+                                                                />
+                                                            </div>
+                                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                                                                <div class="field">
+                                                                    <label :for="`label-${child.key}-${index}`" class="text-sm font-medium">Libellé</label>
+                                                                    <InputText :id="`label-${child.key}-${index}`" v-model="instruction.label" placeholder="Ex: Vérifier la pression" class="w-full p-inputtext-sm mt-1" />
+                                                                    <small class="p-error">{{ form.errors[`node_instructions.${child.key}.${index}.label`] }}</small>
+                                                                </div>
+                                                                <div class="field">
+                                                                    <label :for="`type-${child.key}-${index}`" class="text-sm font-medium">Type</label>
+                                                                    <Dropdown
+                                                                        :id="`type-${child.key}-${index}`"
+                                                                        v-model="instruction.type"
+                                                                        :options="instructionValueTypes"
+                                                                        optionLabel="label"
+                                                                        optionValue="value"
+                                                                        placeholder="Choisir un type"
+                                                                        class="w-full p-inputtext-sm mt-1"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div class="field-checkbox mt-3">
+                                                                <Checkbox v-model="instruction.is_required" :binary="true" :inputId="`required-${child.key}-${index}`" class="mr-2" />
+                                                                <label :for="`required-${child.key}-${index}`" class="text-sm">Requis</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div v-else class="p-3 text-center text-gray-500 text-sm border border-dashed rounded-md mt-2">
+                                                        Aucune instruction. Cliquez sur "Ajouter".
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="p-3 text-center text-gray-600 text-sm border border-dashed border-gray-300 rounded">
-                            <i class="pi pi-exclamation-triangle mr-2"></i> Aucune instruction n'a été ajoutée. Cliquez sur **Ajouter** pour commencer.
-                        </div>
-
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-</div>
 
                         <!-- Dialog pour copier les instructions -->
                         <Dialog v-model:visible="copyInstructionsDialog" modal header="Copier les instructions"

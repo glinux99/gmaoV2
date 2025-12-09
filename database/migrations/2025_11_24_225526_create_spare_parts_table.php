@@ -19,6 +19,8 @@ return new class extends Migration
             $table->integer('quantity')->default(0);
             $table->integer('min_quantity')->default(0);
             $table->string('location')->nullable();
+            $table->string('price')->nullable();
+
 
             // Foreign keys
             $table->foreignId('label_id')->nullable()->constrained('labels')->onDelete('cascade');

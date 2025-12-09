@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany; // Ajouté pour la rel
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-class Equipment extends Model
+class Equipment extends Model implements HasMedia
 {
     use HasFactory,InteractsWithMedia;
 
@@ -29,7 +29,14 @@ class Equipment extends Model
         'parent_id',
         'quantity',
         'label_id',
-        'characteristics'
+        'characteristics',
+        'price',
+        'puissance'
+    ];
+
+    // Quantité par défaut = 1
+    protected $attributes = [
+        'quantity' => 1,
     ];
 
     protected $casts = [
@@ -68,6 +75,17 @@ class Equipment extends Model
     public function children(): HasMany
     {
         return $this->hasMany(Equipment::class, 'parent_id');
+    }
+
+    // Propagation du statut parent -> enfants pour en panne / en maintenance
+    protected static function booted(): void
+    {
+        static::updated(function (Equipment $equipment) {
+            if ($equipment->wasChanged('status') && in_array($equipment->status, ['en panne', 'en maintenance'])) {
+                // Appliquer le même statut aux enfants
+                $equipment->children()->update(['status' => $equipment->status]);
+            }
+        });
     }
 
     public function characteristics(): HasMany

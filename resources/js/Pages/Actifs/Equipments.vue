@@ -22,6 +22,7 @@ const props = defineProps({
 const toast = useToast();
 const confirm = useConfirm();
 const equipmentDialog = ref(false);
+const deleteEquipmentsDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
 const equipmentTypeDialog = ref(false);
@@ -34,6 +35,8 @@ const form = useForm({
     brand: '',
     model: '',
     serial_number: '',
+    puissance: null,
+    price: null,
     status: 'en stock',
     location: '',
     quantity: null,
@@ -51,6 +54,7 @@ const equipmentTypeForm = useForm({
     name: '',
     description: '',
 });
+const selectedEquipments = ref([]);
 
 const statusOptions = ref([
     { label: 'En Service', value: 'en service' },
@@ -62,6 +66,7 @@ const statusOptions = ref([
 
 const isChild = computed(() => !!form.parent_id);
 const isStockStatus = computed(() => form.status === 'en stock');
+const showPuissance = computed(() => ['en service', 'en maintenance'].includes(form.status));
 
 const characteristicTypes = ref([
     { label: 'Texte', value: 'text' },
@@ -159,6 +164,7 @@ const editEquipment = (equipment) => {
     form.designation = equipment.designation;
     form.brand = equipment.brand;
     form.model = equipment.model;
+    form.puissance = equipment.puissance;
     form.serial_number = equipment.serial_number;
     form.status = equipment.status;
     form.location = equipment.location;
@@ -238,14 +244,7 @@ const saveEquipment = () => {
     submitted.value = true;
 
     // Validation côté client simple
-    if (!form.designation || !form.equipment_type_id) {
-        toast.add({ severity: 'error', summary: 'Erreur de validation', detail: 'La désignation et le type sont requis.', life: 3000 });
-        return;
-    }
-    if (isChild.value && (!form.quantity || form.quantity < 1)) {
-        toast.add({ severity: 'error', summary: 'Erreur de validation', detail: 'La quantité à créer est requise.', life: 3000 });
-        return;
-    }
+    // Suppression des validations requises côté client pour la création
 
     form.clearErrors();
 
@@ -349,6 +348,42 @@ const hideEquipmentTypeDialog = () => {
     equipmentTypeForm.reset();
 };
 
+const confirmDeleteSelected = () => {
+    confirm.require({
+        message: 'Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?',
+        header: 'Confirmation de suppression',
+        icon: 'pi pi-info-circle',
+        rejectClass: 'p-button-secondary p-button-outlined',
+        rejectLabel: 'Annuler',
+        acceptLabel: 'Supprimer',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            deleteSelectedEquipments();
+        },
+    });
+};
+
+const deleteSelectedEquipments = () => {
+    console.log(selectedEquipments);
+    router.post(route('equipments.bulkdestroy'), {
+
+            ids: selectedEquipments.value.map(e => e.id),
+
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Équipements supprimés avec succès', life: 3000 });
+            selectedEquipments.value = null;
+            deleteEquipmentsDialog.value = false;
+        },
+        onError: (errors) => {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression en masse.', life: 3000 });
+        }
+    });
+};
+
+const hideDeleteEquipmentsDialog = () => {
+    deleteEquipmentsDialog.value = false;
+};
+
 const saveEquipmentType = () => {
     equipmentTypeForm.post(route('equipment-types.store'), {
         onSuccess: () => {
@@ -401,11 +436,20 @@ const getStatusSeverity = (status) => {
 
 const dialogTitle = computed(() => editing.value ? 'Modifier l\'Équipement' : 'Créer un nouvel Équipement');
 
+const bulkDeleteButtonIsDisabled = computed(() => !selectedEquipments.value || selectedEquipments.value.length < 2);
+const showBulkDeleteButton = computed(() => selectedEquipments.value && selectedEquipments.value.length >= 2);
+
+const deleteButtonLabel = computed(() => {
+    if (selectedEquipments.value && selectedEquipments.value.length > 0) {
+        return `Supprimer (${selectedEquipments.value.length})`;
+    }
+    return 'Supprimer';
+});
 // Exposer les fonctions et variables nécessaires au template
 defineExpose({
     openNew, hideDialog, editEquipment, saveEquipment, deleteEquipment,
     openNewEquipmentType, hideEquipmentTypeDialog, saveEquipmentType,
-    addCharacteristic, removeCharacteristic, performSearch, exportCSV, getStatusSeverity,
+    addCharacteristic, removeCharacteristic, performSearch, exportCSV, getStatusSeverity, showPuissance, confirmDeleteSelected, deleteSelectedEquipments, hideDeleteEquipmentsDialog, bulkDeleteButtonIsDisabled, deleteButtonLabel, showBulkDeleteButton,
     dt, form, equipmentDialog, equipmentTypeDialog, submitted, editing, search,
     statusOptions, characteristicTypes, isChild, isStockStatus, dialogTitle,
     parentIsStock, equipmentTypeForm
@@ -428,6 +472,7 @@ defineExpose({
                                     <Button label="Ajouter un équipement" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
 
                                     <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
+                                    <Button v-if="showBulkDeleteButton" :label="deleteButtonLabel" icon="pi pi-trash" class="p-button-danger" @click="confirmDeleteSelected" :disabled="bulkDeleteButtonIsDisabled" />
                                     <i class="pi pi-search" />
 
                                 </span>
@@ -438,14 +483,19 @@ defineExpose({
                         </template>
                     </Toolbar>
 
-                    <DataTable :value="equipments.data" dataKey="id" :paginator="true" :rows="10"
+                    <DataTable :value="equipments.data" dataKey="id" v-model:selection="selectedEquipments" :paginator="true" :rows="10"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                         :rowsPerPageOptions="[5, 10, 25]"
                         currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} équipements"
                         responsiveLayout="scroll"
-                        ref="dt"> <Column field="tag" header="Tag" :sortable="true" style="min-width: 8rem;"></Column>
+                        ref="dt">
+                         <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+                        <Column field="tag" header="Tag" :sortable="true" style="min-width: 8rem;"></Column>
                         <Column field="designation" header="Désignation" :sortable="true" style="min-width: 10rem;"></Column>
+
                         <Column field="equipmentType.name" header="Type" :sortable="true" style="min-width: 10rem;">
+                        <Column selectionMode="multiple" headerStyle="width: 3rem">
+                        </Column>
                              <template #body="slotProps">
                                  <span v-if="slotProps.data.parent_id && slotProps.data.parent">
                                      {{ slotProps.data.parent.equipment_type?.name }}
@@ -501,7 +551,7 @@ defineExpose({
 
                                 <div :class="{'col-12': isChild, 'col-12 md:col-6': !isChild}" class="field">
                                     <label for="designation" class="font-semibold">Désignation</label>
-                                    <InputText id="designation" class="w-full" v-model.trim="form.designation" required :class="{ 'p-invalid': submitted && !form.designation || form.errors.designation }" :disabled="isChild" />
+                                    <InputText id="designation" class="w-full" v-model.trim="form.designation" :class="{ 'p-invalid': form.errors.designation }" />
                                     <small class="p-error">{{ form.errors.designation }}</small>
                                 </div>
                             </div>
@@ -510,10 +560,9 @@ defineExpose({
                                 <div class="col-12 md:col-6 field">
     <label for="equipment_type_id" class="font-semibold">Type d'équipement</label>
     <div class="flex align-items-center gap-2">
-        <Dropdown id="equipment_type_id" class="flex-grow-1" v-model="form.equipment_type_id" :options="equipmentTypes" optionLabel="name" optionValue="id" placeholder="Sélectionner un type" :class="{ 'p-invalid': submitted && !form.equipment_type_id || form.errors.equipment_type_id }" filter :disabled="isChild" />
+        <Dropdown id="equipment_type_id" class="flex-grow-1" v-model="form.equipment_type_id" :options="equipmentTypes" optionLabel="name" optionValue="id" placeholder="Sélectionner un type" :class="{ 'p-invalid': form.errors.equipment_type_id }"  />
         <Button icon="pi pi-plus" class="p-button-sm p-button-rounded p-button-secondary" severity="secondary" @click="openNewEquipmentType" title="Ajouter un nouveau type" />
     </div>
-    <small class="p-error" v-if="submitted && !form.equipment_type_id">Le type d'équipement est requis.</small>
     <small class="p-error">{{ form.errors.equipment_type_id }}</small>
 </div>
                                 <div class="col-12 md:col-6 field">
@@ -528,13 +577,18 @@ defineExpose({
                             <div class="p-grid col-12">
                                 <div class="col-12 md:col-6 field">
                                     <label for="brand" class="font-semibold">Marque</label>
-                                    <InputText id="brand" class="w-full" v-model.trim="form.brand" :disabled="isChild && form.parent_id" :class="{ 'p-invalid': form.errors.brand }" />
+                                    <InputText id="brand" class="w-full" v-model.trim="form.brand"  :class="{ 'p-invalid': form.errors.brand }" />
                                     <small class="p-error">{{ form.errors.brand }}</small>
                                 </div>
                                 <div class="col-12 md:col-6 field">
                                     <label for="model" class="font-semibold">Modèle</label>
-                                    <InputText id="model" class="w-full" v-model.trim="form.model" :disabled="isChild && form.parent_id" :class="{ 'p-invalid': form.errors.model }" />
+                                    <InputText id="model" class="w-full" v-model.trim="form.model"  :class="{ 'p-invalid': form.errors.model }" />
                                     <small class="p-error">{{ form.errors.model }}</small>
+                                </div>
+                                <div class="col-12 md:col-6 field" v-if="showPuissance">
+                                    <label for="puissance" class="font-semibold">Puissance (kW)</label>
+                                    <InputNumber id="puissance" class="w-full" v-model="form.puissance" suffix=" kW" :min="0" :class="{ 'p-invalid': form.errors.puissance }" />
+                                    <small class="p-error">{{ form.errors.puissance }}</small>
                                 </div>
                             </div>
 
@@ -545,6 +599,11 @@ defineExpose({
                                     <small class="p-error">{{ form.errors.serial_number }}</small>
                                 </div>
                                 <div class="col-12 md:col-6 field">
+                                    <label for="price" class="font-semibold">Prix</label>
+                                    <InputNumber id="price" class="w-full" v-model="form.price" mode="currency" currency="EUR" locale="fr-FR" :class="{ 'p-invalid': form.errors.price }" />
+                                    <small class="p-error">{{ form.errors.price }}</small>
+                                </div>
+                                <div class="col-12 md:col-6 field">
                                     <label for="status" class="font-semibold">Statut</label>
                                     <Dropdown id="status" class="w-full" v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner un statut" :class="{ 'p-invalid': form.errors.status }" />
                                     <small class="p-error">{{ form.errors.status }}</small>
@@ -552,16 +611,9 @@ defineExpose({
                             </div>
 
                             <div class="p-grid col-12">
-                                <div class="col-12 field" v-if="!isChild && isStockStatus">
+                                <div class="col-12 field" v-if="isStockStatus">
                                     <label for="quantity" class="font-semibold">Quantité en stock</label>
-                                    <InputNumber id="quantity" class="w-full" v-model="form.quantity" :min="0" required :class="{ 'p-invalid': submitted && form.quantity === null || form.errors.quantity }" />
-                                    <small class="p-error" v-if="submitted && form.quantity === null">La quantité est requise pour le stock.</small>
-                                    <small class="p-error">{{ form.errors.quantity }}</small>
-                                </div>
-                                <div class="col-12 field" v-else-if="isChild && parentIsStock">
-                                    <label for="quantity" class="font-semibold">Quantité à créer</label>
-                                    <InputNumber id="quantity" class="w-full" v-model="form.quantity" :min="1" required :class="{ 'p-invalid': submitted && !form.quantity || form.errors.quantity }" />
-                                    <small class="p-error" v-if="submitted && !form.quantity">La quantité à créer est requise.</small>
+                                    <InputNumber id="quantity" class="w-full" v-model="form.quantity" :min="0" :class="{ 'p-invalid': form.errors.quantity }" />
                                     <small class="p-error">{{ form.errors.quantity }}</small>
                                 </div>
                             </div>
@@ -569,12 +621,12 @@ defineExpose({
                             <div class="p-grid col-12">
                                 <div class="col-12 md:col-6 field">
                                     <label for="purchase_date" class="font-semibold">Date d'achat</label>
-                                    <Calendar id="purchase_date" class="w-full" v-model="form.purchase_date" dateFormat="dd/mm/yy" :disabled="isChild" :class="{ 'p-invalid': form.errors.purchase_date }" />
+                                    <Calendar id="purchase_date" class="w-full" v-model="form.purchase_date" dateFormat="dd/mm/yy" :class="{ 'p-invalid': form.errors.purchase_date }" />
                                     <small class="p-error">{{ form.errors.purchase_date }}</small>
                                 </div>
                                 <div class="col-12 md:col-6 field">
                                     <label for="warranty_end_date" class="font-semibold">Fin de garantie</label>
-                                    <Calendar id="warranty_end_date" class="w-full" v-model="form.warranty_end_date" dateFormat="dd/mm/yy" :disabled="isChild" :class="{ 'p-invalid': form.errors.warranty_end_date }" />
+                                    <Calendar id="warranty_end_date" class="w-full" v-model="form.warranty_end_date" dateFormat="dd/mm/yy" :class="{ 'p-invalid': form.errors.warranty_end_date }" />
                                     <small class="p-error">{{ form.errors.warranty_end_date }}</small>
                                 </div>
                             </div>
@@ -603,7 +655,7 @@ defineExpose({
                     v-model="char.name"
                     placeholder="Nom de la caractéristique"
                     :class="{ 'p-invalid': submitted && !char.name || form.errors[`characteristics.${index}.name`] }"
-                    :disabled="isChild && form.parent_id"
+
                     class="w-full"
                 />
                 <small class="p-error" v-if="form.errors[`characteristics.${index}.name`]">{{ form.errors[`characteristics.${index}.name`] }}</small>
@@ -616,7 +668,7 @@ defineExpose({
                     optionLabel="label"
                     optionValue="value"
                     placeholder="Type"
-                    :disabled="isChild && form.parent_id"
+
                     class="w-full"
                 />
             </div>
@@ -627,7 +679,7 @@ defineExpose({
                     v-if="char.type === 'text'"
                     v-model="char.value"
                     placeholder="Valeur (Texte)"
-                    :disabled="isChild && form.parent_id"
+
                     class="w-full"
                     :class="{ 'p-invalid': form.errors[`characteristics.${index}.value`] }"
                 />
@@ -635,7 +687,7 @@ defineExpose({
                     v-else-if="char.type === 'number'"
                     v-model="char.value"
                     placeholder="Valeur (Nombre)"
-                    :disabled="isChild && form.parent_id"
+
                     class="w-full"
                     :class="{ 'p-invalid': form.errors[`characteristics.${index}.value`] }"
                 />
@@ -644,7 +696,7 @@ defineExpose({
                     v-model="char.value"
                     dateFormat="dd/mm/yy"
                     placeholder="Valeur (Date)"
-                    :disabled="isChild && form.parent_id"
+
                     class="w-full"
                     :class="{ 'p-invalid': form.errors[`characteristics.${index}.value`] }"
                 />
@@ -656,7 +708,7 @@ defineExpose({
                         :id="'file-' + index"
                         @change="char.value = $event.target.files[0]"
                         class="p-inputtext w-full p-2 border border-gray-300 rounded-lg"
-                        :disabled="isChild && form.parent_id"
+
                     />
 
 
@@ -672,22 +724,20 @@ defineExpose({
                         Nouveau fichier à uploader: **{{ char.value.name }}**
                     </span> -->
                 </small>
-                <small v-else-if="isChild && form.parent_id" class="text-color-secondary">
-                    Le fichier est hérité du stock. Non modifiable.
-                </small>
+                <!-- Suppression de la contrainte d'héritage pour permettre la configuration complète même en enfant -->
 
                 <InputError :message="form.errors[`characteristics.${index}.value`]" class="mt-2" />
             </div>
 
                 <div v-else-if="char.type === 'boolean'" class="flex align-items-center h-full">
-                    <InputSwitch v-model="char.value" :disabled="isChild && form.parent_id" />
+                    <InputSwitch v-model="char.value"  />
                 </div>
 
                 <InputText
                     v-else
                     v-model="char.value"
                     placeholder="Valeur"
-                    :disabled="isChild && form.parent_id"
+
                     class="w-full"
                     :class="{ 'p-invalid': form.errors[`characteristics.${index}.value`] }"
                 />
@@ -700,7 +750,7 @@ defineExpose({
                     icon="pi pi-trash"
                     class="p-button-danger p-button-rounded"
                     @click="removeCharacteristic(index)"
-                    :disabled="(form.characteristics.length === 1) || (isChild && form.parent_id)"
+                    :disabled="(form.characteristics.length === 1)"
                 />
             </div>
         </div>
@@ -710,7 +760,7 @@ defineExpose({
             icon="pi pi-plus"
             class="p-button-text"
             @click="addCharacteristic"
-            :disabled="isChild && form.parent_id"
+
         />
     </div>
 </div>
@@ -720,6 +770,7 @@ defineExpose({
                         <template #footer>
                             <Button label="Annuler" icon="pi pi-times" @click="hideDialog" class="p-button-text"/>
                             <Button label="Sauvegarder" icon="pi pi-check" @click="saveEquipment" :loading="form.processing" />
+                            <Button label="Annuler" icon="pi pi-times" @click="hideDeleteEquipmentsDialog" class="p-button-text" />
                         </template>
                     </Dialog>
 
@@ -755,6 +806,22 @@ defineExpose({
         <Button label="Créer" icon="pi pi-check" @click="saveEquipmentType" :loading="equipmentTypeForm.processing" />
     </template>
 </Dialog>
+
+                    <Dialog v-model:visible="deleteEquipmentsDialog" :style="{ width: '450px' }" header="Confirmer la suppression" modal>
+                        <div class="flex align-items-center justify-content-center">
+                            <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
+                            <span v-if="selectedEquipments">Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?</span>
+                        </div>
+                        <template #footer>
+                            <Button label="Non" icon="pi pi-times" class="p-button-text" @click="hideDeleteEquipmentsDialog" />
+                            <Button label="Oui" icon="pi pi-check" class="p-button-text" @click="deleteSelectedEquipments" />
+                        </template>
+                    </Dialog>
+
+
+
+
+
                 </div>
             </div>
         </div>

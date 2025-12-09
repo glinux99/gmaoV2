@@ -121,12 +121,17 @@ const dialogTitle = computed(() => editing.value ? 'Modifier l\'Unité' : 'Crée
 
                                 <span class="block mt-2 md:mt-0 p-input-icon-left">                                    <Button label="Ajouter une unité" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
 
-                                    <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />  <i class="pi pi-search" />
+
                                 </span>
                             </div>
                         </template>
 
-                        <template #end>
+                         <template #end>
+ <IconField class="mr-2"><InputIcon>
+                    <i class="pi pi-search" />
+                </InputIcon>
+                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
+            </IconField>
                             <Button label="Exporter" icon="pi pi-upload" class="p-button-help" @click="exportCSV($event)" />
                         </template>
                     </Toolbar>

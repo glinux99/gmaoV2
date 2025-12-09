@@ -22,7 +22,7 @@ class MaintenanceController extends Controller
      */
     public function index(Request $request)
     {
-        $maintenances = Maintenance::with(['assignable', 'equipments'])
+        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment'])
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
             })
@@ -108,6 +108,7 @@ class MaintenanceController extends Controller
     ]);
 
     if ($validator->fails()) {
+
         // Log::error('Erreur de validation:', $validator->errors()->toArray()); // Décommenter pour debug
         return redirect()->back()->withErrors($validator)->withInput();
     }
@@ -143,6 +144,7 @@ class MaintenanceController extends Controller
 
     } catch (\Exception $e) {
         DB::rollBack();
+        return $e;
         Log::error('Erreur lors de la création de la maintenance: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
         return redirect()->back()->with('error', 'Une erreur est survenue lors de la création de la maintenance. ' . $e->getMessage()); // Retourner le message d'erreur en mode développement
     }

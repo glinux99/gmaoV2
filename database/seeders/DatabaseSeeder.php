@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RoleSeeder::class,
             UserSeeder::class,
+            RegionSeeder::class,
+            EquipmentSeed::class, // Vous pouvez commenter ou supprimer l'ancien seeder si GmaoDataSeeder le remplace
         ]);
     }
 }

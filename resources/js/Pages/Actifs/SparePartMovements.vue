@@ -189,7 +189,11 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                                 <span class="block mt-2 md:mt-0 p-input-icon-left flex align-items-center gap-2">
                                     <Button label="Ajouter un mouvement" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
 
-                                    <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />  <i class="pi pi-search" />
+                                     <IconField><InputIcon>
+                    <i class="pi pi-search" />
+                </InputIcon>
+                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
+            </IconField>
                                 </span>
                             </div>
                         </template>

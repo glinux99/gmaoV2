@@ -28,6 +28,9 @@ const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
 
+// Pour les lignes étendues dans le DataTable
+const expandedRows = ref([]);
+
 // État pour les enfants sélectionnés pour les instructions
 const selectedChildrenForInstructions = ref({});
 const showAdvancedInstructions = ref(false);
@@ -42,7 +45,7 @@ const expandedInstructionGroups = ref({});
 
 // Dialog pour la création de pièce détachée
 const sparePartDialog = ref(false);
-const sparePartForm = useForm({ name: '', reference: '', category_id: null, stock_quantity: 0, unit_cost: 0 });
+const sparePartForm = useForm({ name: '', reference: '', category_id: null, stock_quantity: 0, unit_estimated_cost: 0 });
 
 
 const form = useForm({ // Changed from maintenance to task
@@ -57,7 +60,7 @@ const form = useForm({ // Changed from maintenance to task
     planned_start_date: null,
     planned_end_date: null,
     time_spent: null,
-    cost: null,
+    estimated_cost: null,
     region_id: null,
     recurrence_type: null, // Nouvelle propriété pour le type de récurrence
     recurrence_interval: null, // Intervalle pour quotidienne, trimestrielle, semestrielle, annuelle
@@ -70,7 +73,7 @@ const form = useForm({ // Changed from maintenance to task
     requester_department: null, // Nom du demandeur
     department: '', // Service destinateur
     requires_shutdown: true, // Équipement hors tension (Oui/Non, par défaut Oui)
-    node_instructions: {}, // Pour les instructions spécifiques aux noeuds,
+    instructions: {}, // Pour les instructions spécifiques aux noeuds,
     images: [], // Pour les images liées à la tâche
     related_equipments: {}, // Pour les équipements liés (TreeSelect model),
     jobber: 0,
@@ -160,14 +163,14 @@ watch(() => form.related_equipments, (newSelection, oldSelection) => {
     // Supprimer les instructions pour les nœuds désélectionnés
     oldKeys.forEach(key => {
         if (!newKeys.includes(key)) {
-            delete form.node_instructions[key];
+            delete form.instructions[key];
         }
     });
 });
 
 // Surveiller les équipements liés pour mettre à jour les enfants cochés par défaut
 watch(() => form.related_equipments, (newSelection) => {
-    const newSelectedChildren = {};
+    const newSelectedChildren = {}; // This is for UI state, not for form submission
     if (newSelection) {
         const selectedKeys = Object.keys(newSelection).filter(key => newSelection[key].checked);
         configurableNodes.value.forEach(node => {
@@ -178,12 +181,8 @@ watch(() => form.related_equipments, (newSelection) => {
     }
     selectedChildrenForInstructions.value = newSelectedChildren;
 
-    const relevantKeys = Object.keys(newSelectedChildren);
-    Object.keys(form.node_instructions).forEach(key => {
-        if (!relevantKeys.includes(key)) {
-            delete form.node_instructions[key];
-        }
-    });
+    const relevantKeys = Object.keys(newSelectedChildren); // These are the keys of currently selected equipments
+
 }, { deep: true });
 
 
@@ -221,7 +220,7 @@ const editTask = (maintenance) => { // Changed from maintenance to task
     form.planned_start_date = maintenance.planned_start_date ? new Date(maintenance.planned_start_date) : null;
     form.planned_end_date = maintenance.planned_end_date ? new Date(maintenance.planned_end_date) : null;
     form.time_spent = maintenance.time_spent;
-    form.cost = maintenance.cost;
+    form.estimated_cost = maintenance.estimated_cost;
     form.region_id = maintenance.region_id;
     form.recurrence_type = maintenance.recurrence_type;
     form.recurrence_interval = maintenance.recurrence_interval;
@@ -235,6 +234,16 @@ const editTask = (maintenance) => { // Changed from maintenance to task
     form.department = maintenance.department;
     form.requires_shutdown = maintenance.requires_shutdown ?? true; // Default to true if null/undefined
 
+    // Transformer les instructions plates en objet groupé par equipment_id
+    const groupedInstructions = {};
+    if (maintenance.instructions && Array.isArray(maintenance.instructions)) {
+        maintenance.instructions.forEach(inst => {
+            const key = String(inst.equipment_id);
+            if (!groupedInstructions[key]) groupedInstructions[key] = [];
+            groupedInstructions[key].push({ ...inst });
+        });
+    }
+    form.instructions = groupedInstructions;
     form.images = maintenance.images || [];
     // Transformer les équipements pour le TreeSelect
     const relatedEquipmentsForTree = {};
@@ -245,13 +254,6 @@ const editTask = (maintenance) => { // Changed from maintenance to task
     }
     form.related_equipments = relatedEquipmentsForTree;
 
-    // Transformer les instructions
-    form.node_instructions = maintenance.instructions ? maintenance.instructions.reduce((acc, instruction) => {
-        const key = String(instruction.equipment_id);
-        if (!acc[key]) acc[key] = [];
-        acc[key].push({ label: instruction.label, type: instruction.type, is_required: instruction.is_required });
-        return acc;
-    }, {}) : {};
     console.log(form.assignable_id);
     // Initialiser les enfants sélectionnés si des instructions existent
     showAdvancedInstructions.value = false;
@@ -270,11 +272,19 @@ const saveMaintenance = () => { // Changed from maintenance to task
    // const equipmentIds = form.related_equipments ? Object.keys(form.related_equipments).filter(key => form.related_equipments[key].checked) : [];
 // Corrigé (pour garantir des nombres si les clés sont des chaînes) :
 const equipmentIds = form.related_equipments
+
     ? Object.keys(form.related_equipments)
         .filter(key => form.related_equipments[key].checked)
         .map(key => parseInt(key, 10)) // Convertir les clés en entiers
     : [];
+
+    // Convertir instructions en un tableau d'objets pour la soumission
+    const instructionsData = Object.keys(form.instructions).flatMap(nodeKey =>
+        form.instructions[nodeKey].map(instruction => ({ ...instruction, equipment_id: parseInt(nodeKey) }))
+    );
+
     // Dans saveMaintenance:
+
 const data = {
     ...form.data(),
     spare_parts: form.spare_parts.map(sp => ({
@@ -282,15 +292,17 @@ const data = {
         quantity_used: sp.quantity_used
     })),
     equipment_ids: equipmentIds,
+    instructions: instructionsData,
     planned_start_date: form.planned_start_date ? new Date(form.planned_start_date).toISOString().slice(0, 19).replace('T', ' ') : null,
-    planned_end_date: form.planned_end_date ? new Date(form.planned_end_date).toISOString().slice(0, 19).replace('T', ' ') : null,
+    planned_end_date: form.planned_end_date ? new Date(form.planned_end_date).toISOString().slice(0, 19).replace('T', ' ') : null, // Utiliser le nouveau tableau d'instructions
 };
-
+console.log("data");
+console.log(data);
     // Assurer que assignable_id est null si assignable_type est null
     if (!form.assignable_type) {
         data.assignable_id = null;
     }
-    console.log(form);
+    data.instructions = instructionsData;
     if (editing.value) {
         router.put(route('tasks.update', form.id), data, { // Changed from maintenances.update to tasks.update
             onSuccess: () => {
@@ -448,15 +460,15 @@ const toggleInstructionGroup = (parentKey) => {
 const isGroupExpanded = (parentKey) => expandedInstructionGroups.value[parentKey] ?? true;
 
 const addInstruction = (nodeKey) => {
-    if (!form.node_instructions[nodeKey]) {
-        form.node_instructions[nodeKey] = [];
+    if (!form.instructions[nodeKey]) {
+        form.instructions[nodeKey] = [];
     }
-    form.node_instructions[nodeKey].push({ label: '', type: 'text', is_required: false });
+    form.instructions[nodeKey].push({ label: '', type: 'text', is_required: false });
 };
 
 const removeInstruction = (nodeKey, index) => {
-    if (form.node_instructions[nodeKey] && form.node_instructions[nodeKey][index]) {
-        form.node_instructions[nodeKey].splice(index, 1);
+    if (form.instructions[nodeKey] && form.instructions[nodeKey][index]) {
+        form.instructions[nodeKey].splice(index, 1);
     }
 };
 
@@ -545,7 +557,7 @@ const copyTargetNodes = computed(() => {
 });
 
 const applyCopyInstructions = () => {
-    const sourceInstructions = form.node_instructions[sourceNodeKeyForCopy.value];
+    const sourceInstructions = form.instructions[sourceNodeKeyForCopy.value];
     if (!sourceInstructions) return;
 
     const targetsToApply = new Set(); // Use a Set to avoid duplicates
@@ -586,7 +598,7 @@ const applyCopyInstructions = () => {
 
     targetsToApply.forEach(targetKey => {
         if (targetKey) { // Ensure targetKey is not undefined
-            form.node_instructions[targetKey] = JSON.parse(JSON.stringify(sourceInstructions));
+            form.instructions[targetKey] = JSON.parse(JSON.stringify(sourceInstructions));
         }
     });
 
@@ -681,6 +693,36 @@ const createSparePart = () => {
     });
 };
 
+// Fonction pour grouper les instructions par équipement pour l'affichage
+const groupInstructionsByEquipment = (instructions, equipments) => {
+    if (!instructions || !equipments) return [];
+
+    const equipmentMap = new Map(equipments.map(e => [e.id, e]));
+    const grouped = instructions.reduce((acc, instruction) => {
+        const equipmentId = instruction.equipment_id;
+        if (!acc[equipmentId]) {
+            acc[equipmentId] = {
+                equipment: equipmentMap.get(equipmentId) || { id: equipmentId, designation: `Équipement ID ${equipmentId}` },
+                instructions: []
+            };
+        }
+        acc[equipmentId].instructions.push(instruction);
+        return acc;
+    }, {});
+
+    return Object.values(grouped);
+};
+
+// Fonction pour sauvegarder les instructions modifiées depuis la vue détaillée
+const updateInstructions = (taskId, instructions) => {
+    router.put(route('tasks.updateInstructions', taskId), { instructions }, {
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Instructions mises à jour.', life: 3000 });
+            router.reload({ only: ['tasks'] }); // Recharger les données des tâches
+        },
+        onError: (errors) => toast.add({ severity: 'error', summary: 'Erreur', detail: 'La mise à jour des instructions a échoué.', life: 3000 })
+    });
+};
 </script>
 
 <template>
@@ -695,19 +737,22 @@ const createSparePart = () => {
                     <ConfirmDialog></ConfirmDialog>
                     <Toolbar class="mb-4">
                         <template #start>
-                            <Button label="Nouvelle Ordre de Travail" icon="pi pi-plus" class="p-button-success mr-2"
-                                @click="openNew" />
+                            <Button label="Nouvelle Ordre de Travail" icon="pi pi-plus" class="mr-2"
+                                @click="openNew"  />
                         </template>
                         <template #end>
-                            <span class="p-input-icon-left">
-                                <i class="pi pi-search" />
-                                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-                            </span>
+                            <IconField>
+                             <InputIcon>
+                    <i class="pi pi-search" />
+                </InputIcon>
+                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
+            </IconField>
                         </template>
                     </Toolbar>
 
-                    <DataTable :value="props.tasks.data" dataKey="id" :paginator="true" :rows="10"
+                    <DataTable :value="props.tasks.data" v-model:expandedRows="expandedRows" dataKey="id" :paginator="true" :rows="10"
                         responsiveLayout="scroll" :row-class="() => 'cursor-pointer'">
+
                         <Column field="title" header="Titre" :sortable="true" style="min-width: 12rem;"></Column>
                         <Column header="Équipement(s)" :sortable="true" style="min-width: 12rem;">
                             <template #body="slotProps">
@@ -738,6 +783,18 @@ const createSparePart = () => {
                                     :severity="getPrioritySeverity(slotProps.data.priority)" />
                             </template>
                         </Column>
+                        <Column header="Instructions" style="min-width: 16rem;">
+                            <template #body="slotProps">
+                                <ul v-if="slotProps.data.instructions && slotProps.data.instructions.length > 0" class="list-disc pl-5 m-0">
+                                    <li v-for="instruction in slotProps.data.instructions.slice(0, 3)" :key="instruction.id">
+                                        {{ instruction.label }}
+                                    </li>
+                                </ul>
+                                <span v-if="slotProps.data.instructions && slotProps.data.instructions.length > 3" class="text-sm text-gray-500">
+                                    ...et {{ slotProps.data.instructions.length - 3 }} autre(s)
+                                </span>
+                            </template>
+                        </Column>
                         <Column field="planned_start_date" header="Début Planifié" :sortable="true"
                         style="min-width: 12rem;">
                             <template #body="slotProps">
@@ -751,6 +808,7 @@ const createSparePart = () => {
                                 <Button icon="pi pi-trash" class="p-button-rounded p-button-danger" @click="deleteTask(slotProps.data)"/>
                             </template>
                         </Column>
+
                     </DataTable>
                     <!-- Changed from maintenanceDialog to taskDialog -->
                     <Dialog v-model:visible="maintenanceDialog" modal :header="dialogTitle" :style="{ width: '50rem' }">
@@ -844,10 +902,10 @@ const createSparePart = () => {
 
                             <div class="grid grid-cols-2 gap-2">
                                 <div class="field">
-                                    <label for="cost" class="font-semibold">Coût / Budget</label>
-                                    <InputNumber id="cost" class="w-full" v-model="form.cost" mode="currency"
+                                    <label for="estimated_cost" class="font-semibold">Coût / Budget</label>
+                                    <InputNumber id="estimated_cost" class="w-full" v-model="form.estimated_cost" mode="currency"
                                         currency="XOF" locale="fr-FR" :min="0" />
-                                    <small class="p-error">{{ form.errors.cost }}</small>
+                                    <small class="p-error">{{ form.errors.estimated_cost }}</small>
                                 </div>
                                 <div class="field">
                                     <label for="region_id" class="font-semibold">Région</label>
@@ -1084,7 +1142,7 @@ const createSparePart = () => {
 
                             <div class="flex justify-end space-x-2">
                                 <Button
-                                    v-if="form.node_instructions[child.key] && form.node_instructions[child.key].length > 0"
+                                    v-if="form.instructions[child.key] && form.instructions[child.key].length > 0"
                                     icon="pi pi-copy"
                                     label="Copier"
                                     class="p-button-sm p-button-outlined p-button-secondary"
@@ -1099,15 +1157,15 @@ const createSparePart = () => {
                             </div>
                         </div>
 
-                        <div v-if="form.node_instructions[child.key] && form.node_instructions[child.key].length > 0" class="flex flex-col space-y-3">
-                            <div v-for="(instruction, index) in form.node_instructions[child.key]" :key="index" class="p-3 border border-gray-300 rounded bg-white">
+                        <div v-if="form.instructions[child.key] && form.instructions[child.key].length > 0" class="flex flex-col space-y-3">
+                            <div v-for="(instruction, index) in form.instructions[child.key]" :key="`instruction-${child.key}-${index}`" class="p-3 border border-gray-300 rounded bg-white">
 
                                 <div class="grid grid-cols-12 gap-x-2 items-center">
 
-                                    <div class="col-span-12 md:col-span-5">
-                                        <InputText v-model="instruction.label" placeholder="Libellé de l'instruction" class="w-full" />
+                                    <div class="col-span-12 md:col-span-5 field">
+                                        <InputText v-model="instruction.label" placeholder="Libellé de l'instruction" class="w-full" :class="{ 'p-invalid': form.errors[`instructions.${child.key}.${index}.label`] }" />
+                                        <small class="p-error">{{ form.errors[`instructions.${child.key}.${index}.label`] }}</small>
                                     </div>
-                                    <small class="p-error">{{ form.errors[`node_instructions.${child.key}.${index}.label`] }}</small>
                                     <div class="col-span-12 md:col-span-3">
                                         <Dropdown
                                             v-model="instruction.type"
@@ -1218,9 +1276,9 @@ const createSparePart = () => {
                                 <small class="p-error">{{ sparePartForm.errors.stock_quantity }}</small>
                             </div>
                             <div class="field">
-                                <label for="spare_part_unit_cost" class="font-semibold">Coût unitaire</label>
-                                <InputNumber id="spare_part_unit_cost" v-model="sparePartForm.unit_cost" mode="currency" currency="XOF" locale="fr-FR" :min="0" :class="{ 'p-invalid': sparePartForm.errors.unit_cost }" />
-                                <small class="p-error">{{ sparePartForm.errors.unit_cost }}</small>
+                                <label for="spare_part_unit_estimated_cost" class="font-semibold">Coût unitaire</label>
+                                <InputNumber id="spare_part_unit_estimated_cost" v-model="sparePartForm.unit_estimated_cost" mode="currency" currency="XOF" locale="fr-FR" :min="0" :class="{ 'p-invalid': sparePartForm.errors.unit_estimated_cost }" />
+                                <small class="p-error">{{ sparePartForm.errors.unit_estimated_cost }}</small>
                             </div>
                         </div>
                         <template #footer>

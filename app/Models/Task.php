@@ -32,25 +32,25 @@ class Task extends Model
     protected $fillable = [
         'title',
         'description',
-        'assignable_type', // Ajouté pour la relation polymorphe
-        'assignable_id', // Ajouté pour la relation polymorphe
+        'assignable_type',
+        'assignable_id',
         'status',
         'priority',
-        'maintenance_type', // Renommé de maintenance_type à type pour être plus générique
-        'planned_start_date', // Renommé de planned_start_date à scheduled_start_date
+        'maintenance_type',
+        'planned_start_date',
         'planned_end_date',
-        'actual_start_date',
-        'actual_end_date',
+        'time_spent',
         'estimated_cost',
-        'estimated_duration',
-        'time_spent', // En minutes
-        'equipment_id',
-        'user_id',
-        'team_id',
-        'region_id', // Ajouté pour la région
-        'maintenance_id', // Ajouté pour la relation avec Maintenance
-        'jobber'
+        'region_id',
+        'jobber',
+        'requester_department',
+        'department',
+        'requires_shutdown',
+        'equipment_task'
+        // 'node_instructions' n'est pas un champ de la table 'tasks',
+        // il est géré via la relation, donc on le retire de $fillable.
     ];
+
 
     /**
      * Les attributs qui doivent être convertis en types natifs.
@@ -58,7 +58,7 @@ class Task extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'scheduled_start_date' => 'datetime',
+        'planned_start_date' => 'datetime',
         'planned_end_date' => 'datetime',
         'actual_start_date' => 'datetime',
         'actual_end_date' => 'datetime',
@@ -109,7 +109,7 @@ class Task extends Model
      */
       public function equipments(): BelongsToMany
     {
-        // Supposons une table pivot 'equipment_maintenance'
+        // Supposons une table pivot 'equipment_task'
         return $this->belongsToMany(Equipment::class);
     }
 

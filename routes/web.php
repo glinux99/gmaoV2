@@ -79,6 +79,12 @@ Route::middleware('auth', 'verified')->group(function () {
     'activities'=> ActivityController::class
   ]);
 
+
+// ... autres routes
+
+Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
+
+
 });
 Route::get('/auth/{provider}/redirect', [SocialiteController ::class, 'redirect'])->name('socialite.redirect');
 Route::get('/auth/{provider}/callback', [SocialiteController::class, 'callback'])->name('socialite.callback');

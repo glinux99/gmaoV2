@@ -83,7 +83,7 @@ class TaskController extends Controller
     }
     public function index(Request $request)
     {
-        $tasks = Task::with(['assignable', 'equipments', 'instructions', 'team', 'instructions', 'region'])
+        $tasks = Task::with(['assignable', 'equipments', 'instructions', 'team', 'region'])
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
             })
@@ -134,19 +134,21 @@ private function transformForTreeSelect($equipments)
             'maintenance_type' => 'nullable|string',
             'status' => 'nullable|string',
             'priority' => 'nullable|string',
-            'scheduled_start_date' => 'nullable|date',
-            'scheduled_end_date' => 'nullable|date|after_or_equal:scheduled_start_date',
+            'planned_start_date' => 'nullable|date',
+            'planned_end_date' => 'nullable|date|after_or_equal:planned_start_date',
             'time_spent' => 'nullable|integer',
-            'cost' => 'nullable|numeric',
+            'estimated_cost' => 'nullable|numeric',
             'region_id' => 'nullable|exists:regions,id',
             'jobber'=> 'nullable|integer',
                 // Validation corrigée: permet des entiers ou des chaînes pour les IDs
             'equipment_ids' => 'nullable|array',
             'equipment_ids.*' => 'nullable|numeric|exists:equipment,id', // Assure que c'est un nombre ET qu'il existe
-                // Instructions
+                     // Instructions
             'instructions' => 'nullable|array',
             'instructions.*.label' => 'required|string|max:255',
             'instructions.*.type' => 'required|string',
+            'instructions.*.equipment_id' => 'nullable|numeric|exists:equipment,id',
+            'instructions.*.task_id' => 'nullable|numeric|exists:tasks,id',
             'instructions.*.is_required' => 'boolean',
         ]);
 
@@ -160,7 +162,7 @@ private function transformForTreeSelect($equipments)
             $validatedData = $validator->validated();
 
             try {
-                 $task = Task::create($validatedData);
+                 $task = Task::create(\Illuminate\Support\Arr::except($validatedData, ['equipment_ids']));
                 $equipmentIds = collect($validatedData['equipment_ids'])->map(fn($id) => (int) $id)->toArray();
             $task->equipments()->attach($equipmentIds);
             } catch (\Throwable $th) {
@@ -174,14 +176,14 @@ private function transformForTreeSelect($equipments)
              Activity::create([
                 'task_id' => $task['id'],
                 'problem_resolution_description' => $validatedData['description'] ?? null,
-                'actual_start_time' => $validatedData['scheduled_start_date'] ?? null,
-                'actual_end_time' => $validatedData['scheduled_end_date'] ?? null,
+                'actual_start_time' => $validatedData['planned_start_date'] ?? null,
+                'actual_end_time' => $validatedData['planned_end_date'] ?? null,
                 'assignable_type' => $validatedData['assignable_type'] ?? null,
                 'assignable_id' => $validatedData['assignable_id'] ?? null,
                 'jobber' => $validatedData['jobber'], // Assuming jobber is not directly from task creation, or needs to be set later
                 'status' => $validatedData['status'] ?? 'pending', // Default status or from validated data
             ]);
-             return $validatedData['scheduled_start_date'];
+
            } catch (\Throwable $th) {
             //throw $th;
             return $th;
@@ -189,7 +191,8 @@ private function transformForTreeSelect($equipments)
 
             if (isset($validatedData['instructions'])) {
                 foreach ($validatedData['instructions'] as $instructionData) {
-                    $task->instructions()->create(array_merge($instructionData, ['equipment_id' => $validatedData['equipment_id']]));
+
+                    $task->instructions()->create(array_merge($instructionData, ['equipment_id' => $instructionData['equipment_id']]));
                 }
             }
 
@@ -198,6 +201,7 @@ private function transformForTreeSelect($equipments)
             return redirect()->route('tasks.index')->with('success', 'Tâche créée avec succès.');
 
         } catch (\Exception $e) {
+            return $e;
             DB::rollBack();
             Log::error('Erreur lors de la création de la tâche: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la création de la tâche. ' . $e->getMessage());
@@ -218,10 +222,10 @@ private function transformForTreeSelect($equipments)
             'maintenance_type' => 'nullable|string',
             'status' => 'nullable|string',
             'priority' => 'nullable|string',
-            'scheduled_start_date' => 'nullable|date',
-            'scheduled_end_date' => 'nullable|date|after_or_equal:scheduled_start_date',
+            'planned_start_date' => 'nullable|date',
+            'planned_end_date' => 'nullable|date|after_or_equal:planned_start_date',
             'time_spent' => 'nullable|integer',
-            'cost' => 'nullable|numeric',
+            'estimated_cost' => 'nullable|numeric',
             'region_id' => 'nullable|exists:regions,id',
                 // Validation corrigée: permet des entiers ou des chaînes pour les IDs
             'equipment_ids' => 'nullable|array',
@@ -230,6 +234,8 @@ private function transformForTreeSelect($equipments)
             'instructions' => 'nullable|array',
             'instructions.*.label' => 'required|string|max:255',
             'instructions.*.type' => 'required|string',
+            'instructions.*.equipment_id' => 'nullable|numeric|exists:equipment,id',
+            'instructions.*.task_id' => 'nullable|numeric|exists:tasks,id',
             'instructions.*.is_required' => 'boolean',
         ]);
 
@@ -241,18 +247,27 @@ private function transformForTreeSelect($equipments)
         DB::beginTransaction();
         try {
 
+            // Update the associated activity if it exists
+
+
             $validatedData = $validator->validated();
 
-            // Update the main task record
-            $task->update($validatedData);
+        $task->update(\Illuminate\Support\Arr::except($validatedData, ['equipment_ids']));
+               if ($task->activity) {
+                $task->activity->update(\Illuminate\Support\Arr::except($validatedData, ['equipment_ids', 'instructions']));
+            }
+    // 2. Maintenant que $task a un ID, synchronisez les équipements.
+    // La méthode sync s'occupera d'ajouter/supprimer les entrées dans la table pivot.
+    if (isset($validatedData['equipment_ids'])) {
+        $task->equipments()->sync($validatedData['equipment_ids']);
+    }
 
-            // Sync equipments (Many-to-Many relationship)
-            $task->equipments()->sync($request->input('equipment_ids'));
-
-            // Update instructions
+            // // Update instructions
             if (isset($validatedData['instructions'])) {
-                $task->instructions()->delete(); // Delete existing instructions
+
+                $task->instructions()->where('task_id', $task->id)->delete(); // Delete existing instructions
                 foreach ($validatedData['instructions'] as $instructionData) {
+
                     $task->instructions()->create([
                         'equipment_id' => $instructionData['equipment_id'], // Assuming equipment_id is part of instructionData
                         'label' => $instructionData['label'],
@@ -268,6 +283,7 @@ private function transformForTreeSelect($equipments)
 
             return redirect()->route('tasks.index')->with('success', 'Tâche mise à jour avec succès.');
         } catch (\Exception $e) {
+            return $e;
             DB::rollBack();
             Log::error('Erreur lors de la mise à jour de la tâche: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de la tâche.');
@@ -281,6 +297,11 @@ private function transformForTreeSelect($equipments)
     {
         DB::beginTransaction();
         try {
+            // Delete associated activities first
+            if ($task->activity) {
+                $task->activity->delete();
+            }
+
             $task->instructions()->delete(); // Delete associated instructions first
             $task->equipments()->detach(); // Detach all associated equipments
             $task->delete();

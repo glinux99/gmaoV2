@@ -26,6 +26,7 @@ class SparePart extends Model
         'user_id',
         'label_id',
         'reference',
+        'price'
     ];
 
     /**

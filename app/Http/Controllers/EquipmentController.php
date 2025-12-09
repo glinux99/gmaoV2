@@ -44,7 +44,7 @@ class EquipmentController extends Controller
         // --- Chargement des équipements parents disponibles pour la création d'enfants ---
         $parentEquipments = Equipment::whereNull('parent_id') // Équipements qui ne sont pas des enfants
                                     ->where('status', 'en stock') // Seulement ceux qui sont en stock
-                                    ->where('quantity', '>', 0) // Dont la quantité est supérieure à 0
+                                    ->where('quantity', '>', 0) // Quantité disponible
                                     ->get(['id', 'tag', 'designation', 'brand', 'model', 'equipment_type_id', 'region_id', 'quantity', 'status', 'characteristics']);
 
         return Inertia::render('Actifs/Equipments', [
@@ -65,8 +65,11 @@ class EquipmentController extends Controller
     public function store(Request $request)
     {
         // Validation (Correction des noms de table pour 'unique')
+        if($request['parent_id']!=null){
+            $request['child_quantity']= $request['quantity'];
+        }
         $validated = $request->validate([
-            'tag' => 'nullable|string|max:255|unique:equipment,tag',
+            'tag' => 'nullable|string|max:255',
             'designation' => 'required|string|max:255',
             'brand' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
@@ -76,7 +79,7 @@ class EquipmentController extends Controller
             'quantity' => 'nullable|integer|min:0|required_if:status,en stock',
             'purchase_date' => 'nullable|date',
             'warranty_end_date' => 'nullable|date',
-            'equipment_type_id' => 'required|exists:equipment_types,id',
+            'equipment_type_id' => 'nullable|exists:equipment_types,id',
             'region_id' => 'nullable|exists:regions,id',
             'parent_id' => 'nullable|exists:equipment,id',
             // Validation spécifique pour la création d'enfants
@@ -89,6 +92,11 @@ class EquipmentController extends Controller
             $equipmentData = collect($validated)->except(['characteristics', 'child_quantity', 'label_id'])->all();
             $equipmentData['user_id'] = Auth::id();
 
+            // Si le statut n'est pas "en stock", la quantité doit être 1 (quantité suivie uniquement pour le stock)
+            if (($equipmentData['status'] ?? null) !== 'en stock') {
+                $equipmentData['quantity'] = 1;
+            }
+
             $requestedQuantity = $validated['child_quantity'] ?? 1;
 
             // Gestion de la création d'équipements enfants (à partir d'un parent en stock)
@@ -97,6 +105,11 @@ class EquipmentController extends Controller
 
                 if (!$parent) {
                     throw ValidationException::withMessages(['parent_id' => 'Le parent spécifié est introuvable.']);
+                }
+
+                // Si equipment_type_id n'est pas fournie, prendre celle du parent
+                if (empty($equipmentData['equipment_type_id'])) {
+                    $equipmentData['equipment_type_id'] = $parent->equipment_type_id;
                 }
 
                 if ($parent->status !== 'en stock' || $parent->quantity < $requestedQuantity) {
@@ -164,8 +177,11 @@ class EquipmentController extends Controller
     public function update(Request $request, Equipment $equipment)
     {
         // Correction: Ajout de l'ID pour la règle unique
+          if($request['parent_id']!=null){
+            $request['child_quantity']= $request['quantity'];
+        }
         $validated = $request->validate([
-            'tag' => 'nullable|string|max:255|unique:equipment,tag,' . $equipment->id,
+            'tag' => 'nullable|string|max:255,' . $equipment->id,
             'designation' => 'required|string|max:255',
             'brand' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
@@ -175,7 +191,7 @@ class EquipmentController extends Controller
             'quantity' => 'nullable|integer|min:0|required_if:status,en stock',
             'purchase_date' => 'nullable|date',
             'warranty_end_date' => 'nullable|date',
-            'equipment_type_id' => 'required|exists:equipment_types,id',
+            'equipment_type_id' => 'nullable|exists:equipment_types,id',
             'region_id' => 'nullable|exists:regions,id',
             'parent_id' => 'nullable|exists:equipment,id',
             'label_id' => 'nullable|exists:labels,id',
@@ -189,6 +205,11 @@ class EquipmentController extends Controller
 
             $newParentId = $validated['parent_id'] ?? null;
             $newQuantity = $validated['quantity'] ?? $originalQuantity;
+
+            // Si equipment_type_id n'est pas fournie et qu'un parent est défini, prendre celle du parent
+            if (empty($validated['equipment_type_id']) && $newParentId) {
+                $validated['equipment_type_id'] = Equipment::find($newParentId)->equipment_type_id ?? null;
+            }
 
             // --- Gestion du changement de parent ---
             if ($newParentId !== $originalParentId) {
@@ -215,6 +236,11 @@ class EquipmentController extends Controller
 
             // Mise à jour des données principales (sans les caractéristiques)
             $equipment->fill(collect($validated)->except(['characteristics'])->all());
+
+            // Si le statut n'est pas "en stock", la quantité doit rester à 1
+            if ($equipment->status !== 'en stock') {
+                $equipment->quantity = 1;
+            }
 
             // Gérer les logs de changement de statut
             if ($equipment->isDirty('status')) {
@@ -262,6 +288,59 @@ class EquipmentController extends Controller
         });
 
         return redirect()->route('equipments.index')->with('success', 'Équipement supprimé avec succès.');
+    }
+
+    /**
+     * Supprime plusieurs équipements.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        // Payload attendu: { "ids": [33,34,35,...] }
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|distinct|exists:equipment,id',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+
+            // Récupérer les équipements ciblés avec les colonnes utiles
+            $equipments = Equipment::whereIn('id', $validated['ids'])
+                ->get(['id', 'tag', 'parent_id', 'quantity']);
+
+            if ($equipments->isEmpty()) {
+                return;
+            }
+
+            // 1) Réajuster la quantité des parents pour les enfants supprimés
+            $incrementsByParent = $equipments
+                ->whereNotNull('parent_id')
+                ->groupBy('parent_id')
+                ->map(function ($group) {
+                    // Si quantity est null, considérer 1 par défaut
+                    return (int) $group->sum(fn($eq) => $eq->quantity ?? 1);
+                });
+
+            foreach ($incrementsByParent as $parentId => $qtyToAdd) {
+                if ($qtyToAdd > 0) {
+                    Equipment::where('id', $parentId)->increment('quantity', $qtyToAdd);
+                }
+            }
+
+            // 2) Journaliser chaque suppression
+            foreach ($equipments as $equipment) {
+                EquipmentMovement::create([
+                    'equipment_id' => $equipment->id,
+                    'user_id' => Auth::id(),
+                    'type' => 'suppression',
+                    'description' => 'Équipement ' . ($equipment->tag ?? $equipment->id) . ' supprimé en masse.',
+                ]);
+            }
+
+            // 3) Suppression en masse
+            Equipment::whereIn('id', $validated['ids'])->delete();
+        });
+
+        return redirect()->route('equipments.index')->with('success', 'Équipements sélectionnés supprimés avec succès.');
     }
 
     // --- Fonctions utilitaires ---

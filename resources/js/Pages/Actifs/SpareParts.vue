@@ -4,6 +4,7 @@ import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
+import InputNumber from 'primevue/inputnumber'; // Import nécessaire pour InputNumber
 
 const props = defineProps({
     spareParts: Object, // Changed from labels to spareParts
@@ -37,6 +38,9 @@ const form = useForm({
     reference: '',
     quantity: 0,
     min_quantity: 0,
+    // --- NOUVEAU: Ajout du champ prix ---
+    price: 0.00,
+    // ------------------------------------
     location: '',
     region_id: null, // Added based on fillable
     unity_id: null, // Added based on fillable
@@ -62,6 +66,9 @@ const editSparePart = (sparePart) => { // Changed from editLabel to editSparePar
     form.reference = sparePart.reference;
     form.quantity = sparePart.quantity;
     form.min_quantity = sparePart.min_quantity;
+    // --- MISE À JOUR: Chargement du prix ---
+    form.price = sparePart.price;
+    // ----------------------------------------
     form.location = sparePart.location;
     form.region_id = sparePart.region_id; // Added based on fillable
     form.unity_id = sparePart.unity_id; // Added based on fillable
@@ -78,7 +85,8 @@ const editSparePart = (sparePart) => { // Changed from editLabel to editSparePar
 
 const saveSparePart = () => { // Changed from saveLabel to saveSparePart
     submitted.value = true;
-    if (!form.reference || form.quantity === null || form.min_quantity === null ||  !form.user_id) {
+    // Ajout de la validation pour 'price'
+    if (!form.reference || form.quantity === null || form.min_quantity === null || form.price === null || !form.user_id) {
         return;
     }
 
@@ -162,10 +170,8 @@ const performSearch = () => {
     }, 300);
 };
 
-onMounted(() => { // No specific onMounted logic needed for this refactor
-    // The controller should return spare parts with their characteristic values
-    // and also all available labels with their characteristics.
-    // Example: SparePart::with('sparePartCharacteristics.labelCharacteristic'), Label::with('labelCharacteristics')
+onMounted(() => {
+    // Logic for spare parts loading
 });
 
 const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechange' : 'Créer une nouvelle Pièce de Rechange');
@@ -174,7 +180,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
 
 <template>
     <AppLayout title="Gestion des Pièces de Rechange">
-        <Head title="Labels" />
+        <Head title="Pièces de Rechange" />
 
         <div class="grid">
             <div class="col-12">
@@ -186,9 +192,13 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                             <div class="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
 
                                 <span class="block mt-2 md:mt-0 p-input-icon-left flex align-items-center gap-2">
-                                    <Button label="Ajouter un equipement detachee" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
+                                    <Button label="Ajouter une Pièce de Rechange" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
 
-                                    <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />  <i class="pi pi-search" />
+                                     <IconField><InputIcon>
+                    <i class="pi pi-search" />
+                </InputIcon>
+                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
+            </IconField>
                                 </span>
                             </div>
                         </template>
@@ -201,7 +211,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                     <DataTable ref="dt" :value="spareParts.data" dataKey="id" :paginator="true" :rows="10"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                         :rowsPerPageOptions="[5, 10, 25]"
-                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} labels"
+                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} pièces de rechange"
                         responsiveLayout="scroll">
                         <template #header>
 
@@ -220,6 +230,12 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                         <Column field="min_quantity" header="Min. Quantité" :sortable="true" headerStyle="width:10%; min-width:6rem;">
                             <template #body="slotProps">
                                 {{ slotProps.data.min_quantity }}
+                            </template>
+                        </Column>
+
+                        <Column field="price" header="Prix Unitaire" :sortable="true" headerStyle="width:10%; min-width:8rem;">
+                            <template #body="slotProps">
+                                {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(slotProps.data.price) }}
                             </template>
                         </Column>
                         <Column field="location" header="Emplacement" :sortable="true" headerStyle="width:15%; min-width:10rem;">
@@ -260,6 +276,14 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                         <span v-else class="text-surface-500 dark:text-surface-400 block mb-8">Créez une nouvelle pièce de rechange.</span>
 
                         <div class="flex items-center gap-4 mb-4">
+                            <label for="label_id" class="font-semibold w-24">Type de Pièce</label>
+                            <Dropdown id="label_id" v-model="form.label_id" :options="labels" optionLabel="designation" optionValue="id" placeholder="Sélectionner un type" class="flex-auto"
+                                />
+                        </div>
+                        <small class="p-invalid" v-if="submitted && !form.label_id">Le type de pièce est requis.</small>
+                        <small class="p-error" v-if="form.errors.label_id">{{ form.errors.label_id }}</small>
+
+                        <div class="flex items-center gap-4 mb-4">
                             <label for="reference" class="font-semibold w-24">Référence</label>
                             <InputText id="reference" v-model.trim="form.reference" required="true"
                                 :class="{ 'p-invalid': submitted && !form.reference }" class="flex-auto" autocomplete="off" />
@@ -284,6 +308,14 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                         <small class="p-error" v-if="form.errors.min_quantity">{{ form.errors.min_quantity }}</small>
 
                         <div class="flex items-center gap-4 mb-4">
+                            <label for="price" class="font-semibold w-24">Prix Unitaire</label>
+                            <InputNumber id="price" v-model="form.price" required="true" :min="0" :maxFractionDigits="2"
+                                :class="{ 'p-invalid': submitted && form.price === null }"
+                                class="flex-auto" mode="currency" currency="EUR" locale="fr-FR" />
+                        </div>
+                        <small class="p-invalid" v-if="submitted && form.price === null">Le prix est requis.</small>
+                        <small class="p-error" v-if="form.errors.price">{{ form.errors.price }}</small>
+                        <div class="flex items-center gap-4 mb-4">
                             <label for="location" class="font-semibold w-24">Emplacement</label>
                             <InputText id="location" v-model.trim="form.location" class="flex-auto" autocomplete="off" />
                         </div>
@@ -298,14 +330,6 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                         <small class="p-error" v-if="form.errors.region_id">{{ form.errors.region_id }}</small>
 
                         <div class="flex items-center gap-4 mb-4">
-                            <label for="label_id" class="font-semibold w-24">Type de Pièce</label>
-                            <Dropdown id="label_id" v-model="form.label_id" :options="labels" optionLabel="designation" optionValue="id" placeholder="Sélectionner un type" class="flex-auto"
-                                />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && !form.label_id">Le type de pièce est requis.</small>
-                        <small class="p-error" v-if="form.errors.label_id">{{ form.errors.label_id }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
                             <label for="user_id" class="font-semibold w-24">Responsable</label>
                             <Dropdown id="user_id" v-model="form.user_id" :options="users" optionLabel="name" optionValue="id" placeholder="Sélectionner un responsable" class="flex-auto"
                                 :class="{ 'p-invalid': submitted && !form.user_id }" />
@@ -315,7 +339,6 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
 
                         <Divider />
 
-                        <!-- Section pour les valeurs des caractéristiques du label sélectionné -->
                         <div v-if="selectedLabelCharacteristics.length > 0" class="field">
                             <label class="font-semibold">Valeurs des Caractéristiques</label>
                             <div v-for="characteristic in selectedLabelCharacteristics" :key="characteristic.id" class="flex items-center gap-4 mb-2">
@@ -332,7 +355,6 @@ const dialogTitle = computed(() => editing.value ? 'Modifier la Pièce de Rechan
                                         :class="{ 'p-invalid': submitted && characteristic.is_required && !form.characteristic_values[characteristic.id] }" />
                                     <Checkbox v-else-if="characteristic.type === 'boolean'" :binary="true"
                                         :id="`char-${characteristic.id}`" v-model="form.characteristic_values[characteristic.id]" />
-                                    <!-- Add Dropdown for 'select' type if options are available -->
                                     <small class="p-invalid" v-if="submitted && characteristic.is_required && !form.characteristic_values[characteristic.id]">
                                         {{ characteristic.name }} est requis.
                                     </small>

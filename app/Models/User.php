@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-class User extends Authenticatable
+class User extends Authenticatable implements HasMedia
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles,InteractsWithMedia;
 
@@ -54,6 +54,11 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    // Expose Spatie Media avatar URL as profile_photo_url in arrays/JSON
+    protected $appends = [
+        'profile_photo_url',
+    ];
+
     public function getCreatedAtAttribute()
     {
         return date('d-m-Y H:i', strtotime($this->attributes['created_at']));
@@ -91,5 +96,16 @@ public function teams()
     return $this->belongsToMany(Team::class);
 }
 
+/**
+ * Accessor: profile_photo_url from Spatie Media (collection 'avatar').
+ */
+public function getProfilePhotoUrlAttribute(): ?string
+{
+    if (method_exists($this, 'getFirstMediaUrl')) {
+        $url = $this->getFirstMediaUrl('avatar');
+        return $url ?: null;
+    }
+    return null;
+}
 
 }
