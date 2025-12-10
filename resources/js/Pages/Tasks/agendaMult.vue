@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { router, Head, useForm } from '@inertiajs/vue3';
 
 // --- Importations FULLCALENDAR ---
-import FullCalendar from '@fullcalendar/vue3';
+import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
@@ -12,9 +12,8 @@ import frLocale from '@fullcalendar/core/locales/fr';
 
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
-import { useConfirm } from 'primevue/useconfirm';
 
-// --- Importations PRIME VUE ---
+// --- Importations PRIME VUE (inchangées) ---
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
@@ -30,9 +29,10 @@ import InputNumber from 'primevue/inputnumber';
 import MultiSelect from 'primevue/multiselect';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
+import { useConfirm } from 'primevue/useconfirm';
 
 
-// --- PROPRIÉTÉS & ÉTAT LOCAL ---
+// --- PROPRIÉTÉS & ÉTAT LOCAL (inchangées) ---
 const props = defineProps({
     events: Array,
     maintenances: Object,
@@ -60,7 +60,7 @@ const showDialog = ref(false);
 const dialogEvent = ref(null);
 const possibleStatuses = ref(['Planifiée', 'En cours', 'En attente', 'Terminée', 'Annulée', 'En retard']);
 
-// --- LOGIQUE DU FORMULAIRE ---
+// --- LOGIQUE DU FORMULAIRE (inchangée) ---
 const form = useForm({
     id: null,
     title: '',
@@ -86,7 +86,7 @@ const form = useForm({
     custom_recurrence_config: null,
 });
 
-// --- Options et Computed properties ---
+// --- Options et Computed properties (inchangées) ---
 const maintenanceTypes = ref(['Préventive', 'Corrective']);
 const maintenanceStatuses = ref(['Planifiée', 'En cours', 'En attente', 'Terminée', 'Annulée', 'En retard']);
 const maintenancePriorities = ref(['Basse', 'Moyenne', 'Haute', 'Urgente']);
@@ -139,7 +139,7 @@ const transformedEquipmentTree = computed(() => {
 
 // --- LOGIQUE DU CALENDRIER ET MÉTHODES ---
 
-// Constantes pour les heures de la plage de travail
+// Constantes pour les heures de la plage d'affichage
 const WORK_START_TIME = '07:00:00';
 const WORK_END_TIME = '16:00:00';
 
@@ -154,6 +154,9 @@ const getEventColor = (type) => {
 
 /**
  * Fonction utilitaire pour extraire la partie Date (YYYY-MM-DD) ou l'Heure (HH:MM:SS) d'une chaîne.
+ * @param {string} dateStr - Chaîne de date.
+ * @param {string} part - 'date' ou 'time'.
+ * @param {string} defaultTime - Heure par défaut si l'heure est manquante.
  */
 const extractDateTimePart = (dateStr, part, defaultTime = '00:00:00') => {
     if (!dateStr) return null;
@@ -164,7 +167,9 @@ const extractDateTimePart = (dateStr, part, defaultTime = '00:00:00') => {
     if (part === 'date') {
         return parts[0];
     } else if (part === 'time') {
+        // Garantit que l'on renvoie toujours une heure complète si elle est présente
         const timePart = parts.length > 1 ? parts[1].split('.')[0] : defaultTime;
+        // Si l'heure est H:MM:SS, la met en HH:MM:SS (gestion des formats bruts)
         const timeParts = timePart.split(':');
         if (timeParts.length === 3 && timeParts[0].length === 1) {
              return `0${timeParts[0]}:${timeParts[1]}:${timeParts[2]}`;
@@ -176,6 +181,9 @@ const extractDateTimePart = (dateStr, part, defaultTime = '00:00:00') => {
 
 /**
  * Compare deux chaînes d'heure au format HH:MM:SS et retourne la plus tardive.
+ * @param {string} time1 - Heure 1 (ex: '15:00:00').
+ * @param {string} time2 - Heure 2 (ex: '16:00:00').
+ * @returns {string} L'heure la plus tardive.
  */
 const compareAndGetLatestTime = (time1, time2) => {
     if (time1 > time2) {
@@ -186,6 +194,9 @@ const compareAndGetLatestTime = (time1, time2) => {
 
 /**
  * Génère un tableau de dates (YYYY-MM-DD) entre une date de début et de fin.
+ * @param {string} startDateStr - YYYY-MM-DD
+ * @param {string} endDateStr - YYYY-MM-DD
+ * @returns {Array<string>} Tableau de dates.
  */
 const getDatesInRange = (startDateStr, endDateStr) => {
     const dates = [];
@@ -239,14 +250,61 @@ const calendarEvents = computed(() => {
                 allDay: false,
             };
 
-            // Événement monodate ou multidate, FullCalendar gère l'affichage sur plusieurs jours
-            segmentedEvents.push({
-                ...commonEventProps,
-                id: event.id,
-                start: originalStart,
-                end: originalEnd,
-                allDay: !originalStart.includes(' ') && !originalStart.includes('T'), // AllDay si pas d'heure
-            });
+            if (!isMultidateEvent) {
+                // CAS 1: Événement monodate
+                const allDay = !originalStart.includes(' ') && !originalStart.includes('T');
+
+                segmentedEvents.push({
+                    ...commonEventProps,
+                    id: event.id,
+                    start: originalStart,
+                    end: originalEnd,
+                    allDay: allDay,
+                });
+            } else {
+                // CAS 2: Événement multidate - Logique de fractionnement
+
+                const startDateOnly = extractDateTimePart(originalStart, 'date');
+                const endDateOnly = extractDateTimePart(originalEnd, 'date');
+                // Heures réelles, avec 07:00:00 ou 16:00:00 comme défaut si l'heure est manquante
+                const startTime = extractDateTimePart(originalStart, 'time', WORK_START_TIME);
+                const endTime = extractDateTimePart(originalEnd, 'time', WORK_END_TIME);
+
+                const datesRange = getDatesInRange(startDateOnly, endDateOnly);
+
+                datesRange.forEach((date, index) => {
+                    let segmentStart;
+                    let segmentEnd;
+                    let segmentId = `${event.id}-${date}`;
+                    let segmentAllDay = false; // Par défaut, les segments ne sont pas allDay
+
+                    if (index === 0) {
+                        // Premier jour: Heure réelle de début -> Heure de fin de la plage de travail (16:00:00)
+                        segmentStart = `${date} ${startTime}`;
+                        segmentEnd = `${date} ${WORK_END_TIME}`;
+                    } else if (index === datesRange.length - 1) {
+                        // Dernier jour: Heure de début de la plage de travail (07:00:00) -> Heure réelle de fin
+                        segmentStart = `${date} ${WORK_START_TIME}`;
+                        segmentEnd = `${date} ${endTime}`;
+                    } else {
+                        // Jours intermédiaires: 07:00:00 -> 16:00:00
+                        segmentStart = `${date} ${WORK_START_TIME}`;
+                        segmentEnd = `${date} ${WORK_END_TIME}`;
+                    }
+
+                    // Si le segment couvre toute la journée de travail (7h-16h) et que l'heure de fin réelle est après 16h,
+                    // ou si l'heure de début réelle est avant 7h, on peut considérer le segment comme "allDay" pour cette journée.
+                    // Cependant, pour la visualisation, on veut garder les heures de travail.
+                    segmentedEvents.push({
+                        ...commonEventProps,
+                        id: segmentId,
+                        start: segmentStart,
+                        end: segmentEnd,
+                        realId: event.id, // ID du parent pour le clic/édition
+                        allDay: segmentAllDay,
+                    });
+                });
+            }
         });
 
     return segmentedEvents;
@@ -265,7 +323,16 @@ const formatFullCalendarDate = (dateStr) => {
  * Gère la mise à jour de la date par glisser-déposer (drop) ou redimensionnement (resize).
  */
 const handleEventDrop = (info) => {
-    const calendarEvent = info.event;
+    const { event: calendarEvent } = info;
+
+    // Si l'événement est un segment généré, on bloque le déplacement/redimensionnement.
+    if (calendarEvent.extendedProps.realId) {
+        info.revert();
+        toast.add({ severity: 'warn', summary: 'Attention',
+                    detail: 'Veuillez modifier la date d\'un événement multidate via le formulaire (clic sur l\'événement).', life: 5000 });
+        return;
+    }
+
     const newStartDateTime = formatFullCalendarDate(calendarEvent.startStr);
     const newEndDateTime = formatFullCalendarDate(calendarEvent.endStr);
 
@@ -322,81 +389,19 @@ const handleEventDrop = (info) => {
     });
 };
 
-
 /**
- * Récupère l'événement parent à partir de l'ID réel.
- */
-const getParentEvent = (realEventId) => {
-    const sourceEvents = props.events.length > 0 ? props.events : (props.maintenances?.data || []);
-    return sourceEvents.find(e => e.id == realEventId);
-}
-
-/**
- * Gère l'édition d'une maintenance existante.
- */
-const editMaintenance = (event) => {
-    // 1. Réinitialiser le formulaire et passer en mode édition
-    form.reset();
-    editing.value = true;
-
-    // 2. Mapper les données de l'événement sur le formulaire
-    form.id = event.id;
-    form.title = event.title || event.label;
-    form.description = event.description;
-
-    // Gestion de l'assignation
-    form.assignable_type = event.assignable_type;
-    form.assignable_id = event.assignable_id;
-
-    form.type = event.type || 'Préventive';
-    form.status = event.status || 'Planifiée';
-    form.priority = event.priority || 'Moyenne';
-    form.cost = event.cost;
-    form.estimated_duration = event.estimated_duration;
-    form.region_id = event.region_id;
-
-    // Gestion de la récurrence (si non null)
-    form.recurrence_type = event.recurrence_type;
-    form.recurrence_interval = event.recurrence_interval;
-    form.recurrence_days = event.recurrence_days || [];
-    form.recurrence_day_of_month = event.recurrence_day_of_month;
-    form.recurrence_month_interval = event.recurrence_month_interval;
-    form.recurrence_month = event.recurrence_month;
-    form.reminder_days = event.reminder_days;
-    form.custom_recurrence_config = event.custom_recurrence_config;
-
-    // 3. Gestion des dates : Conversion des chaînes 'YYYY-MM-DD HH:MM:SS' en objets Date
-    const startStr = event.scheduled_start_date || event.start_date;
-    const endStr = event.scheduled_end_date || event.end_date;
-
-    form.scheduled_start_date = startStr ? new Date(startStr.replace(' ', 'T')) : null;
-    form.scheduled_end_date = endStr ? new Date(endStr.replace(' ', 'T')) : null;
-
-    // 4. Gestion des équipements (convertir le tableau d'IDs en structure TreeSelect)
-    if (event.equipments) {
-        form.related_equipments = event.equipments.reduce((acc, eq) => {
-            acc[String(eq.id)] = { checked: true, partialChecked: false };
-            return acc;
-        }, {});
-    } else {
-        form.related_equipments = {};
-    }
-
-    // 5. Ouvrir le dialogue de maintenance
-    maintenanceDialog.value = true;
-};
-
-
-/**
- * Gère le clic sur un événement pour afficher les détails ou éditer.
+ * Gère le clic sur un événement pour afficher les détails.
  * S'assure d'afficher les détails de l'événement PÈRE si on clique sur un segment.
  */
 const handleEventClick = (info) => {
-    // Pour les événements non segmentés, l'ID de l'événement FullCalendar est l'ID réel.
-    const parentEvent = getParentEvent(info.event.id);
+    const realEventId = info.event.extendedProps.realId || info.event.id;
+
+    // Retrouver l'événement parent dans la source de données
+    const sourceEvents = props.events.length > 0 ? props.events : (props.maintenances?.data || []);
+    const parentEvent = sourceEvents.find(e => e.id == realEventId);
+
     if (!parentEvent) return;
 
-    // Affichage des détails de l'événement parent (non segmenté)
     dialogEvent.value = {
         title: parentEvent.title || parentEvent.label,
         ...parentEvent,
@@ -432,7 +437,7 @@ const calendarOptions = ref({
     slotMaxTime: WORK_END_TIME,
 });
 
-// --- WATCHERS et autres fonctions utilitaires ---
+// --- WATCHERS et autres fonctions utilitaires (inchangées) ---
 
 watch(calendarEvents, (newEvents) => {
     if (calendarOptions.value) {
@@ -620,13 +625,6 @@ const getPrioritySeverity = (priority) => {
             </div>
 
             <template #footer>
-                <Button
-                    v-if="dialogEvent && dialogEvent.type === 'maintenance'"
-                    label="Éditer"
-                    icon="pi pi-pencil"
-                    @click="showDialog = false; editMaintenance(dialogEvent)"
-                    class="p-button-primary mr-2"
-                />
                 <Button label="Fermer" icon="pi pi-times" @click="showDialog = false" class="p-button-text"/>
             </template>
         </Dialog>
@@ -645,7 +643,6 @@ const getPrioritySeverity = (priority) => {
                         <TreeSelect v-model="form.related_equipments" :options="transformedEquipmentTree"
                             placeholder="Sélectionner des équipements" filter selectionMode="checkbox"
                             display="chip" class="w-full" />
-                        <small class="p-error">{{ form.errors.related_equipments }}</small>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
@@ -709,12 +706,14 @@ const getPrioritySeverity = (priority) => {
                             {{ form.status === 'Planifiée' ? 'Date de début planifiée' : 'Date de début' }}</label>
                         <Calendar id="scheduled_start_date" class="w-full"
                             v-model="form.scheduled_start_date" showTime dateFormat="dd/mm/yy" showIcon />
+                        <small class="p-error">{{ form.errors.scheduled_start_date }}</small>
                     </div>
                     <div class="field">
                         <label for="scheduled_end_date" class="font-semibold">
                             {{ form.status === 'Planifiée'? 'Date de fin planifiée' : 'Date de fin' }}</label>
                         <Calendar id="scheduled_end_date" class="w-full" v-model="form.scheduled_end_date"
                             showTime dateFormat="dd/mm/yy" showIcon />
+                        <small class="p-error">{{ form.errors.scheduled_end_date }}</small>
                     </div>
                 </div>
 
@@ -723,12 +722,14 @@ const getPrioritySeverity = (priority) => {
                         <label for="cost" class="font-semibold">Coût / Budget</label>
                         <InputNumber id="cost" class="w-full" v-model="form.cost" mode="currency"
                             currency="XOF" locale="fr-FR" :min="0" />
+                        <small class="p-error">{{ form.errors.cost }}</small>
                     </div>
                     <div class="field">
                         <label for="region_id" class="font-semibold">Région</label>
                         <Dropdown id="region_id" class="w-full" v-model="form.region_id"
                             :options="props.regions" optionLabel="designation" optionValue="id"
                             placeholder="Sélectionner une région" filter />
+                        <small class="p-error">{{ form.errors.region_id }}</small>
                     </div>
                 </div>
 
@@ -737,6 +738,7 @@ const getPrioritySeverity = (priority) => {
                     <Dropdown id="recurrence_type" class="w-full" v-model="form.recurrence_type"
                         :options="recurrenceTypes" optionLabel="label" optionValue="value"
                         placeholder="Sélectionner un type de récurrence" />
+                    <small class="p-error">{{ form.errors.recurrence_type }}</small>
                 </div>
 
                 <div v-if="form.recurrence_type === 'daily'" class="field">

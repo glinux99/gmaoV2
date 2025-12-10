@@ -215,7 +215,7 @@ private function transformForTreeSelect($equipments)
     {
 
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'assignable_type' => ['nullable', 'string', Rule::in(['App\Models\User', 'App\Models\Team'])],
             'assignable_id' => 'nullable|integer',

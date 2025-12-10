@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\EnginController;
 use App\Http\Controllers\EquipmentCharacteristicController;
@@ -76,7 +77,8 @@ Route::middleware('auth', 'verified')->group(function () {
     'equipment-characteristics'=> EquipmentCharacteristicController ::class,
     'maintenances'=> MaintenanceController::class,
     'tasks'=>TaskController::class,
-    'activities'=> ActivityController::class
+    'activities'=> ActivityController::class,
+    'agenda'=> AgendaController::class,
   ]);
 
 
