@@ -77,6 +77,8 @@ const form = useForm({ // Changed from maintenance to task
     images: [], // Pour les images liées à la tâche
     related_equipments: {}, // Pour les équipements liés (TreeSelect model),
     jobber: 0,
+    service_order_description: 'x', // Description du bon de commande
+    service_order_cost: 0, // Coût du bon de commande
     spare_parts: [], // Pour les pièces détachées
 });
 
@@ -692,6 +694,24 @@ const createSparePart = () => {
         }
     });
 };
+
+// Calcul automatique du coût du service
+const serviceOrderCost = computed(() => {
+    return form.spare_parts.reduce((total, usedPart) => {
+        if (!usedPart.id) return total; // Skip if no spare part selected
+        const partDetails = props.spareParts.find(p => p.id === usedPart.id);
+        const price = partDetails?.unit_estimated_cost || 0; // Utiliser unit_estimated_cost
+        return total + (price * (usedPart.quantity_used || 0));
+    }, 0);
+});
+
+// Mettre à jour le champ service_order_cost du formulaire lorsque serviceOrderCost change
+watch(serviceOrderCost, (newCost) => {
+    form.service_order_cost = newCost;
+    if (newCost > 0 && !form.service_order_description) {
+        form.service_order_description = 'Paiement des pièces détachées et autres';
+    }
+});
 
 // Fonction pour grouper les instructions par équipement pour l'affichage
 const groupInstructionsByEquipment = (instructions, equipments) => {

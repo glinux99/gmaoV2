@@ -18,12 +18,17 @@ class AgendaController extends Controller
     {
         $activities = Activity::all()->map(function ($activity) {
             $taskTitle = $activity->task ? $activity->task->title : 'No Task';
+            $equipmentName = $activity->task && $activity->task->equipment ? $activity->task->equipment->name : 'No Equipment';
+            $teamLeader = $activity->team && $activity->team->leader ? $activity->team->leader->name : 'No Team Leader';
             return [
                 'id' => $activity->id,
                 'title' => $taskTitle . ' (Activity)',
                 'start_date' => $activity->actual_start_time,
+                'daily_schedule' => \Carbon\Carbon::parse($activity->actual_start_time)->format('H:i') . ' - ' . \Carbon\Carbon::parse($activity->actual_end_time)->format('H:i'),
                 'end_date' => $activity->actual_end_time,
                 'status' => $activity->status,
+                'equipment' => $equipmentName,
+                'owner' => $teamLeader,
                 'priority' => $activity->priority,
                 'type' => 'activity',
             ];
@@ -31,12 +36,15 @@ class AgendaController extends Controller
 
         $maintenances = Maintenance::all()->map(function ($maintenance) {
             return [
-                'title' => $maintenance->title,
                 'id' => $maintenance->id,
+                'title' => $maintenance->title,
                 'start' => $maintenance->start_date,
+                'daily_schedule' => \Carbon\Carbon::parse($maintenance->scheduled_start_date)->format('H:i') . ' - ' . \Carbon\Carbon::parse($maintenance->scheduled_end_date)->format('H:i'),
                 'start_date' => $maintenance->scheduled_start_date,
                 'end_date' => $maintenance->scheduled_end_date,
                 'status' => $maintenance->status,
+                'equipment' => $maintenance->equipment ? $maintenance->equipment->name : 'No Equipment',
+                'owner' => $maintenance->team && $maintenance->team->leader ? $maintenance->team->leader->name : 'No Team Leader',
                 'priority' => $maintenance->priority,
                 'type' => 'maintenance',
             ];
@@ -44,12 +52,16 @@ class AgendaController extends Controller
 
         $tasks = Task::all()->map(function ($task) {
             return [
-                'title' => $task->title,
                 'id' => $task->id,
+                'title' => $task->title,
                 'start' => $task->start_date,
-                   'start_date' => $task->planned_start_date,
+                'daily_schedule' => \Carbon\Carbon::parse($task->planned_start_date)->format('H:i') . ' - ' . \Carbon\Carbon::parse($task->planned_end_date)->format('H:i'),
+                'start_date' => $task->planned_start_date,
                 'end_date' => $task->planned_end_date,
                 'status' => $task->status,
+                'equipment' => $task->equipment ? $task->equipment->name : 'No Equipment',
+                'owner' => $task->assignedTo && $task->assignedTo->name ? $task->assignedTo->name : 'No Owner', // Assuming 'assignedTo' is the relationship for the owner/team leader
+
                 'priority' => $task->priority,
                 'type' => 'task',
             ];

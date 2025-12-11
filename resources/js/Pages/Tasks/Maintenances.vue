@@ -8,6 +8,13 @@ import { useConfirm } from 'primevue/useconfirm';
 // Importations ajoutées pour la sélection de colonnes et l'export
 import OverlayPanel from 'primevue/overlaypanel';
 import MultiSelect from 'primevue/multiselect';
+import Dialog from 'primevue/dialog';
+import Textarea from 'primevue/textarea';
+import InputText from 'primevue/inputtext';
+import Dropdown from 'primevue/dropdown';
+import Calendar from 'primevue/calendar';
+import SplitButton from 'primevue/splitbutton';
+import Divider from 'primevue/divider';
 
 const props = defineProps({
     maintenances: Object,
@@ -16,6 +23,8 @@ const props = defineProps({
     users: Array,
     teams: Object,
     regions: Array,
+    tasks: Array, // Assumant que les tâches sont disponibles pour lier les activités
+    spareParts: Array, // Requis pour la sélection de pièces
     equipmentTree: Array,
     // Vous devrez ajouter les sous-traitants (subcontractors) ici quand ils seront disponibles
 
@@ -70,6 +79,29 @@ const selectedCopyTargets = ref({}); // Will hold the selection from TreeSelect
 // État pour les groupes d'instructions dépliés/repliés
 const expandedInstructionGroups = ref({});
 
+// --- NOUVEAU : Logique pour la création d'activités ---
+const activityCreationDialog = ref(false);
+const selectedMaintenanceForActivity = ref(null);
+
+const activityCreationForm = useForm({
+    maintenance_id: null,
+    activities: [], // Tableau pour une ou plusieurs activités
+});
+
+const activityStatusOptions = ['Planifiée', 'En cours', 'Terminée', 'En attente', 'Annulée'];
+
+const addActivityToForm = () => {
+    activityCreationForm.activities.push({
+        // --- NOUVEAUX CHAMPS ---
+        title: `Activité pour: ${selectedMaintenanceForActivity.value?.title || ''}`,
+        status: 'Planifiée',
+        assignable_type: null, // Pour choisir entre Technicien/Équipe
+        assignable_id: null,
+        equipment_ids: selectedMaintenanceForActivity.value?.equipments.map(eq => eq.id) || [],
+        spare_parts: [], // Tableau pour les pièces détachées { id, quantity_used }
+        instructions: [], // Tableau pour les instructions { label, type, is_required }
+    });
+};
 
 const form = useForm({
     id: null,
@@ -344,6 +376,91 @@ const deleteMaintenance = (maintenance) => {
         },
     });
 };
+
+const availableEquipmentsForActivity = (currentIndex) => {
+    if (!selectedMaintenanceForActivity.value) return [];
+
+    // Récupérer tous les IDs d'équipements déjà sélectionnés dans les AUTRES activités
+    const selectedIdsInOtherActivities = activityCreationForm.activities
+        .filter((_, index) => index !== currentIndex)
+        .flatMap(activity => activity.equipment_ids);
+
+    // Retourner uniquement les équipements qui ne sont pas déjà sélectionnés ailleurs
+    return selectedMaintenanceForActivity.value.equipments.filter(
+        equipment => !selectedIdsInOtherActivities.includes(equipment.id)
+    );
+};
+
+const getAssignablesForActivity = (activity) => {
+    if (activity.assignable_type === 'App\\Models\\User') {
+        return props.users;
+    }
+    if (activity.assignable_type === 'App\\Models\\Team') {
+        return props.teams;
+    }
+    return [];
+};
+
+const addInstructionToActivity = (activityIndex) => {
+    activityCreationForm.activities[activityIndex].instructions.push({ label: '', type: 'text', is_required: false });
+};
+
+const removeInstructionFromActivity = (activityIndex, instructionIndex) => {
+    activityCreationForm.activities[activityIndex].instructions.splice(instructionIndex, 1);
+};
+
+const openActivityCreationDialog = (maintenance, multiple = false) => {
+    selectedMaintenanceForActivity.value = maintenance;
+    activityCreationForm.reset();
+    activityCreationForm.maintenance_id = maintenance.id;
+
+    // Ajouter une activité par défaut, ou plusieurs si demandé
+    const count = multiple ? 2 : 1; // Ajoute 2 activités si "plusieurs" est cliqué
+    for (let i = 0; i < count; i++) {
+        addActivityToForm();
+    }
+
+    activityCreationDialog.value = true;
+};
+
+const addSparePartToActivity = (activityIndex) => {
+    activityCreationForm.activities[activityIndex].spare_parts.push({ id: null, quantity_used: 1 });
+};
+
+const removeSparePartFromActivity = (activityIndex, partIndex) => {
+    activityCreationForm.activities[activityIndex].spare_parts.splice(partIndex, 1);
+};
+
+const removeActivityFromForm = (index) => {
+    activityCreationForm.activities.splice(index, 1);
+};
+
+const submitActivities = () => {
+    // Vous devez implémenter la route et la logique côté backend pour `activities.bulkStore`
+    activityCreationForm.post(route('activities.bulkStore'), {
+        onSuccess: () => {
+            activityCreationDialog.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Activités créées avec succès.', life: 3000 });
+        },
+        onError: (errors) => {
+            console.error(errors);
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'La création des activités a échoué.', life: 4000 });
+        }
+    });
+};
+
+const activityItems = (maintenance) => [
+    {
+        label: 'Créer une activité',
+        icon: 'pi pi-fw pi-bolt',
+        command: () => openActivityCreationDialog(maintenance, false)
+    },
+    {
+        label: 'Créer plusieurs activités',
+        icon: 'pi pi-fw pi-copy',
+        command: () => openActivityCreationDialog(maintenance, true)
+    }
+];
 
 let timeoutId = null;
 const performSearch = () => {
@@ -801,11 +918,127 @@ const transformedEquipmentTree = computed(() => {
                             <template #body="slotProps">
                                 <Button icon="pi pi-pencil" class="p-button-rounded p-button-info mr-2"
                                     @click="editMaintenance(slotProps.data)" />
+                                <Button icon="pi pi-bolt" class="p-button-rounded p-button-success mr-2"
+                                    @click="openActivityCreationDialog(slotProps.data, false)" v-tooltip.top="'Créer une activité'" />
                                 <Button icon="pi pi-trash" class="p-button-rounded p-button-danger"
                                     @click="deleteMaintenance(slotProps.data)" />
+
                             </template>
                         </Column>
                     </DataTable>
+
+                    <!-- NOUVEAU : Dialogue de création d'activités -->
+                    <Dialog v-model:visible="activityCreationDialog" modal header="Créer une ou plusieurs Activités" :style="{ width: '60rem' }">
+                        <div v-if="selectedMaintenanceForActivity">
+                            <div class="mb-4 p-3 bg-gray-100 border-round">
+                                <h4 class="font-bold text-lg">Maintenance Parente : {{ selectedMaintenanceForActivity.title }}</h4>
+                                <p v-if="selectedMaintenanceForActivity.description" class="text-sm text-gray-700">{{ selectedMaintenanceForActivity.description }}</p>
+
+                                <div v-if="selectedMaintenanceForActivity.instructions && selectedMaintenanceForActivity.instructions.length > 0" class="mt-3">
+                                    <h5 class="font-semibold mb-2">Instructions de la maintenance :</h5>
+                                    <ul class="list-disc pl-5 text-sm">
+                                        <li v-for="instruction in selectedMaintenanceForActivity.instructions" :key="instruction.id">
+                                            <strong>{{ instruction.label }}</strong> (Type: {{ instruction.type }})
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div v-else class="text-sm text-gray-500 mt-2">
+                                    Aucune instruction spécifique pour cette maintenance.
+                                </div>
+                            </div>
+
+                            <div v-for="(activity, index) in activityCreationForm.activities" :key="index" class="mb-4 p-4 border-1 border-gray-300 border-round relative">
+                                <h5 class="font-bold mb-3">Activité #{{ index + 1 }}</h5>
+
+                                <div class="grid formgrid">
+                                    <div class="field col-12">
+                                        <label :for="'activity_title_' + index" class="font-semibold">Titre de l'activité</label>
+                                        <InputText :id="'activity_title_' + index" v-model="activity.title" class="w-full" />
+                                        <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.title`] }}</small>
+                                    </div>
+
+                                    <!-- Assignation (Technicien ou Équipe) -->
+                                    <div class="field col-12 md:col-6">
+                                        <label :for="'activity_assignable_type_' + index" class="font-semibold">Assigner à (Type)</label>
+                                        <Dropdown :id="'activity_assignable_type_' + index" v-model="activity.assignable_type" :options="assignableTypes" @change="activity.assignable_id = null" optionLabel="label" optionValue="value" placeholder="Choisir un type" class="w-full" />
+                                    </div>
+                                    <div class="field col-12 md:col-6">
+                                        <label :for="'activity_assignable_id_' + index" class="font-semibold">Assigner à (Nom)</label>
+                                        <Dropdown :id="'activity_assignable_id_' + index" v-model="activity.assignable_id" :options="getAssignablesForActivity(activity)" optionLabel="name" optionValue="id" placeholder="Sélectionner" filter showClear class="w-full" :disabled="!activity.assignable_type" />
+                                    </div>
+
+                                    <!-- Sélection des équipements -->
+                                    <div class="field col-12">
+                                        <label :for="'activity_equipments_' + index" class="font-semibold">Équipements Concernés</label>
+                                        <MultiSelect
+                                            :id="'activity_equipments_' + index"
+                                            v-model="activity.equipment_ids"
+                                            :options="availableEquipmentsForActivity(index)"
+                                            optionLabel="designation"
+                                            optionValue="id"
+                                            placeholder="Sélectionner des équipements"
+                                            display="chip"
+                                            class="w-full"
+                                        />
+                                        <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.equipment_ids`] }}</small>
+                                    </div>
+                                </div>
+
+                                <Divider />
+
+                                <!-- Section Pièces Détachées -->
+                                <h6 class="font-semibold mb-3">Pièces Détachées Requises</h6>
+                                <div v-if="activity.spare_parts.length > 0" class="flex flex-column gap-2 mb-2">
+                                    <div v-for="(part, partIndex) in activity.spare_parts" :key="partIndex" class="grid grid-nogutter align-items-center gap-2">
+                                        <div class="col-7">
+                                            <Dropdown v-model="part.id" :options="spareParts" optionLabel="reference" optionValue="id" placeholder="Sélectionner une pièce" filter class="w-full" />
+                                        </div>
+                                        <div class="col-3">
+                                            <InputNumber v-model="part.quantity_used" placeholder="Qté" :min="1" class="w-full" />
+                                        </div>
+                                        <div class="col-1">
+                                            <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-rounded" @click="removeSparePartFromActivity(index, partIndex)" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button label="Ajouter une pièce" icon="pi pi-plus" class="p-button-text p-button-sm" @click="addSparePartToActivity(index)" />
+
+                                <Divider />
+
+                                <!-- Section Instructions -->
+                                <h6 class="font-semibold mb-3">Instructions pour l'Activité</h6>
+                                <div v-if="activity.instructions.length > 0" class="flex flex-column gap-3 mb-2">
+                                    <div v-for="(instruction, instructionIndex) in activity.instructions" :key="instructionIndex" class="p-2 border-1 border-round surface-ground">
+                                        <div class="grid align-items-center gap-2">
+                                            <div class="col-12 md:col-5">
+                                                <InputText v-model="instruction.label" placeholder="Libellé de l'instruction" class="w-full" />
+                                            </div>
+                                            <div class="col-12 md:col-3">
+                                                <Dropdown v-model="instruction.type" :options="instructionValueTypes" optionLabel="label" optionValue="value" placeholder="Type" class="w-full" />
+                                            </div>
+                                            <div class="col-12 md:col-2 flex align-items-center">
+                                                <Checkbox v-model="instruction.is_required" :binary="true" :inputId="`instr_req_${index}_${instructionIndex}`" class="mr-2" />
+                                                <label :for="`instr_req_${index}_${instructionIndex}`">Requis</label>
+                                            </div>
+                                            <div class="col-12 md:col-1">
+                                                <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-rounded" @click="removeInstructionFromActivity(index, instructionIndex)" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button label="Ajouter une instruction" icon="pi pi-plus" class="p-button-text p-button-sm" @click="addInstructionToActivity(index)" />
+
+                                <Button icon="pi pi-trash" class="p-button-danger p-button-rounded p-button-text absolute" style="top: 0.5rem; right: 0.5rem;" @click="removeActivityFromForm(index)" v-tooltip.top="'Supprimer cette activité'" />
+                            </div>
+
+                            <Button label="Ajouter une autre activité" icon="pi pi-plus" class="p-button-text" @click="addActivityToForm" />
+                        </div>
+
+                        <template #footer>
+                            <Button label="Annuler" icon="pi pi-times" @click="activityCreationDialog = false" class="p-button-text" />
+                            <Button label="Créer les Activités" icon="pi pi-check" @click="submitActivities" :loading="activityCreationForm.processing" :disabled="activityCreationForm.activities.length === 0" />
+                        </template>
+                    </Dialog>
 
                     <Dialog v-model:visible="maintenanceDialog" modal :header="dialogTitle" :style="{ width: '65rem' }">
                         <div class="p-fluid">

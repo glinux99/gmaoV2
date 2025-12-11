@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Models\ServiceOrder;
 use Inertia\Inertia;
 use App\Models\MaintenanceInstruction;
 use Illuminate\Validation\Rule;
@@ -105,6 +107,10 @@ class MaintenanceController extends Controller
         'node_instructions.*.*.label' => 'required|string|max:255',
         'node_instructions.*.*.type' => 'required|string',
         'node_instructions.*.*.is_required' => 'boolean',
+
+        // Champs pour ServiceOrder
+        'service_order_cost' => 'nullable|numeric|min:0',
+        'service_order_description' => 'nullable|string|required_with:service_order_cost',
     ]);
 
     if ($validator->fails()) {
@@ -135,6 +141,29 @@ class MaintenanceController extends Controller
                     $maintenance->instructions()->create(array_merge($instructionData, ['equipment_id' => $cleanEquipmentId]));
                 }
             }
+        }
+
+        // Créer une ServiceOrder si un coût est fourni
+        if (isset($validatedData['service_order_cost']) && $validatedData['service_order_cost'] > 0) {
+            $serviceOrder = ServiceOrder::create([
+                'task_id' => null, // Maintenance n'a pas de task_id direct, à adapter si nécessaire
+                'maintenance_id' => $maintenance->id, // Lier à la maintenance
+                'description' => $validatedData['service_order_description'] ?? 'Prestation liée à la maintenance #' . $maintenance->id,
+                'cost' => $validatedData['service_order_cost'],
+                'status' => 'completed',
+                'order_date' => now(),
+                'actual_completion_date' => now(),
+            ]);
+
+            $serviceOrder->expenses()->create([
+                'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                'amount' => $serviceOrder->cost,
+                'expense_date' => now(),
+                'category' => 'external_service',
+                'user_id' => Auth::id(),
+                'notes' => 'Dépense générée automatiquement pour la prestation de service.',
+                'status' => 'pending',
+            ]);
         }
 
         DB::commit();
@@ -187,6 +216,10 @@ class MaintenanceController extends Controller
             'node_instructions.*.*.label' => 'required|string|max:255',
             'node_instructions.*.*.type' => 'required|string',
             'node_instructions.*.*.is_required' => 'boolean',
+
+            // Champs pour ServiceOrder
+            'service_order_cost' => 'nullable|numeric|min:0',
+            'service_order_description' => 'nullable|string|required_with:service_order_cost',
         ]);
 
         if ($validator->fails()) {
@@ -215,6 +248,36 @@ class MaintenanceController extends Controller
                 }
             }
 
+            // Mettre à jour ou créer la ServiceOrder
+            $serviceOrder = ServiceOrder::where('maintenance_id', $maintenance->id)->first();
+            if (isset($validator->validated()['service_order_cost']) && $validator->validated()['service_order_cost'] > 0) {
+                $serviceOrderData = [
+                    'maintenance_id' => $maintenance->id,
+                    'description' => $validator->validated()['service_order_description'] ?? 'Prestation liée à la maintenance #' . $maintenance->id,
+                    'cost' => $validator->validated()['service_order_cost'],
+                    'status' => 'completed',
+                    'order_date' => now(),
+                    'actual_completion_date' => now(),
+                ];
+                $serviceOrder = ServiceOrder::updateOrCreate(['maintenance_id' => $maintenance->id], $serviceOrderData);
+
+                // Supprimer les anciennes dépenses liées à cette ServiceOrder pour éviter les doublons
+                $serviceOrder->expenses()->delete();
+                $serviceOrder->expenses()->create([
+                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'expense_date' => now(),
+                    'category' => 'external_service',
+                    'user_id' => Auth::id(),
+                    'notes' => 'Dépense générée automatiquement pour la prestation de service.',
+                    'status' => 'pending',
+                ]);
+            } else if ($serviceOrder) {
+                // Si le coût est à 0 ou non fourni et qu'une ServiceOrder existait, la supprimer
+                $serviceOrder->expenses()->delete();
+                $serviceOrder->delete();
+            }
+
             DB::commit();
 
             return redirect()->route('maintenances.index')->with('success', 'Maintenance mise à jour avec succès.');
@@ -232,7 +295,17 @@ class MaintenanceController extends Controller
      */
     public function destroy(Maintenance $maintenance)
     {
-        $maintenance->delete();
+        DB::beginTransaction();
+        try {
+            $maintenance->expenses()->delete(); // Supprimer les dépenses associées
+            $maintenance->equipments()->detach(); // Détacher les équipements
+            $maintenance->instructions()->delete(); // Supprimer les instructions
+            $maintenance->delete();
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de la maintenance: ' . $e->getMessage());
+        }
         return redirect()->route('maintenances.index')->with('success', 'Maintenance supprimée avec succès.');
     }
 }

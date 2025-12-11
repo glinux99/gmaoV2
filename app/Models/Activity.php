@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-class Activity extends Model
+class Activity extends Model implements HasMedia
 {
     use HasFactory,InteractsWithMedia;
 
@@ -75,5 +77,29 @@ class Activity extends Model
     public function instructionAnswers(): HasMany
     {
         return $this->hasMany(InstructionAnswer::class);
+    }
+
+    public function expenses(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Expenses::class, 'expensable');
+    }
+
+    /**
+     * Get the spare parts used in this activity.
+     */
+    public function sparePartsUsed(): BelongsToMany
+    {
+        return $this->belongsToMany(SparePart::class, 'spare_part_activities', 'activity_id', 'spare_part_id')
+                    ->withPivot('quantity_used');
+    }
+
+    /**
+     * Get the spare parts returned in this activity.
+     */
+    public function sparePartsReturned(): BelongsToMany
+    {
+        return $this->belongsToMany(SparePart::class, 'spare_part_activities', 'activity_id', 'spare_part_id')
+                    ->wherePivot('type', 'returned')
+                    ->withPivot('quantity_used');
     }
 }

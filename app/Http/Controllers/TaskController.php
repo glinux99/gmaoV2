@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Models\ServiceOrder;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 use PhpParser\Node\Stmt\TryCatch;
@@ -150,6 +152,9 @@ private function transformForTreeSelect($equipments)
             'instructions.*.equipment_id' => 'nullable|numeric|exists:equipment,id',
             'instructions.*.task_id' => 'nullable|numeric|exists:tasks,id',
             'instructions.*.is_required' => 'boolean',
+            // Champs pour ServiceOrder
+            'service_order_cost' => 'nullable|numeric|min:0',
+            'service_order_description' => 'nullable|string|required_with:service_order_cost',
         ]);
 
         if ($validator->fails()) {
@@ -196,6 +201,27 @@ private function transformForTreeSelect($equipments)
                 }
             }
 
+            // Créer une ServiceOrder si un coût est fourni
+            if (isset($validatedData['service_order_cost']) && $validatedData['service_order_cost'] > 0) {
+                $serviceOrder = ServiceOrder::create([
+                    'task_id' => $task->id,
+                    'description' => $validatedData['service_order_description'] ?? 'Prestation liée à la tâche #' . $task->id,
+                    'cost' => $validatedData['service_order_cost'],
+                    'status' => 'completed',
+                    'order_date' => now(),
+                    'actual_completion_date' => now(),
+                ]);
+
+                $serviceOrder->expenses()->create([
+                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'expense_date' => now(),
+                    'category' => 'external_service',
+                    'user_id' => Auth::id(),
+                    'notes' => 'Dépense générée automatiquement pour la prestation de service.',
+                    'status' => 'pending',
+                ]);
+            }
             DB::commit();
 
             return redirect()->route('tasks.index')->with('success', 'Tâche créée avec succès.');
@@ -237,6 +263,9 @@ private function transformForTreeSelect($equipments)
             'instructions.*.equipment_id' => 'nullable|numeric|exists:equipment,id',
             'instructions.*.task_id' => 'nullable|numeric|exists:tasks,id',
             'instructions.*.is_required' => 'boolean',
+            // Champs pour ServiceOrder
+            'service_order_cost' => 'nullable|numeric|min:0',
+            'service_order_description' => 'nullable|string|required_with:service_order_cost',
         ]);
 
         if ($validator->fails()) {
@@ -279,6 +308,35 @@ private function transformForTreeSelect($equipments)
                 $task->instructions()->delete();
             }
 
+            // Mettre à jour ou créer la ServiceOrder
+            $serviceOrder = ServiceOrder::where('task_id', $task->id)->first();
+            if (isset($validatedData['service_order_cost']) && $validatedData['service_order_cost'] > 0) {
+                $serviceOrderData = [
+                    'task_id' => $task->id,
+                    'description' => $validatedData['service_order_description'] ?? 'Prestation liée à la tâche #' . $task->id,
+                    'cost' => $validatedData['service_order_cost'],
+                    'status' => 'completed',
+                    'order_date' => now(),
+                    'actual_completion_date' => now(),
+                ];
+                $serviceOrder = ServiceOrder::updateOrCreate(['task_id' => $task->id], $serviceOrderData);
+
+                // Supprimer les anciennes dépenses liées à cette ServiceOrder pour éviter les doublons
+                $serviceOrder->expenses()->delete();
+                $serviceOrder->expenses()->create([
+                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'expense_date' => now(),
+                    'category' => 'external_service',
+                    'user_id' => Auth::id(),
+                    'notes' => 'Dépense générée automatiquement pour la prestation de service.',
+                    'status' => 'pending',
+                ]);
+            } else if ($serviceOrder) {
+                // Si le coût est à 0 ou non fourni et qu'une ServiceOrder existait, la supprimer
+                $serviceOrder->expenses()->delete();
+                $serviceOrder->delete();
+            }
             DB::commit();
 
             return redirect()->route('tasks.index')->with('success', 'Tâche mise à jour avec succès.');
@@ -298,6 +356,13 @@ private function transformForTreeSelect($equipments)
         DB::beginTransaction();
         try {
             // Delete associated activities first
+            $serviceOrder = ServiceOrder::where('task_id', $task->id)->first();
+            if ($serviceOrder) {
+                // Supprimer les dépenses associées à la ServiceOrder
+                $serviceOrder->expenses()->delete();
+                // Supprimer la ServiceOrder elle-même
+                $serviceOrder->delete();
+            }
             if ($task->activity) {
                 $task->activity->delete();
             }

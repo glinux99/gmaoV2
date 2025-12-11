@@ -11,6 +11,8 @@ use Illuminate\Validation\Rule;
 use App\Models\InstructionAnswer;
 use App\Models\SparePart;
 use Illuminate\Support\Facades\DB;
+use App\Models\ServiceOrder;
+use App\Models\Expenses;
 
 class ActivityController extends Controller
 {
@@ -30,7 +32,7 @@ class ActivityController extends Controller
                 ->orWhereHas('user', fn ($q) => $q->where('name', 'like', '%' . $search . '%'));
         }
 
-        $query->with(['task.instructions', 'instructionAnswers']);
+        $query->with(['task.instructions', 'instructionAnswers', 'task.serviceOrders']);
 
         return Inertia::render('Tasks/MyActivities', [
             'activities' => $query->paginate(10),
@@ -77,6 +79,10 @@ class ActivityController extends Controller
             'instruction_answers' => 'nullable|array',
             'instruction_answers.*' => 'nullable|string|max:255', // Permet des valeurs nulles, la validation requise se fait au front-end
 
+            // Champs pour ServiceOrder
+            'service_order_cost' => 'nullable|numeric|min:0',
+            'service_order_description' => 'nullable|string|required_with:service_order_cost',
+
         ]);
 
         DB::beginTransaction();
@@ -85,12 +91,45 @@ class ActivityController extends Controller
 
             $activity = Activity::create($validated);
 
+            // Créer une ServiceOrder si un coût est fourni
+            if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
+                $serviceOrder = ServiceOrder::create([
+                    'task_id' => $activity->task_id,
+                    'description' => $validated['service_order_description'] ?? 'Prestation liée à l\'activité #' . $activity->id,
+                    'cost' => $validated['service_order_cost'],
+                    'status' => 'completed', // On suppose que l'activité étant faite, la prestation l'est aussi
+                    'order_date' => now(),
+                    'actual_completion_date' => now(),
+                ]);
+
+                // Créer une dépense pour la commande de service
+                $activity->expenses()->create([
+                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'expense_date' => now(),
+                    'category' => 'external_service', // Ou une autre catégorie appropriée
+                    'user_id' => Auth::id(), // L'utilisateur qui a enregistré l'activité
+                    'notes' => 'Dépense générée automatiquement pour la prestation de service.',
+                    'status' => 'pending', // Ou 'approved' si l'approbation est automatique
+                ]);
+            }
+
             // Logic for updating spare part quantities based on 'used' and 'returned'
             // This would involve iterating through the spare_parts_used and spare_parts_returned arrays
             // and updating the quantities in the SparePart model.
             // Example (simplified):
             if (isset($validated['spare_parts_used']) && is_array($validated['spare_parts_used'])) {
                 foreach ($validated['spare_parts_used'] as $part) {
+                    // Créer une dépense pour chaque pièce utilisée
+                    $activity->expenses()->create([
+                        'description' => 'Pièce détachée utilisée: ' . (\App\Models\SparePart::find($part['id'])->reference ?? 'N/A'),
+                        'amount' => (\App\Models\SparePart::find($part['id'])->price ?? 0) * $part['quantity'],
+                        'expense_date' => now(),
+                        'category' => 'parts',
+                        'user_id' => Auth::id(),
+                        'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
+                        'status' => 'pending',
+                    ]);
                     $sparePart = \App\Models\SparePart::find($part['id']);
                     if ($sparePart) {
                         $sparePart->quantity -= $part['quantity'];
@@ -134,7 +173,7 @@ class ActivityController extends Controller
     public function show(Activity $activity)
     {
         return Inertia::render('Tasks/MyActivities/Show', [
-            'activity' => $activity->load(['task', 'user', 'parent', 'children', 'assignable']),
+            'activity' => $activity->load(['task.serviceOrders', 'user', 'parent', 'children', 'assignable']),
         ]);
     }
     /**
@@ -173,6 +212,10 @@ class ActivityController extends Controller
             'additional_information' => 'nullable|string|max:65535',
             'instruction_answers' => 'nullable|array',
             'instruction_answers.*' => 'nullable|string|max:255',
+            // Champs pour ServiceOrder
+            'service_order_cost' => 'nullable|numeric|min:0',
+            'service_order_description' => 'nullable|string|required_with:service_order_cost',
+
         ]);
 
         DB::beginTransaction();
@@ -197,12 +240,46 @@ class ActivityController extends Controller
                 }
             }
 
+            // Supprimer les anciennes dépenses liées à cette activité pour éviter les doublons
+            $activity->expenses()->delete();
+
+            // Mettre à jour ou créer la ServiceOrder
+            $serviceOrder = ServiceOrder::where('task_id', $activity->task_id)->first();
+            if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
+                $serviceOrderData = [
+                    'task_id' => $activity->task_id,
+                    'description' => $validated['service_order_description'] ?? 'Prestation liée à l\'activité #' . $activity->id,
+                    'cost' => $validated['service_order_cost'],
+                    'status' => 'completed',
+                ];
+                $serviceOrder = ServiceOrder::updateOrCreate(['task_id' => $activity->task_id], $serviceOrderData);
+
+                // Créer la dépense associée
+                $activity->expenses()->create([
+                    'type' => 'service_order',
+                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'expense_date' => now(),
+                ]);
+            }
+
             // Apply new spare part movements
             // The model's casts will handle JSON encoding/decoding for storage
             if (isset($validated['spare_parts_used']) && is_array($validated['spare_parts_used'])) {
                 foreach ($validated['spare_parts_used'] as $part) {
                     $sparePart = \App\Models\SparePart::find($part['id']);
                     if ($sparePart) {
+                        // Créer une dépense pour chaque pièce utilisée
+                        $activity->expenses()->create([
+                            'description' => 'Pièce détachée utilisée: ' . $sparePart->reference,
+                            'amount' => ($sparePart->price ?? 0) * $part['quantity'],
+                            'expense_date' => now(),
+                            'category' => 'parts',
+                            'user_id' => Auth::id(),
+                            'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
+                            'status' => 'pending',
+                        ]);
+
                         $sparePart->quantity -= $part['quantity'];
                         $sparePart->save();
                     }
@@ -236,6 +313,7 @@ class ActivityController extends Controller
             DB::commit();
             return redirect()->route('activities.index')->with('success', 'Activité mise à jour avec succès.');
         } catch (\Exception $e) {
+            return $e;
             DB::rollBack();
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de l\'activité: ' . $e->getMessage());
         }
@@ -247,6 +325,9 @@ class ActivityController extends Controller
     {
         DB::beginTransaction();
         try {
+            // Supprimer les dépenses associées
+            $activity->expenses()->delete();
+
             // Revert spare part movements before deleting the activity
             if ($activity->spare_parts_used && is_array($activity->spare_parts_used)) {
                 foreach ($activity->spare_parts_used as $part) {

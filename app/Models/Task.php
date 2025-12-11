@@ -130,6 +130,14 @@ class Task extends Model
     }
 
     /**
+     * Get the service orders for the task.
+     */
+    public function serviceOrders(): HasMany
+    {
+        return $this->hasMany(ServiceOrder::class);
+    }
+
+    /**
      * Scope pour calculer le temps d'intervention moyen pour les tâches terminées.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query

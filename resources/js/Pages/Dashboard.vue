@@ -15,6 +15,7 @@ const props = defineProps({
     activeTasks: Number,
     timeSpent: String,
     averageInterventionTime: String,
+    sparklineData: Object, // Données pour les 4 cartes principales
     permissions: Number,
     filters: Object,
     sparePartsMovement: Object, // Données pour le graphique des pièces détachées
@@ -95,24 +96,6 @@ watch(dateRange, (newDates) => {
     deep: true // pour surveiller les changements à l'intérieur du tableau
 });
 
-// --- Fonctions de préparation des données pour les graphiques (Charts) ---
-
-// 1. Fonction pour générer des données de graphique de barre simples (Sparkline)
-const generateSparklineData = (color) => {
-    // Données simulées pour la forme du sparkline
-    const data = [10, 5, 20, 15, 25, 10, 30, 20, 12, 18, 22];
-    return {
-        labels: data.map((_, i) => i + 1),
-        datasets: [
-            {
-                data: data,
-                backgroundColor: color,
-                borderRadius: 4,
-            }
-        ]
-    };
-};
-
 // Options pour un graphique Sparkline (cache les axes et la légende)
 const sparklineOptions = {
     plugins: { legend: { display: false } },
@@ -123,39 +106,39 @@ const sparklineOptions = {
     }
 };
 
-// 2. Préparation des données pour les quatre cartes principales (Sparklines)
+// Préparation des données pour les quatre cartes principales (Sparklines)
 const sparklineItems = ref([
     {
-        label: 'Earnings',
-        value: `$${props.users ?? 0}`,
-        metric: '30.6%',
-        icon: 'pi pi-wallet',
-        chartData: generateSparklineData('rgba(59, 130, 246, 0.7)'), // Bleu
-        changeColor: 'text-green-500',
+        label: 'Utilisateurs',
+        value: props.users ?? 0,
+        metric: props.sparklineData?.users?.metric ?? '0%',
+        icon: 'pi pi-users',
+        chartData: props.sparklineData?.users?.chartData,
+        changeColor: (props.sparklineData?.users?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
     },
     {
-        label: 'Active Tasks',
+        label: 'Tâches Actives',
         value: props.activeTasks ?? 0,
-        metric: '30.6%',
+        metric: props.sparklineData?.activeTasks?.metric ?? '0%',
         icon: 'pi pi-check-square',
-        chartData: generateSparklineData('rgba(245, 158, 11, 0.7)'), // Orange
-        changeColor: 'text-red-500',
+        chartData: props.sparklineData?.activeTasks?.chartData,
+        changeColor: (props.sparklineData?.activeTasks?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
     },
     {
-        label: 'Time Spent (hrs)',
+        label: 'Temps Passé (h)',
         value: props.timeSpent ?? '0h',
-        metric: '30.6%',
+        metric: props.sparklineData?.timeSpent?.metric ?? '0%',
         icon: 'pi pi-hourglass',
-        chartData: generateSparklineData('rgba(16, 185, 129, 0.7)'), // Vert
-        changeColor: 'text-green-500',
+        chartData: props.sparklineData?.timeSpent?.chartData,
+        changeColor: (props.sparklineData?.timeSpent?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
     },
     {
-        label: 'Avg Intervention Time',
+        label: 'Tps Moyen Interv.',
         value: props.averageInterventionTime ?? '0s',
-        metric: '30.6%',
+        metric: props.sparklineData?.averageInterventionTime?.metric ?? '0%',
         icon: 'pi pi-clock',
-        chartData: generateSparklineData('rgba(239, 68, 68, 0.7)'), // Rouge
-        changeColor: 'text-red-500',
+        chartData: props.sparklineData?.averageInterventionTime?.chartData,
+        changeColor: (props.sparklineData?.averageInterventionTime?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
     },
 ]);
 
@@ -168,14 +151,7 @@ const tasksChartFilterOptions = ref([
 
 const tasksDistributionChartData = computed(() => {
     const dataSet = tasksChartType.value === 'status' ? props.tasksByStatus : props.tasksByPriority;
-    const defaultData = {
-        labels: ['Label A', 'Label B', 'Label C'],
-        datasets: [{
-            data: [30, 50, 20],
-            backgroundColor: ['#42A5F5', '#FFA726', '#66BB6A', '#EF5350', '#AB47BC'],
-            hoverBackgroundColor: ['#64B5F6', '#FFB74D', '#81C784', '#E57373', '#BA68C8']
-        }]
-    };
+    const defaultData = { labels: [], datasets: [{ data: [], backgroundColor: ['#42A5F5', '#FFA726', '#66BB6A', '#EF5350', '#AB47BC'], hoverBackgroundColor: ['#64B5F6', '#FFB74D', '#81C784', '#E57373', '#BA68C8'] }] };
 
     if (!dataSet || !dataSet.labels || !dataSet.data) {
         return defaultData;
@@ -186,18 +162,18 @@ const tasksDistributionChartData = computed(() => {
         datasets: [{ ...defaultData.datasets[0], data: dataSet.data }]
     };
 });
-const permissionsChartData = ref({
-    labels: ['Read', 'Write', 'Delete'],
+const permissionsChartData = computed(() => ({
+    labels: ['Rôles', 'Permissions'],
     datasets: [
         {
-            label: 'Permissions by Type',
-            data: [props.permissions ?? 100, 50, 20],
-            backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)'],
-            borderColor: ['rgb(255, 99, 132)', 'rgb(54, 162, 235)', 'rgb(255, 206, 86)'],
+            label: 'Permissions et Rôles',
+            data: [props.roles ?? 0, props.permissions ?? 0],
+            backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)'],
+            borderColor: ['rgb(54, 162, 235)', 'rgb(255, 206, 86)'],
             borderWidth: 1
         }
     ]
-});
+}));
 
 const barChartOptions = ref({
     plugins: {
@@ -213,25 +189,25 @@ const barChartOptions = ref({
 });
 
 // 4. Préparation des données pour le graphique des mouvements de pièces détachées
-const sparePartsChartData = ref({
-    labels: props.sparePartsMovement?.labels ?? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet'],
+const sparePartsChartData = computed(() => ({
+    labels: props.sparePartsMovement?.labels ?? [],
     datasets: [
         {
             label: 'Pièces entrantes',
-            data: props.sparePartsMovement?.entries ?? [65, 59, 80, 81, 56, 55, 40],
+            data: props.sparePartsMovement?.entries ?? [],
             fill: false,
             borderColor: '#42A5F5', // Bleu
             tension: 0.4
         },
         {
             label: 'Pièces sortantes',
-            data: props.sparePartsMovement?.exits ?? [28, 48, 40, 19, 86, 27, 90],
+            data: props.sparePartsMovement?.exits ?? [],
             fill: false,
             borderColor: '#FFA726', // Orange
             tension: 0.4
         }
     ]
-});
+}));
 
 const lineChartOptions = ref({
     maintainAspectRatio: false,
@@ -253,13 +229,7 @@ const failuresChartData = computed(() => {
     const defaultColors = ['#059669', '#EF4444', '#F97316', '#3B82F6', '#6366F1']; // Vert, Rouge, Orange, Bleu, Indigo
 
     if (!dataSet || !dataSet.labels || !dataSet.data) {
-        return {
-            labels: ['Usure', 'Dommage', 'Surcharge', 'Électronique'],
-            datasets: [{
-                data: [40, 30, 20, 10],
-                backgroundColor: defaultColors,
-            }]
-        };
+        return { labels: [], datasets: [{ data: [], backgroundColor: defaultColors }] };
     }
 
     return {
@@ -274,17 +244,11 @@ const failuresChartData = computed(() => {
 // Graphique 2 : Interventions par type (Barres)
 const interventionsChartData = computed(() => {
     const dataSet = props.interventionsByType;
-    const defaultData = {
-        labels: ['Remplacement', 'Réglage', 'Entretien', 'Dépannage', 'Appel Hotline', 'Analyse', 'Amélioration'],
-        data: [40, 184, 72, 121, 192, 33, 161]
-    };
-
     if (!dataSet || !dataSet.labels || !dataSet.data) {
         return {
-            labels: defaultData.labels,
             datasets: [{
                 label: 'Nombre d\'Interventions',
-                data: defaultData.data,
+                data: [],
                 backgroundColor: 'rgba(59, 130, 246, 0.8)', // Bleu cohérent
                 borderColor: 'rgb(59, 130, 246)',
                 borderWidth: 1,
@@ -310,16 +274,15 @@ const interventionsChartData = computed(() => {
 const monthlyVolumeChartData = computed(() => {
     const dataSet = props.monthlyVolumeData;
 
-    // Définir ici les options de style pour les datasets
-    const defaultData = {
-        labels: ['11/22', '12/22', '01/23', '02/23', '03/23', '04/23', '05/23', '06/23', '07/23', '08/23', '09/23', '10/23'],
+    return {
+        labels: dataSet?.labels ?? [],
         datasets: [
             // Données pour les barres empilées
             {
                 type: 'bar',
                 label: 'Stoppée',
                 backgroundColor: '#EF4444', // Rouge
-                data: dataSet?.stopped || [6, 5, 5, 5, 4, 10, 5, 8, 3, 8, 5, 6],
+                data: dataSet?.stopped || [],
                 stack: 'Stack 0',
                 yAxisID: 'y'
             },
@@ -327,7 +290,7 @@ const monthlyVolumeChartData = computed(() => {
                 type: 'bar',
                 label: 'Dégradée',
                 backgroundColor: '#FBBF24', // Jaune/Orange
-                data: dataSet?.degraded || [11, 13, 12, 15, 15, 14, 15, 12, 4, 7, 14, 5],
+                data: dataSet?.degraded || [],
                 stack: 'Stack 0',
                 yAxisID: 'y'
             },
@@ -335,7 +298,7 @@ const monthlyVolumeChartData = computed(() => {
                 type: 'bar',
                 label: 'Amélioration',
                 backgroundColor: '#3B82F6', // Bleu
-                data: dataSet?.improvement || [10, 13, 8, 13, 13, 3, 3, 15, 7, 7, 8, 7],
+                data: dataSet?.improvement || [],
                 stack: 'Stack 0',
                 yAxisID: 'y'
             },
@@ -347,16 +310,10 @@ const monthlyVolumeChartData = computed(() => {
                 borderWidth: 2,
                 fill: false,
                 tension: 0.4,
-                data: dataSet?.resolutionTime || [23, 23, 22, 33, 33, 42, 42, 42, 27, 36, 33, 33], // en heures
+                data: dataSet?.resolutionTime || [], // en heures
                 yAxisID: 'y1'
             }
-        ]
-    };
-
-    return {
-        labels: defaultData.labels,
-        datasets: defaultData.datasets
-    };
+        ]}
 });
 
 // Options du graphique combiné (Gestion des deux axes Y)
@@ -501,7 +458,7 @@ const comboChartOptions = ref({
 
                         <div class="flex items-center text-sm">
                             <i :class="item.changeColor === 'text-green-500' ? 'pi pi-arrow-up-right text-xs mr-1' : 'pi pi-arrow-down-right text-xs mr-1'"></i>
-                            <span :class="item.changeColor" class="font-medium">{{ item.metric }}</span>
+                            <span :class="item.changeColor" class="font-medium">{{ item.metric.replace('-', '') }}</span>
                             <span class="text-gray-500 ml-2">from last month</span>
                         </div>
                     </template>
@@ -584,8 +541,8 @@ const comboChartOptions = ref({
 
             <div class="col-span-12 lg:col-span-6">
                 <Card>
-                    <template #title>Permission Types</template>
-                    <template #subtitle>Total Permissions: {{ props.permissions ?? 170 }}</template>
+                    <template #title>Rôles & Permissions</template>
+                    <template #subtitle>Total: {{ (props.roles ?? 0) + (props.permissions ?? 0) }}</template>
                     <template #content>
                         <div class="h-80">
                             <Chart type="bar" :data="permissionsChartData" :options="barChartOptions" class="h-full" />

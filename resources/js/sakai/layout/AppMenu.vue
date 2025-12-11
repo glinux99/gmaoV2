@@ -26,6 +26,7 @@ const model = ref([
             { label: 'Mes activités', icon: 'pi pi-fw pi-list', to: '/activities', /*can: 'projects'*/ },
             { label: 'Ordre de Travail', icon: 'pi pi-fw pi-check-square', to: '/tasks', /*can: 'projects'*/ },
             { label: 'Plan de maintenance', icon: 'pi pi-fw pi-wrench', to: '/maintenances', /*can: 'projects'*/ },
+            { label: 'Dépenses', icon: 'pi pi-fw pi-money-bill', to: '/expenses', /*can: 'expenses'*/ },
           ]
     },
     {
@@ -36,6 +37,36 @@ const model = ref([
         ]
     },
 
+    {
+        label: 'Gestion des RH',
+        items: [
+            {
+                label: 'Employés',
+                icon: 'pi pi-fw pi-users',
+                to: '/employees',
+                /*can: 'employees'*/
+            },
+            {
+                label: 'Congés',
+                icon: 'pi pi-fw pi-calendar-times',
+                to: '/leaves',
+                /*can: 'leaves'*/
+            },
+            // {
+            //     label: 'Présences',
+            //     icon: 'pi pi-fw pi-clock',
+            //     to: '/attendances',
+            //     /*can: 'attendances'*/
+            // },
+            {
+                label: 'Paie',
+                icon: 'pi pi-fw pi-money-bill',
+                to: '/payroll',
+                /*can: 'payroll'*/
+
+            }
+        ]
+    },
     {
         label: 'SYSTEME CONFIGURATION',
         items: [

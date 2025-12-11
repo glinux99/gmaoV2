@@ -3,12 +3,16 @@
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginController;
 use App\Http\Controllers\EquipmentCharacteristicController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\EquipmentMovementController;
 use App\Http\Controllers\EquipmentTypeController;
 use App\Http\Controllers\SparePartController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\PaymentController;
 use App\Models\User;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -25,6 +29,7 @@ use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SparePartMovementController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
+use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\UnityController;
 
@@ -43,13 +48,13 @@ Route::get('/', function () {
     return redirect('login');
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard', [
-        'users'         => (int) User::count(),
-        'roles'         => (int) Role::count(),
-        'permissions'   => (int) Permission::count(),
-    ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Route::get('/dashboard', function () {
+//     return Inertia::render('Dashboard', [
+//         'users'         => (int) User::count(),
+//         'roles'         => (int) Role::count(),
+//         'permissions'   => (int) Permission::count(),
+//     ]);
+// })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth', 'verified')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -79,8 +84,15 @@ Route::middleware('auth', 'verified')->group(function () {
     'tasks'=>TaskController::class,
     'activities'=> ActivityController::class,
     'agenda'=> AgendaController::class,
+    'dashboard'=> DashboardController::class,
+    'employees' => EmployeeController::class,
+    'leaves' => LeaveController::class,
+    'payroll' => PaymentController::class,
+    'expenses' => ExpensesController::class,
   ]);
 
+  Route::put('/expenses/{expense}/status', [ExpensesController::class, 'updateStatus'])->name('expenses.updateStatus');
+  Route::put('/expenses/group-status', [ExpensesController::class, 'updateGroupStatus'])->name('expenses.updateGroupStatus');
 
 // ... autres routes
 
@@ -88,8 +100,11 @@ Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestro
 
 
 });
-Route::get('/auth/{provider}/redirect', [SocialiteController ::class, 'redirect'])->name('socialite.redirect');
-Route::get('/auth/{provider}/callback', [SocialiteController::class, 'callback'])->name('socialite.callback');
+
+Route::group(['middleware' => ['web']], function () {
+    Route::get('/auth/{provider}/redirect', [SocialiteController ::class, 'redirect'])->name('socialite.redirect');
+    Route::get('/auth/{provider}/callback', [SocialiteController::class, 'callback'])->name('socialite.callback');
+});
 
 Route::get('/form', function () {
     return Inertia::render('SakaiForm');

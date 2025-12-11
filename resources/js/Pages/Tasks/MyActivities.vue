@@ -81,6 +81,8 @@ const form = useForm({
     spare_parts_used: [],
     spare_parts_returned: [],
     user_id: null,
+    service_order_cost: 0,
+    service_order_description: 'xx',
     instruction_answers: {},
 });
 
@@ -210,8 +212,10 @@ const updateActivity = () => {
         ...form.data(),
         actual_start_time: form.actual_start_time ? form.actual_start_time.toISOString() : null,
         actual_end_time: form.actual_end_time ? form.actual_end_time.toISOString() : null,
+        service_order_cost: serviceOrderCost.value, // Set to null if no cost
+        service_order_description: serviceOrderCost.value > 0 ? 'Paiement des pièces détachées et autres' : 'Paiement des pièces détachées et autres',
     };
-
+console.log({...form});
     form.put(route('activities.update', form.id), {
         onSuccess: () => {
             hideDialog();
@@ -279,6 +283,21 @@ const sparePartOptions = computed(() => {
         label: `${part.reference} (${part.description || 'N/A'})`,
         value: part.id
     }));
+});
+
+// -----------------------------------------------------------
+// Calcul automatique du coût du service
+// -----------------------------------------------------------
+const serviceOrderCost = computed(() => {
+    return form.spare_parts_used.reduce((total, usedPart) => {
+        const partDetails = props.spareParts.find(p => p.id === usedPart.id);
+        const price = partDetails?.price || 0;
+        return total + (price * usedPart.quantity);
+    }, 0);
+});
+
+watch(serviceOrderCost, (newCost) => {
+    form.service_order_cost = newCost;
 });
 
 // -----------------------------------------------------------
