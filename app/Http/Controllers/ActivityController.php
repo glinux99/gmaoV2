@@ -12,6 +12,7 @@ use App\Models\InstructionAnswer;
 use App\Models\SparePart;
 use Illuminate\Support\Facades\DB;
 use App\Models\ServiceOrder;
+use App\Models\SparePartActivity;
 use App\Models\Expenses;
 
 class ActivityController extends Controller
@@ -119,20 +120,26 @@ class ActivityController extends Controller
             // and updating the quantities in the SparePart model.
             // Example (simplified):
             if (isset($validated['spare_parts_used']) && is_array($validated['spare_parts_used'])) {
-                foreach ($validated['spare_parts_used'] as $part) {
+                foreach ($validated['spare_parts_used'] as $sparePartData) {
                     // Créer une dépense pour chaque pièce utilisée
                     $activity->expenses()->create([
-                        'description' => 'Pièce détachée utilisée: ' . (\App\Models\SparePart::find($part['id'])->reference ?? 'N/A'),
-                        'amount' => (\App\Models\SparePart::find($part['id'])->price ?? 0) * $part['quantity'],
+                        'description' => 'Pièce détachée utilisée: ' . (\App\Models\SparePart::find($sparePartData['id'])->reference ?? 'N/A'),
+                        'amount' => (\App\Models\SparePart::find($sparePartData['id'])->price ?? 0) * $sparePartData['quantity'],
                         'expense_date' => now(),
                         'category' => 'parts',
                         'user_id' => Auth::id(),
                         'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
                         'status' => 'pending',
                     ]);
-                    $sparePart = \App\Models\SparePart::find($part['id']);
+                    $sparePart = \App\Models\SparePart::find($sparePartData['id']);
                     if ($sparePart) {
-                        $sparePart->quantity -= $part['quantity'];
+                        SparePartActivity::create([
+                            'activity_id' => $activity->id,
+                            'spare_part_id' => $sparePart->id,
+                            'type' => 'used',
+                            'quantity_used' => $sparePartData['quantity'],
+                        ]);
+                        $sparePart->quantity -= $sparePartData['quantity'];
                         $sparePart->save();
                     }
                 }
@@ -140,9 +147,16 @@ class ActivityController extends Controller
 
             if (isset($validated['spare_parts_returned']) && is_array($validated['spare_parts_returned'])) {
                 foreach ($validated['spare_parts_returned'] as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']);
+                    $sparePart = \App\Models\SparePart::find($part['id']); // Assuming 'id' is the spare part ID
                     if ($sparePart) {
-                        $sparePart->quantity += $part['quantity'];
+                        // Enregistrer le mouvement dans la table pivot
+                        SparePartActivity::create([
+                            'activity_id' => $activity->id,
+                            'spare_part_id' => $sparePart->id,
+                            'type' => 'returned',
+                            'quantity_used' => $part['quantity'], // quantity_used peut être utilisé pour les retours aussi
+                        ]);
+                        $sparePart->quantity += $part['quantity']; // Ajouter au stock
                         $sparePart->save();
                     }
                 }
@@ -221,30 +235,34 @@ class ActivityController extends Controller
         DB::beginTransaction();
         try {
             // Revert previous spare part movements
-            if ($activity->spare_parts_used && is_array($activity->spare_parts_used)) {
-                foreach ($activity->spare_parts_used as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']);
-                    if ($sparePart && isset($part['quantity'])) {
-                        $sparePart->quantity += $part['quantity']; // Add back to stock
+            foreach ($activity->sparePartActivities as $sparePartActivity) {
+                $sparePart = \App\Models\SparePart::find($sparePartActivity->spare_part_id);
+                if ($sparePart) {
+                    if ($sparePartActivity->type === 'used') {
+                        $sparePart->quantity += $sparePartActivity->quantity_used; // Add back to stock
+                        $sparePart->save();
+                    }
+                    if ($sparePartActivity->type === 'returned') {
+                        $sparePart->quantity -= $sparePartActivity->quantity_used; // Remove from stock
                         $sparePart->save();
                     }
                 }
             }
-            if ($activity->spare_parts_returned && is_array($activity->spare_parts_returned)) {
-                foreach ($activity->spare_parts_returned as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']);
-                    if ($sparePart && isset($part['quantity'])) {
-                        $sparePart->quantity -= $part['quantity']; // Remove from stock
-                        $sparePart->save();
-                    }
-                }
-            }
+            // Supprimer tous les enregistrements de la table pivot pour cette activité
+            $activity->sparePartActivities()->delete();
+
+            // Supprimer les dépenses associées aux pièces détachées pour cette activité
+            $activity->expenses()->where('category', 'parts')->delete();
+
+            // Supprimer les ServiceOrders associées à cette activité
+            ServiceOrder::where('task_id', $activity->task_id)->delete();
+
 
             // Supprimer les anciennes dépenses liées à cette activité pour éviter les doublons
             $activity->expenses()->delete();
 
             // Mettre à jour ou créer la ServiceOrder
-            $serviceOrder = ServiceOrder::where('task_id', $activity->task_id)->first();
+            $serviceOrder = ServiceOrder::firstOrNew(['task_id' => $activity->task_id]);
             if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
                 $serviceOrderData = [
                     'task_id' => $activity->task_id,
@@ -252,7 +270,8 @@ class ActivityController extends Controller
                     'cost' => $validated['service_order_cost'],
                     'status' => 'completed',
                 ];
-                $serviceOrder = ServiceOrder::updateOrCreate(['task_id' => $activity->task_id], $serviceOrderData);
+                $serviceOrder->fill($serviceOrderData);
+                $serviceOrder->save();
 
                 // Créer la dépense associée
                 $activity->expenses()->create([
@@ -266,21 +285,27 @@ class ActivityController extends Controller
             // Apply new spare part movements
             // The model's casts will handle JSON encoding/decoding for storage
             if (isset($validated['spare_parts_used']) && is_array($validated['spare_parts_used'])) {
-                foreach ($validated['spare_parts_used'] as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']);
+                foreach ($validated['spare_parts_used'] as $sparePartData) {
+                    $sparePart = \App\Models\SparePart::find($sparePartData['id']);
                     if ($sparePart) {
                         // Créer une dépense pour chaque pièce utilisée
                         $activity->expenses()->create([
                             'description' => 'Pièce détachée utilisée: ' . $sparePart->reference,
-                            'amount' => ($sparePart->price ?? 0) * $part['quantity'],
+                            'amount' => ($sparePart->price ?? 0) * $sparePartData['quantity'],
                             'expense_date' => now(),
                             'category' => 'parts',
                             'user_id' => Auth::id(),
                             'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
                             'status' => 'pending',
                         ]);
-
-                        $sparePart->quantity -= $part['quantity'];
+                        // Enregistrer le mouvement dans la table pivot
+                        SparePartActivity::create([
+                            'activity_id' => $activity->id,
+                            'spare_part_id' => $sparePart->id,
+                            'type' => 'used',
+                            'quantity_used' => $sparePartData['quantity'],
+                        ]);
+                        $sparePart->quantity -= $sparePartData['quantity'];
                         $sparePart->save();
                     }
                 }
@@ -288,9 +313,16 @@ class ActivityController extends Controller
 
             if (isset($validated['spare_parts_returned']) && is_array($validated['spare_parts_returned'])) {
                 foreach ($validated['spare_parts_returned'] as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']);
+                    $sparePart = \App\Models\SparePart::find($part['id']); // Assuming 'id' is the spare part ID
                     if ($sparePart) {
-                        $sparePart->quantity += $part['quantity'];
+                        // Enregistrer le mouvement dans la table pivot
+                        SparePartActivity::create([
+                            'activity_id' => $activity->id,
+                            'spare_part_id' => $sparePart->id,
+                            'type' => 'returned',
+                            'quantity_used' => $part['quantity'], // quantity_used peut être utilisé pour les retours aussi
+                        ]);
+                        $sparePart->quantity += $part['quantity']; // Ajouter au stock
                         $sparePart->save();
                     }
                 }
@@ -326,27 +358,28 @@ class ActivityController extends Controller
         DB::beginTransaction();
         try {
             // Supprimer les dépenses associées
-            $activity->expenses()->delete();
+            $activity->expenses()->delete(); // Supprime toutes les dépenses liées à cette activité
 
             // Revert spare part movements before deleting the activity
-            if ($activity->spare_parts_used && is_array($activity->spare_parts_used)) {
-                foreach ($activity->spare_parts_used as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']);
-                    if ($sparePart && isset($part['quantity'])) {
-                        $sparePart->quantity += $part['quantity']; // Add back to stock
+            foreach ($activity->sparePartActivities as $sparePartActivity) {
+                $sparePart = \App\Models\SparePart::find($sparePartActivity->spare_part_id);
+                if ($sparePart) {
+                    if ($sparePartActivity->type === 'used') {
+                        $sparePart->quantity += $sparePartActivity->quantity_used; // Add back to stock
+                        $sparePart->save();
+                    }
+                    if ($sparePartActivity->type === 'returned') {
+                        $sparePart->quantity -= $sparePartActivity->quantity_used; // Remove from stock
                         $sparePart->save();
                     }
                 }
             }
-            if ($activity->spare_parts_returned && is_array($activity->spare_parts_returned)) {
-                foreach ($activity->spare_parts_returned as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']);
-                    if ($sparePart && isset($part['quantity'])) {
-                        $sparePart->quantity -= $part['quantity']; // Remove from stock
-                        $sparePart->save();
-                    }
-                }
-            }
+            // Supprimer tous les enregistrements de la table pivot pour cette activité
+            $activity->sparePartActivities()->delete();
+
+            // Supprimer les ServiceOrders associées à cette activité
+            ServiceOrder::where('task_id', $activity->task_id)->delete();
+
 
             $activity->delete();
             DB::commit();

@@ -95,7 +95,10 @@ class Maintenance extends Model
     {
         return $this->hasMany(Task::class);
     }
-
+ public function maintenaces(): HasMany
+    {
+        return $this->hasMany(Maintenance::class);
+    }
     /**
      * Get the instructions for the maintenance.
      */

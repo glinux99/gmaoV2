@@ -18,6 +18,7 @@ class Activity extends Model implements HasMedia
     protected $fillable = [
 
         'task_id',
+        'maintenance_id',
         'user_id', // The user who created the activity record
         'actual_start_time',
         'parent_id', // ID de l'activité parente
@@ -45,6 +46,10 @@ class Activity extends Model implements HasMedia
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
+    }
+     public function maintenance(): BelongsTo
+    {
+        return $this->belongsTo(Maintenance::class);
     }
     /**
      * Récupère l'activité parente (si c'est une sous-activité).
@@ -101,5 +106,10 @@ class Activity extends Model implements HasMedia
         return $this->belongsToMany(SparePart::class, 'spare_part_activities', 'activity_id', 'spare_part_id')
                     ->wherePivot('type', 'returned')
                     ->withPivot('quantity_used');
+    }
+
+    public function sparePartActivities(): HasMany
+    {
+        return $this->hasMany(SparePartActivity::class);
     }
 }

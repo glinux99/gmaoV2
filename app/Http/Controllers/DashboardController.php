@@ -11,11 +11,14 @@ use App\Models\SparePartMovement;
 use App\Models\ServiceOrder;
 use App\Models\SparePart;
 use Carbon\Carbon;
+use App\Models\Expense;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Permission;
+use App\Models\Equipment;
+use App\Models\Expenses;
 
 class DashboardController extends Controller
 {
@@ -30,38 +33,60 @@ class DashboardController extends Controller
             'end_date' => 'nullable|date_format:Y-m-d',
         ]);
 
-        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : now()->startOfMonth();
-        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : now()->endOfMonth();
+        // Définition des périodes
+        $startDate = $request->input('start_date')
+            ? Carbon::parse($request->input('start_date'))->startOfDay()
+            : now()->startOfMonth();
+        $endDate = $request->input('end_date')
+            ? Carbon::parse($request->input('end_date'))->endOfDay()
+            : now()->endOfMonth();
 
-        // Période précédente pour le calcul des métriques (ex: "from last month")
+        // Période précédente (pour comparaison des métriques)
         $previousStartDate = $startDate->copy()->subMonth();
         $previousEndDate = $endDate->copy()->subMonth();
 
-        // Basic data
+        // Fonction helper pour déterminer la colonne de formatage de date selon le SGBD
+        $getDateFormat = function ($column, $format = '%Y-%m-%d') {
+            $driver = DB::connection()->getDriverName();
+            if ($driver === 'mysql') {
+                return "DATE_FORMAT($column, '$format')";
+            }
+            if ($driver === 'pgsql') {
+                return "TO_CHAR($column, 'YYYY-MM-DD')"; // Utiliser TO_CHAR pour PostgreSQL
+            }
+            return "DATE($column)"; // Fallback (e.g., SQLite)
+        };
+
+        // Fonction helper pour calculer le temps en heures/minutes
+        $getTimeDiffExpression = function ($endColumn, $startColumn, $unit = 'minute') {
+            $driver = DB::connection()->getDriverName();
+            if ($driver === 'mysql') {
+                $seconds = "TIMESTAMPDIFF(SECOND, $startColumn, $endColumn)";
+            } elseif ($driver === 'pgsql') {
+                $seconds = "EXTRACT(EPOCH FROM ($endColumn - $startColumn))";
+            } else { // SQLite
+                $seconds = "CAST(strftime('%s', $endColumn) - strftime('%s', $startColumn) AS REAL)";
+            }
+
+            return $unit === 'hour' ? "$seconds / 3600" : "$seconds / 60";
+        };
+
+        // --- Basic data (Métriques globales) ---
         $usersCount = User::count();
         $rolesCount = Role::count();
         $permissionsCount = Permission::count();
 
-        // Number of active tasks
+        // Tâches actives (planifiées dans la période, ou basées sur la date de création selon votre besoin)
         $activeTasks = Task::whereBetween('planned_start_date', [$startDate, $endDate])->count();
-        $timeSpent = "120h";
 
-        $timeSpentInMinutes = Activity::whereBetween('activities.actual_end_time', [$startDate, $endDate])
-            ->join('tasks', 'activities.task_id', '=', 'tasks.id')
-            ->select(DB::raw('AVG(ABS(CAST(strftime(\'%s\', activities.actual_end_time) - strftime(\'%s\', activities.actual_start_time) AS REAL) / 60 - (CAST(strftime(\'%s\', tasks.planned_end_date) - strftime(\'%s\', tasks.planned_start_date) AS REAL) / 60))) as avg_time_difference'))
-            ->value('avg_time_difference');
-
-        $timeSpent = $timeSpentInMinutes ?
-            round($timeSpentInMinutes) . 'm' :
-            '0m';
+        // Temps moyen d'intervention (calculé directement)
         $averageInterventionTimeInMinutes = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
-            ->avg(DB::raw('CAST(strftime(\'%s\', activities.actual_end_time) - strftime(\'%s\', activities.actual_start_time) AS REAL) / 60'));
+            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
 
         $averageInterventionTime = $averageInterventionTimeInMinutes ?
-            round($averageInterventionTimeInMinutes) . 'm' :
-            '0m';
+            round($averageInterventionTimeInMinutes) . 'm' : '0m';
 
-        // --- Helper function to calculate percentage change ---
+        // --- Helper function pour le calcul du changement de métrique (%) ---
         $calculateMetric = function ($current, $previous) {
             if ($previous == 0) {
                 return $current > 0 ? '+100%' : '0%';
@@ -70,9 +95,11 @@ class DashboardController extends Controller
             return ($change >= 0 ? '+' : '') . round($change) . '%';
         };
 
-        // --- Helper function to generate chart data for a period ---
-        $generateChartData = function ($model, $dateColumn, $period) {
-            $data = $model::select(DB::raw("DATE($dateColumn) as date"), DB::raw('count(*) as count'))
+        // --- Helper function pour générer les données de graphique (Sparklines) ---
+        $generateChartData = function ($model, $dateColumn, $period) use ($getDateFormat) {
+            $dateFormat = $getDateFormat($dateColumn, '%Y-%m-%d');
+
+            $data = $model::select(DB::raw("$dateFormat as date"), DB::raw('count(*) as count'))
                 ->whereBetween($dateColumn, [$period['start'], $period['end']])
                 ->groupBy('date')
                 ->orderBy('date')
@@ -84,87 +111,90 @@ class DashboardController extends Controller
             ];
         };
 
-        // --- Calculate metrics and chart data for Sparklines ---
+        // --- Calculs pour les Sparklines ---
+
+        // Users
         $usersCurrentCount = User::whereBetween('created_at', [$startDate, $endDate])->count();
         $usersPreviousCount = User::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
 
+        // Tâches créées
         $activeTasksCurrentCount = Task::whereBetween('created_at', [$startDate, $endDate])->count();
         $activeTasksPreviousCount = Task::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
 
+        // Temps Total Passé (en heures)
         $timeSpentCurrent = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
-            ->sum(DB::raw('CAST(strftime(\'%s\', actual_end_time) - strftime(\'%s\', actual_start_time) AS REAL) / 3600')); // in hours
+            ->sum(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
         $timeSpentPrevious = Activity::whereBetween('actual_end_time', [$previousStartDate, $previousEndDate])
-            ->sum(DB::raw('CAST(strftime(\'%s\', actual_end_time) - strftime(\'%s\', actual_start_time) AS REAL) / 3600'));
+            ->sum(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
 
+        // Temps Moyen d'Intervention (en minutes)
         $avgTimeCurrent = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
-            ->avg(DB::raw('CAST(strftime(\'%s\', actual_end_time) - strftime(\'%s\', actual_start_time) AS REAL) / 60')); // in minutes
+            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
         $avgTimePrevious = Activity::whereBetween('actual_end_time', [$previousStartDate, $previousEndDate])
-            ->avg(DB::raw('CAST(strftime(\'%s\', actual_end_time) - strftime(\'%s\', actual_start_time) AS REAL) / 60'));
-
+            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
 
         $sparklineData = [
             'users' => [
+                'value' => $usersCurrentCount,
                 'metric' => $calculateMetric($usersCurrentCount, $usersPreviousCount),
                 'chartData' => $generateChartData(new User, 'created_at', ['start' => $startDate, 'end' => $endDate])
             ],
             'activeTasks' => [
+                'value' => $activeTasksCurrentCount,
                 'metric' => $calculateMetric($activeTasksCurrentCount, $activeTasksPreviousCount),
                 'chartData' => $generateChartData(new Task, 'created_at', ['start' => $startDate, 'end' => $endDate])
             ],
             'timeSpent' => [
+                'value' => round($timeSpentCurrent, 1) . 'h',
                 'metric' => $calculateMetric($timeSpentCurrent, $timeSpentPrevious),
                 'chartData' => $generateChartData(new Activity, 'actual_end_time', ['start' => $startDate, 'end' => $endDate])
             ],
             'averageInterventionTime' => [
+                'value' => round($avgTimeCurrent) . 'm',
                 'metric' => $calculateMetric($avgTimeCurrent, $avgTimePrevious),
                 'chartData' => $generateChartData(new Activity, 'actual_end_time', ['start' => $startDate, 'end' => $endDate])
             ],
         ];
-        // --- Données pour les graphiques Sparkline ---
-        // NOTE: Ces données sont des exemples. Vous devrez implémenter la logique pour récupérer
-        // les données sur la période et calculer la métrique par rapport à la période précédente.
-        $sparklineData = [
-            'users' => [
-                'metric' => '+5%',
-                'chartData' => ['labels' => ['Jan', 'Fev', 'Mar'], 'datasets' => [['data' => [10, 15, 12]]]]
-            ],
-            'activeTasks' => [
-                'metric' => '-10%',
-                'chartData' => ['labels' => ['Jan', 'Fev', 'Mar'], 'datasets' => [['data' => [20, 18, 25]]]]
-            ],
-            'timeSpent' => [
-                'metric' => '+8%',
-                'chartData' => ['labels' => ['Jan', 'Fev', 'Mar'], 'datasets' => [['data' => [100, 120, 110]]]]
-            ],
-            'averageInterventionTime' => [
-                'metric' => '+2%',
-                'chartData' => ['labels' => ['Jan', 'Fev', 'Mar'], 'datasets' => [['data' => [40, 45, 42]]]]
-            ],
-        ];
 
-        // Financial data
-        // Expenses for spare parts used in tasks and activities
+        // --- Données Financières (Dépenses de Consommation) ---
+
+        // Dépenses Pièces Détachées (coût estimé des pièces UTILISÉES dans les activités)
         $depensesPiecesDetachees = Activity::whereBetween('created_at', [$startDate, $endDate])
-            ->with('sparePartActivities.sparePart')
+            ->with('sparePartsUsed.sparePart')
             ->get()
-            ->sum(function ($activity) { // Changed from sparePartsUsed to sparePartActivities
-                return $activity->sparePartActivities->sum(function ($pivot) {
+            ->sum(function ($activity) {
+                // Utilise unit_estimated_cost
+                return $activity->sparePartsUsed->sum(function ($pivot) {
                     return $pivot->quantity_used * ($pivot->sparePart->unit_estimated_cost ?? 0);
                 });
             });
 
-        // Calculate the estimated cost of services performed
+        // Dépenses Prestation (Coût des ServiceOrder)
         $depensesPrestation = ServiceOrder::whereBetween('created_at', [$startDate, $endDate])->sum('cost');
+// ['pending', 'approved', 'rejected', 'paid'])
+        // Dépenses validées (Perte Estimée)
+        $expensesTotal = Expenses::where('status', 'approved')->orWhere('status', 'paid')
+            ->whereBetween('created_at', [$startDate, $endDate])->sum('amount');
 
-        // Calculate estimated loss (you might need a Downtime model)
-        $perteEstimee = 580;
+        // --- Calcul du Budget Total (Dépenses d'investissement/achat) ---
 
-        // Spare part movements
+        // Coût des équipements achetés sur la période
+        $equipmentPurchaseCost = Equipment::whereBetween('purchase_date', [$startDate, $endDate])->sum('purchase_price');
+
+        // Coût des pièces détachées entrées en stock sur la période
+        $sparePartsInflowCost = SparePartMovement::whereBetween('spare_part_movements.created_at', [$startDate, $endDate])
+            ->where('spare_part_movements.type', 'in')
+            ->join('spare_parts', 'spare_part_movements.spare_part_id', '=', 'spare_parts.id')
+            ->sum(DB::raw('spare_part_movements.quantity * spare_parts.price'));
+
+        $budgetTotalCalculated = $equipmentPurchaseCost + $sparePartsInflowCost + $depensesPrestation;
+
+        // --- Mouvements de Pièces Détachées ---
         $movements = SparePartMovement::whereBetween('created_at', [$startDate, $endDate])
             ->select(
                 DB::raw("DATE(created_at) as date"),
-                DB::raw("SUM(CASE WHEN type = 'in' THEN quantity ELSE 0 END) as entries"),
-                DB::raw("SUM(CASE WHEN type = 'out' THEN quantity ELSE 0 END) as exits")
+                DB::raw("SUM(CASE WHEN type = 'entree' THEN quantity ELSE 0 END) as entries"),
+                DB::raw("SUM(CASE WHEN type = 'sortie' THEN quantity ELSE 0 END) as exits")
             )
             ->groupBy('date')
             ->orderBy('date')
@@ -176,104 +206,116 @@ class DashboardController extends Controller
             'exits' => $movements->pluck('exits'),
         ];
 
-        // Tasks by status
-        $tasksByStatus = [
-            'labels' => [],
-            'data' => [],
+
+        // --- Tâches par Statut et Priorité (Graphiques en secteurs/barres) ---
+
+        $tasksByStatus = Task::select('status', DB::raw('count(*) as total'))
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->groupBy('status')->get()->pluck('total', 'status')->toArray();
+        $tasksByStatusChart = [
+            'labels' => array_keys($tasksByStatus),
+            'data' => array_values($tasksByStatus),
         ];
 
-        $tasksStatusData = Task::select('status', DB::raw('count(*) as total'))
+        $tasksByPriority = Task::select('priority', DB::raw('count(*) as total'))
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->groupBy('status')
-            ->get()
-            ->pluck('total', 'status')
-            ->toArray();
-
-        $tasksByStatus['labels'] = array_keys($tasksStatusData);
-        $tasksByStatus['data'] = array_values($tasksStatusData);
-
-        // Tasks by priority
-        $tasksByPriority = [
-            'labels' => [],
-            'data' => [],
+            ->groupBy('priority')->get()->pluck('total', 'priority')->toArray();
+        $tasksByPriorityChart = [
+            'labels' => array_keys($tasksByPriority),
+            'data' => array_values($tasksByPriority),
         ];
 
-        $tasksPriorityData = Task::select('priority', DB::raw('count(*) as total'))
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->groupBy('priority')
-            ->get()
-            ->pluck('total', 'priority')
-            ->toArray();
+        // --- Volume Mensuel & Temps de Résolution Moyen (Graphique combiné) ---
 
-        $tasksByPriority['labels'] = array_keys($tasksPriorityData);
-        $tasksByPriority['data'] = array_values($tasksPriorityData);
+        // **CORRECTION de l'ambiguïté :** On spécifie la table 'tasks' pour la première requête (volume)
+        $monthlyTaskFormat = $getDateFormat('tasks.created_at', '%Y-%m');
 
-        // Monthly volume
         $monthlyData = Task::whereBetween('created_at', [$startDate, $endDate])
             ->select(
-                DB::raw("strftime('%Y-%m', created_at) as month"),
-                DB::raw("SUM(CASE WHEN maintenance_type = 'Corrective' THEN 1 ELSE 0 END) as stopped"), // Assuming Corrective is 'stopped'
-                DB::raw("SUM(CASE WHEN maintenance_type = 'Préventive' THEN 1 ELSE 0 END) as degraded"), // Assuming Preventive is 'degraded'
+                DB::raw("$monthlyTaskFormat as month"),
+                DB::raw("SUM(CASE WHEN maintenance_type = 'Corrective' THEN 1 ELSE 0 END) as stopped"),
+                DB::raw("SUM(CASE WHEN maintenance_type = 'Préventive' THEN 1 ELSE 0 END) as degraded"),
                 DB::raw("SUM(CASE WHEN maintenance_type = 'Améliorative' THEN 1 ELSE 0 END) as improvement")
             )
             ->groupBy('month')
             ->orderBy('month')
             ->get();
 
+        $resolutionExpression = $getTimeDiffExpression('activities.actual_end_time', 'activities.actual_start_time', 'hour');
+
+        // **CORRECTION de l'ambiguïté :** On spécifie la table 'activities' pour la seconde requête (résolution)
+        $monthlyActivityFormat = $getDateFormat('activities.created_at', '%Y-%m');
+
         $resolutionData = Activity::join('tasks', 'activities.task_id', '=', 'tasks.id')
             ->whereBetween('activities.created_at', [$startDate, $endDate])
             ->select(
-                DB::raw("strftime('%Y-%m', activities.created_at) as month"),
-                DB::raw("AVG(CAST(strftime('%s', activities.actual_end_time) - strftime('%s', activities.actual_start_time) AS REAL) / 3600) as avg_resolution_hours")
+                DB::raw("$monthlyActivityFormat as month"),
+                DB::raw("AVG($resolutionExpression) as avg_resolution_hours")
             )
             ->groupBy('month')
             ->orderBy('month')
             ->get()->pluck('avg_resolution_hours', 'month');
 
+
+
+        // Harmonisation des données pour le graphique (utilise les mois des tâches pour les labels)
         $monthlyVolumeData = [
             'labels' => $monthlyData->pluck('month'),
             'stopped' => $monthlyData->pluck('stopped'),
             'degraded' => $monthlyData->pluck('degraded'),
             'improvement' => $monthlyData->pluck('improvement'),
-            'resolutionTime' => $monthlyData->pluck('month')->map(fn ($month) => $resolutionData->get($month) ?? 0),
+            // Utiliser les données de résolution correspondantes (Attention: les mois pourraient ne pas être alignés si le filtre est court)
+            'resolutionTime' => $monthlyData->pluck('month')->map(
+                fn ($month) => round($resolutionData->get($month) ?? 0, 1)
+            ),
         ];
 
-        // Failures by type of defect
-        $failuresData = Task::where('maintenance_type', 'Corrective')->whereBetween('created_at', [$startDate, $endDate])->select('priority', DB::raw('count(*) as total'))->groupBy('priority')->get();
+        // --- Pannes par Type (Priorité des Correctives) & Interventions par Type de Maintenance ---
+        $failuresData = Task::where('maintenance_type', 'Corrective')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->select('priority', DB::raw('count(*) as total'))
+            ->groupBy('priority')->get();
         $failuresByType = [
             'labels' => $failuresData->pluck('priority'),
             'data' => $failuresData->pluck('total'),
         ];
 
-        // Interventions par type (exemple)
-        $interventionsData = Task::whereBetween('created_at', [$startDate, $endDate])->select('maintenance_type', DB::raw('count(*) as total'))->groupBy('maintenance_type')->get();
+        $interventionsData = Task::whereBetween('created_at', [$startDate, $endDate])
+            ->select('maintenance_type', DB::raw('count(*) as total'))
+            ->groupBy('maintenance_type')->get();
         $interventionsByType = [
             'labels' => $interventionsData->pluck('maintenance_type'),
             'data' => $interventionsData->pluck('total'),
         ];
 
+
         // 2. Rendu de la vue Inertia avec les props
         return Inertia::render('Dashboard', [
-            'users' => $usersCount,
-            'roles' => $rolesCount,
-            'permissions' => $permissionsCount,
-            'activeTasks' => $activeTasks,
-            'timeSpent' => $timeSpent,
-            'averageInterventionTime' => $averageInterventionTime,
+            // Données Basiques
+            'usersCount' => $usersCount,
+            'rolesCount' => $rolesCount,
+            'permissionsCount' => $permissionsCount,
+            'activeTasksCount' => $activeTasks,
+
+            // Sparklines (Métriques détaillées)
             'sparklineData' => $sparklineData,
+
+            // Filtres appliqués
             'filters' => [
                 'startDate' => $startDate->toDateString(),
                 'endDate' => $endDate->toDateString(),
             ],
-             'depensesPiecesDetachees' => $depensesPiecesDetachees,
-            'depensesPrestation' => $depensesPrestation,
-            'perteEstimee' => $perteEstimee,
-            'sparePartsMovement' => $sparePartsMovement,
-            'tasksByStatus' => $tasksByStatus,
-            'tasksByPriority' => $tasksByPriority,
+
+            // Données Financières
+            'budgetTotal' => $budgetTotalCalculated,
             'depensesPiecesDetachees' => $depensesPiecesDetachees,
             'depensesPrestation' => $depensesPrestation,
-            'perteEstimee' => $perteEstimee,
+            'expensesTotal' => $expensesTotal,
+
+            // Graphiques
+            'sparePartsMovement' => $sparePartsMovement,
+            'tasksByStatus' => $tasksByStatusChart,
+            'tasksByPriority' => $tasksByPriorityChart,
             'monthlyVolumeData' => $monthlyVolumeData,
             'failuresByType' => $failuresByType,
             'interventionsByType' => $interventionsByType,

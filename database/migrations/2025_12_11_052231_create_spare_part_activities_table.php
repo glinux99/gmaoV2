@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('activity_id')->constrained('activities')->onDelete('cascade');
             $table->foreignId('spare_part_id')->constrained('spare_parts')->onDelete('cascade');
+            $table->enum('type', ['used', 'returned']);
             $table->integer('quantity_used');
             $table->unique(['activity_id', 'spare_part_id']);
             $table->timestamps();

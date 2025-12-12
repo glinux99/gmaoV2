@@ -4,38 +4,52 @@ import { ref, watch, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 // Assurez-vous d'importer les composants PrimeVue nécessaires
 import Card from 'primevue/card';
-import Button from 'primevue/button';
 import Chart from 'primevue/chart';
 import Calendar from 'primevue/calendar';
 import Dropdown from 'primevue/dropdown';
 
 const props = defineProps({
-    users: Number,
-    roles: Number,
-    activeTasks: Number,
+    // Métriques des Sparklines (Renommées pour correspondre au contrôleur)
+    usersCount: Number,
+    activeTasksCount: Number,
     timeSpent: String,
     averageInterventionTime: String,
-    sparklineData: Object, // Données pour les 4 cartes principales
-    permissions: Number,
-    filters: Object,
-    sparePartsMovement: Object, // Données pour le graphique des pièces détachées
-    tasksByStatus: Object, // Données pour le graphique des tâches par statut
-    tasksByPriority: Object, // Données pour le graphique des tâches par priorité
+    rolesCount: Number,
+    permissionsCount: Number,
+    sparklineData: Object, // Contient les données 'metric', 'chartData', etc.
 
-    // --- NOUVELLES PROPS (pour intégrer les données de l'image) ---
+    // Filtres
+    filters: Object,
+
+    // Données graphiques
+    sparePartsMovement: Object,
+    tasksByStatus: Object,
+    tasksByPriority: Object,
+
+    // Données Financières
     depensesPiecesDetachees: Number,
+    budgetTotal: Number,
     depensesPrestation: Number,
-    perteEstimee: Number,
+    expensesTotal: Number,
+
+    // Données des visualisations détaillées
     monthlyVolumeData: Object,
     failuresByType: Object,
     interventionsByType: Object,
-    // -----------------------------------------------------------------
 });
 
-// --- Filtre par date ---
-const dateRange = ref();
-const filterType = ref(props.filters?.filterType || 'this_month'); // Valeur par défaut ou depuis les props
+// --- Gestion des Filtres de Date ---
 
+// 1. Initialisation des dates
+const initialStartDate = props.filters?.startDate ? new Date(props.filters.startDate) : null;
+const initialEndDate = props.filters?.endDate ? new Date(props.filters.endDate) : null;
+const initialDateRange = initialStartDate && initialEndDate ? [initialStartDate, initialEndDate] : null;
+
+// Les `ref` pour l'état du filtre
+const dateRange = ref(initialDateRange);
+const filterType = ref(props.filters?.filterType || 'this_month');
+
+// 2. Fonction de calcul des plages prédéfinies
 const updateDateRange = () => {
     let startDate, endDate;
     const today = new Date();
@@ -50,56 +64,79 @@ const updateDateRange = () => {
             endDate = new Date(today.getFullYear(), today.getMonth(), 0);
             break;
         case 'last_week':
-            const lastWeekStart = new Date(today);
-            lastWeekStart.setDate(today.getDate() - today.getDay() - 6);
-            startDate = lastWeekStart;
-
+            // Semaine civile précédente complète (Lundi au Dimanche)
+            const dayOfWeek = today.getDay();
             const lastWeekEnd = new Date(today);
-            lastWeekEnd.setDate(today.getDate() - today.getDay() - 0);
+            // Si aujourd'hui est Dimanche (0), on enlève 7 jours pour aller au Dimanche dernier, sinon on enlève le jour de la semaine (1=Lundi -> 1 jour)
+            lastWeekEnd.setDate(today.getDate() - (dayOfWeek === 0 ? 7 : dayOfWeek));
+
+            const lastWeekStart = new Date(lastWeekEnd);
+            lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+
+            startDate = lastWeekStart;
             endDate = lastWeekEnd;
             break;
         default: // 'custom'
-            return; // Ne rien faire, laisse le calendrier gérer
+            return;
     }
 
     if (startDate && endDate) {
+        // Fixer les heures pour couvrir la journée complète
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
         dateRange.value = [startDate, endDate];
     }
 };
 
+// 3. Cycle de vie et écouteurs
+
 onMounted(() => {
-    // Initialise la plage de dates si elle n'est pas déjà définie par Inertia
-    if (!dateRange.value) {
+    // Si aucun filtre n'est passé par Inertia, initialiser la plage par défaut au montage
+    if (!props.filters?.startDate && !props.filters?.endDate) {
         updateDateRange();
     }
 });
 
-// Écouteur pour le type de filtre
+// Écoute les changements dans le Dropdown (sauf 'custom')
 watch(filterType, () => {
     if (filterType.value !== 'custom') {
         updateDateRange();
     }
 });
 
-
-// Surveiller les changements de l'intervalle de dates et recharger les données
+// Écoute les changements dans la plage de dates (Calendar ou updateDateRange)
+// Déclenche la requête Inertia pour recharger le dashboard avec les nouvelles données
 watch(dateRange, (newDates) => {
     if (newDates && newDates[0] && newDates[1]) {
-        router.get(route('dashboard'), {
-            start_date: newDates[0].toISOString().split('T')[0],
-            end_date: newDates[1].toISOString().split('T')[0],
-        }, { preserveState: true, replace: true });
+        // Formatage des dates au format ISO (YYYY-MM-DD) pour le backend
+        const newStartDate = newDates[0].toISOString().split('T')[0];
+        const newEndDate = newDates[1].toISOString().split('T')[0];
+
+        // Comparaison pour éviter un rechargement si les dates sont identiques
+        const currentStartDate = props.filters?.startDate;
+        const currentEndDate = props.filters?.endDate;
+
+        if (newStartDate !== currentStartDate || newEndDate !== currentEndDate) {
+            router.get(route('dashboard.index'), {
+                start_date: newStartDate, // Paramètre pour le contrôleur
+                end_date: newEndDate,     // Paramètre pour le contrôleur
+                filterType: filterType.value, // Maintient l'état du dropdown
+            }, { preserveState: true, replace: true, preserveScroll: true });
+        }
     }
 }, {
-    deep: true // pour surveiller les changements à l'intérieur du tableau
+    deep: true
 });
 
-// Options pour un graphique Sparkline (cache les axes et la légende)
+// --- Logique Graphiques ---
+
+// Options pour un graphique Sparkline
 const sparklineOptions = {
     plugins: { legend: { display: false } },
     maintainAspectRatio: false,
+    elements: {
+        point: { radius: 0 }
+    },
     scales: {
         x: { display: false },
         y: { display: false }
@@ -107,43 +144,63 @@ const sparklineOptions = {
 };
 
 // Préparation des données pour les quatre cartes principales (Sparklines)
-const sparklineItems = ref([
-    {
-        label: 'Utilisateurs',
-        value: props.users ?? 0,
-        metric: props.sparklineData?.users?.metric ?? '0%',
-        icon: 'pi pi-users',
-        chartData: props.sparklineData?.users?.chartData,
-        changeColor: (props.sparklineData?.users?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-    },
-    {
-        label: 'Tâches Actives',
-        value: props.activeTasks ?? 0,
-        metric: props.sparklineData?.activeTasks?.metric ?? '0%',
-        icon: 'pi pi-check-square',
-        chartData: props.sparklineData?.activeTasks?.chartData,
-        changeColor: (props.sparklineData?.activeTasks?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-    },
-    {
-        label: 'Temps Passé (h)',
-        value: props.timeSpent ?? '0h',
-        metric: props.sparklineData?.timeSpent?.metric ?? '0%',
-        icon: 'pi pi-hourglass',
-        chartData: props.sparklineData?.timeSpent?.chartData,
-        changeColor: (props.sparklineData?.timeSpent?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-    },
-    {
-        label: 'Tps Moyen Interv.',
-        value: props.averageInterventionTime ?? '0s',
-        metric: props.sparklineData?.averageInterventionTime?.metric ?? '0%',
-        icon: 'pi pi-clock',
-        chartData: props.sparklineData?.averageInterventionTime?.chartData,
-        changeColor: (props.sparklineData?.averageInterventionTime?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-    },
-]);
+const sparklineItems = computed(() => {
+    const data = props.sparklineData;
+
+    const formatSparklineData = (chartData) => {
+        if (!chartData || !chartData.datasets || chartData.datasets.length === 0) return chartData;
+
+        const formattedData = JSON.parse(JSON.stringify(chartData));
+        formattedData.datasets[0] = {
+            ...formattedData.datasets[0],
+            borderColor: '#3B82F6',
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            fill: true,
+            tension: 0.4,
+            type: 'line'
+        };
+        return formattedData;
+    };
+
+    return [
+        {
+            label: 'Utilisateurs',
+            value: props.usersCount ?? 0,
+            metric: data?.users?.metric ?? '0%',
+            icon: 'pi pi-users',
+            chartData: formatSparklineData(data?.users?.chartData),
+            changeColor: (data?.users?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
+        },
+        {
+            label: 'Tâches Actives',
+            value: props.activeTasksCount ?? 0,
+            metric: data?.activeTasks?.metric ?? '0%',
+            icon: 'pi pi-check-square',
+            chartData: formatSparklineData(data?.activeTasks?.chartData),
+            changeColor: (data?.activeTasks?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
+        },
+        {
+            label: 'Temps Passé (h)',
+            value: data?.timeSpent?.value ?? '0h',
+            metric: data?.timeSpent?.metric ?? '0%',
+            icon: 'pi pi-hourglass',
+            chartData: formatSparklineData(data?.timeSpent?.chartData),
+            changeColor: (data?.timeSpent?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
+        },
+        {
+            label: 'Tps Moyen Interv.',
+            value: data?.averageInterventionTime?.value ?? '0m',
+            metric: data?.averageInterventionTime?.metric ?? '0%',
+            icon: 'pi pi-clock',
+            chartData: formatSparklineData(data?.averageInterventionTime?.chartData),
+            changeColor: (data?.averageInterventionTime?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
+        },
+    ];
+});
+
 
 // 3. Préparation des données pour le graphique de répartition des tâches
-const tasksChartType = ref('status'); // 'status' ou 'priority'
+const tasksChartType = ref('status');
 const tasksChartFilterOptions = ref([
     { label: 'Par Statut', value: 'status' },
     { label: 'Par Priorité', value: 'priority' }
@@ -162,31 +219,6 @@ const tasksDistributionChartData = computed(() => {
         datasets: [{ ...defaultData.datasets[0], data: dataSet.data }]
     };
 });
-const permissionsChartData = computed(() => ({
-    labels: ['Rôles', 'Permissions'],
-    datasets: [
-        {
-            label: 'Permissions et Rôles',
-            data: [props.roles ?? 0, props.permissions ?? 0],
-            backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)'],
-            borderColor: ['rgb(54, 162, 235)', 'rgb(255, 206, 86)'],
-            borderWidth: 1
-        }
-    ]
-}));
-
-const barChartOptions = ref({
-    plugins: {
-        legend: {
-            display: false
-        }
-    },
-    scales: {
-        y: {
-            beginAtZero: true
-        }
-    }
-});
 
 // 4. Préparation des données pour le graphique des mouvements de pièces détachées
 const sparePartsChartData = computed(() => ({
@@ -196,14 +228,14 @@ const sparePartsChartData = computed(() => ({
             label: 'Pièces entrantes',
             data: props.sparePartsMovement?.entries ?? [],
             fill: false,
-            borderColor: '#42A5F5', // Bleu
+            borderColor: '#42A5F5',
             tension: 0.4
         },
         {
             label: 'Pièces sortantes',
             data: props.sparePartsMovement?.exits ?? [],
             fill: false,
-            borderColor: '#FFA726', // Orange
+            borderColor: '#FFA726',
             tension: 0.4
         }
     ]
@@ -219,14 +251,11 @@ const lineChartOptions = ref({
 });
 
 
-// -----------------------------------------------------------------
-// --- NOUVELLE LOGIQUE POUR L'IMAGE AJOUTÉE ---
-// -----------------------------------------------------------------
+// --- Logique pour les graphiques détaillés ---
 
-// Graphique 1 : Pannes par type de défaut (Doughnut)
 const failuresChartData = computed(() => {
     const dataSet = props.failuresByType;
-    const defaultColors = ['#059669', '#EF4444', '#F97316', '#3B82F6', '#6366F1']; // Vert, Rouge, Orange, Bleu, Indigo
+    const defaultColors = ['#4F46E5', '#EF4444', '#F97316', '#10B981', '#6366F1'];
 
     if (!dataSet || !dataSet.labels || !dataSet.data) {
         return { labels: [], datasets: [{ data: [], backgroundColor: defaultColors }] };
@@ -241,47 +270,41 @@ const failuresChartData = computed(() => {
     };
 });
 
-// Graphique 2 : Interventions par type (Barres)
-const interventionsChartData = computed(() => {
-    const dataSet = props.interventionsByType;
-    if (!dataSet || !dataSet.labels || !dataSet.data) {
-        return {
-            datasets: [{
-                label: 'Nombre d\'Interventions',
-                data: [],
-                backgroundColor: 'rgba(59, 130, 246, 0.8)', // Bleu cohérent
-                borderColor: 'rgb(59, 130, 246)',
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        };
-    }
-
-    return {
-        labels: dataSet.labels,
-        datasets: [{
+const interventionsChartData = computed(() => ({
+    labels: props.interventionsByType?.labels ?? [],
+    datasets: [
+        {
             label: 'Nombre d\'Interventions',
-            data: dataSet.data,
+            data: props.interventionsByType?.data ?? [],
             backgroundColor: 'rgba(59, 130, 246, 0.8)',
             borderColor: 'rgb(59, 130, 246)',
             borderWidth: 1,
             borderRadius: 4
-        }]
-    };
+        }
+    ]
+}));
+
+const interventionsChartOptions = ref({
+    plugins: {
+        legend: { display: false }
+    },
+    scales: {
+        y: {
+            beginAtZero: true
+        }
+    }
 });
 
-// Graphique 3 : Volume mensuel (Graphique Combiné Barres empilées + Ligne)
 const monthlyVolumeChartData = computed(() => {
     const dataSet = props.monthlyVolumeData;
 
     return {
         labels: dataSet?.labels ?? [],
         datasets: [
-            // Données pour les barres empilées
             {
                 type: 'bar',
                 label: 'Stoppée',
-                backgroundColor: '#EF4444', // Rouge
+                backgroundColor: '#EF4444',
                 data: dataSet?.stopped || [],
                 stack: 'Stack 0',
                 yAxisID: 'y'
@@ -289,7 +312,7 @@ const monthlyVolumeChartData = computed(() => {
             {
                 type: 'bar',
                 label: 'Dégradée',
-                backgroundColor: '#FBBF24', // Jaune/Orange
+                backgroundColor: '#FBBF24',
                 data: dataSet?.degraded || [],
                 stack: 'Stack 0',
                 yAxisID: 'y'
@@ -297,33 +320,31 @@ const monthlyVolumeChartData = computed(() => {
             {
                 type: 'bar',
                 label: 'Amélioration',
-                backgroundColor: '#3B82F6', // Bleu
+                backgroundColor: '#3B82F6',
                 data: dataSet?.improvement || [],
                 stack: 'Stack 0',
                 yAxisID: 'y'
             },
-            // Données pour la ligne (Délai de résolution)
             {
                 type: 'line',
                 label: 'Délai de résolution moyen',
-                borderColor: '#EF4444', // Ligne rouge
+                borderColor: '#EF4444',
                 borderWidth: 2,
                 fill: false,
                 tension: 0.4,
-                data: dataSet?.resolutionTime || [], // en heures
+                data: dataSet?.resolutionTime || [],
                 yAxisID: 'y1'
             }
         ]}
 });
 
-// Options du graphique combiné (Gestion des deux axes Y)
 const comboChartOptions = ref({
     maintainAspectRatio: false,
     elements: {
         bar: {
-            borderWidth: 1,                 // 1.5 pixels d'épaisseur
-            borderColor: '#e9ecf2',           // Couleur de la bordure (Gris foncé/noir)
-            borderRadius: 7                // Facultatif : pour arrondir les coins si ce n'est pas déjà fait par la prop du composant
+            borderWidth: 1,
+            borderColor: '#e9ecf2',
+            borderRadius: 7
         }
     },
     plugins: {
@@ -345,7 +366,6 @@ const comboChartOptions = ref({
             ticks: {
                 color: '#6B7280',
                 beginAtZero: true,
-                stepSize: 5 // Exemple d'incrément
             },
             title: {
                 display: true,
@@ -353,17 +373,16 @@ const comboChartOptions = ref({
                 color: '#6B7280'
             }
         },
-        y1: { // Le deuxième axe Y pour la ligne (Délai de résolution)
+        y1: {
             type: 'linear',
             display: true,
             position: 'right',
             grid: { drawOnChartArea: false },
             ticks: {
-                color: '#EF4444', // Couleur de l'axe pour correspondre à la ligne
+                color: '#EF4444',
                 callback: function(value) {
-                    return value + 'h'; // Afficher en heures
+                    return value + 'h';
                 },
-                stepSize: 5
             },
             title: {
                 display: true,
@@ -373,9 +392,6 @@ const comboChartOptions = ref({
         }
     }
 });
-
-// -----------------------------------------------------------------
-
 </script>
 <template>
     <app-layout>
@@ -407,31 +423,31 @@ const comboChartOptions = ref({
 
             <h3 class="col-span-12 text-xl font-semibold mt-2">💸 Suivi Financier</h3>
 
-            <div class="col-span-12 sm:col-span-4">
+            <div v-if="props.budgetTotal !== undefined" class="col-span-12 sm:col-span-4">
                 <Card class="h-full">
-                    <template #title>Dépenses de pièces détachées</template>
+                    <template #title>Budget Total </template>
                     <template #content>
-                        <div class="text-3xl font-bold text-gray-800">{{ props.depensesPiecesDetachees?.toLocaleString() ?? '0' }} €</div>
+                        <div class="text-3xl font-bold text-gray-800">{{ props.budgetTotal?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
                         <i class="pi pi-wrench text-5xl text-orange-500 opacity-20 absolute right-4 bottom-4"></i>
                         </template>
                 </Card>
             </div>
 
-            <div class="col-span-12 sm:col-span-4">
+            <div v-if="props.depensesPrestation !== undefined" class="col-span-12 sm:col-span-4">
                 <Card class="h-full">
                     <template #title>Dépenses de prestation</template>
                     <template #content>
-                        <div class="text-3xl font-bold text-gray-800">{{ props.depensesPrestation?.toLocaleString() ?? '0' }} €</div>
+                        <div class="text-3xl font-bold text-gray-800">{{ props.depensesPrestation?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
                         <i class="pi pi-briefcase text-5xl text-green-500 opacity-20 absolute right-4 bottom-4"></i>
                         </template>
                 </Card>
             </div>
 
-            <div class="col-span-12 sm:col-span-4">
+            <div v-if="props.expensesTotal !== undefined" class="col-span-12 sm:col-span-4">
                 <Card class="h-full">
-                    <template #title>Perte estimée</template>
+                    <template #title>Total Dépense validée</template>
                     <template #content>
-                        <div class="text-3xl font-bold text-gray-800">{{ props.perteEstimee?.toLocaleString() ?? '0' }} €</div>
+                        <div class="text-3xl font-bold text-gray-800">{{ props.expensesTotal?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
                         <i class="pi pi-exclamation-triangle text-5xl text-red-500 opacity-20 absolute right-4 bottom-4"></i>
                         </template>
                 </Card>
@@ -452,14 +468,14 @@ const comboChartOptions = ref({
                         <div class="flex justify-between items-center mb-4">
                             <div class="text-3xl font-bold text-gray-800">{{ item.value }}</div>
                             <div class="w-24 h-8">
-                                <Chart type="bar" :data="item.chartData" :options="sparklineOptions" class="h-full w-full" />
+                                <Chart v-if="item.chartData" type="line" :data="item.chartData" :options="sparklineOptions" class="h-full w-full" />
                             </div>
                         </div>
 
                         <div class="flex items-center text-sm">
                             <i :class="item.changeColor === 'text-green-500' ? 'pi pi-arrow-up-right text-xs mr-1' : 'pi pi-arrow-down-right text-xs mr-1'"></i>
                             <span :class="item.changeColor" class="font-medium">{{ item.metric.replace('-', '') }}</span>
-                            <span class="text-gray-500 ml-2">from last month</span>
+                            <span class="text-gray-500 ml-2">from last period</span>
                         </div>
                     </template>
                 </Card>
@@ -469,7 +485,7 @@ const comboChartOptions = ref({
 
             <h3 class="col-span-12 text-xl font-semibold mt-2">📈 Detailed Visualizations</h3>
 
-            <div class="col-span-12">
+            <div v-if="monthlyVolumeChartData.labels.length > 0" class="col-span-12">
                 <Card>
                     <template #title>Volume mensuel des interventions et délai moyen de résolution</template>
                     <template #subtitle>Statut et temps de résolution sur la période</template>
@@ -481,7 +497,8 @@ const comboChartOptions = ref({
                 </Card>
             </div>
 
-            <div class="col-span-12">
+            <div v-if="sparePartsChartData.labels.length > 0" class="col-span-12">
+
                 <Card>
                     <template #title>Mouvements des Pièces Détachées</template>
                     <template #subtitle>Entrées et sorties sur la période sélectionnée</template>
@@ -493,7 +510,7 @@ const comboChartOptions = ref({
                 </Card>
             </div>
 
-            <div class="col-span-12 lg:col-span-6">
+            <div v-if="failuresChartData.labels.length > 0" class="col-span-12 lg:col-span-6">
                 <Card>
                     <template #title>Pannes par type de défaut</template>
                     <template #subtitle>Répartition des causes de défauts</template>
@@ -505,19 +522,19 @@ const comboChartOptions = ref({
                 </Card>
             </div>
 
-            <div class="col-span-12 lg:col-span-6">
+            <div v-if="interventionsChartData.datasets[0]?.data.length > 0" class="col-span-12 lg:col-span-6">
                 <Card>
                     <template #title>Interventions par type</template>
                     <template #subtitle>Total des actions menées : {{ interventionsChartData.datasets[0]?.data.reduce((a, b) => a + b, 0) ?? 0 }}</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart type="bar" :data="interventionsChartData" :options="barChartOptions" class="h-full" />
+                            <Chart type="bar" :data="interventionsChartData" :options="interventionsChartOptions" class="h-full" />
                         </div>
                     </template>
                 </Card>
             </div>
 
-            <div class="col-span-12 lg:col-span-6">
+            <div v-if="tasksDistributionChartData.labels.length > 0" class="col-span-12 lg:col-span-6">
                 <Card>
                     <template #title>
                         <div class="flex justify-between items-center">
@@ -539,23 +556,10 @@ const comboChartOptions = ref({
                 </Card>
             </div>
 
-            <div class="col-span-12 lg:col-span-6">
-                <Card>
-                    <template #title>Rôles & Permissions</template>
-                    <template #subtitle>Total: {{ (props.roles ?? 0) + (props.permissions ?? 0) }}</template>
-                    <template #content>
-                        <div class="h-80">
-                            <Chart type="bar" :data="permissionsChartData" :options="barChartOptions" class="h-full" />
-                        </div>
-                    </template>
-                </Card>
-            </div>
-
         </div>
     </app-layout>
 </template>
 
 <style scoped>
 /* Les styles spécifiques pour la mise en page vont ici si nécessaire */
-/* J'ai retiré lang="scss" ici pour corriger l'erreur de compilation */
 </style>

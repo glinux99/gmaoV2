@@ -378,19 +378,27 @@ const deleteMaintenance = (maintenance) => {
 };
 
 const availableEquipmentsForActivity = (currentIndex) => {
-    if (!selectedMaintenanceForActivity.value) return [];
+    if (!selectedMaintenanceForActivity.value) {
+        return [];
+    }
 
-    // Récupérer tous les IDs d'équipements déjà sélectionnés dans les AUTRES activités
+    // 1. Récupérer tous les IDs d'équipements déjà sélectionnés dans les AUTRES activités
     const selectedIdsInOtherActivities = activityCreationForm.activities
         .filter((_, index) => index !== currentIndex)
         .flatMap(activity => activity.equipment_ids);
 
-    // Retourner uniquement les équipements qui ne sont pas déjà sélectionnés ailleurs
-    return selectedMaintenanceForActivity.value.equipments.filter(
-        equipment => !selectedIdsInOtherActivities.includes(equipment.id)
-    );
-};
+    // 2. Parcourir TOUS les équipements de la maintenance sélectionnée
+    return selectedMaintenanceForActivity.value.equipments.map(equipment => {
+        // 3. Déterminer si l'équipement est déjà utilisé ailleurs
+        const isDisabled = selectedIdsInOtherActivities.includes(equipment.id);
 
+        // 4. Retourner un objet qui inclut l'équipement et son état d'utilisation
+        return {
+            ...equipment, // Toutes les propriétés de l'équipement (id, name, etc.)
+            isDisabled: isDisabled // Nouvel indicateur d'état
+        };
+    });
+};
 const getAssignablesForActivity = (activity) => {
     if (activity.assignable_type === 'App\\Models\\User') {
         return props.users;
@@ -976,59 +984,118 @@ const transformedEquipmentTree = computed(() => {
                                             :options="availableEquipmentsForActivity(index)"
                                             optionLabel="designation"
                                             optionValue="id"
-                                            placeholder="Sélectionner des équipements"
+                                            placeholder="Sélectionner les équipements"
                                             display="chip"
                                             class="w-full"
-                                        />
+                                            :optionDisabled="option => option.isDisabled"
+                                        >
+                                            <template #option="slotProps">
+                                                {{ slotProps.option.designation }} <span v-if="slotProps.option.isDisabled" class="text-sm text-gray-500">(Déjà utilisé ailleurs)</span>
+                                            </template>
+                                        </MultiSelect>
                                         <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.equipment_ids`] }}</small>
                                     </div>
                                 </div>
+<Divider class="my-4" />
 
-                                <Divider />
+<h6 class="font-semibold mb-3 text-lg border-b pb-2">
+  <i class="pi pi-cog mr-2"></i> Pièces Détachées Requises
+</h6>
 
-                                <!-- Section Pièces Détachées -->
-                                <h6 class="font-semibold mb-3">Pièces Détachées Requises</h6>
-                                <div v-if="activity.spare_parts.length > 0" class="flex flex-column gap-2 mb-2">
-                                    <div v-for="(part, partIndex) in activity.spare_parts" :key="partIndex" class="grid grid-nogutter align-items-center gap-2">
-                                        <div class="col-7">
-                                            <Dropdown v-model="part.id" :options="spareParts" optionLabel="reference" optionValue="id" placeholder="Sélectionner une pièce" filter class="w-full" />
-                                        </div>
-                                        <div class="col-3">
-                                            <InputNumber v-model="part.quantity_used" placeholder="Qté" :min="1" class="w-full" />
-                                        </div>
-                                        <div class="col-1">
-                                            <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-rounded" @click="removeSparePartFromActivity(index, partIndex)" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <Button label="Ajouter une pièce" icon="pi pi-plus" class="p-button-text p-button-sm" @click="addSparePartToActivity(index)" />
+<div v-if="activity.spare_parts && activity.spare_parts.length > 0"
+     class="w-full space-y-4">
+  <div v-for="(part, partIndex) in activity.spare_parts" :key="partIndex"
+       class="flex flex-col sm:flex-row items-center gap-3 p-3 bg-gray-50 rounded-lg shadow-sm border border-gray-200">
 
-                                <Divider />
+    <div class="flex-grow w-full sm:w-auto">
+      <Dropdown v-model="part.id" :options="spareParts" optionLabel="reference" optionValue="id"
+                placeholder="Sélectionner une pièce" filter class="w-full" />
+    </div>
+
+    <div class="">
+      <InputNumber v-model="part.quantity_used" placeholder="Qté" :min="1" class="w-full"
+                   inputId="horizontal-buttons" showButtons buttonLayout="horizontal"
+                   decrementButtonClass="p-button-danger" incrementButtonClass="p-button-success"
+                   incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" />
+    </div>
+
+    <div class="flex-shrink-0">
+      <Button icon="pi pi-trash"
+              class="p-button-danger p-button-text p-button-rounded text-xl"
+              @click="removeSparePartFromActivity(index, partIndex)"
+              aria-label="Supprimer la pièce" />
+    </div>
+  </div>
+</div>
+
+<div v-else class="w-full text-gray-500 italic p-3 border border-dashed border-gray-300 rounded-lg">
+  Aucune pièce détachée n'a été ajoutée pour cette activité.
+</div>
+
+<div class="mt-4">
+  <Button label="Ajouter une pièce" icon="pi pi-plus"
+          class="p-button-sm p-button-outlined p-button-secondary w-full sm:w-auto justify-content-center"
+          @click="addSparePartToActivity(index)" />
+</div>
+
+<Divider class="my-4" />
 
                                 <!-- Section Instructions -->
-                                <h6 class="font-semibold mb-3">Instructions pour l'Activité</h6>
-                                <div v-if="activity.instructions.length > 0" class="flex flex-column gap-3 mb-2">
-                                    <div v-for="(instruction, instructionIndex) in activity.instructions" :key="instructionIndex" class="p-2 border-1 border-round surface-ground">
-                                        <div class="grid align-items-center gap-2">
-                                            <div class="col-12 md:col-5">
-                                                <InputText v-model="instruction.label" placeholder="Libellé de l'instruction" class="w-full" />
-                                            </div>
-                                            <div class="col-12 md:col-3">
-                                                <Dropdown v-model="instruction.type" :options="instructionValueTypes" optionLabel="label" optionValue="value" placeholder="Type" class="w-full" />
-                                            </div>
-                                            <div class="col-12 md:col-2 flex align-items-center">
-                                                <Checkbox v-model="instruction.is_required" :binary="true" :inputId="`instr_req_${index}_${instructionIndex}`" class="mr-2" />
-                                                <label :for="`instr_req_${index}_${instructionIndex}`">Requis</label>
-                                            </div>
-                                            <div class="col-12 md:col-1">
-                                                <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-rounded" @click="removeInstructionFromActivity(index, instructionIndex)" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <Button label="Ajouter une instruction" icon="pi pi-plus" class="p-button-text p-button-sm" @click="addInstructionToActivity(index)" />
+                               <h6 class="font-semibold mb-3 text-lg border-b pb-2">
+  <i class="pi pi-list mr-2"></i> Instructions pour l'Activité
+</h6>
 
-                                <Button icon="pi pi-trash" class="p-button-danger p-button-rounded p-button-text absolute" style="top: 0.5rem; right: 0.5rem;" @click="removeActivityFromForm(index)" v-tooltip.top="'Supprimer cette activité'" />
+<div v-if="activity.instructions && activity.instructions.length > 0"
+     class="w-full space-y-3">
+
+  <div v-for="(instruction, instructionIndex) in activity.instructions"
+       :key="instructionIndex"
+       class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+
+    <div class="grid grid-nogutter align-items-center gap-3">
+
+      <div class="col-12 md:col-5">
+        <InputText v-model="instruction.label" placeholder="Libellé de l'instruction"
+                   class="w-full" />
+      </div>
+
+      <div class="col-12 md:col-3">
+        <Dropdown v-model="instruction.type" :options="instructionValueTypes"
+                  optionLabel="label" optionValue="value" placeholder="Type"
+                  class="w-full" />
+      </div>
+
+      <div class="col-12 md:col-2 flex align-items-center gap-2">
+        <Checkbox v-model="instruction.is_required" :binary="true"
+                  :inputId="`instr_req_${instructionIndex}`" />
+        <label :for="`instr_req_${instructionIndex}`" class="text-sm font-medium select-none">Requis</label>
+      </div>
+
+      <div class="col-12 md:col-1 flex justify-content-start md:justify-content-end">
+        <Button icon="pi pi-trash"
+                class="p-button-danger p-button-text p-button-rounded flex-shrink-0"
+                @click="removeInstructionFromActivity(index, instructionIndex)"
+                aria-label="Supprimer l'instruction" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<div v-else class="w-full text-gray-500 italic p-3 border border-dashed border-gray-300 rounded-lg">
+  Aucune instruction n'a été ajoutée pour cette activité.
+</div>
+
+<div class="mt-4">
+  <Button label="Ajouter une instruction" icon="pi pi-plus"
+          class="p-button-sm p-button-outlined p-button-secondary w-full sm:w-auto justify-content-center"
+          @click="addInstructionToActivity(index)" />
+</div>
+
+<Button icon="pi pi-trash"
+        class="p-button-danger p-button-rounded p-button-text absolute"
+        style="top: 0.5rem; right: 0.5rem;"
+        @click="removeActivityFromForm(index)"
+        v-tooltip.top="'Supprimer cette activité'" />
                             </div>
 
                             <Button label="Ajouter une autre activité" icon="pi pi-plus" class="p-button-text" @click="addActivityToForm" />
