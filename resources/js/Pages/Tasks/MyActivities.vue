@@ -352,7 +352,8 @@ const editActivity = (activity) => {
 const createSubActivity = (parentActivity) => {
     isCreatingSubActivity.value = true;
     selectedActivity.value = parentActivity;
-
+    console.log("Sous Activity");
+    console.log(parentActivity);
     form.reset(); // 1. Réinitialiser tout
 
     // Champs de contexte hérités
@@ -361,9 +362,9 @@ const createSubActivity = (parentActivity) => {
     form.maintenance_id = parentActivity.maintenance_id;
 
     // Champs de contexte copiés
-    form.jobber = parentActivity.jobber || '';
-    form.user_id = parentActivity.user_id;
-    form.service_order_description = parentActivity.service_order_description || 'Paiement des pièces détachées et autres';
+    form.jobber = parentActivity.jobber || null;
+    form.user_id = parentActivity.user_id || null;
+    form.service_order_description = parentActivity.service_order_description || 'Paiement des pièces détachées et autres'; // Default value
 
     // Instructions (avec gestion de la conversion en string)
     if (parentActivity.instructions && typeof parentActivity.instructions !== 'string') {
@@ -381,20 +382,22 @@ const createSubActivity = (parentActivity) => {
     form.spare_parts_returned = parseJson(parentActivity.spare_parts_returned);
 
     // Reste du formulaire (valeurs propres à la nouvelle sous-activité)
-    form.status = 'scheduled';
+    form.status = 'scheduled'; // Default status for new activities
     form.problem_resolution_description = `Sous-activité pour ${parentActivity.task?.title || parentActivity.maintenance?.title || 'Activité'} : `;
     form.proposals = '';
-    form.additional_information = '';
+    form.additional_information = ''; // Empty for new sub-activity
     form.service_order_cost = 0;
     form.actual_start_time = null;
     form.scheduled_start_time = parentActivity.scheduled_start_time ? new Date(parentActivity.scheduled_start_time) : null;
+    form.actual_start_time = parentActivity.actual_start_time ? new Date(parentActivity.actual_start_time) : null;
+    form.actual_end_time = parentActivity.actual_end_time ? new Date(parentActivity.actual_end_time) : null;
     form.actual_end_time = null;
 
     // Copie des réponses aux instructions (logique complexe de l'héritage)
-    const answers = {};
-    const instructionAnswers = parseJson(parentActivity.instruction_answers);
-    const instructions = parentActivity.task?.instructions || parentActivity.instructions || [];
-
+    const answers = {}; // Initialize answers as an empty object
+    const instructionAnswers = parseJson(parentActivity.instruction_answers); // Parse parent's instruction answers
+    // Determine the source of instructions, prioritizing task instructions, then activity instructions
+    const instructions = parentActivity.task?.instructions || parseJson(parentActivity.instructions) || [];
     if (instructionAnswers && Array.isArray(instructionAnswers)) {
         instructionAnswers.forEach(answer => {
             const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
@@ -405,6 +408,8 @@ const createSubActivity = (parentActivity) => {
         });
     }
     form.instruction_answers = answers;
+    console.log("CCCCCC");
+    console.log(form);
 
     activityDialogVisible.value = true;
 };
@@ -428,7 +433,8 @@ const saveActivity = () => {
     const routeName = isCreatingSubActivity.value ? 'activities.store' : 'activities.update';
     const routeParams = isCreatingSubActivity.value ? {} : form.id;
     const successMessage = isCreatingSubActivity.value ? 'Sous-activité créée avec succès.' : 'Activité mise à jour avec succès.';
-
+    console.log("XXXXXXXXXXXXXXXXXXXX2545");
+    console.log(form);
     const handler = {
         onSuccess: () => {
             hideDialog();
@@ -491,6 +497,14 @@ const saveSparePart = () => {
     }
     sparePartDialogVisible.value = false;
 };
+
+const sparePartOptions = computed(() => {
+    return props.spareParts.map(part => ({
+        label: `${part.reference} (${part.name}) - Stock: ${part.stock}`,
+        value: part.id
+    }));
+});
+
 
 const removeSparePartUsed = (index) => {
    form.spare_parts_used = form.spare_parts_used.filter((_, i) => i !== index);
@@ -777,7 +791,7 @@ const removeSparePartReturned = (index) => {
                                     <Textarea id="proposals" class="w-full" v-model="form.proposals" rows="3" />
                                     <small class="p-error">{{ form.errors.proposals }}</small>
                                 </div>
-                                <div class="field p-col-12">
+                                <div class="field p-col-12 hidden">
                                     <label for="instructions" class="font-semibold">Instructions laissées</label>
                                     <Textarea id="instructions" class="w-full" v-model="form.instructions" rows="3" />
                                     <small class="p-error">{{ form.errors.instructions }}</small>

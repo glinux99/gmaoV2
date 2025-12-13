@@ -1,12 +1,9 @@
 <script setup>
 import AppLayout from "@/sakai/layout/AppLayout.vue";
-import { ref, watch, computed, onMounted } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 // Assurez-vous d'importer les composants PrimeVue nécessaires
 import Card from 'primevue/card';
 import Chart from 'primevue/chart';
-import Calendar from 'primevue/calendar';
-import Dropdown from 'primevue/dropdown';
 
 const props = defineProps({
     // Métriques des Sparklines (Renommées pour correspondre au contrôleur)
@@ -36,96 +33,6 @@ const props = defineProps({
     monthlyVolumeData: Object,
     failuresByType: Object,
     interventionsByType: Object,
-});
-
-// --- Gestion des Filtres de Date ---
-
-// 1. Initialisation des dates
-const initialStartDate = props.filters?.startDate ? new Date(props.filters.startDate) : null;
-const initialEndDate = props.filters?.endDate ? new Date(props.filters.endDate) : null;
-const initialDateRange = initialStartDate && initialEndDate ? [initialStartDate, initialEndDate] : null;
-
-// Les `ref` pour l'état du filtre
-const dateRange = ref(initialDateRange);
-const filterType = ref(props.filters?.filterType || 'this_month');
-
-// 2. Fonction de calcul des plages prédéfinies
-const updateDateRange = () => {
-    let startDate, endDate;
-    const today = new Date();
-
-    switch (filterType.value) {
-        case 'this_month':
-            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            break;
-        case 'last_month':
-            startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            endDate = new Date(today.getFullYear(), today.getMonth(), 0);
-            break;
-        case 'last_week':
-            // Semaine civile précédente complète (Lundi au Dimanche)
-            const dayOfWeek = today.getDay();
-            const lastWeekEnd = new Date(today);
-            // Si aujourd'hui est Dimanche (0), on enlève 7 jours pour aller au Dimanche dernier, sinon on enlève le jour de la semaine (1=Lundi -> 1 jour)
-            lastWeekEnd.setDate(today.getDate() - (dayOfWeek === 0 ? 7 : dayOfWeek));
-
-            const lastWeekStart = new Date(lastWeekEnd);
-            lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
-
-            startDate = lastWeekStart;
-            endDate = lastWeekEnd;
-            break;
-        default: // 'custom'
-            return;
-    }
-
-    if (startDate && endDate) {
-        // Fixer les heures pour couvrir la journée complète
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        dateRange.value = [startDate, endDate];
-    }
-};
-
-// 3. Cycle de vie et écouteurs
-
-onMounted(() => {
-    // Si aucun filtre n'est passé par Inertia, initialiser la plage par défaut au montage
-    if (!props.filters?.startDate && !props.filters?.endDate) {
-        updateDateRange();
-    }
-});
-
-// Écoute les changements dans le Dropdown (sauf 'custom')
-watch(filterType, () => {
-    if (filterType.value !== 'custom') {
-        updateDateRange();
-    }
-});
-
-// Écoute les changements dans la plage de dates (Calendar ou updateDateRange)
-// Déclenche la requête Inertia pour recharger le dashboard avec les nouvelles données
-watch(dateRange, (newDates) => {
-    if (newDates && newDates[0] && newDates[1]) {
-        // Formatage des dates au format ISO (YYYY-MM-DD) pour le backend
-        const newStartDate = newDates[0].toISOString().split('T')[0];
-        const newEndDate = newDates[1].toISOString().split('T')[0];
-
-        // Comparaison pour éviter un rechargement si les dates sont identiques
-        const currentStartDate = props.filters?.startDate;
-        const currentEndDate = props.filters?.endDate;
-
-        if (newStartDate !== currentStartDate || newEndDate !== currentEndDate) {
-            router.get(route('dashboard.index'), {
-                start_date: newStartDate, // Paramètre pour le contrôleur
-                end_date: newEndDate,     // Paramètre pour le contrôleur
-                filterType: filterType.value, // Maintient l'état du dropdown
-            }, { preserveState: true, replace: true, preserveScroll: true });
-        }
-    }
-}, {
-    deep: true
 });
 
 // --- Logique Graphiques ---
@@ -396,30 +303,6 @@ const comboChartOptions = ref({
 <template>
     <app-layout>
         <div class="grid grid-cols-12 gap-6">
-
-            <div class="col-span-12">
-                <div class="flex items-center justify-end gap-2 p-4 bg-white rounded-lg shadow-sm border">
-                    <i class="pi pi-calendar text-xl text-gray-600"></i>
-                    <h4 class="font-semibold text-gray-700 m-0">Filtrer par période :</h4>
-
-                    <Dropdown
-                        v-model="filterType"
-                        :options="[
-                            { label: 'Ce mois-ci', value: 'this_month' },
-                            { label: 'Mois dernier', value: 'last_month' },
-                            { label: 'Dernière semaine', value: 'last_week' },
-                            { label: 'Personnalisé', value: 'custom' }
-                        ]"
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Sélectionner une période" class="w-full md:w-auto" />
-
-                    <span v-if="filterType === 'custom'" class="mx-2 text-gray-600">Plage personnalisée:</span>
-                    <Calendar v-model="dateRange" selectionMode="range" :manualInput="false" dateFormat="dd/mm/yy" placeholder="Sélectionner une période" class="w-full md:w-auto" />
-                </div>
-            </div>
-
-            <hr class="col-span-12" />
 
             <h3 class="col-span-12 text-xl font-semibold mt-2">💸 Suivi Financier</h3>
 

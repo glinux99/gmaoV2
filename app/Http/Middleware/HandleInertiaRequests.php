@@ -30,8 +30,13 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        return [
-            ...parent::share($request),
+        // Logique pour déterminer les dates par défaut si elles ne sont pas dans la requête
+        // Par défaut: le mois en cours.
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $filterType = $request->input('filterType', 'this_month');
+
+        return array_merge(parent::share($request), [
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -47,6 +52,11 @@ class HandleInertiaRequests extends Middleware
                     'location' => $request->url(),
                 ]);
             },
-        ];
+            'filters' => [
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'filterType' => $filterType,
+            ],
+        ]);
     }
 }

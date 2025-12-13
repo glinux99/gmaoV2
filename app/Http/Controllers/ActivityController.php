@@ -60,6 +60,7 @@ class ActivityController extends Controller
      */
     public function store(Request $request)
     {
+
         $validated = $request->validate([
             'task_id' => 'nullable|exists:tasks,id',
             'user_id' => 'nullable|exists:users,id',
@@ -80,7 +81,7 @@ class ActivityController extends Controller
             // ------------------------------------
             'problem_resolution_description' => 'nullable|string|max:65535',
             'proposals' => 'nullable|string|max:65535',
-            'instructions' => 'nullable|string|max:65535',
+            'instructions' => 'nullable|max:65535',
             'additional_information' => 'nullable|string|max:65535',
             // Validation pour les réponses aux instructions
             'instruction_answers' => 'nullable|array',
@@ -101,6 +102,10 @@ class ActivityController extends Controller
             if (empty($validated['task_id']) && empty($validated['maintenance_id'])) {
                 throw new \Exception('An activity must be associated with either a task or a maintenance.');
             }
+
+            // Convert spare_parts_used and spare_parts_returned arrays to JSON strings for storage
+            $validated['spare_parts_used'] = is_array($validated['spare_parts_used'] ?? null) ? json_encode($validated['spare_parts_used']) : $validated['spare_parts_used'];
+            $validated['spare_parts_returned'] = is_array($validated['spare_parts_returned'] ?? null) ? json_encode($validated['spare_parts_returned']) : $validated['spare_parts_returned'];
 
             $activity = Activity::create($validated);
 
@@ -131,8 +136,9 @@ class ActivityController extends Controller
             // Logic for updating spare part quantities based on 'used' and 'returned'
             // This would involve iterating through the spare_parts_used and spare_parts_returned arrays
             // and updating the quantities in the SparePart model.
-            // Example (simplified):
-            if (isset($validated['spare_parts_used']) && is_array($validated['spare_parts_used'])) {
+            // Example (simplified): Ensure it's an array before iterating
+            $sparePartsUsed = json_decode($validated['spare_parts_used'] ?? '[]', true);
+            if (is_array($sparePartsUsed)) {
                 foreach ($validated['spare_parts_used'] as $sparePartData) {
                     // Créer une dépense pour chaque pièce utilisée
                     $activity->expenses()->create([
@@ -158,8 +164,9 @@ class ActivityController extends Controller
                 }
             }
 
-            if (isset($validated['spare_parts_returned']) && is_array($validated['spare_parts_returned'])) {
-                foreach ($validated['spare_parts_returned'] as $part) {
+            $sparePartsReturned = json_decode($validated['spare_parts_returned'] ?? '[]', true);
+            if (is_array($sparePartsReturned)) {
+                foreach ($sparePartsReturned as $part) {
                     $sparePart = \App\Models\SparePart::find($part['id']); // Assuming 'id' is the spare part ID
                     if ($sparePart) {
                         // Enregistrer le mouvement dans la table pivot
@@ -192,6 +199,7 @@ class ActivityController extends Controller
             return redirect()->route('activities.index')->with('success', 'Activité créée avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la création de l\'activité: ' . $e->getMessage());
         }
     }
@@ -464,7 +472,7 @@ public function bulkStore(Request $request)
             // -------------------------------------------------------------------
             'problem_resolution_description' => 'nullable|string|max:65535',
             'proposals' => 'nullable|string|max:65535',
-            'instructions' => 'nullable|array|max:65535',
+            'instructions' => 'nullable|max:65535',
             'additional_information' => 'nullable|string|max:65535',
             'instruction_answers' => 'nullable|array',
             'instruction_answers.*' => 'nullable|string|max:255',
@@ -537,6 +545,9 @@ public function bulkStore(Request $request)
             }
 
             // Apply new spare part movements
+            // Decode JSON strings back to arrays for processing
+            $sparePartsUsed = $validated['spare_parts_used'] ?? [];
+            $sparePartsReturned = $validated['spare_parts_returned'] ?? [];
             // The model's casts will handle JSON encoding/decoding for storage
             if (isset($validated['spare_parts_used']) && is_array($validated['spare_parts_used'])) {
                 foreach ($validated['spare_parts_used'] as $sparePartData) {
@@ -565,8 +576,8 @@ public function bulkStore(Request $request)
                 }
             }
 
-            if (isset($validated['spare_parts_returned']) && is_array($validated['spare_parts_returned'])) {
-                foreach ($validated['spare_parts_returned'] as $part) {
+            if (is_array($sparePartsReturned)) {
+                foreach ($sparePartsReturned as $part) {
                     $sparePart = \App\Models\SparePart::find($part['id']); // Assuming 'id' is the spare part ID
                     if ($sparePart) {
                         // Enregistrer le mouvement dans la table pivot
