@@ -13,6 +13,7 @@ use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ConnectionController;
 use App\Models\User;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -89,12 +90,14 @@ Route::middleware('auth', 'verified')->group(function () {
     'leaves' => LeaveController::class,
     'payroll' => PaymentController::class,
     'expenses' => ExpensesController::class,
+    'connections' => ConnectionController::class,
   ]);
 
   Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
   Route::put('/expenses/{expense}/status', [ExpensesController::class, 'updateStatus'])->name('expenses.updateStatus');
   Route::put('/expenses/group-status', [ExpensesController::class, 'updateGroupStatus'])->name('expenses.updateGroupStatus');
 
+  Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
 // ... autres routes
 
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');

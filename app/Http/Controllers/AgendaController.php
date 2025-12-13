@@ -16,7 +16,12 @@ class AgendaController extends Controller
      */
     public function index()
     {
-        $activities = Activity::all()->map(function ($activity) {
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $activities = Activity::whereBetween('actual_start_time', [$startDate, $endDate])
+            ->get()->map(function ($activity) {
             $taskTitle = $activity->task ? $activity->task->title : 'No Task';
             $equipmentName = $activity->task && $activity->task->equipment ? $activity->task->equipment->name : 'No Equipment';
             $teamLeader = $activity->team && $activity->team->leader ? $activity->team->leader->name : 'No Team Leader';
@@ -34,7 +39,8 @@ class AgendaController extends Controller
             ];
         });
 
-        $maintenances = Maintenance::all()->map(function ($maintenance) {
+        $maintenances = Maintenance::whereBetween('scheduled_start_date', [$startDate, $endDate])
+            ->get()->map(function ($maintenance) {
             return [
                 'id' => $maintenance->id,
                 'title' => $maintenance->title,
@@ -50,7 +56,8 @@ class AgendaController extends Controller
             ];
         });
 
-        $tasks = Task::all()->map(function ($task) {
+        $tasks = Task::whereBetween('planned_start_date', [$startDate, $endDate])
+            ->get()->map(function ($task) {
             return [
                 'id' => $task->id,
                 'title' => $task->title,

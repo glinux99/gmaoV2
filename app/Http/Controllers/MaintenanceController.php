@@ -25,7 +25,13 @@ class MaintenanceController extends Controller
      */
     public function index(Request $request)
     {
-        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment'])
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $maintenancesQuery = Maintenance::with(['assignable', 'equipments', 'instructions.equipment'])
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('scheduled_start_date', [$startDate, $endDate]);
+            })
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
             })
@@ -37,7 +43,7 @@ class MaintenanceController extends Controller
         $transformedEquipmentTree = $this->transformForTreeSelect($equipmentTree);
 
         return Inertia::render('Tasks/Maintenances', [
-            'maintenances' => $maintenances,
+            'maintenances' => $maintenancesQuery,
             'filters' => $request->only('search'),
             'equipments' => Equipment::all(), // Assumant que les équipements sont disponibles pour lier les activités
             'users' => User::all(), // Assumant que les utilisateurs sont disponibles pour lier les activités

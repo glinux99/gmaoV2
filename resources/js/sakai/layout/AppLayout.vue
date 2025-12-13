@@ -142,7 +142,7 @@ watch(dateRange, (newDates) => {
         <app-topbar></app-topbar>
         <app-sidebar></app-sidebar>
         <div class="layout-main-container">
-            <div class="px-6 py-4">
+            <div class="px-0 py-4">
                 <div class="flex items-center justify-end gap-2 p-3 bg-white rounded-lg shadow-sm border">
                     <i class="pi pi-calendar text-xl text-gray-600"></i>
                     <h4 class="font-semibold text-gray-700 m-0 hidden md:block">Période :</h4>

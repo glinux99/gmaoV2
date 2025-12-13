@@ -16,7 +16,12 @@ class TeamController extends Controller
      */
     public function index()
     {
-        $query = Team::query()->with(['members','teamLeader']);
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query = Team::query()->with(['members','teamLeader'])
+            ->whereBetween('created_at', [$startDate, $endDate]);
 
         if (request()->has('search')) {
             $search = request('search');
@@ -28,9 +33,9 @@ class TeamController extends Controller
                     $q->where('name', 'like', '%' . $search . '%');
                 });
         }
-
         return Inertia::render('Teams/Teams', [
             'teams' => $query->get(),
+            'filters' => $request->only(['search', 'start_date', 'end_date']),
             'technicians' => User::role('technician')->get(), // Pass all users for dropdowns
             'filters' => request()->only(['search']),
         ]);

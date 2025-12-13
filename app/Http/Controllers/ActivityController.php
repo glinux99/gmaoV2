@@ -26,7 +26,14 @@ class ActivityController extends Controller
      */
     public function index()
     {
-        $query = Activity::query();
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query = Activity::query()
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('actual_start_time', [$startDate, $endDate]);
+            });
 
         if (request()->has('search')) {
             $search = request('search');

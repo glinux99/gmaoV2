@@ -18,7 +18,13 @@ class PaymentController extends Controller
      */
 public function index(Request $request)
     {
-        $query = Payment::with(['paidBy', 'payable']);
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query = Payment::with(['paidBy', 'payable'])
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('payment_date', [$startDate, $endDate]);
+            });
 
         if ($search = $request->input('search')) {
             // ... (logique de recherche inchangée)

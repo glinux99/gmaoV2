@@ -12,16 +12,21 @@ class EnginController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $query = Engin::with('region');
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query->where(function ($q) use ($startDate, $endDate) {
+            $q->whereBetween('created_at', [$startDate, $endDate]);
+        });
 
         if (request()->has('search')) {
             $query->where('designation', 'like', '%' . request('search') . '%')
                 ->orWhere('type', 'like', '%' . request('search') . '%')
                 ->orWhere('immatriculation', 'like', '%' . request('search') . '%');
         }
-
         return Inertia::render('Configurations/Engins', [
             'engins' => $query->get(),
             'regions'=> Region::get(),

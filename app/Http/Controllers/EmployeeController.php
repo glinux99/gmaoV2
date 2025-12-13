@@ -15,7 +15,13 @@ class EmployeeController extends Controller
      */
     public function index()
     {
-        $query = Employee::with('user');
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query = Employee::with('user')
+            ->whereBetween('created_at', [$startDate, $endDate]);
+
 
         if (request()->has('search')) {
             $search = request('search');
@@ -27,7 +33,7 @@ class EmployeeController extends Controller
         }
 
         return Inertia::render('HumanResources/Employees', [
-            'employees' => $query->paginate(10),
+            'employees' => $query->paginate(10)->withQueryString(),
             'filters' => request()->only(['search']),
             'users' => User::all(['id', 'name']),
         ]);

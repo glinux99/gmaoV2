@@ -26,6 +26,7 @@ const model = ref([
             { label: 'Mes activités', icon: 'pi pi-fw pi-list', to: '/activities', /*can: 'projects'*/ },
             { label: 'Ordre de Travail', icon: 'pi pi-fw pi-check-square', to: '/tasks', /*can: 'projects'*/ },
             { label: 'Plan de maintenance', icon: 'pi pi-fw pi-wrench', to: '/maintenances', /*can: 'projects'*/ },
+            { label: 'Raccordements', icon: 'pi pi-fw pi-sitemap', to: '/connections', /*can: 'projects'*/ },
             { label: 'Dépenses', icon: 'pi pi-fw pi-money-bill', to: '/expenses', /*can: 'expenses'*/ },
           ]
     },

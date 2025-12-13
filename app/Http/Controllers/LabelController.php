@@ -16,11 +16,17 @@ class LabelController extends Controller
     public function index(Request $request)
     {
         $query = Label::with('labelCharacteristics');
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query->whereBetween('created_at', [$startDate, $endDate]);
 
         if ($request->has('search')) {
             $query->where('designation', 'like', '%' . $request->search . '%')
                   ->orWhere('description', 'like', '%' . $request->search . '%');
         }
+
+
 
         return Inertia::render('Configurations/Labels', [
             'labels' => $query->paginate(10),

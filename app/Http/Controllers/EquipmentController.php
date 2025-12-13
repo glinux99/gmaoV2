@@ -23,7 +23,14 @@ class EquipmentController extends Controller
      */
     public function index()
     {
-        $query = Equipment::with(['equipmentType', 'region', 'user', 'parent']);
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query = Equipment::with(['equipmentType', 'region', 'user', 'parent'])
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('purchase_date', [$startDate, $endDate]);
+            });
 
         // --- Logique de recherche (Filtre global) ---
         if (request()->has('search') && $search = request('search')) {

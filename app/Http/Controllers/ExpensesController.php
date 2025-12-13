@@ -19,8 +19,15 @@ class ExpensesController extends Controller
      */
     public function index()
     {
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
         // 1. Charger les dépenses avec les relations nécessaires
-        $query = Expenses::with(['user', 'approvedBy']);
+        $query = Expenses::with(['user', 'approvedBy'])
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('expense_date', [$startDate, $endDate]);
+            });
 
         // Application du filtre de recherche (si présent)
         if (request()->has('search')) {

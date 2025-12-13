@@ -30,6 +30,12 @@ class UserController extends Controller
     public function index(UserIndexRequest $request)
     {
         $users = User::query();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $users->where(function ($q) use ($startDate, $endDate) {
+            $q->whereBetween('created_at', [$startDate, $endDate]);
+        });
         if ($request->has('search')) {
             $users->where('name', 'LIKE', "%" . $request->search . "%");
             $users->orWhere('email', 'LIKE', "%" . $request->search . "%");
@@ -48,7 +54,7 @@ class UserController extends Controller
 
         return Inertia::render('User/Index', [
             'title'         => 'User',
-            'filters'       => $request->all(['search', 'field', 'order']),
+            'filters'       => $request->all(['search', 'field', 'order', 'start_date', 'end_date']),
             'users'         => $users->with('roles')->paginate(10),
             'roles'         => $roles,
         ]);
@@ -68,7 +74,7 @@ class UserController extends Controller
             return back()->with('success', $user->name. ' created successfully.');
         } catch (\Throwable $th) {
             DB::rollback();
-            return back()->with('error', 'Error creating ' . $user->name . $th->getMessage());
+            return back()->with('error', 'Error creating ' . $th->getMessage());
         }
     }
 
@@ -87,7 +93,7 @@ class UserController extends Controller
             return back()->with('success', $user->name. ' updated successfully.');
         } catch (\Throwable $th) {
             DB::rollback();
-            return back()->with('error', 'Error updating ' . $user->name . $th->getMessage());
+            return back()->with('error', 'Error updating '  . $th->getMessage());
         }
     }
 

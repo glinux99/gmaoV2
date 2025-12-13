@@ -20,6 +20,10 @@ class SparePartController extends Controller
     public function index(Request $request)
     {
         $query = SparePart::with(['label', 'user', 'sparePartCharacteristics.labelCharacteristic', 'region', 'unity']);
+        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d H:i:s'));
+        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d H:i:s'));
+
+        $query->whereBetween('created_at', [$startDate, $endDate]);
 
         if ($request->has('search')) {
             $query->where('reference', 'like', '%' . $request->search . '%')

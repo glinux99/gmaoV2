@@ -99,12 +99,12 @@ const user = page.props.auth.user;
                                 </NavLink>
 
                             <!-- Option de langue, si nécessaire, peut être réactivée avec une logique appropriée -->
-                            <!-- <div class="flex items-center justify-between px-4 py-2 text-sm text-gray-700">
+                            <div class="flex items-center justify-between px-4 py-2 text-sm text-gray-700">
                                 <div class="flex items-center">
                                     <i class="pi pi-globe mr-3 text-lg"></i> Langue
                                 </div>
                                 <span class="inline-flex items-center px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg">Français <img src="https://flagcdn.com/w20/fr.png" alt="FR Flag" class="ml-2 h-3 border border-gray-300"></span>
-                            </div> -->
+                            </div>
 
                             <div class="border-t my-2"></div>
 

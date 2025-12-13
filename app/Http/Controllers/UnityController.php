@@ -13,16 +13,22 @@ class UnityController extends Controller
      */
     public function index()
     {
-        $query = Unity::query();
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query = Unity::query()
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('created_at', [$startDate, $endDate]);
+            });
 
         if (request()->has('search')) {
             $query->where('designation', 'like', '%' . request('search') . '%')
                   ;
         }
-
         return Inertia::render('Configurations/Unities', [
             'unities' => $query->get(),
-            'filters' => request()->only(['search']),
+            'filters' => request()->only(['search', 'start_date', 'end_date']),
         ]);
     }
 

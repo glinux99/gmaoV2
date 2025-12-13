@@ -15,7 +15,13 @@ class TechnicianController extends Controller
     public function index(Request $request)
     {
         // Only technicians
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
         $query = User::role('technician')->with('region');
+        $query->where(function ($q) use ($startDate, $endDate) {
+            $q->whereBetween('created_at', [$startDate, $endDate]);
+        });
 
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
@@ -29,10 +35,11 @@ class TechnicianController extends Controller
 
         $technicians = $query->paginate(10)->withQueryString();
 
+
         return Inertia::render('Teams/Technicians', [
             'technicians' => $technicians,
             'regions' => Region::get(['id','designation']),
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'start_date', 'end_date']),
         ]);
     }
 

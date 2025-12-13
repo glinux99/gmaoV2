@@ -14,7 +14,12 @@ class LeaveController extends Controller
      */
     public function index()
     {
-        $query = Leave::with('user');
+        $request = request();
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $query = Leave::with('user')
+            ->whereBetween('created_at', [$startDate, $endDate]);
 
         if (request()->has('search')) {
             $search = request('search');
@@ -25,7 +30,7 @@ class LeaveController extends Controller
 
         return Inertia::render('HumanResources/Leaves', [
             'leaves' => $query->paginate(10),
-            'filters' => request()->only(['search']),
+            'filters' => request()->only(['search', 'start_date', 'end_date']),
             'users' => User::all(['id', 'name']),
         ]);
     }

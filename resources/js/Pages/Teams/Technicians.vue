@@ -12,6 +12,7 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import Paginator from 'primevue/paginator';
 import Avatar from 'primevue/avatar';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -60,6 +61,14 @@ const performSearch = () => {
 // Liste paginée
 const techList = computed(() => props.technicians?.data || []);
 const links = computed(() => props.technicians?.links || []);
+const totalRecords = computed(() => props.technicians?.meta?.total || 0);
+const currentPage = computed(() => props.technicians?.meta?.current_page || 1);
+const perPage = computed(() => props.technicians?.meta?.per_page || 10);
+
+const onPage = (event) => {
+  router.get(route('technicians.index'), { page: event.page + 1, per_page: event.rows, search: search.value }, { preserveState: true, replace: true });
+};
+
 
 // Sélection multiple
 const selected = ref([]);
@@ -290,7 +299,7 @@ const doImport = () => {
     </template>
 </Toolbar>
                         <DataTable :value="techList"  ref="dt"  dataKey="id" :paginator="true" :rows="10" v-model:selection="selected" selectionMode="multiple" responsiveLayout="scroll" stripedRows >
-              <Column selectionMode="multiple" headerStyle="width: 3rem" :exportable="true"></Column>
+              <Column selectionMode="multiple" headerStyle="width: 3rem" :exportable="false"></Column>
               <Column v-if="visibleColumns.includes('name')" field="name" header="Technicien" :sortable="true">
                 <template #body="{ data }">
                   <div class="flex items-center gap-3">
@@ -329,6 +338,7 @@ const doImport = () => {
                 </template>
               </Column>
             </DataTable>
+            <Paginator v-if="totalRecords > perPage" :rows="perPage" :totalRecords="totalRecords" :rowsPerPageOptions="[5, 10, 20, 50]" @page="onPage" :first="(currentPage - 1) * perPage"></Paginator>
                 </div>
             </div>
             </div>
