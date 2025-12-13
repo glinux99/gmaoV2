@@ -75,7 +75,9 @@ class ActivityController extends Controller
             'spare_parts_returned' => 'nullable|array',
             'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
             'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
-            'status' => 'nullable|string|in:in_progress,completed,suspended,canceled',
+            // --- HARMONISATION DU STATUT ICI ---
+            'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources',
+            // ------------------------------------
             'problem_resolution_description' => 'nullable|string|max:65535',
             'proposals' => 'nullable|string|max:65535',
             'instructions' => 'nullable|string|max:65535',
@@ -220,7 +222,9 @@ public function bulkStore(Request $request)
             'activities.*.actual_end_time' => 'nullable|date|after_or_equal:activities.*.actual_start_time',
             'activities.*.parent_id' => 'nullable|exists:activities,id',
             'activities.*.jobber' => 'nullable|integer|min:1',
+            // --- HARMONISATION DU STATUT ICI ---
             'activities.*.status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources',
+            // ------------------------------------
             'activities.*.problem_resolution_description' => 'nullable|string',
             'activities.*.proposals' => 'nullable|string',
             'activities.*.additional_information' => 'nullable|string|max:65535',
@@ -249,9 +253,9 @@ public function bulkStore(Request $request)
         if ($validator->fails()) {
             Log::error('Erreur de validation lors du bulkStore:', $validator->errors()->toArray());
             return response()->json([
-                 'message' => 'Erreur de validation des activités. Veuillez vérifier les données envoyées.',
-                 'errors' => $validator->errors()
-             ], 422);
+                   'message' => 'Erreur de validation des activités. Veuillez vérifier les données envoyées.',
+                   'errors' => $validator->errors()
+                 ], 422);
         }
 
         $validatedData = $validator->validated();
@@ -265,7 +269,7 @@ public function bulkStore(Request $request)
 
                 // Assurer l'association Maintenance si elle vient du niveau racine
                 if (!isset($activityData['task_id']) && $globalMaintenanceId) {
-                     $activityData['maintenance_id'] = $globalMaintenanceId;
+                       $activityData['maintenance_id'] = $globalMaintenanceId;
                 }
 
                 // Déterminer l'entité polyomorphe (expensable)
@@ -279,13 +283,13 @@ public function bulkStore(Request $request)
 
                 // Filtrage des données (retirer les tableaux d'associations pour la création de l'Activity)
                 $activityCreationData = array_diff_key($activityData, array_flip([
-                    'spare_parts',            // Le nouveau nom
+                    'spare_parts',              // Le nouveau nom
                     'spare_parts_returned',
                     'instruction_answers',
                     'service_order_cost',
                     'service_order_description',
-                    'equipment_ids',          // Association Many-to-Many
-                    'instructions',           // Nouvelles instructions
+                    'equipment_ids',            // Association Many-to-Many
+                    'instructions',             // Nouvelles instructions
                 ]));
 
                 $activity = Activity::create($activityCreationData);
@@ -455,7 +459,9 @@ public function bulkStore(Request $request)
             'spare_parts_returned' => 'nullable|array',
             'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
             'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
-            'status' => 'nullable|string|in:Planifiée,En cours,Terminée,En attente,Annulée,En retard',
+            // --- HARMONISATION DU STATUT ICI (remplace les termes français) ---
+            'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources',
+            // -------------------------------------------------------------------
             'problem_resolution_description' => 'nullable|string|max:65535',
             'proposals' => 'nullable|string|max:65535',
             'instructions' => 'nullable|array|max:65535',
@@ -623,22 +629,20 @@ public function bulkStore(Request $request)
                     }
                 }
             }
-            // Supprimer tous les enregistrements de la table pivot pour cette activité
+            // Supprimer les enregistrements de la table pivot
             $activity->sparePartActivities()->delete();
 
-            // Delete ServiceOrders associated with this activity's task or maintenance
-            if (!is_null($activity->task_id)) {
-                ServiceOrder::where('task_id', $activity->task_id)->delete();
-            } elseif (!is_null($activity->maintenance_id)) {
-                ServiceOrder::where('maintenance_id', $activity->maintenance_id)->delete();
-            }
+            // Supprimer les réponses aux instructions
+            $activity->instructionAnswers()->delete();
 
-
+            // Supprimer l'activité
             $activity->delete();
+
             DB::commit();
             return redirect()->route('activities.index')->with('success', 'Activité supprimée avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Erreur lors de la suppression de l\'activité:', ['exception' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de l\'activité: ' . $e->getMessage());
         }
     }

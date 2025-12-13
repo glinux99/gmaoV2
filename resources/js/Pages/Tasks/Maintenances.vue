@@ -83,18 +83,29 @@ const expandedInstructionGroups = ref({});
 const activityCreationDialog = ref(false);
 const selectedMaintenanceForActivity = ref(null);
 
+// --- HARMONISATION DU STATUT ICI ---
+const activityStatusOptions = ref([
+    { label: 'Planifiée', value: 'scheduled' },
+    { label: 'En cours', value: 'in_progress' },
+    { label: 'Terminée', value: 'completed' },
+    { label: 'Terminée avec problèmes', value: 'completed_with_issues' },
+    { label: 'Suspendue', value: 'suspended' },
+    { label: 'Annulée', value: 'canceled' },
+    { label: 'En attente de ressources', value: 'awaiting_resources' },
+    { label: 'À revoir plus tard', value: 'to_be_reviewed_later' },
+]);
+
 const activityCreationForm = useForm({
     maintenance_id: null,
     activities: [], // Tableau pour une ou plusieurs activités
 });
 
-const activityStatusOptions = ['Planifiée', 'En cours', 'Terminée', 'En attente', 'Annulée'];
 
 const addActivityToForm = () => {
     activityCreationForm.activities.push({
         // --- NOUVEAUX CHAMPS ---
         title: `Activité pour: ${selectedMaintenanceForActivity.value?.title || ''}`,
-        status: 'Planifiée',
+        status: 'scheduled', // --- HARMONISATION DU STATUT ICI ---
         assignable_type: null, // Pour choisir entre Technicien/Équipe
         assignable_id: null,
         equipment_ids: selectedMaintenanceForActivity.value?.equipments.map(eq => eq.id) || [],
@@ -110,7 +121,7 @@ const form = useForm({
     title: '',
     description: '',
     assignable_type: null,
-    assignable_id: null,
+    assignable_id: null, // Initialiser à null pour éviter des problèmes si non sélectionné
     type: 'Préventive',
     status: 'Planifiée',
     priority: 'Moyenne',
@@ -133,7 +144,18 @@ const form = useForm({
 
 // Options pour les listes déroulantes
 const maintenanceTypes = ref(['Préventive', 'Corrective', 'Améliorative', 'Périodique']);
-const maintenanceStatuses = ref(['Planifiée', 'En cours', 'En attente', 'Terminée', 'Annulée', 'En retard']);
+// --- HARMONISATION DU STATUT ICI ---
+const maintenanceStatuses = ref([
+    { label: 'Planifiée', value: 'scheduled' },
+    { label: 'En cours', value: 'in_progress' },
+    { label: 'Terminée', value: 'completed' },
+    { label: 'Terminée avec problèmes', value: 'completed_with_issues' },
+    { label: 'Suspendue', value: 'suspended' },
+    { label: 'Annulée', value: 'canceled' },
+    { label: 'En attente de ressources', value: 'awaiting_resources' },
+    { label: 'À revoir plus tard', value: 'to_be_reviewed_later' },
+]);
+
 const maintenancePriorities = ref(['Basse', 'Moyenne', 'Haute', 'Urgente']);
 const assignableTypes = ref([
     { label: 'Aucun', value: null },
@@ -472,7 +494,17 @@ const exportCSV = () => {
 };
 
 const getStatusSeverity = (status) => {
-    const severities = { 'Planifiée': 'info', 'En cours': 'warning', 'Terminée': 'success', 'Annulée': 'secondary', 'En retard': 'danger', 'En attente': 'contrast' };
+    const severities = {
+        'scheduled': 'info',
+        'in_progress': 'warning',
+        'completed': 'success',
+        'completed_with_issues': 'danger',
+        'suspended': 'warning',
+        'canceled': 'secondary',
+        'awaiting_resources': 'help',
+        'to_be_reviewed_later': 'contrast',
+        'En retard': 'danger' // Garder pour compatibilité si 'En retard' est un statut distinct
+    };
     return severities[status] || null;
 };
 
@@ -954,13 +986,25 @@ const transformedEquipmentTree = computed(() => {
                                     <!-- Assignation (Technicien ou Équipe) -->
                                     <div class="field col-12 md:col-6">
                                         <label :for="'activity_assignable_type_' + index" class="font-semibold">Assigner à (Type)</label>
-                                        <Dropdown :id="'activity_assignable_type_' + index" v-model="activity.assignable_type" :options="assignableTypes" @change="activity.assignable_id = null" optionLabel="label" optionValue="value" placeholder="Choisir un type" class="w-full" />
+                                        <Dropdown :id="'activity_assignable_type_' + index" v-model="activity.assignable_type"
+                                                  :options="assignableTypes"
+                                                  @change="activity.assignable_id = null"
+                                                  optionLabel="label" optionValue="value"
+                                                  placeholder="Choisir un type" class="w-full" />
+                                        <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.assignable_type`] }}</small>
                                     </div>
                                     <div class="field col-12 md:col-6">
                                         <label :for="'activity_assignable_id_' + index" class="font-semibold">Assigner à (Nom)</label>
                                         <Dropdown :id="'activity_assignable_id_' + index" v-model="activity.assignable_id" :options="getAssignablesForActivity(activity)" optionLabel="name" optionValue="id" placeholder="Sélectionner" filter showClear class="w-full" :disabled="!activity.assignable_type" />
                                     </div>
 
+                                    <div class="field col-12">
+                                        <label :for="'activity_status_' + index" class="font-semibold">Statut de l'activité</label>
+                                        <Dropdown :id="'activity_status_' + index" v-model="activity.status"
+                                                  :options="activityStatusOptions" optionLabel="label" optionValue="value"
+                                                  placeholder="Changer le statut" class="w-full" />
+                                        <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.status`] }}</small>
+                                    </div>
                                     <!-- Sélection des équipements -->
                                     <div class="field col-12 ">
                                         <label :for="'activity_equipments_' + index" class="font-semibold">Équipements Concernés</label>
@@ -1157,8 +1201,12 @@ const transformedEquipmentTree = computed(() => {
                                 </div>
                                 <div class="field">
                                     <label for="status" class="font-semibold">Statut</label>
-                                    <Dropdown id="status" class="w-full" v-model="form.status"
-                                        :options="maintenanceStatuses" placeholder="Sélectionner un statut" />
+                                    <Dropdown id="status" class="w-full" v-model="form.status" :options="maintenanceStatuses"
+                                              optionLabel="label" optionValue="value"
+                                              placeholder="Sélectionner un statut"
+                                              :class="{ 'p-invalid': submitted && form.errors.status }"
+                                    />
+
                                     <small class="p-error">{{ form.errors.status }}</small>
                                 </div>
                             </div>

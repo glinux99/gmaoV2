@@ -28,12 +28,212 @@ const props = defineProps({
     activities: Object,
     spareParts: Array,
     users: Array,
+    teams: Array,
     tasks: Array,
-    teams: Array
 });
 
 const toast = useToast();
-const currentActivities = computed(() => props.activities.data);
+
+// --- GESTION DES MODALES ET DE L'ACTION ---
+const activityDialogVisible = ref(false);
+const selectedActivity = ref(null);
+const sparePartDialogVisible = ref(false);
+const isCreatingSubActivity = ref(false);
+
+const sparePartData = ref({
+    ids: [],
+    quantity: 1,
+    index: -1,
+    type: 'used'
+});
+
+// --- FORMULAIRE INERTIA ---
+const form = useForm({
+    id: null,
+    problem_resolution_description: '',
+    proposals: '',
+    instructions: '',
+    additional_information: '',
+    status: '',
+    actual_start_time: null,
+    scheduled_start_time: null,
+    actual_end_time: null,
+    jobber: '',
+    spare_parts_used: [],
+    spare_parts_returned: [],
+    user_id: null,
+    service_order_cost: 0,
+    service_order_description: 'Paiement des pièces détachées et autres',
+    instruction_answers: {},
+    parent_activity_id: null,
+    task_id: null,
+    maintenance_id: null,
+});
+
+
+// --- UTILITIES ---
+
+const parseJson = (data) => {
+    if (typeof data === 'string' && data.length > 0) {
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            console.warn("Erreur de parsing JSON. Retourne un tableau vide.", e);
+            return [];
+        }
+    }
+    return Array.isArray(data) ? data : [];
+};
+
+const getSparePartReference = (id) => {
+    const part = props.spareParts.find(p => p.id === id);
+    return part ? part.reference : 'Inconnu';
+};
+
+// --- LOGIQUE D'AFFICHAGE ET STYLE ---
+
+const getIconForActivity = (status) => {
+    switch (status) {
+        case 'scheduled': return 'pi pi-calendar';
+        case 'in_progress': return 'pi pi-spin pi-spinner';
+        case 'completed': return 'pi pi-check-circle';
+        case 'completed_with_issues': return 'pi pi-exclamation-circle';
+        case 'suspended': return 'pi pi-pause';
+        case 'canceled': return 'pi pi-times-circle';
+        case 'awaiting_resources': return 'pi pi-hourglass';
+        default: return 'pi pi-info-circle';
+    }
+};
+
+const getColorForActivity = (status) => {
+    switch (status) {
+        case 'scheduled': return '#60A5FA';
+        case 'in_progress': return '#FBBF24';
+        case 'completed': return '#34D399';
+        case 'completed_with_issues': return '#EF4444';
+        case 'suspended': return '#F97316';
+        case 'canceled': return '#9CA3AF';
+        case 'awaiting_resources': return '#A855F7';
+        default: return '#A78BFA';
+    }
+};
+const getStatusSeverity = (status) => {
+    const severities = {
+        'scheduled': 'info',
+        'in_progress': 'warning',
+        'completed': 'success',
+        'completed_with_issues': 'danger',
+        'suspended': 'warning',
+        'canceled': 'secondary',
+        'awaiting_resources': 'help',
+        'En attente': 'contrast'
+    };
+    return severities[status] || null;
+};
+// Fonction nécessaire pour la DataTable
+const getPrioritySeverity = (priority) => {
+    const severities = {
+        'high': 'danger',
+        'medium': 'warning',
+        'low': 'info',
+        'urgent': 'danger'
+    };
+    return severities[priority?.toLowerCase()] || 'secondary';
+};
+
+const getStatusLabel = (status) => {
+    switch(status) {
+        case 'scheduled': return 'Planifiée';
+        case 'in_progress': return 'En cours';
+        case 'completed': return 'Terminée';
+        case 'completed_with_issues': return 'Terminée avec problèmes';
+        case 'suspended': return 'Suspendue';
+        case 'canceled': return 'Annulée';
+        case 'awaiting_resources': return 'En attente de ressources';
+        case 'to_be_reviewed_later': return 'À revoir plus tard';
+        default: return status;
+    }
+};
+
+
+// --- PRÉPARATION DES DONNÉES D'INSTRUCTIONS (sécurisée) ---
+// Note: Cette fonction ne doit pas appeler parseJson si les données sont déjà parsées
+const formatInstructionAnswer = (activity) => {
+    const answers = activity.instruction_answers;
+    // Gère le cas où activity.instructions est une chaîne JSON ou un tableau
+    const instructions = activity.task?.instructions || parseJson(activity.instructions) || [];
+
+    if (!answers || answers.length === 0) {
+        return [];
+    }
+
+    return answers.map(answer => {
+        const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
+        const instruction = instructions.find(i => i.id === instructionId);
+
+        const label = instruction ? instruction.label : `Instruction ID ${instructionId} (Introuvable)`;
+        let value = answer.value;
+
+        if (instruction && instruction.type === 'boolean') {
+            value = value === '1' || value === 1 || value === true ? 'Oui' : 'Non';
+        } else if (instruction && instruction.type === 'date' && value) {
+            try {
+                value = new Date(value).toLocaleDateString('fr-FR');
+            } catch {
+                value = 'Date invalide';
+            }
+        } else if (value === null || value === undefined || value === '') {
+             value = 'Non renseigné';
+        }
+
+        return { label, value };
+    });
+};
+
+// --- PROPRIÉTÉ CALCULÉE CLÉ (Correction de l'erreur de boucle récursive) ---
+const currentActivities = computed(() => {
+    return props.activities.data.map(activity => {
+        // 1. Parsing des champs JSON
+        const sparePartsUsed = parseJson(activity.spare_parts_used);
+        const sparePartsReturned = parseJson(activity.spare_parts_returned);
+        const instructionAnswers = parseJson(activity.instruction_answers);
+
+        const parsedActivity = {
+            ...activity,
+            spare_parts_used: sparePartsUsed,
+            spare_parts_returned: sparePartsReturned,
+            instruction_answers: instructionAnswers,
+        };
+
+        // 2. Formatage des réponses d'instruction (Pré-calcul)
+        const formattedAnswers = formatInstructionAnswer(parsedActivity);
+
+        // 3. Préparation des tooltips (Pré-calcul pour la DataTable)
+        const usedPartsTooltip = sparePartsUsed
+            .map(p => `${p.quantity} x ${getSparePartReference(p.id)}`)
+            .join(', ');
+
+        const returnedPartsTooltip = sparePartsReturned
+            .map(p => `${p.quantity} x ${getSparePartReference(p.id)}`)
+            .join(', ');
+
+        // 4. Préparation de la chaîne de tooltip pour les réponses (Pré-calcul)
+        const instructionAnswersTooltip = formattedAnswers
+            .map(a => `${a.label}: ${a.value}`)
+            .join(' | ');
+
+        // Retourne l'objet avec les données parsées ET les données de rendu pré-calculées
+        return {
+            ...parsedActivity,
+            formatted_instruction_answers: formattedAnswers,
+            used_parts_tooltip: usedPartsTooltip,
+            returned_parts_tooltip: returnedPartsTooltip,
+            instruction_answers_tooltip: instructionAnswersTooltip,
+        };
+    });
+});
+// -------------------------------------------------------------------------
+
 
 // --- ÉTAT DE L'AFFICHAGE ET FILTRES ---
 const viewMode = ref('timeline'); // 'timeline' or 'table'
@@ -63,102 +263,6 @@ onMounted(() => {
     displayFields.value = [...defaultDisplayFields];
 });
 
-// --- GESTION DES MODALES ET DE L'ACTION ---
-const activityDialogVisible = ref(false);
-const selectedActivity = ref(null);
-const sparePartDialogVisible = ref(false);
-const isCreatingSubActivity = ref(false); // NOUVEL ÉTAT : Pour distinguer Création et Modification
-
-const sparePartData = ref({
-    ids: [],
-    quantity: 1,
-    index: -1,
-    type: 'used'
-});
-
-// --- FORMULAIRE INERTIA ---
-const form = useForm({
-    id: null,
-    problem_resolution_description: '',
-    proposals: '',
-    instructions: '',
-    additional_information: '',
-    status: '',
-    actual_start_time: null,
-    actual_end_time: null,
-    jobber: '',
-    spare_parts_used: [],
-    spare_parts_returned: [],
-    user_id: null,
-    service_order_cost: 0,
-    service_order_description: 'Paiement des pièces détachées et autres',
-    instruction_answers: {},
-    parent_activity_id: null, // NOUVEAU CHAMP : Pour lier à l'activité parente
-    task_id: null, // Ajouté pour l'héritage
-    maintenance_id: null, // Ajouté pour l'héritage
-});
-
-// --- UTILITIES ---
-
-const parseJson = (data) => {
-    if (typeof data === 'string' && data.length > 0) {
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            console.warn("Erreur de parsing JSON. Retourne un tableau vide.", e);
-            return [];
-        }
-    }
-    return Array.isArray(data) ? data : [];
-};
-
-// --- LOGIQUE D'AFFICHAGE ET STYLE (inchangée) ---
-
-const getIconForActivity = (status) => {
-    switch (status) {
-        case 'Planifiée': return 'pi pi-calendar';
-        case 'En cours': return 'pi pi-spin pi-spinner';
-        case 'Terminée': return 'pi pi-check-circle';
-        case 'Annulée': return 'pi pi-times-circle';
-        case 'En retard': return 'pi pi-exclamation-triangle';
-        default: return 'pi pi-info-circle';
-    }
-};
-
-const getColorForActivity = (status) => {
-    switch (status) {
-        case 'Planifiée': return '#60A5FA';
-        case 'En cours': return '#FBBF24';
-        case 'Terminée': return '#34D399';
-        case 'Annulée': return '#9CA3AF';
-        case 'En retard': return '#F87171';
-        default: return '#A78BFA';
-    }
-};
-
-const getStatusSeverity = (status) => {
-    const severities = {
-        'Planifiée': 'info',
-        'En cours': 'warning',
-        'Terminée': 'success',
-        'Annulée': 'secondary',
-        'En retard': 'danger',
-        'En attente': 'contrast'
-    };
-    return severities[status] || null;
-};
-
-const getSparePartReference = (id) => {
-    const part = props.spareParts.find(p => p.id === id);
-    return part ? part.reference : 'Inconnu';
-};
-
-const sparePartOptions = computed(() => {
-    return props.spareParts.map(part => ({
-        label: `${part.reference} (${part.description || 'N/A'})`,
-        value: part.id
-    }));
-});
 
 // --- CALCUL DU COÛT ---
 const serviceOrderCost = computed(() => {
@@ -169,83 +273,71 @@ const serviceOrderCost = computed(() => {
     }, 0);
 });
 
-// --- PRÉPARATION DES DONNÉES D'INSTRUCTIONS (sécurisée) ---
-const formatInstructionAnswer = (activity) => {
-    const answers = parseJson(activity.instruction_answers);
-    const instructions = activity.task?.instructions || activity.instructions || [];
-
-    if (answers.length === 0) {
-        return [];
-    }
-
-    return answers.map(answer => {
-        const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
-        const instruction = instructions.find(i => i.id === instructionId);
-
-        const label = instruction ? instruction.label : `Instruction ID ${instructionId} (Introuvable)`;
-        let value = answer.value;
-
-        // Sécuriser l'accès à 'instruction.type'
-        if (instruction && instruction.type === 'boolean') {
-            value = value === '1' || value === 1 || value === true ? 'Oui' : 'Non';
-        } else if (instruction && instruction.type === 'date' && value) {
-            try {
-                value = new Date(value).toLocaleDateString('fr-FR');
-            } catch {
-                value = 'Date invalide';
-            }
-        } else if (value === null || value === undefined || value === '') {
-             value = 'Non renseigné';
-        }
-
-        return { label, value };
-    });
-};
-
 // --- LOGIQUE DES ACTIONS ---
 
 const hideDialog = () => {
     activityDialogVisible.value = false;
     form.reset();
     selectedActivity.value = null;
-    isCreatingSubActivity.value = false; // Réinitialisation de l'état
-    form.parent_activity_id = null; // Réinitialisation de l'ID parent
+    isCreatingSubActivity.value = false;
+    form.parent_activity_id = null;
 };
 
 // Fonction pour l'édition d'une activité existante
 const editActivity = (activity) => {
-    isCreatingSubActivity.value = false; // S'assurer que nous sommes en mode modification
+    isCreatingSubActivity.value = false;
     selectedActivity.value = activity;
 
     // Remplir le formulaire avec les données existantes
     form.id = activity.id;
     form.problem_resolution_description = activity.problem_resolution_description || '';
     form.proposals = activity.proposals || '';
-    form.instructions = activity.instructions || '';
+
+    // Utilisation de l'activité non mappée pour les instructions (plus sûr)
+    const rawActivity = props.activities.data.find(a => a.id === activity.id);
+
+    // --- Correction: Assurer que form.instructions est une chaîne ---
+    const instructions = rawActivity?.instructions || '';
+    if (instructions && typeof instructions !== 'string') {
+        try {
+            form.instructions = JSON.stringify(instructions);
+        } catch (e) {
+            console.error("Erreur de stringification des instructions lors de l'édition.", e);
+            form.instructions = '';
+        }
+    } else {
+        form.instructions = instructions;
+    }
+    // --------------------------------------------------------------------
+
     form.additional_information = activity.additional_information || '';
+    // Assigner les dates comme objets Date pour le PrimeVue Calendar
     form.actual_start_time = activity.actual_start_time ? new Date(activity.actual_start_time) : null;
+    form.scheduled_start_time = activity.scheduled_start_time ? new Date(activity.scheduled_start_time) : null;
     form.actual_end_time = activity.actual_end_time ? new Date(activity.actual_end_time) : null;
+
     form.jobber = activity.jobber || '';
     form.user_id = activity.user_id;
     form.status = activity.status;
-    form.parent_activity_id = activity.parent_activity_id; // Conserver l'ID parent s'il existe
+    form.parent_activity_id = activity.parent_activity_id;
     form.task_id = activity.task_id;
     form.maintenance_id = activity.maintenance_id;
     form.service_order_cost = activity.service_order_cost || 0;
     form.service_order_description = activity.service_order_description || 'Paiement des pièces détachées et autres';
 
-    // Parsing des pièces de rechange et instructions
-    form.spare_parts_used = parseJson(activity.spare_parts_used);
-    form.spare_parts_returned = parseJson(activity.spare_parts_returned);
+    // Les données sont déjà parsées (grâce à currentActivities) mais nous prenons les valeurs brutes ou parsées si l'activité vient des props
+    form.spare_parts_used = parseJson(rawActivity?.spare_parts_used || activity.spare_parts_used);
+    form.spare_parts_returned = parseJson(rawActivity?.spare_parts_returned || activity.spare_parts_returned);
 
     const answers = {};
-    const instructionAnswers = parseJson(activity.instruction_answers);
-    const instructions = activity.task?.instructions || activity.instructions || [];
+    // Utiliser les réponses déjà parsées ou les parser si nécessaire
+    const instructionAnswers = parseJson(rawActivity?.instruction_answers || activity.instruction_answers);
+    const activityInstructions = activity.task?.instructions || instructions || [];
 
     if (instructionAnswers && Array.isArray(instructionAnswers)) {
         instructionAnswers.forEach(answer => {
             const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
-            const instruction = instructions.find(i => i.id === instructionId);
+            const instruction = activityInstructions.find(i => i.id === instructionId);
             answers[instructionId] = instruction?.type === 'boolean'
                 ? String(answer.value)
                 : answer.value;
@@ -256,39 +348,49 @@ const editActivity = (activity) => {
     activityDialogVisible.value = true;
 };
 
-// FONCTION CLÉ : Préparer la création d'une sous-activité en copiant tout l'état pertinent de l'activité parente
+// FONCTION OPTIMISÉE : Préparer la création d'une sous-activité
 const createSubActivity = (parentActivity) => {
-    isCreatingSubActivity.value = true; // Définir le mode création
+    isCreatingSubActivity.value = true;
     selectedActivity.value = parentActivity;
-    console.log(parentActivity);
-    // 1. Réinitialiser le formulaire.
-    form.reset();
 
-    // 2. Copier TOUS les champs pertinents de l'activité parente (HÉRITAGE)
+    form.reset(); // 1. Réinitialiser tout
 
-    // AFFECTATION DES CHAMPS COMMUMS/HÉRITÉS
-    form.problem_resolution_description = parentActivity.problem_resolution_description || '';
-    form.proposals = parentActivity.proposals || '';
-    form.instructions = parentActivity.instructions || '';
-    form.additional_information = parentActivity.additional_information || '';
-    form.jobber = parentActivity.jobber || '';
-    form.user_id = parentActivity.user_id;
-    form.service_order_cost = parentActivity.service_order_cost || 0;
-    form.service_order_description = parentActivity.service_order_description || 'Paiement des pièces détachées et autres';
-
-    // CHAMPS SPÉCIFIQUES À LA SOUS-ACTIVITÉ
-    form.parent_activity_id = parentActivity.id; // Clé essentielle
-    form.status = 'Planifiée'; // Statut initial d'une nouvelle sous-activité
-
-    // Copie de la référence à la tâche/maintenance
+    // Champs de contexte hérités
+    form.parent_activity_id = parentActivity.id;
     form.task_id = parentActivity.task_id;
     form.maintenance_id = parentActivity.maintenance_id;
 
-    // Copie des Pièces de rechange (JSON PARSING)
+    // Champs de contexte copiés
+    form.jobber = parentActivity.jobber || '';
+    form.user_id = parentActivity.user_id;
+    form.service_order_description = parentActivity.service_order_description || 'Paiement des pièces détachées et autres';
+
+    // Instructions (avec gestion de la conversion en string)
+    if (parentActivity.instructions && typeof parentActivity.instructions !== 'string') {
+        try {
+            form.instructions = JSON.stringify(parentActivity.instructions);
+        } catch (e) {
+            form.instructions = '';
+        }
+    } else {
+        form.instructions = parentActivity.instructions || '';
+    }
+
+    // Pièces de rechange et réponses aux instructions (copiées)
     form.spare_parts_used = parseJson(parentActivity.spare_parts_used);
     form.spare_parts_returned = parseJson(parentActivity.spare_parts_returned);
 
-    // Copie des Réponses aux Instructions (JSON PARSING)
+    // Reste du formulaire (valeurs propres à la nouvelle sous-activité)
+    form.status = 'scheduled';
+    form.problem_resolution_description = `Sous-activité pour ${parentActivity.task?.title || parentActivity.maintenance?.title || 'Activité'} : `;
+    form.proposals = '';
+    form.additional_information = '';
+    form.service_order_cost = 0;
+    form.actual_start_time = null;
+    form.scheduled_start_time = parentActivity.scheduled_start_time ? new Date(parentActivity.scheduled_start_time) : null;
+    form.actual_end_time = null;
+
+    // Copie des réponses aux instructions (logique complexe de l'héritage)
     const answers = {};
     const instructionAnswers = parseJson(parentActivity.instruction_answers);
     const instructions = parentActivity.task?.instructions || parentActivity.instructions || [];
@@ -297,16 +399,12 @@ const createSubActivity = (parentActivity) => {
         instructionAnswers.forEach(answer => {
             const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
             const instruction = instructions.find(i => i.id === instructionId);
-            // Copie de la valeur, avec conversion String pour boolean si nécessaire
             answers[instructionId] = instruction?.type === 'boolean'
                 ? String(answer.value)
                 : answer.value;
         });
     }
     form.instruction_answers = answers;
-
-    // OPTIONNEL : Mise à jour de la description pour indiquer que c'est une sous-activité
-    form.problem_resolution_description = `Sous-activité pour ${parentActivity.task?.title || parentActivity.maintenance?.title || 'Activité'} : ${form.problem_resolution_description}`;
 
     activityDialogVisible.value = true;
 };
@@ -316,9 +414,14 @@ const saveActivity = () => {
     // Étape 1: Préparation des données finales
     form.service_order_cost = serviceOrderCost.value;
 
-    // Convertir les dates en ISO string (Inertia sérialisera ces valeurs) si elles sont des objets Date
-    form.actual_start_time = form.actual_start_time ? form.actual_start_time.toISOString() : null;
-    form.actual_end_time = form.actual_end_time ? form.actual_end_time.toISOString() : null;
+    // Convertir les objets Date en ISO string formaté pour MySQL
+    const tempActualStartTime = form.actual_start_time;
+    const tempScheduledStartTime = form.scheduled_start_time;
+    const tempActualEndTime = form.actual_end_time;
+
+    form.actual_start_time = tempActualStartTime ? new Date(tempActualStartTime).toISOString().slice(0, 19).replace('T', ' ') : null;
+    form.scheduled_start_time = tempScheduledStartTime ? new Date(tempScheduledStartTime).toISOString().slice(0, 19).replace('T', ' ') : null;
+    form.actual_end_time = tempActualEndTime ? new Date(tempActualEndTime).toISOString().slice(0, 19).replace('T', ' ') : null;
 
     // Déterminer la route et la méthode
     const method = isCreatingSubActivity.value ? 'post' : 'put';
@@ -333,7 +436,12 @@ const saveActivity = () => {
         },
         onError: (errors) => {
             console.error(errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'enregistrement.', life: 3000 });
+            // Revertir les dates en objets Date si l'on veut que le formulaire reste ouvert après erreur
+            form.actual_start_time = tempActualStartTime;
+            form.scheduled_start_time = tempScheduledStartTime;
+            form.actual_end_time = tempActualEndTime;
+
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'enregistrement. Voir la console pour plus de détails.', life: 3000 });
         }
     };
 
@@ -368,8 +476,10 @@ const saveSparePart = () => {
     const targetArray = type === 'used' ? form.spare_parts_used : form.spare_parts_returned;
 
     if (index > -1) {
+        // Mode édition
         targetArray[index] = { id: selectedIds[0], quantity };
     } else {
+        // Mode ajout
         selectedIds.forEach(partId => {
             const exists = targetArray.some(p => p.id === partId);
             if (!exists) {
@@ -468,7 +578,7 @@ const removeSparePartReturned = (index) => {
 
                                             <template #subtitle>
                                                 <div class="mt-2">
-                                                    <Tag :value="slotProps.item.status" :severity="getStatusSeverity(slotProps.item.status)" class="text-lg font-bold" />
+                                                    <Tag :value="getStatusLabel(slotProps.item.status)" :severity="getStatusSeverity(slotProps.item.status)" class="text-lg font-bold" />
                                                 </div>
                                             </template>
 
@@ -491,7 +601,7 @@ const removeSparePartReturned = (index) => {
                                                         <strong>Intervenant:</strong> {{ slotProps.item.jobber }}
                                                     </p>
 
-                                                    <div v-if="parseJson(slotProps.item.instruction_answers).length > 0" class="mt-3 p-3 bg-bluegray-50 border-round-md border-left-3 border-blue-500">
+                                                    <div v-if="slotProps.item.instruction_answers.length > 0" class="mt-3 p-3 bg-bluegray-50 border-round-md border-left-3 border-blue-500">
                                                         <h5 class="font-bold text-blue-800 mb-2">Réponses aux Instructions :</h5>
                                                         <ul class="list-disc ml-4">
                                                             <li v-for="(answer, ansIndex) in formatInstructionAnswer(slotProps.item)" :key="ansIndex" class="mb-1">
@@ -500,19 +610,19 @@ const removeSparePartReturned = (index) => {
                                                         </ul>
                                                     </div>
 
-                                                    <div v-if="displayFields.includes('spare_parts_used') && parseJson(slotProps.item.spare_parts_used).length > 0" class="mt-3">
+                                                    <div v-if="displayFields.includes('spare_parts_used') && slotProps.item.spare_parts_used.length > 0" class="mt-3">
                                                         <h5 class="font-bold text-700 mb-1">Pièces utilisées:</h5>
                                                         <ul class="list-disc ml-4">
-                                                            <li v-for="(part, index) in parseJson(slotProps.item.spare_parts_used)" :key="index">
+                                                            <li v-for="(part, index) in slotProps.item.spare_parts_used" :key="index">
                                                                 {{ part.quantity }} x {{ getSparePartReference(part.id) }} ({{ part.price }} XOF)
                                                             </li>
                                                         </ul>
                                                     </div>
 
-                                                    <div v-if="displayFields.includes('spare_parts_returned') && parseJson(slotProps.item.spare_parts_returned).length > 0" class="mt-3">
+                                                    <div v-if="displayFields.includes('spare_parts_returned') && slotProps.item.spare_parts_returned.length > 0" class="mt-3">
                                                         <h5 class="font-bold text-700 mb-1">Pièces retournées:</h5>
                                                         <ul class="list-disc ml-4">
-                                                            <li v-for="(part, index) in parseJson(slotProps.item.spare_parts_returned)" :key="index">
+                                                            <li v-for="(part, index) in slotProps.item.spare_parts_returned" :key="index">
                                                                 {{ part.quantity }} x {{ getSparePartReference(part.id) }}
                                                             </li>
                                                         </ul>
@@ -556,7 +666,7 @@ const removeSparePartReturned = (index) => {
                                     </Column>
                                     <Column field="status" header="Statut" :sortable="true">
                                         <template #body="slotProps">
-                                            <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" />
+                                            <Tag :value="getStatusLabel(slotProps.data.status)" :severity="getStatusSeverity(slotProps.data.status)" />
                                         </template>
                                     </Column>
                                     <Column field="actual_start_time" header="Début Réel" :sortable="true">
@@ -566,7 +676,7 @@ const removeSparePartReturned = (index) => {
                                     </Column>
                                     <Column field="task.priority" header="Priorité" :sortable="true">
                                         <template #body="slotProps">
-                                            <Tag :value="slotProps.data.task?.priority || slotProps.data.maintenance?.priority" />
+                                            <Tag :value="slotProps.data.task?.priority || slotProps.data.maintenance?.priority" :severity="getPrioritySeverity(slotProps.data.task?.priority || slotProps.data.maintenance?.priority)" />
                                         </template>
                                     </Column>
 
@@ -592,11 +702,11 @@ const removeSparePartReturned = (index) => {
 
                                     <Column v-if="displayFields.includes('spare_parts_used')" header="Pièces Utilisées" :sortable="false">
                                         <template #body="slotProps">
-                                            <div v-if="parseJson(slotProps.data.spare_parts_used).length > 0">
+                                            <div v-if="slotProps.data.spare_parts_used.length > 0">
                                                 <Tag
-                                                    :value="`${parseJson(slotProps.data.spare_parts_used).length} Pièce(s)`"
+                                                    :value="`${slotProps.data.spare_parts_used.length} Pièce(s)`"
                                                     severity="contrast"
-                                                    v-tooltip.top="parseJson(slotProps.data.spare_parts_used).map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
+                                                    v-tooltip.top="slotProps.data.spare_parts_used.map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
                                                 />
                                             </div>
                                             <span v-else>Non</span>
@@ -605,11 +715,11 @@ const removeSparePartReturned = (index) => {
 
                                     <Column v-if="displayFields.includes('spare_parts_returned')" header="Pièces Retournées" :sortable="false">
                                         <template #body="slotProps">
-                                            <div v-if="parseJson(slotProps.data.spare_parts_returned).length > 0">
+                                            <div v-if="slotProps.data.spare_parts_returned.length > 0">
                                                 <Tag
-                                                    :value="`${parseJson(slotProps.data.spare_parts_returned).length} Pièce(s)`"
+                                                    :value="`${slotProps.data.spare_parts_returned.length} Pièce(s)`"
                                                     severity="warning"
-                                                    v-tooltip.top="parseJson(slotProps.data.spare_parts_returned).map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
+                                                    v-tooltip.top="slotProps.data.spare_parts_returned.map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
                                                 />
                                             </div>
                                             <span v-else>Non</span>
@@ -619,9 +729,9 @@ const removeSparePartReturned = (index) => {
                                     <Column header="Instructions/Actions" class="text-right">
                                         <template #body="slotProps">
                                             <div class="flex justify-content-end align-items-center">
-                                                <div v-if="parseJson(slotProps.data.instruction_answers).length > 0" class="mr-2">
+                                                <div v-if="slotProps.data.instruction_answers.length > 0" class="mr-2">
                                                     <Tag
-                                                        :value="`${parseJson(slotProps.data.instruction_answers).length} Rép.`"
+                                                        :value="`${slotProps.data.instruction_answers.length} Rép.`"
                                                         severity="info"
                                                         v-tooltip.top="formatInstructionAnswer(slotProps.data).map(a => `${a.label}: ${a.value}`).join(' | ')"
                                                     />
@@ -654,7 +764,7 @@ const removeSparePartReturned = (index) => {
                                 </div>
                                 <div class="field p-col-12">
                                     <label for="status" class="font-semibold">Statut de l'activité</label>
-                                    <Dropdown id="status" class="w-full" v-model="form.status" :options="['Planifiée', 'En cours', 'Terminée', 'En attente', 'Annulée', 'En retard']" placeholder="Changer le statut" />
+                                    <Dropdown id="status" class="w-full" v-model="form.status" :options="['scheduled', 'in_progress', 'completed', 'completed_with_issues', 'suspended', 'canceled', 'awaiting_resources', 'to_be_reviewed_later']" :optionLabel="getStatusLabel" placeholder="Changer le statut" />
                                     <small class="p-error">{{ form.errors.status }}</small>
                                 </div>
                                 <div class="field p-col-12">
@@ -682,6 +792,11 @@ const removeSparePartReturned = (index) => {
                                         <label for="actual_start_time" class="font-semibold">Heure de début réelle</label>
                                         <Calendar id="actual_start_time" class="w-full" v-model="form.actual_start_time" showTime dateFormat="dd/mm/yy" showIcon />
                                         <small class="p-error">{{ form.errors.actual_start_time }}</small>
+                                    </div>
+                                    <div class="field p-col-6 w-full md:w-6/12">
+                                        <label for="scheduled_start_time" class="font-semibold">Heure de début planifiée</label>
+                                        <Calendar id="scheduled_start_time" class="w-full" v-model="form.scheduled_start_time" showTime dateFormat="dd/mm/yy" showIcon />
+                                        <small class="p-error">{{ form.errors.scheduled_start_time }}</small>
                                     </div>
                                     <div class="field p-col-6 w-full md:w-6/12">
                                         <label for="actual_end_time" class="font-semibold">Heure de fin réelle</label>
