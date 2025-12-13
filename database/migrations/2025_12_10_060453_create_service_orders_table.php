@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('maintenance_id')->nullable()->constrained('maintenances')->onDelete('set null');
             $table->foreignId('task_id')->nullable()->constrained('tasks')->onDelete('set null');
+            $table->foreignId('activity_id')->nullable()->constrained('activities')->onDelete('set null');
             // Assumant une future table 'suppliers' pour les fournisseurs/prestataires
             $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->onDelete('set null');
             $table->string('reference')->nullable()->comment('Référence de la commande ou du devis');

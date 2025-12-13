@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class SparePartActivity extends Model
+class ActivityInstruction extends Model
 {
     use HasFactory;
 
@@ -17,21 +17,27 @@ class SparePartActivity extends Model
      */
     protected $fillable = [
         'activity_id',
-        'spare_part_id',
-        'quantity_used',
-        'type', // 'used' or 'returned'
+        'equipment_id',
+        'label',
+        'type',
+        'is_required',
     ];
 
     /**
-     * Get the activity that owns the SparePartActivity.
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
      */
+    protected $casts = [
+        'is_required' => 'boolean',
+    ];
+
     public function activity(): BelongsTo
     {
         return $this->belongsTo(Activity::class);
     }
-
-    public function sparePart(): BelongsTo
+    public function equipment(): BelongsTo
     {
-        return $this->belongsTo(SparePart::class);
+        return $this->belongsTo(Equipment::class);
     }
 }

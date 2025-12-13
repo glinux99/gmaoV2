@@ -98,6 +98,8 @@ const addActivityToForm = () => {
         assignable_type: null, // Pour choisir entre Technicien/Équipe
         assignable_id: null,
         equipment_ids: selectedMaintenanceForActivity.value?.equipments.map(eq => eq.id) || [],
+        actual_start_time: selectedMaintenanceForActivity.value?.scheduled_start_date ? new Date(selectedMaintenanceForActivity.value.scheduled_start_date) : null,
+        actual_end_time: selectedMaintenanceForActivity.value?.scheduled_end_date ? new Date(selectedMaintenanceForActivity.value.scheduled_end_date) : null,
         spare_parts: [], // Tableau pour les pièces détachées { id, quantity_used }
         instructions: [], // Tableau pour les instructions { label, type, is_required }
     });
@@ -377,27 +379,10 @@ const deleteMaintenance = (maintenance) => {
     });
 };
 
-const availableEquipmentsForActivity = (currentIndex) => {
-    if (!selectedMaintenanceForActivity.value) {
-        return [];
-    }
-
-    // 1. Récupérer tous les IDs d'équipements déjà sélectionnés dans les AUTRES activités
-    const selectedIdsInOtherActivities = activityCreationForm.activities
-        .filter((_, index) => index !== currentIndex)
-        .flatMap(activity => activity.equipment_ids);
-
-    // 2. Parcourir TOUS les équipements de la maintenance sélectionnée
-    return selectedMaintenanceForActivity.value.equipments.map(equipment => {
-        // 3. Déterminer si l'équipement est déjà utilisé ailleurs
-        const isDisabled = selectedIdsInOtherActivities.includes(equipment.id);
-
-        // 4. Retourner un objet qui inclut l'équipement et son état d'utilisation
-        return {
-            ...equipment, // Toutes les propriétés de l'équipement (id, name, etc.)
-            isDisabled: isDisabled // Nouvel indicateur d'état
-        };
-    });
+const availableEquipmentsForActivity = () => {
+    // Retourne tous les équipements disponibles dans les props
+    // pour permettre la sélection sans restriction basée sur la maintenance parente
+    return props.equipments;
 };
 const getAssignablesForActivity = (activity) => {
     if (activity.assignable_type === 'App\\Models\\User') {
@@ -444,7 +429,8 @@ const removeActivityFromForm = (index) => {
 };
 
 const submitActivities = () => {
-    // Vous devez implémenter la route et la logique côté backend pour `activities.bulkStore`
+    console.log({...activityCreationForm});
+    // Vous devez implémenter la route et la logique côté baend pour `activities.bulkStore`
     activityCreationForm.post(route('activities.bulkStore'), {
         onSuccess: () => {
             activityCreationDialog.value = false;
@@ -976,7 +962,7 @@ const transformedEquipmentTree = computed(() => {
                                     </div>
 
                                     <!-- Sélection des équipements -->
-                                    <div class="field col-12">
+                                    <div class="field col-12 ">
                                         <label :for="'activity_equipments_' + index" class="font-semibold">Équipements Concernés</label>
                                         <MultiSelect
                                             :id="'activity_equipments_' + index"
@@ -986,7 +972,7 @@ const transformedEquipmentTree = computed(() => {
                                             optionValue="id"
                                             placeholder="Sélectionner les équipements"
                                             display="chip"
-                                            class="w-full"
+                                            class="w-full "
                                             :optionDisabled="option => option.isDisabled"
                                         >
                                             <template #option="slotProps">
@@ -996,6 +982,20 @@ const transformedEquipmentTree = computed(() => {
                                         <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.equipment_ids`] }}</small>
                                     </div>
                                 </div>
+                                <div class="grid formgrid">
+                                    <div class="field col-12 md:col-6">
+                                        <label :for="'activity_actual_start_time_' + index" class="font-semibold">Date de début réelle</label>
+                                        <Calendar :id="'activity_actual_start_time_' + index" v-model="activity.actual_start_time" showTime dateFormat="dd/mm/yy" showIcon class="w-full" />
+                                        <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.actual_start_time`] }}</small>
+                                    </div>
+                                    <div class="field col-12 md:col-6">
+                                        <label :for="'activity_actual_end_time_' + index" class="font-semibold">Date de fin réelle</label>
+                                        <Calendar :id="'activity_actual_end_time_' + index" v-model="activity.actual_end_time" showTime dateFormat="dd/mm/yy" showIcon class="w-full" />
+                                        <small class="p-error">{{ activityCreationForm.errors[`activities.${index}.actual_end_time`] }}</small>
+                                    </div>
+                                </div>
+
+
 <Divider class="my-4" />
 
 <h6 class="font-semibold mb-3 text-lg border-b pb-2">

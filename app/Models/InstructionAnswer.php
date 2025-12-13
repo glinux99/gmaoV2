@@ -18,6 +18,8 @@ class InstructionAnswer extends Model
     protected $fillable = [
         'activity_id',
         'task_instruction_id',
+        'activity_instruction_id',
+
         'user_id',
         'value',
     ];
@@ -37,6 +39,11 @@ class InstructionAnswer extends Model
     {
         return $this->belongsTo(TaskInstruction::class);
     }
+     public function activityInstruction(): BelongsTo
+    {
+        return $this->belongsTo(ActivityInstruction::class);
+    }
+
 
     /**
      * Get the user who provided the answer.

@@ -19,6 +19,7 @@ class ServiceOrder extends Model
     protected $fillable = [
         'task_id',
         'maintenance_id', // Added this line
+        'activity_id', // Added this line
         'supplier_id',
         'reference',
         'description',

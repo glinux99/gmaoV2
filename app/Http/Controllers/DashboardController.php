@@ -160,7 +160,7 @@ class DashboardController extends Controller
 
         // Dépenses Pièces Détachées (coût estimé des pièces UTILISÉES dans les activités)
         $depensesPiecesDetachees = Activity::whereBetween('created_at', [$startDate, $endDate])
-            ->with('sparePartsUsed.sparePart')
+            // ->with('sparePartsUsed.sparePart')
             ->get()
             ->sum(function ($activity) {
                 // Utilise unit_estimated_cost

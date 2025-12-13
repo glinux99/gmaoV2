@@ -33,6 +33,7 @@ class Activity extends Model implements HasMedia
         'proposals',
         'instructions',
         'additional_information',
+        'equipment_id',
     ];
         protected $casts = [
         'actual_start_time' => 'datetime',
@@ -50,6 +51,32 @@ class Activity extends Model implements HasMedia
      public function maintenance(): BelongsTo
     {
         return $this->belongsTo(Maintenance::class);
+    }
+    public function equipment(): BelongsToMany
+    {
+        return $this->belongsToMany(Equipment::class);
+    }
+    /**
+     * Get the instructions for the activity.
+     */
+    public function activityInstructions(): HasMany
+    {
+        return $this->hasMany(ActivityInstruction::class);
+    }
+
+    /**
+     * Accessor for instructions.
+     * If maintenance_id is null, it returns the task's instructions.
+     * Otherwise, it returns the activity's own instructions.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getInstructionsAttribute()
+    {
+        if (is_null($this->maintenance_id) && $this->task) {
+            return $this->task->instructions;
+        }
+        return $this->activityInstructions;
     }
     /**
      * Récupère l'activité parente (si c'est une sous-activité).
@@ -112,4 +139,6 @@ class Activity extends Model implements HasMedia
     {
         return $this->hasMany(SparePartActivity::class);
     }
+
+
 }

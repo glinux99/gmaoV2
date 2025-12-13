@@ -91,6 +91,7 @@ Route::middleware('auth', 'verified')->group(function () {
     'expenses' => ExpensesController::class,
   ]);
 
+  Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
   Route::put('/expenses/{expense}/status', [ExpensesController::class, 'updateStatus'])->name('expenses.updateStatus');
   Route::put('/expenses/group-status', [ExpensesController::class, 'updateGroupStatus'])->name('expenses.updateGroupStatus');
 

@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-// Assurez-vous que ce chemin est correct pour votre AppLayout
+// Layout
 import AppLayout from '@/sakai/layout/AppLayout.vue';
-// Importations de PrimeVue
+// PrimeVue Components
+import { useToast } from 'primevue/usetoast';
 import Timeline from 'primevue/timeline';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
@@ -20,10 +21,9 @@ import SelectButton from 'primevue/selectbutton';
 import Calendar from 'primevue/calendar';
 import MultiSelect from 'primevue/multiselect';
 import InputText from 'primevue/inputtext';
-import { useToast } from 'primevue/usetoast';
 import Tooltip from 'primevue/tooltip';
 
-// Props attendues par le composant
+// --- PROPS ---
 const props = defineProps({
     activities: Object,
     spareParts: Array,
@@ -33,16 +33,15 @@ const props = defineProps({
 });
 
 const toast = useToast();
+const currentActivities = computed(() => props.activities.data);
+
+// --- ÉTAT DE L'AFFICHAGE ET FILTRES ---
 const viewMode = ref('timeline'); // 'timeline' or 'table'
 const viewOptions = ref([
     { icon: 'pi pi-list', value: 'timeline' },
     { icon: 'pi pi-table', value: 'table' }
 ]);
 
-const activityDialogVisible = ref(false);
-const selectedActivity = ref(null);
-
-// Champs d'affichage dynamiques pour le DataTable
 const displayFields = ref([]);
 const defaultDisplayFields = [
     'actual_end_time',
@@ -57,10 +56,19 @@ const availableDisplayOptions = ref([
     { label: 'Intervenant', value: 'jobber' },
     { label: 'Informations Additionnelles', value: 'additional_information' },
     { label: 'Pièces Utilisées', value: 'spare_parts_used' },
+    { label: 'Pièces Retournées', value: 'spare_parts_returned' },
 ]);
 
+onMounted(() => {
+    displayFields.value = [...defaultDisplayFields];
+});
 
+// --- GESTION DES MODALES ET DE L'ACTION ---
+const activityDialogVisible = ref(false);
+const selectedActivity = ref(null);
 const sparePartDialogVisible = ref(false);
+const isCreatingSubActivity = ref(false); // NOUVEL ÉTAT : Pour distinguer Création et Modification
+
 const sparePartData = ref({
     ids: [],
     quantity: 1,
@@ -68,6 +76,7 @@ const sparePartData = ref({
     type: 'used'
 });
 
+// --- FORMULAIRE INERTIA ---
 const form = useForm({
     id: null,
     problem_resolution_description: '',
@@ -82,61 +91,48 @@ const form = useForm({
     spare_parts_returned: [],
     user_id: null,
     service_order_cost: 0,
-    service_order_description: 'xx',
+    service_order_description: 'Paiement des pièces détachées et autres',
     instruction_answers: {},
+    parent_activity_id: null, // NOUVEAU CHAMP : Pour lier à l'activité parente
+    task_id: null, // Ajouté pour l'héritage
+    maintenance_id: null, // Ajouté pour l'héritage
 });
 
-const currentActivities = computed(() => props.activities.data);
+// --- UTILITIES ---
 
-// -----------------------------------------------------------
-// Fonction Utilitaire de Parsing JSON
-// -----------------------------------------------------------
 const parseJson = (data) => {
     if (typeof data === 'string' && data.length > 0) {
         try {
             return JSON.parse(data);
         } catch (e) {
-            console.warn("Erreur de parsing JSON pour les données d'activité. Retourne un tableau vide.", e);
+            console.warn("Erreur de parsing JSON. Retourne un tableau vide.", e);
             return [];
         }
     }
     return Array.isArray(data) ? data : [];
 };
-// -----------------------------------------------------------
 
+// --- LOGIQUE D'AFFICHAGE ET STYLE (inchangée) ---
 
-// Fonctions de style
 const getIconForActivity = (status) => {
     switch (status) {
-        case 'Planifiée':
-            return 'pi pi-calendar';
-        case 'En cours':
-            return 'pi pi-spin pi-spinner';
-        case 'Terminée':
-            return 'pi pi-check-circle';
-        case 'Annulée':
-            return 'pi pi-times-circle';
-        case 'En retard':
-            return 'pi pi-exclamation-triangle';
-        default:
-            return 'pi pi-info-circle';
+        case 'Planifiée': return 'pi pi-calendar';
+        case 'En cours': return 'pi pi-spin pi-spinner';
+        case 'Terminée': return 'pi pi-check-circle';
+        case 'Annulée': return 'pi pi-times-circle';
+        case 'En retard': return 'pi pi-exclamation-triangle';
+        default: return 'pi pi-info-circle';
     }
 };
 
 const getColorForActivity = (status) => {
     switch (status) {
-        case 'Planifiée':
-            return '#60A5FA';
-        case 'En cours':
-            return '#FBBF24';
-        case 'Terminée':
-            return '#34D399';
-        case 'Annulée':
-            return '#9CA3AF';
-        case 'En retard':
-            return '#F87171';
-        default:
-            return '#A78BFA';
+        case 'Planifiée': return '#60A5FA';
+        case 'En cours': return '#FBBF24';
+        case 'Terminée': return '#34D399';
+        case 'Annulée': return '#9CA3AF';
+        case 'En retard': return '#F87171';
+        default: return '#A78BFA';
     }
 };
 
@@ -152,17 +148,76 @@ const getStatusSeverity = (status) => {
     return severities[status] || null;
 };
 
-// Initialiser displayFields avec les options par défaut
-onMounted(() => {
-    displayFields.value = [...defaultDisplayFields];
+const getSparePartReference = (id) => {
+    const part = props.spareParts.find(p => p.id === id);
+    return part ? part.reference : 'Inconnu';
+};
+
+const sparePartOptions = computed(() => {
+    return props.spareParts.map(part => ({
+        label: `${part.reference} (${part.description || 'N/A'})`,
+        value: part.id
+    }));
 });
 
-// -----------------------------------------------------------
-// Fonction d'édition d'activité (avec parsing JSON)
-// -----------------------------------------------------------
+// --- CALCUL DU COÛT ---
+const serviceOrderCost = computed(() => {
+    return form.spare_parts_used.reduce((total, usedPart) => {
+        const partDetails = props.spareParts.find(p => p.id === usedPart.id);
+        const price = partDetails?.price || 0;
+        return total + (price * usedPart.quantity);
+    }, 0);
+});
+
+// --- PRÉPARATION DES DONNÉES D'INSTRUCTIONS (sécurisée) ---
+const formatInstructionAnswer = (activity) => {
+    const answers = parseJson(activity.instruction_answers);
+    const instructions = activity.task?.instructions || activity.instructions || [];
+
+    if (answers.length === 0) {
+        return [];
+    }
+
+    return answers.map(answer => {
+        const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
+        const instruction = instructions.find(i => i.id === instructionId);
+
+        const label = instruction ? instruction.label : `Instruction ID ${instructionId} (Introuvable)`;
+        let value = answer.value;
+
+        // Sécuriser l'accès à 'instruction.type'
+        if (instruction && instruction.type === 'boolean') {
+            value = value === '1' || value === 1 || value === true ? 'Oui' : 'Non';
+        } else if (instruction && instruction.type === 'date' && value) {
+            try {
+                value = new Date(value).toLocaleDateString('fr-FR');
+            } catch {
+                value = 'Date invalide';
+            }
+        } else if (value === null || value === undefined || value === '') {
+             value = 'Non renseigné';
+        }
+
+        return { label, value };
+    });
+};
+
+// --- LOGIQUE DES ACTIONS ---
+
+const hideDialog = () => {
+    activityDialogVisible.value = false;
+    form.reset();
+    selectedActivity.value = null;
+    isCreatingSubActivity.value = false; // Réinitialisation de l'état
+    form.parent_activity_id = null; // Réinitialisation de l'ID parent
+};
+
+// Fonction pour l'édition d'une activité existante
 const editActivity = (activity) => {
+    isCreatingSubActivity.value = false; // S'assurer que nous sommes en mode modification
     selectedActivity.value = activity;
 
+    // Remplir le formulaire avec les données existantes
     form.id = activity.id;
     form.problem_resolution_description = activity.problem_resolution_description || '';
     form.proposals = activity.proposals || '';
@@ -173,20 +228,26 @@ const editActivity = (activity) => {
     form.jobber = activity.jobber || '';
     form.user_id = activity.user_id;
     form.status = activity.status;
+    form.parent_activity_id = activity.parent_activity_id; // Conserver l'ID parent s'il existe
+    form.task_id = activity.task_id;
+    form.maintenance_id = activity.maintenance_id;
+    form.service_order_cost = activity.service_order_cost || 0;
+    form.service_order_description = activity.service_order_description || 'Paiement des pièces détachées et autres';
 
-    // Parsing des pièces de rechange
+    // Parsing des pièces de rechange et instructions
     form.spare_parts_used = parseJson(activity.spare_parts_used);
     form.spare_parts_returned = parseJson(activity.spare_parts_returned);
 
-    // Parsing et préparation des réponses aux instructions
     const answers = {};
     const instructionAnswers = parseJson(activity.instruction_answers);
+    const instructions = activity.task?.instructions || activity.instructions || [];
 
     if (instructionAnswers && Array.isArray(instructionAnswers)) {
         instructionAnswers.forEach(answer => {
-            const instruction = activity.task.instructions.find(i => i.id === answer.task_instruction_id);
-            answers[answer.task_instruction_id] = instruction?.type === 'boolean'
-                ? String(answer.value) // Conversion en chaîne '1' ou '0' pour le Dropdown
+            const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
+            const instruction = instructions.find(i => i.id === instructionId);
+            answers[instructionId] = instruction?.type === 'boolean'
+                ? String(answer.value)
                 : answer.value;
         });
     }
@@ -194,41 +255,97 @@ const editActivity = (activity) => {
 
     activityDialogVisible.value = true;
 };
-// -----------------------------------------------------------
 
-const hideDialog = () => {
-    activityDialogVisible.value = false;
-    form.reset();
-    selectedActivity.value = null;
-};
-
+// FONCTION CLÉ : Préparer la création d'une sous-activité en copiant tout l'état pertinent de l'activité parente
 const createSubActivity = (parentActivity) => {
-    // Logique pour créer une sous-activité...
+    isCreatingSubActivity.value = true; // Définir le mode création
+    selectedActivity.value = parentActivity;
+    console.log(parentActivity);
+    // 1. Réinitialiser le formulaire.
+    form.reset();
+
+    // 2. Copier TOUS les champs pertinents de l'activité parente (HÉRITAGE)
+
+    // AFFECTATION DES CHAMPS COMMUMS/HÉRITÉS
+    form.problem_resolution_description = parentActivity.problem_resolution_description || '';
+    form.proposals = parentActivity.proposals || '';
+    form.instructions = parentActivity.instructions || '';
+    form.additional_information = parentActivity.additional_information || '';
+    form.jobber = parentActivity.jobber || '';
+    form.user_id = parentActivity.user_id;
+    form.service_order_cost = parentActivity.service_order_cost || 0;
+    form.service_order_description = parentActivity.service_order_description || 'Paiement des pièces détachées et autres';
+
+    // CHAMPS SPÉCIFIQUES À LA SOUS-ACTIVITÉ
+    form.parent_activity_id = parentActivity.id; // Clé essentielle
+    form.status = 'Planifiée'; // Statut initial d'une nouvelle sous-activité
+
+    // Copie de la référence à la tâche/maintenance
+    form.task_id = parentActivity.task_id;
+    form.maintenance_id = parentActivity.maintenance_id;
+
+    // Copie des Pièces de rechange (JSON PARSING)
+    form.spare_parts_used = parseJson(parentActivity.spare_parts_used);
+    form.spare_parts_returned = parseJson(parentActivity.spare_parts_returned);
+
+    // Copie des Réponses aux Instructions (JSON PARSING)
+    const answers = {};
+    const instructionAnswers = parseJson(parentActivity.instruction_answers);
+    const instructions = parentActivity.task?.instructions || parentActivity.instructions || [];
+
+    if (instructionAnswers && Array.isArray(instructionAnswers)) {
+        instructionAnswers.forEach(answer => {
+            const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
+            const instruction = instructions.find(i => i.id === instructionId);
+            // Copie de la valeur, avec conversion String pour boolean si nécessaire
+            answers[instructionId] = instruction?.type === 'boolean'
+                ? String(answer.value)
+                : answer.value;
+        });
+    }
+    form.instruction_answers = answers;
+
+    // OPTIONNEL : Mise à jour de la description pour indiquer que c'est une sous-activité
+    form.problem_resolution_description = `Sous-activité pour ${parentActivity.task?.title || parentActivity.maintenance?.title || 'Activité'} : ${form.problem_resolution_description}`;
+
+    activityDialogVisible.value = true;
 };
 
-const updateActivity = () => {
-    // Conversion des dates/heures au format ISO pour le backend
-    const dataToSend = {
-        ...form.data(),
-        actual_start_time: form.actual_start_time ? form.actual_start_time.toISOString() : null,
-        actual_end_time: form.actual_end_time ? form.actual_end_time.toISOString() : null,
-        service_order_cost: serviceOrderCost.value, // Set to null if no cost
-        service_order_description: serviceOrderCost.value > 0 ? 'Paiement des pièces détachées et autres' : 'Paiement des pièces détachées et autres',
-    };
-console.log({...form});
-    form.put(route('activities.update', form.id), {
+// Fonction unifiée pour Créer ou Sauvegarder
+const saveActivity = () => {
+    // Étape 1: Préparation des données finales
+    form.service_order_cost = serviceOrderCost.value;
+
+    // Convertir les dates en ISO string (Inertia sérialisera ces valeurs) si elles sont des objets Date
+    form.actual_start_time = form.actual_start_time ? form.actual_start_time.toISOString() : null;
+    form.actual_end_time = form.actual_end_time ? form.actual_end_time.toISOString() : null;
+
+    // Déterminer la route et la méthode
+    const method = isCreatingSubActivity.value ? 'post' : 'put';
+    const routeName = isCreatingSubActivity.value ? 'activities.store' : 'activities.update';
+    const routeParams = isCreatingSubActivity.value ? {} : form.id;
+    const successMessage = isCreatingSubActivity.value ? 'Sous-activité créée avec succès.' : 'Activité mise à jour avec succès.';
+
+    const handler = {
         onSuccess: () => {
             hideDialog();
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Activité mise à jour avec succès.', life: 3000 });
+            toast.add({ severity: 'success', summary: 'Succès', detail: successMessage, life: 3000 });
         },
         onError: (errors) => {
             console.error(errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la mise à jour.', life: 3000 });
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'enregistrement.', life: 3000 });
         }
-    });
+    };
+
+    // Étape 2: Soumission via Inertia
+    if (method === 'post') {
+        form.post(route(routeName), handler);
+    } else {
+        form.put(route(routeName, routeParams), handler);
+    }
 };
 
-// Fonctions pour la gestion des pièces de rechange
+// Fonctions pour la gestion des pièces de rechange (inchangées)
 const openSparePartDialog = (type, part = null, index = -1) => {
     const isEditing = index > -1 && part;
     sparePartData.value = {
@@ -272,63 +389,6 @@ const removeSparePartUsed = (index) => {
 const removeSparePartReturned = (index) => {
    form.spare_parts_returned = form.spare_parts_returned.filter((_, i) => i !== index);
 };
-
-const getSparePartReference = (id) => {
-    const part = props.spareParts.find(p => p.id === id);
-    return part ? part.reference : 'Inconnu';
-};
-
-const sparePartOptions = computed(() => {
-    return props.spareParts.map(part => ({
-        label: `${part.reference} (${part.description || 'N/A'})`,
-        value: part.id
-    }));
-});
-
-// -----------------------------------------------------------
-// Calcul automatique du coût du service
-// -----------------------------------------------------------
-const serviceOrderCost = computed(() => {
-    return form.spare_parts_used.reduce((total, usedPart) => {
-        const partDetails = props.spareParts.find(p => p.id === usedPart.id);
-        const price = partDetails?.price || 0;
-        return total + (price * usedPart.quantity);
-    }, 0);
-});
-
-watch(serviceOrderCost, (newCost) => {
-    form.service_order_cost = newCost;
-});
-
-// -----------------------------------------------------------
-// Fonction pour formater l'affichage des réponses aux instructions
-// -----------------------------------------------------------
-const formatInstructionAnswer = (activity) => {
-    const answers = parseJson(activity.instruction_answers);
-    const instructions = activity.task.instructions || [];
-
-    if (answers.length === 0) {
-        return [{ label: 'Statut', value: 'Aucune réponse enregistrée.' }];
-    }
-
-    return answers.map(answer => {
-        const instruction = instructions.find(i => i.id === answer.task_instruction_id);
-        const label = instruction ? instruction.label : `Instruction ID ${answer.task_instruction_id}`;
-        let value = answer.value;
-
-        // Mise en forme de la valeur
-        if (instruction?.type === 'boolean') {
-            value = value === '1' || value === 1 ? 'Oui' : 'Non';
-        } else if (instruction?.type === 'date' && value) {
-            value = new Date(value).toLocaleDateString('fr-FR');
-        } else if (!value) {
-             value = 'Non renseigné';
-        }
-
-        return { label, value };
-    });
-};
-// -----------------------------------------------------------
 </script>
 
 <template>
@@ -343,6 +403,7 @@ const formatInstructionAnswer = (activity) => {
                             <i class="pi pi-list-check mr-2"></i> Chronologie de mes activités
                         </h2>
                     </template>
+
                     <template #subtitle>
                         <div class="flex flex-column md:flex-row md:justify-content-between md:items-center">
                             <span class="mb-2 md:mb-0">Aperçu de l'évolution de vos tâches et interventions.</span>
@@ -369,428 +430,466 @@ const formatInstructionAnswer = (activity) => {
                         </div>
                     </template>
 
-                   <template #content>
-    <div v-if="currentActivities && currentActivities.length > 0">
-        <div v-if="viewMode === 'timeline'">
-            <Timeline :value="currentActivities" align="left" class="timeline-left p-4">
+                    <template #content>
+                        <div v-if="currentActivities && currentActivities.length > 0">
 
-                <template #marker="slotProps">
-                    <Avatar
-                        :icon="getIconForActivity(slotProps.item.status)"
-                        :style="{ backgroundColor: getColorForActivity(slotProps.item.status), color: '#ffffff' }"
-                        shape="circle"
-                        class="z-10 shadow-lg"
-                        size="large"
-                    />
-                </template>
+                            <div v-if="viewMode === 'timeline'">
+                                <Timeline :value="currentActivities" align="left" class="timeline-left p-4">
 
-                <template #opposite="slotProps">
-                    <div class="p-0 text-sm font-medium text-400 mt-1 flex align-items-center">
-                        <i class="pi pi-clock mr-1"></i>
-                        <span>
-                            {{ slotProps.item.actual_start_time ? new Date(slotProps.item.actual_start_time).toLocaleString('fr-FR') : (slotProps.item.scheduled_start_time ? new Date(slotProps.item.scheduled_start_time).toLocaleString('fr-FR') : 'Date non définie') }}
-                        </span>
-                    </div>
-                </template>
+                                    <template #marker="slotProps">
+                                        <Avatar
+                                            :icon="getIconForActivity(slotProps.item.status)"
+                                            :style="{ backgroundColor: getColorForActivity(slotProps.item.status), color: '#ffffff' }"
+                                            shape="circle"
+                                            class="z-10 shadow-lg"
+                                            size="large"
+                                        />
+                                    </template>
 
-                <template #content="slotProps">
-                    <Card class="mt-0 surface-card shadow-4 border-round-lg">
-                        <template #title>
-                            <div class="text-xl font-bold text-700 flex align-items-center justify-content-between">
-                                <span>
-                                    {{ slotProps.item.task.title || 'Activité Sans Titre' }}
-                                    <span class="text-base font-normal text-500 ml-2">#WorkOrderID: {{ slotProps.item.task.id }}</span>
-                                </span>
+                                    <template #opposite="slotProps">
+                                        <div class="p-0 text-sm font-medium text-400 mt-1 flex align-items-center">
+                                            <i class="pi pi-clock mr-1"></i>
+                                            <span>
+                                                {{ slotProps.item.actual_start_time ? new Date(slotProps.item.actual_start_time).toLocaleString('fr-FR') : (slotProps.item.scheduled_start_time ? new Date(slotProps.item.scheduled_start_time).toLocaleString('fr-FR') : 'Date non définie') }}
+                                            </span>
+                                        </div>
+                                    </template>
+
+                                    <template #content="slotProps">
+                                        <Card class="mt-0 surface-card shadow-4 border-round-lg">
+                                            <template #title>
+                                                <div class="text-xl font-bold text-700 flex align-items-center justify-content-between">
+                                                    <span>
+                                                        {{ slotProps.item.task?.title || slotProps.item.maintenance?.title || 'Activité Sans Titre' }}
+                                                        <span class="text-base font-normal text-500 ml-2">#WorkOrderID: {{ slotProps.item.task?.id|| slotProps.item.maintenance?.id }}</span>
+                                                    </span>
+                                                </div>
+                                            </template>
+
+                                            <template #subtitle>
+                                                <div class="mt-2">
+                                                    <Tag :value="slotProps.item.status" :severity="getStatusSeverity(slotProps.item.status)" class="text-lg font-bold" />
+                                                </div>
+                                            </template>
+
+                                            <template #content>
+                                                <div class="mt-2 text-600 line-height-3">
+
+                                                    <p v-if="slotProps.item.problem_resolution_description" class="mb-2">
+                                                        <strong>Problème/Résolution:</strong> {{ slotProps.item.problem_resolution_description }}
+                                                    </p>
+
+                                                    <p v-if="slotProps.item.proposals" class="mb-2">
+                                                        <strong>Propositions:</strong> {{ slotProps.item.proposals }}
+                                                    </p>
+
+                                                    <p v-if="slotProps.item.additional_information" class="mb-2">
+                                                        <strong>Informations Additionnelles:</strong> {{ slotProps.item.additional_information }}
+                                                    </p>
+
+                                                    <p v-if="slotProps.item.jobber" class="mt-3">
+                                                        <strong>Intervenant:</strong> {{ slotProps.item.jobber }}
+                                                    </p>
+
+                                                    <div v-if="parseJson(slotProps.item.instruction_answers).length > 0" class="mt-3 p-3 bg-bluegray-50 border-round-md border-left-3 border-blue-500">
+                                                        <h5 class="font-bold text-blue-800 mb-2">Réponses aux Instructions :</h5>
+                                                        <ul class="list-disc ml-4">
+                                                            <li v-for="(answer, ansIndex) in formatInstructionAnswer(slotProps.item)" :key="ansIndex" class="mb-1">
+                                                                <strong class="text-700">{{ answer.label }}:</strong> {{ answer.value }}
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <div v-if="displayFields.includes('spare_parts_used') && parseJson(slotProps.item.spare_parts_used).length > 0" class="mt-3">
+                                                        <h5 class="font-bold text-700 mb-1">Pièces utilisées:</h5>
+                                                        <ul class="list-disc ml-4">
+                                                            <li v-for="(part, index) in parseJson(slotProps.item.spare_parts_used)" :key="index">
+                                                                {{ part.quantity }} x {{ getSparePartReference(part.id) }} ({{ part.price }} XOF)
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <div v-if="displayFields.includes('spare_parts_returned') && parseJson(slotProps.item.spare_parts_returned).length > 0" class="mt-3">
+                                                        <h5 class="font-bold text-700 mb-1">Pièces retournées:</h5>
+                                                        <ul class="list-disc ml-4">
+                                                            <li v-for="(part, index) in parseJson(slotProps.item.spare_parts_returned)" :key="index">
+                                                                {{ part.quantity }} x {{ getSparePartReference(part.id) }}
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <p v-if="displayFields.includes('actual_end_time') && slotProps.item.actual_end_time" class="mt-3 text-sm text-700">
+                                                        <i class="pi pi-check-circle mr-1 text-green-600"></i>
+                                                        <strong>Heure de fin réelle:</strong> {{ new Date(slotProps.item.actual_end_time).toLocaleString('fr-FR') }}
+                                                    </p>
+
+                                                    <div class="mt-4 pt-3 border-top-2 border-gray-200">
+                                                        <h4 class="font-semibold text-gray-700 mb-2">Détails de la Tâche Associée</h4>
+                                                        <p class="mb-1"><strong>Priorité:</strong> <Tag :value="slotProps.item.task?.priority || slotProps.item.maintenance?.priority" /></p>
+                                                        <p v-if="slotProps.item.task?.description" class="text-sm"><strong>Description:</strong> {{ slotProps.item.task?.description || slotProps.item.maintenance?.description }}</p>
+                                                    </div>
+
+                                                </div>
+
+                                                <div class="flex justify-content-end mt-4">
+                                                    <Button
+                                                        icon="pi pi-plus-circle"
+                                                        label="Créer sous-activité"
+                                                        class="p-button-text p-button-sm p-button-secondary mr-2"
+                                                        @click="createSubActivity(slotProps.item)"
+                                                    />
+                                                    <Button icon="pi pi-pencil" label="Compléter" class="p-button-text p-button-info p-button-sm" @click="editActivity(slotProps.item)" />
+                                                </div>
+                                            </template>
+                                        </Card>
+                                    </template>
+
+                                </Timeline>
                             </div>
-                        </template>
 
-                        <template #subtitle>
-                            <div class="mt-2">
-                                <Tag :value="slotProps.item.status" :severity="getStatusSeverity(slotProps.item.status)" class="text-lg font-bold" />
+                            <div v-else-if="viewMode === 'table'">
+                                <DataTable :value="currentActivities" responsiveLayout="scroll" dataKey="id" class="p-datatable-sm shadow-2 border-round-lg">
+                                    <Column field="task.title" header="Titre de la Tâche" :sortable="true" class="font-semibold">
+                                        <template #body="slotProps">
+                                            {{ slotProps.data.task?.title || slotProps.data.maintenance?.title || 'N/A' }}
+                                        </template>
+                                    </Column>
+                                    <Column field="status" header="Statut" :sortable="true">
+                                        <template #body="slotProps">
+                                            <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" />
+                                        </template>
+                                    </Column>
+                                    <Column field="actual_start_time" header="Début Réel" :sortable="true">
+                                        <template #body="slotProps">
+                                            {{ slotProps.data.actual_start_time ? new Date(slotProps.data.actual_start_time).toLocaleString('fr-FR') : 'N/A' }}
+                                        </template>
+                                    </Column>
+                                    <Column field="task.priority" header="Priorité" :sortable="true">
+                                        <template #body="slotProps">
+                                            <Tag :value="slotProps.data.task?.priority || slotProps.data.maintenance?.priority" />
+                                        </template>
+                                    </Column>
+
+                                    <Column v-if="displayFields.includes('actual_end_time')" header="Fin Réelle" :sortable="true">
+                                        <template #body="slotProps">
+                                            {{ slotProps.data.actual_end_time ? new Date(slotProps.data.actual_end_time).toLocaleString('fr-FR') : 'N/A' }}
+                                        </template>
+                                    </Column>
+
+                                    <Column v-if="displayFields.includes('proposals')" header="Propositions" :sortable="false">
+                                        <template #body="slotProps">
+                                            <span v-tooltip.top="slotProps.data.proposals" class="max-w-10rem truncate block">{{ slotProps.data.proposals || 'N/A' }}</span>
+                                        </template>
+                                    </Column>
+
+                                    <Column v-if="displayFields.includes('jobber')" field="jobber" header="Intervenant" :sortable="true"></Column>
+
+                                    <Column v-if="displayFields.includes('additional_information')" header="Info Add." :sortable="false">
+                                        <template #body="slotProps">
+                                            <span v-tooltip.top="slotProps.data.additional_information" class="max-w-10rem truncate block">{{ slotProps.data.additional_information || 'N/A' }}</span>
+                                        </template>
+                                    </Column>
+
+                                    <Column v-if="displayFields.includes('spare_parts_used')" header="Pièces Utilisées" :sortable="false">
+                                        <template #body="slotProps">
+                                            <div v-if="parseJson(slotProps.data.spare_parts_used).length > 0">
+                                                <Tag
+                                                    :value="`${parseJson(slotProps.data.spare_parts_used).length} Pièce(s)`"
+                                                    severity="contrast"
+                                                    v-tooltip.top="parseJson(slotProps.data.spare_parts_used).map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
+                                                />
+                                            </div>
+                                            <span v-else>Non</span>
+                                        </template>
+                                    </Column>
+
+                                    <Column v-if="displayFields.includes('spare_parts_returned')" header="Pièces Retournées" :sortable="false">
+                                        <template #body="slotProps">
+                                            <div v-if="parseJson(slotProps.data.spare_parts_returned).length > 0">
+                                                <Tag
+                                                    :value="`${parseJson(slotProps.data.spare_parts_returned).length} Pièce(s)`"
+                                                    severity="warning"
+                                                    v-tooltip.top="parseJson(slotProps.data.spare_parts_returned).map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
+                                                />
+                                            </div>
+                                            <span v-else>Non</span>
+                                        </template>
+                                    </Column>
+
+                                    <Column header="Instructions/Actions" class="text-right">
+                                        <template #body="slotProps">
+                                            <div class="flex justify-content-end align-items-center">
+                                                <div v-if="parseJson(slotProps.data.instruction_answers).length > 0" class="mr-2">
+                                                    <Tag
+                                                        :value="`${parseJson(slotProps.data.instruction_answers).length} Rép.`"
+                                                        severity="info"
+                                                        v-tooltip.top="formatInstructionAnswer(slotProps.data).map(a => `${a.label}: ${a.value}`).join(' | ')"
+                                                    />
+                                                </div>
+                                                <Button
+                                                    icon="pi pi-pencil"
+                                                    class="p-button-rounded p-button-info p-button-sm"
+                                                    @click="editActivity(slotProps.data)"
+                                                    v-tooltip.top="'Compléter/Modifier l\'Activité'"
+                                                />
+                                            </div>
+                                        </template>
+                                    </Column>
+
+                                </DataTable>
                             </div>
-                        </template>
 
-                        <template #content>
-                            <div class="mt-2 text-600 line-height-3">
-
-                                <p v-if="slotProps.item.problem_resolution_description" class="mb-2">
-                                    <strong>Problème/Résolution:</strong> {{ slotProps.item.problem_resolution_description }}
-                                </p>
-
-                                <p v-if="slotProps.item.proposals" class="mb-2">
-                                    <strong>Propositions:</strong> {{ slotProps.item.proposals }}
-                                </p>
-
-                                <p v-if="slotProps.item.additional_information" class="mb-2">
-                                    <strong>Informations Additionnelles:</strong> {{ slotProps.item.additional_information }}
-                                </p>
-
-                                <p v-if="slotProps.item.jobber" class="mt-3">
-                                    <strong>Intervenant:</strong> {{ slotProps.item.jobber }}
-                                </p>
-
-                                <div v-if="parseJson(slotProps.item.instruction_answers).length > 0" class="mt-3 p-3 bg-bluegray-50 border-round-md border-left-3 border-blue-500">
-                                    <h5 class="font-bold text-blue-800 mb-2">Réponses aux Instructions:</h5>
-                                    <ul class="list-disc ml-4">
-                                        <li v-for="(answer, ansIndex) in formatInstructionAnswer(slotProps.item)" :key="ansIndex" class="mb-1">
-                                            <strong class="text-700">{{ answer.label }}:</strong> {{ answer.value }}
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                <div v-if="displayFields.includes('spare_parts_used') && parseJson(slotProps.item.spare_parts_used).length > 0" class="mt-3">
-                                    <h5 class="font-bold text-700 mb-1">Pièces utilisées:</h5>
-                                    <ul class="list-disc ml-4">
-                                        <li v-for="(part, index) in parseJson(slotProps.item.spare_parts_used)" :key="index">
-                                            {{ part.quantity }} x {{ getSparePartReference(part.id) }}
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                <div v-if="displayFields.includes('spare_parts_returned') && parseJson(slotProps.item.spare_parts_returned).length > 0" class="mt-3">
-                                    <h5 class="font-bold text-700 mb-1">Pièces retournées:</h5>
-                                    <ul class="list-disc ml-4">
-                                        <li v-for="(part, index) in parseJson(slotProps.item.spare_parts_returned)" :key="index">
-                                            {{ part.quantity }} x {{ getSparePartReference(part.id) }}
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                <p v-if="displayFields.includes('actual_end_time') && slotProps.item.actual_end_time" class="mt-3 text-sm text-700">
-                                    <i class="pi pi-check-circle mr-1 text-green-600"></i>
-                                    <strong>Heure de fin réelle:</strong> {{ new Date(slotProps.item.actual_end_time).toLocaleString('fr-FR') }}
-                                </p>
-
-                                <div class="mt-4 pt-3 border-top-2 border-gray-200">
-                                    <h4 class="font-semibold text-gray-700 mb-2">Détails de la Tâche Associée</h4>
-                                    <p class="mb-1"><strong>Priorité:</strong> <Tag :value="slotProps.item.task.priority" /></p>
-                                    <p v-if="slotProps.item.task.description" class="text-sm"><strong>Description:</strong> {{ slotProps.item.task.description }}</p>
-                                </div>
-
-                            </div>
-
-                            <div class="flex justify-content-end mt-4">
-                                <Button
-                                    icon="pi pi-plus-circle"
-                                    label="Créer sous-activité"
-                                    class="p-button-text p-button-sm p-button-secondary mr-2"
-                                    @click="createSubActivity(slotProps.item)" />
-                                <Button icon="pi pi-pencil" label="Compléter" class="p-button-text p-button-sm p-button-info" @click="editActivity(slotProps.item)" />
-                            </div>
-                        </template>
-                    </Card>
-                </template>
-
-            </Timeline>
-        </div>
-
-        <div v-else-if="viewMode === 'table'">
-            <DataTable :value="currentActivities" responsiveLayout="scroll" dataKey="id" class="p-datatable-sm shadow-2 border-round-lg">
-                <Column field="task.title" header="Titre de la Tâche" :sortable="true" class="font-semibold"></Column>
-                <Column field="status" header="Statut" :sortable="true">
-                    <template #body="slotProps">
-                        <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" />
-                    </template>
-                </Column>
-                <Column field="actual_start_time" header="Début Réel" :sortable="true">
-                    <template #body="slotProps">
-                        {{ slotProps.data.actual_start_time ? new Date(slotProps.data.actual_start_time).toLocaleString('fr-FR') : 'N/A' }}
-                    </template>
-                </Column>
-                <Column field="task.priority" header="Priorité" :sortable="true">
-                    <template #body="slotProps">
-                        <Tag :value="slotProps.data.task.priority" />
-                    </template>
-                </Column>
-
-                <Column v-if="displayFields.includes('actual_end_time')" header="Fin Réelle" :sortable="true">
-                    <template #body="slotProps">
-                        {{ slotProps.data.actual_end_time ? new Date(slotProps.data.actual_end_time).toLocaleString('fr-FR') : 'N/A' }}
-                    </template>
-                </Column>
-
-                <Column v-if="displayFields.includes('proposals')" header="Propositions" :sortable="false">
-                    <template #body="slotProps">
-                        <span v-tooltip.top="slotProps.data.proposals" class="max-w-10rem truncate block">{{ slotProps.data.proposals || 'N/A' }}</span>
-                    </template>
-                </Column>
-
-                <Column v-if="displayFields.includes('jobber')" field="jobber" header="Intervenant" :sortable="true"></Column>
-
-                <Column v-if="displayFields.includes('additional_information')" header="Info Add." :sortable="false">
-                    <template #body="slotProps">
-                        <span v-tooltip.top="slotProps.data.additional_information" class="max-w-10rem truncate block">{{ slotProps.data.additional_information || 'N/A' }}</span>
-                    </template>
-                </Column>
-
-                <Column v-if="displayFields.includes('spare_parts_used')" header="Pièces Utilisées" :sortable="false">
-                    <template #body="slotProps">
-                        <div v-if="parseJson(slotProps.data.spare_parts_used).length > 0">
-                            <Tag
-                                :value="`${parseJson(slotProps.data.spare_parts_used).length} Pièce(s)`"
-                                severity="contrast"
-                                v-tooltip.top="parseJson(slotProps.data.spare_parts_used).map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
-                            />
                         </div>
-                        <span v-else>Non</span>
-                    </template>
-                </Column>
 
-                <Column v-if="displayFields.includes('spare_parts_returned')" header="Pièces Retournées" :sortable="false">
-                    <template #body="slotProps">
-                        <div v-if="parseJson(slotProps.data.spare_parts_returned).length > 0">
-                            <Tag
-                                :value="`${parseJson(slotProps.data.spare_parts_returned).length} Pièce(s)`"
-                                severity="warning"
-                                v-tooltip.top="parseJson(slotProps.data.spare_parts_returned).map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
-                            />
+                        <div v-else class="text-center p-5 surface-50 border-round-md shadow-2">
+                            <i class="pi pi-calendar-times text-5xl text-400 mb-3"></i>
+                            <p class="text-xl text-700">Aucune activité à afficher pour le moment.</p>
+                            <p class="text-600">Revenez plus tard ou ajoutez une nouvelle tâche.</p>
                         </div>
-                        <span v-else>Non</span>
-                    </template>
-                </Column>
 
+                        <Dialog v-model:visible="activityDialogVisible" modal :header="isCreatingSubActivity ? 'Créer une Sous-Activité' : 'Compléter ou Modifier l\'Activité'" :style="{ width: '45rem' }" class="p-fluid">
+                            <div class="p-grid p-col-12 p-nogutter">
+                                <div class="field p-col-12" v-if="isCreatingSubActivity">
+                                    <Tag icon="pi pi-link" severity="secondary" :value="`Liée à l'activité #${selectedActivity.id}`" class="mb-3" />
+                                </div>
+                                <div class="field p-col-12">
+                                    <label for="status" class="font-semibold">Statut de l'activité</label>
+                                    <Dropdown id="status" class="w-full" v-model="form.status" :options="['Planifiée', 'En cours', 'Terminée', 'En attente', 'Annulée', 'En retard']" placeholder="Changer le statut" />
+                                    <small class="p-error">{{ form.errors.status }}</small>
+                                </div>
+                                <div class="field p-col-12">
+                                    <label for="description" class="font-semibold">Description du problème et résolution</label>
+                                    <Textarea id="description" class="w-full" v-model="form.problem_resolution_description" rows="4" />
+                                    <small class="p-error">{{ form.errors.problem_resolution_description }}</small>
+                                </div>
+                                <div class="field p-col-12">
+                                    <label for="proposals" class="font-semibold">Propositions / Recommandations</label>
+                                    <Textarea id="proposals" class="w-full" v-model="form.proposals" rows="3" />
+                                    <small class="p-error">{{ form.errors.proposals }}</small>
+                                </div>
+                                <div class="field p-col-12">
+                                    <label for="instructions" class="font-semibold">Instructions laissées</label>
+                                    <Textarea id="instructions" class="w-full" v-model="form.instructions" rows="3" />
+                                    <small class="p-error">{{ form.errors.instructions }}</small>
+                                </div>
+                                <div class="field p-col-12">
+                                    <label for="additional_information" class="font-semibold">Informations additionnelles</label>
+                                    <Textarea id="additional_information" class="w-full" v-model="form.additional_information" rows="3" />
+                                    <small class="p-error">{{ form.errors.additional_information }}</small>
+                                </div>
+                                <div class="p-grid p-col-12 flex flex-wrap">
+                                    <div class="field p-col-6 w-full md:w-6/12">
+                                        <label for="actual_start_time" class="font-semibold">Heure de début réelle</label>
+                                        <Calendar id="actual_start_time" class="w-full" v-model="form.actual_start_time" showTime dateFormat="dd/mm/yy" showIcon />
+                                        <small class="p-error">{{ form.errors.actual_start_time }}</small>
+                                    </div>
+                                    <div class="field p-col-6 w-full md:w-6/12">
+                                        <label for="actual_end_time" class="font-semibold">Heure de fin réelle</label>
+                                        <Calendar id="actual_end_time" class="w-full" v-model="form.actual_end_time" showTime dateFormat="dd/mm/yy" showIcon />
+                                        <small class="p-error">{{ form.errors.actual_end_time }}</small>
+                                    </div>
+                                </div>
+                                <div class="p-grid p-col-12 flex flex-wrap">
+                                    <div class="field p-col-6 w-full md:w-6/12">
+                                        <label for="jobber" class="font-semibold">Intervenant</label>
+                                        <InputText id="jobber" class="w-full" v-model="form.jobber" />
+                                        <small class="p-error">{{ form.errors.jobber }}</small>
+                                    </div>
+                                    <div class="field p-col-6 w-full md:w-6/12">
+                                        <label for="user_id" class="font-semibold">Utilisateur</label>
+                                        <Dropdown id="user_id" class="w-full" v-model="form.user_id"
+                                                    :options="props.users" optionLabel="name" optionValue="id"
+                                                    placeholder="Sélectionner un utilisateur" filter />
+                                        <small class="p-error">{{ form.errors.user_id }}</small>
+                                    </div>
+                                </div>
+                            </div>
 
-                <Column header="Instructions/Actions" class="text-right">
-                    <template #body="slotProps">
-                        <div class="flex justify-content-end align-items-center">
-                            <div v-if="parseJson(slotProps.data.instruction_answers).length > 0" class="mr-2">
-                                <Tag
-                                    :value="`${parseJson(slotProps.data.instruction_answers).length} Rép.`"
-                                    severity="info"
-                                    v-tooltip.top="formatInstructionAnswer(slotProps.data).map(a => `${a.label}: ${a.value}`).join(' | ')"
-                                />
+                            <Divider />
+                            <h4 class="font-bold mb-3">Réponses aux Instructions 📝</h4>
+
+                            <div v-if="selectedActivity?.task?.instructions?.length > 0">
+                                <div v-for="instruction in selectedActivity.task.instructions" :key="instruction.id" class="field mb-4 p-3 border rounded-lg bg-gray-50">
+                                    <label :for="`instruction-${instruction.id}`" class="font-semibold block mb-2">
+                                        {{ instruction.label }}
+                                        <span v-if="instruction.is_required" class="text-red-500 ml-1">*</span>
+                                    </label>
+
+                                    <InputText v-if="instruction.type === 'text'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" />
+                                    <InputNumber v-else-if="instruction.type === 'number'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" :useGrouping="false" />
+                                    <Calendar v-else-if="instruction.type === 'date'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" showIcon dateFormat="dd/mm/yy" />
+                                    <Dropdown v-else-if="instruction.type === 'boolean'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" :options="[{label: 'Oui', value: '1'}, {label: 'Non', value: '0'}]" optionLabel="label" optionValue="value" placeholder="Sélectionner" class="w-full" />
+                                    <Textarea v-else-if="instruction.type === 'textarea'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" rows="3" />
+
+                                    <div v-else class="text-gray-500 text-sm">
+                                        Le type d'instruction '{{ instruction.type }}' n'est pas encore supporté pour la saisie.
+                                    </div>
+
+                                    <small class="p-error">{{ form.errors[`instruction_answers.${instruction.id}`] }}</small>
+                                </div>
+                            </div>
+
+                            <div v-else-if="selectedActivity?.maintenance_id">
+                                <div v-for="instruction in selectedActivity.maintenance.instructions" :key="instruction.id" class="field mb-4 p-3 border rounded-lg bg-gray-50">
+                                    <label :for="`instruction-${instruction.id}`" class="font-semibold block mb-2">
+                                        {{ instruction.label }}
+                                        <span v-if="instruction.is_required" class="text-red-500 ml-1">*</span>
+                                    </label>
+
+                                    <InputText v-if="instruction.type === 'text'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" />
+                                    <InputNumber v-else-if="instruction.type === 'number'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" :useGrouping="false" />
+                                    <Calendar v-else-if="instruction.type === 'date'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" showIcon dateFormat="dd/mm/yy" />
+                                    <Dropdown v-else-if="instruction.type === 'boolean'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" :options="[{label: 'Oui', value: '1'}, {label: 'Non', value: '0'}]" optionLabel="label" optionValue="value" placeholder="Sélectionner" class="w-full" />
+                                    <Textarea v-else-if="instruction.type === 'textarea'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" rows="3" />
+
+                                    <div v-else class="text-gray-500 text-sm">
+                                        Le type d'instruction '{{ instruction.type }}' n'est pas encore supporté pour la saisie.
+                                    </div>
+
+                                    <small class="p-error">{{ form.errors[`instruction_answers.${instruction.id}`] }}</small>
+                                </div>
+                            </div>
+
+                            <div v-else>
+                                <p class="text-gray-500">Aucune instruction spécifique pour cette tâche.</p>
+                            </div>
+
+                            <Divider />
+                            <h4 class="font-bold mb-3">Pièces de rechange utilisées 🛠️ <Tag :value="`${serviceOrderCost.toFixed(0)} XOF`" severity="secondary" /></h4>
+
+                            <div v-if="form.spare_parts_used.length > 0">
+                                <div v-for="(part, index) in form.spare_parts_used" :key="`used-${index}`" class="flex align-items-center mb-2 p-2 border-1 border-round surface-hover relative">
+                                    <span class="flex-grow-1 font-semibold text-700">
+                                        **{{ part.quantity }} x {{ getSparePartReference(part.id) }}**
+                                    </span>
+                                    <div class="flex-shrink-0">
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            class="p-button-info p-button-text p-button-rounded mr-1"
+                                            @click="openSparePartDialog('used', part, index)"
+                                            v-tooltip.top="'Modifier la pièce'"
+                                        />
+                                        <Button
+                                            icon="pi pi-trash"
+                                            class="p-button-danger p-button-text p-button-rounded"
+                                            @click="removeSparePartUsed(index)"
+                                            v-tooltip.top="'Supprimer la pièce'"
+                                        />
+                                    </div>
+                                    <small class="p-error absolute bottom-0 left-0">{{ form.errors[`spare_parts_used.${index}.id`] || form.errors[`spare_parts_used.${index}.quantity`] }}</small>
+                                </div>
+                            </div>
+                            <div v-else>
+                                <p class="text-gray-500">Aucune pièce utilisée enregistrée.</p>
+                            </div>
+
+                            <Button
+                                label="Ajouter une pièce utilisée"
+                                icon="pi pi-plus"
+                                class="p-button-text p-button-sm mt-2"
+                                @click="openSparePartDialog('used')"
+                            />
+
+                            <Divider />
+                            <h4 class="font-bold mb-3">Pièces de rechange retournées ♻️</h4>
+
+                            <div v-if="form.spare_parts_returned.length > 0">
+                                <div v-for="(part, index) in form.spare_parts_returned" :key="`returned-${index}`" class="flex align-items-center mb-2 p-2 border-1 border-round surface-hover relative">
+                                    <span class="flex-grow-1 font-semibold text-700">
+                                        **{{ part.quantity }} x {{ getSparePartReference(part.id) }}**
+                                    </span>
+                                    <div class="flex-shrink-0">
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            class="p-button-info p-button-text p-button-rounded mr-1"
+                                            @click="openSparePartDialog('returned', part, index)"
+                                            v-tooltip.top="'Modifier la pièce'"
+                                        />
+                                        <Button
+                                            icon="pi pi-trash"
+                                            class="p-button-danger p-button-text p-button-rounded"
+                                            @click="removeSparePartReturned(index)"
+                                            v-tooltip.top="'Supprimer la pièce'"
+                                        />
+                                    </div>
+                                    <small class="p-error absolute bottom-0 left-0">{{ form.errors[`spare_parts_returned.${index}.id`] || form.errors[`spare_parts_returned.${index}.quantity`] }}</small>
+                                </div>
+                            </div>
+                            <div v-else>
+                                <p class="text-gray-500">Aucune pièce retournée enregistrée.</p>
                             </div>
                             <Button
-                                icon="pi pi-pencil"
-                                class="p-button-rounded p-button-info p-button-sm"
-                                @click="editActivity(slotProps.data)"
-                                v-tooltip.top="'Compléter/Modifier l\'Activité'"
+                                label="Ajouter une pièce retournée"
+                                icon="pi pi-plus"
+                                class="p-button-text p-button-sm mt-2"
+                                @click="openSparePartDialog('returned')"
                             />
-                        </div>
+
+                            <template #footer>
+                                <Button label="Annuler" icon="pi pi-times" @click="hideDialog" class="p-button-text p-button-secondary" />
+                                <Button
+                                    :label="isCreatingSubActivity ? 'Créer la Sous-activité' : 'Sauvegarder'"
+                                    icon="pi pi-check"
+                                    @click="saveActivity"
+                                    :loading="form.processing"
+                                    class="p-button-info"
+                                />
+                            </template>
+                        </Dialog>
+
+                        <Dialog v-model:visible="sparePartDialogVisible" modal :header="sparePartData.index === -1 ? 'Ajouter une ou plusieurs pièces' : 'Modifier une pièce'" :style="{ width: '30rem' }" class="p-fluid">
+                            <div class="field">
+                                <label for="spare-part-id" class="font-semibold">Pièce(s) de rechange</label>
+
+                                <MultiSelect
+                                    v-if="sparePartData.index === -1"
+                                    id="spare-part-id"
+                                    v-model="sparePartData.ids"
+                                    :options="sparePartOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    placeholder="Sélectionner une ou plusieurs pièces"
+                                    class="w-full"
+                                    filter
+                                    display="chip"
+                                />
+
+                                <Dropdown
+                                    v-else
+                                    id="spare-part-id-single"
+                                    v-model="sparePartData.ids[0]"
+                                    :options="sparePartOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    placeholder="Sélectionner une pièce"
+                                    class="w-full"
+                                    filter
+                                />
+                            </div>
+                            <div class="field">
+                                <label for="spare-part-quantity" class="font-semibold">Quantité</label>
+                                <InputNumber
+                                    id="spare-part-quantity"
+                                    v-model="sparePartData.quantity"
+                                    placeholder="Quantité"
+                                    :min="1"
+                                    :max="99999"
+                                    class="w-full"
+                                    :useGrouping="false"
+                                />
+                            </div>
+                            <template #footer>
+                                <Button label="Annuler" icon="pi pi-times" @click="sparePartDialogVisible = false" class="p-button-text" />
+                                <Button label="Sauvegarder" icon="pi pi-check" @click="saveSparePart" class="p-button-primary" />
+                            </template>
+                        </Dialog>
+
                     </template>
-                </Column>
-
-            </DataTable>
-        </div>
-
-    </div>
-
-    <div v-else class="text-center p-5 surface-50 border-round-md shadow-2">
-        <i class="pi pi-calendar-times text-5xl text-400 mb-3"></i>
-        <p class="text-xl text-700">Aucune activité à afficher pour le moment.</p>
-        <p class="text-600">Revenez plus tard ou ajoutez une nouvelle tâche.</p>
-    </div>
-
-    <Dialog v-model:visible="activityDialogVisible" modal header="Compléter ou Modifier l'Activité" :style="{ width: '45rem' }" class="p-fluid">
-        <div class="p-grid p-col-12 p-nogutter">
-            <div class="field p-col-12">
-                <label for="status" class="font-semibold">Statut de l'activité</label>
-                <Dropdown id="status" class="w-full" v-model="form.status" :options="['Planifiée', 'En cours', 'Terminée', 'En attente', 'Annulée']" placeholder="Changer le statut" />
-                <small class="p-error">{{ form.errors.status }}</small>
-            </div>
-            <div class="field p-col-12">
-                <label for="description" class="font-semibold">Description du problème et résolution</label>
-                <Textarea id="description" class="w-full" v-model="form.problem_resolution_description" rows="4" />
-                <small class="p-error">{{ form.errors.problem_resolution_description }}</small>
-            </div>
-            <div class="field p-col-12">
-                <label for="proposals" class="font-semibold">Propositions / Recommandations</label>
-                <Textarea id="proposals" class="w-full" v-model="form.proposals" rows="3" />
-                <small class="p-error">{{ form.errors.proposals }}</small>
-            </div>
-            <div class="field p-col-12">
-                <label for="instructions" class="font-semibold">Instructions laissées</label>
-                <Textarea id="instructions" class="w-full" v-model="form.instructions" rows="3" />
-                <small class="p-error">{{ form.errors.instructions }}</small>
-            </div>
-            <div class="field p-col-12">
-                <label for="additional_information" class="font-semibold">Informations additionnelles</label>
-                <Textarea id="additional_information" class="w-full" v-model="form.additional_information" rows="3" />
-                <small class="p-error">{{ form.errors.additional_information }}</small>
-            </div>
-            <div class="p-grid p-col-12">
-                <div class="field p-col-6">
-                    <label for="actual_start_time" class="font-semibold">Heure de début réelle</label>
-                    <Calendar id="actual_start_time" class="w-full" v-model="form.actual_start_time" showTime dateFormat="dd/mm/yy" showIcon />
-                    <small class="p-error">{{ form.errors.actual_start_time }}</small>
-                </div>
-                <div class="field p-col-6">
-                    <label for="actual_end_time" class="font-semibold">Heure de fin réelle</label>
-                    <Calendar id="actual_end_time" class="w-full" v-model="form.actual_end_time" showTime dateFormat="dd/mm/yy" showIcon />
-                    <small class="p-error">{{ form.errors.actual_end_time }}</small>
-                </div>
-            </div>
-            <div class="p-grid p-col-12">
-                <div class="field p-col-6">
-                    <label for="jobber" class="font-semibold">Intervenant</label>
-                    <InputText id="jobber" class="w-full" v-model="form.jobber" />
-                    <small class="p-error">{{ form.errors.jobber }}</small>
-                </div>
-                <div class="field p-col-6">
-                    <label for="user_id" class="font-semibold">Utilisateur</label>
-                    <Dropdown id="user_id" class="w-full" v-model="form.user_id"
-                             :options="props.users" optionLabel="name" optionValue="id"
-                             placeholder="Sélectionner un utilisateur" filter />
-                    <small class="p-error">{{ form.errors.user_id }}</small>
-                </div>
-            </div>
-        </div>
-
-        <Divider />
-        <h4 class="font-bold mb-3">Réponses aux Instructions 📝</h4>
-        <div v-if="selectedActivity?.task?.instructions?.length > 0">
-            <div v-for="instruction in selectedActivity.task.instructions" :key="instruction.id" class="field mb-4 p-3 border rounded-lg bg-gray-50">
-                <label :for="`instruction-${instruction.id}`" class="font-semibold block mb-2">
-                    {{ instruction.label }}
-                    <span v-if="instruction.is_required" class="text-red-500 ml-1">*</span>
-                </label>
-
-                <InputText v-if="instruction.type === 'text'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" />
-                <InputNumber v-else-if="instruction.type === 'number'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" :useGrouping="false" />
-                <Calendar v-else-if="instruction.type === 'date'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" showIcon dateFormat="dd/mm/yy" />
-                <Dropdown v-else-if="instruction.type === 'boolean'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" :options="[{label: 'Oui', value: '1'}, {label: 'Non', value: '0'}]" optionLabel="label" optionValue="value" placeholder="Sélectionner" class="w-full" />
-                <Textarea v-else-if="instruction.type === 'textarea'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" rows="3" />
-
-                <div v-else class="text-gray-500 text-sm">
-                    Le type d'instruction '{{ instruction.type }}' n'est pas encore supporté pour la saisie.
-                </div>
-
-                <small class="p-error">{{ form.errors[`instruction_answers.${instruction.id}`] }}</small>
-            </div>
-        </div>
-        <div v-else>
-            <p class="text-gray-500">Aucune instruction spécifique pour cette tâche.</p>
-        </div>
-
-        <Divider />
-        <h4 class="font-bold mb-3">Pièces de rechange utilisées 🛠️</h4>
-        <div v-if="form.spare_parts_used.length > 0">
-            <div v-for="(part, index) in form.spare_parts_used" :key="`used-${index}`" class="flex align-items-center mb-2 p-2 border-1 border-round surface-hover">
-                <span class="flex-grow-1 font-semibold text-700">
-                    **{{ part.quantity }} x {{ getSparePartReference(part.id) }}**
-                </span>
-                <div class="flex-shrink-0">
-                    <Button
-                        icon="pi pi-pencil"
-                        class="p-button-info p-button-text p-button-rounded mr-1"
-                        @click="openSparePartDialog('used', part, index)"
-                        v-tooltip.top="'Modifier la pièce'"
-                    />
-                    <Button
-                        icon="pi pi-trash"
-                        class="p-button-danger p-button-text p-button-rounded"
-                        @click="removeSparePartUsed(index)"
-                        v-tooltip.top="'Supprimer la pièce'"
-                    />
-                </div>
-                <small class="p-error absolute bottom-0 left-0">{{ form.errors[`spare_parts_used.${index}.id`] || form.errors[`spare_parts_used.${index}.quantity`] }}</small>
-            </div>
-        </div>
-        <div v-else>
-            <p class="text-gray-500">Aucune pièce utilisée enregistrée.</p>
-        </div>
-
-        <Button
-            label="Ajouter une pièce utilisée"
-            icon="pi pi-plus"
-            class="p-button-text p-button-sm mt-2"
-            @click="openSparePartDialog('used')"
-        />
-
-        <Divider />
-        <h4 class="font-bold mb-3">Pièces de rechange retournées ♻️</h4>
-        <div v-if="form.spare_parts_returned.length > 0">
-            <div v-for="(part, index) in form.spare_parts_returned" :key="`returned-${index}`" class="flex align-items-center mb-2 p-2 border-1 border-round surface-hover">
-                <span class="flex-grow-1 font-semibold text-700">
-                    **{{ part.quantity }} x {{ getSparePartReference(part.id) }}**
-                </span>
-                <div class="flex-shrink-0">
-                    <Button
-                        icon="pi pi-pencil"
-                        class="p-button-info p-button-text p-button-rounded mr-1"
-                        @click="openSparePartDialog('returned', part, index)"
-                        v-tooltip.top="'Modifier la pièce'"
-                    />
-                    <Button
-                        icon="pi pi-trash"
-                        class="p-button-danger p-button-text p-button-rounded"
-                        @click="removeSparePartReturned(index)"
-                        v-tooltip.top="'Supprimer la pièce'"
-                    />
-                </div>
-                <small class="p-error absolute bottom-0 left-0">{{ form.errors[`spare_parts_returned.${index}.id`] || form.errors[`spare_parts_returned.${index}.quantity`] }}</small>
-            </div>
-        </div>
-        <div v-else>
-            <p class="text-gray-500">Aucune pièce retournée enregistrée.</p>
-        </div>
-        <Button
-            label="Ajouter une pièce retournée"
-            icon="pi pi-plus"
-            class="p-button-text p-button-sm mt-2"
-            @click="openSparePartDialog('returned')"
-        />
-
-        <template #footer>
-            <Button label="Annuler" icon="pi pi-times" @click="hideDialog" class="p-button-text p-button-secondary" />
-            <Button label="Sauvegarder" icon="pi pi-check" @click="updateActivity" :loading="form.processing" class="p-button-info" />
-        </template>
-    </Dialog>
-
-    <Dialog v-model:visible="sparePartDialogVisible" modal :header="sparePartData.index === -1 ? 'Ajouter une ou plusieurs pièces' : 'Modifier une pièce'" :style="{ width: '30rem' }" class="p-fluid">
-        <div class="field">
-            <label for="spare-part-id" class="font-semibold">Pièce(s) de rechange</label>
-
-            <MultiSelect
-                v-if="sparePartData.index === -1"
-                id="spare-part-id"
-                v-model="sparePartData.ids"
-                :options="sparePartOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Sélectionner une ou plusieurs pièces"
-                class="w-full"
-                filter
-                display="chip"
-            />
-
-            <Dropdown
-                v-else
-                id="spare-part-id-single"
-                v-model="sparePartData.ids[0]"
-                :options="sparePartOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Sélectionner une pièce"
-                class="w-full"
-                filter
-            />
-        </div>
-        <div class="field">
-            <label for="spare-part-quantity" class="font-semibold">Quantité</label>
-            <InputNumber
-                id="spare-part-quantity"
-                v-model="sparePartData.quantity"
-                placeholder="Quantité"
-                :min="1"
-                :max="99999"
-                class="w-full"
-                :useGrouping="false"
-            />
-        </div>
-        <template #footer>
-            <Button label="Annuler" icon="pi pi-times" @click="sparePartDialogVisible = false" class="p-button-text" />
-            <Button label="Sauvegarder" icon="pi pi-check" @click="saveSparePart" class="p-button-primary" />
-        </template>
-    </Dialog>
-
-</template>
                 </Card>
             </div>
         </div>
     </AppLayout>
 </template>
-
 <style scoped>
 /* Styles personnalisés pour la Timeline si nécessaire */
 .timeline-left :deep(.p-timeline-event-opposite) {

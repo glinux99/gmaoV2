@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\ServiceOrder;
 use Inertia\Inertia;
 use App\Models\MaintenanceInstruction;
+use App\Models\SparePart;
 use Illuminate\Validation\Rule;
 
 class MaintenanceController extends Controller
@@ -38,10 +39,12 @@ class MaintenanceController extends Controller
         return Inertia::render('Tasks/Maintenances', [
             'maintenances' => $maintenances,
             'filters' => $request->only('search'),
-            'equipments' => Equipment::all(),
-            'users' => User::all(),
-            'teams' => Team::all(),
-            'regions' => Region::all(),
+            'equipments' => Equipment::all(), // Assumant que les équipements sont disponibles pour lier les activités
+            'users' => User::all(), // Assumant que les utilisateurs sont disponibles pour lier les activités
+            'teams' => Team::all(), // Assumant que les équipes sont disponibles pour lier les activités
+            'regions' => Region::all(), // Assumant que les régions sont disponibles pour lier les activités
+            'tasks' => [], // Assumant que les tâches sont disponibles pour lier les activités
+            'spareParts' => SparePart::all(), // Requis pour la sélection de pièces
             'equipmentTree' => $transformedEquipmentTree,
         ]);
     }

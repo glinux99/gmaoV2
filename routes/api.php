@@ -20,8 +20,9 @@ use Illuminate\Support\Facades\Route;
  // Correction de la route API Resource
 
 Route::post('/bulk-destroy', [EquipmentController ::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
+Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
 
 
-Route::apiResource("maintenancesx", TaskController::class);Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::apiResource("maintenancesx", ActivityController::class);Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

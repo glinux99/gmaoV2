@@ -119,5 +119,13 @@ class Equipment extends Model implements HasMedia
     //     return $this->belongsToMany(Maintenance::class, 'nom_de_votre_table_pivot');
     // }
     // equipment.id -> equipment_maintenance.equipment_id
-public function maintenanceRecords() { return $this->hasMany(MaintenanceRecord::class); }
+public function maintenanceRecords() { return $this->hasMany(MaintenanceRecord::class);
+
 }
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+}
+
+
