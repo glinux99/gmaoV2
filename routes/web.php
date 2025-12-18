@@ -15,6 +15,7 @@ use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ConnectionController;
 use App\Models\User;
+use App\Http\Controllers\InterventionRequestController;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -91,6 +92,7 @@ Route::middleware('auth', 'verified')->group(function () {
     'payroll' => PaymentController::class,
     'expenses' => ExpensesController::class,
     'connections' => ConnectionController::class,
+    'interventions' => InterventionRequestController::class,
   ]);
 
   Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
