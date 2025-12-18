@@ -9,53 +9,53 @@ use App\Models\Meter;
 use App\Models\Keypad;
 use App\Models\Seal;
 use Illuminate\Http\Request;
+use App\Imports\ConnectionsImport;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-
-
+use Illuminate\Validation\ValidationException as ValidationValidationException;
+use League\Config\Exception\ValidationException;
 
 class ConnectionController extends Controller
 {
     /**
  * Display a listing of the resource.
      */
- public function index(Request $request)
- {
- $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
- $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+public function index(Request $request)
+    {
+        $query = Connection::query()->with(['region', 'zone', 'meter', 'keypad']);
 
- $query = Connection::with(['region', 'zone', 'meter', 'keypad', 'seals', 'additionalMeters']);
+        // Recherche simple
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('customer_code', 'like', "%{$search}%")
+                  ->orWhere('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
+        if ($request->has(['user_lat', 'user_lng'])) {
+        $lat = (float) $request->user_lat;
+        $lng = (float) $request->user_lng;
 
- $query->where(function ($q) use ($startDate, $endDate) {
- $q->whereBetween('connection_date', [$startDate, $endDate])
- ->orWhereBetween('payment_date', [$startDate, $endDate]);
- });
+        // Formule de calcul de distance (Haversine)
+        $query->selectRaw("*, (6371 * ACOS(COS(RADIANS(?)) * COS(RADIANS(gps_latitude)) * COS(RADIANS(gps_longitude) - RADIANS(?)) + SIN(RADIANS(?)) * SIN(RADIANS(gps_latitude)))) AS distance", [$lat, $lng, $lat])
+              ->orderBy('distance', 'asc');
+    }
 
- if ($search = $request->get('search')) {
- $query->where(function ($q) use ($search) {
- $q->where('customer_code', 'like', "%{$search}%")
- ->orWhere('first_name', 'like', "%{$search}%")
- ->orWhere('last_name', 'like', "%{$search}%")
- ->orWhere('phone_number', 'like', "%{$search}%")
- ->orWhere('status', 'like', "%{$search}%")
- ->orWhereHas('region', fn ($sq) => $sq->where('designation', 'like', "%{$search}%"))
- ->orWhereHas('zone', fn ($sq) => $sq->where('title', 'like', "%{$search}%"));
- });
- }
-
- $connections = $query->paginate(10);
-
- return Inertia::render('Tasks/Connections', [
- 'connections' => $connections,
- 'regions' => Region::all(['id', 'designation']),
- 'zones' => Zone::all(['id', 'title']),
- 'meters' => Meter::all(['id', 'serial_number']),
- 'keypads' => Keypad::all(['id', 'serial_number']),
- 'filters' => $request->only(['search', 'start_date', 'end_date']),
- ]);
- }
-
+        return Inertia::render('Tasks/Connections', [
+            'connections' => $query->latest()->paginate($request->input('per_page', 30)),
+            'filters' => $request->all(['search']),
+            'regions' => Region::all(['id', 'designation as name']),
+            'zones' => Zone::all(['id', 'title as name']),
+            'connectionStatuses' => [
+                ['label' => 'Raccordé', 'value' => '5 - Raccordé'],
+                ['label' => 'En attente', 'value' => 'pending'],
+                ['label' => 'Clôturé', 'value' => 'Clôturé'],
+            ],
+        ]);
+    }
     /**
  * Show the form for creating a new resource.
      */
@@ -339,57 +339,45 @@ class ConnectionController extends Controller
     /**
      * Import connections from a CSV file.
      */
-    public function import(Request $request)
+ public function import(Request $request)
     {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx,xls',
         ]);
 
-        $path = $request->file('file')->getRealPath();
-        $handle = fopen($path, 'r');
-        if ($handle === false) {
-            return back()->with('error', 'Impossible de lire le fichier importé.');
-        }
-
-        $header = fgetcsv($handle); // first line
-        if (!$header) {
-            fclose($handle);
-            return back()->with('error', 'Fichier CSV invalide.');
-        }
-
         DB::beginTransaction();
         try {
-            while (($row = fgetcsv($handle)) !== false) {
-                $data = array_combine($header, $row);
-                if (!$data || empty($data['customer_code'])) {
-                    continue;
-                }
-
-                // Prepare data for creation/update
-                $connectionData = [
-                    'customer_code' => $data['customer_code'],
-                    'first_name' => $data['first_name'] ?? null,
-                    'last_name' => $data['last_name'] ?? null,
-                    'phone_number' => $data['phone_number'] ?? null,
-                    'status' => $data['status'] ?? 'pending', // Default status
-                    // Map other fields as necessary
-                    'region_id' => Region::where('designation', $data['region'] ?? null)->first()->id ?? null,
-                    'zone_id' => Zone::where('title', $data['zone'] ?? null)->first()->id ?? null,
-                    // Add more fields from your CSV to the connectionData array
-                ];
-
-                // Create or update connection
-                Connection::updateOrCreate(
-                    ['customer_code' => $connectionData['customer_code']],
-                    $connectionData
-                );
-            }
+            \Maatwebsite\Excel\Facades\Excel::import(new ConnectionsImport, $request->file('file'));
             DB::commit();
-            fclose($handle);
-            return redirect()->route('connections.index')->with('success', 'Import des raccordements terminé.');
+
+            return redirect()->route('connections.index')->with('success', 'Import des raccordements terminé avec succès.');
+
+        } catch (ValidationValidationException $e) {
+            DB::rollBack();
+
+            $failures = $e;
+
+            // Collecter les messages d'erreur pour les afficher à l'utilisateur
+            $errorMessages = [];
+            foreach ($failures as $failure) {
+                $errorMessages[] = "Ligne " . $failure->row() . ": " . implode(", ", $failure->errors());
+            }
+
+            // Loguer l'erreur complète pour le débogage (optionnel)
+            Log::error("Erreur de validation d'importation: " . json_encode($errorMessages));
+
+            return redirect()->back()->with([
+                'error' => 'Erreur de validation lors de l\'importation. Consultez les messages ci-dessous.',
+                'import_errors' => $errorMessages // Passer les erreurs détaillées à la vue
+            ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            fclose($handle);
+            // Loguer l'erreur générique
+            return $e;
+            Log::error("Erreur générique lors de l'importation: " . $e->getMessage() . " - Trace: " . $e->getTraceAsString());
+
+            // Renvoyer un message d'erreur plus convivial
             return redirect()->back()->with('error', 'Erreur lors de l\'importation des raccordements: ' . $e->getMessage());
         }
     }

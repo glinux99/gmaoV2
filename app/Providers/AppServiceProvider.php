@@ -5,6 +5,9 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\SQLiteConnection;
+use Illuminate\Support\Facades\Schema;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,12 +18,44 @@ class AppServiceProvider extends ServiceProvider
     {
         //
     }
+    // Source - https://stackoverflow.com/a
+// Posted by O. Jones
+// Retrieved 2025-12-17, License - CC BY-SA 3.0
+
+    function RADIANS($degrees)
+    {
+         return 0.0174532925 * $degrees;
+    }
 
     /**
      * Bootstrap any application services.
      */
     public function boot(): void
     {
+    //      if (DB::connection() instanceof SQLiteConnection) {
+    //     DB::connection()->getPdo()->sqliteCreateFunction('ACOS', function ($degrees) {
+    //         return acos($degrees);
+    //     });
+    //      DB::connection()->getPdo()->sqliteCreateFunction('COS', function ($degrees) {
+    //         return cos($degrees);
+    //     });
+    //      DB::connection()->getPdo()->sqliteCreateFunction('SIN', function ($degrees) {
+    //         return sin($degrees);
+    //     });
+    //      DB::connection()->getPdo()->sqliteCreateFunction('TAN', function ($degrees) {
+    //         return tan($degrees);
+    //     });
+    //      DB::connection()->getPdo()->sqliteCreateFunction('RADIANS', function ($degrees) {
+    //         return $this->RADIANS($degrees);
+    //     });
+
+    //     DB::connection()->getPdo()->sqliteCreateFunction('SQRT', function ($number) {
+    //         return sqrt($number);
+    //     });
+
+
+    // };
+      Schema::defaultStringLength(125);
         Inertia::share([
             'auth' => function () {
                 $user = Auth::user();

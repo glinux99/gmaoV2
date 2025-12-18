@@ -54,7 +54,7 @@ return new class extends Migration
 
             // --- Poteaux ---
             $table->string('pole_number')->nullable(); // Numéro du poteau
-            $table->integer('distance_to_pole')->nullable(); // Distance entre la maison et le poteau BT
+            $table->string('distance_to_pole')->nullable(); // Distance entre la maison et le poteau BT
             $table->boolean('needs_small_pole')->default(false); // Besoin d'un petit poteau?
             $table->integer('bt_poles_installed')->nullable(); // Poteaux BT installés
             $table->integer('small_poles_installed')->nullable(); // Petits poteaux installés
