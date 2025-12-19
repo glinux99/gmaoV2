@@ -64,6 +64,9 @@ const allColumns = [
     { field: 'is_verified', header: 'Vérifié', sortable: true },
     { field: 'amount_paid', header: 'Montant Payé', sortable: true },
     { field: 'connection_date', header: 'Date Raccordement', sortable: true },
+    { field: 'meter.serial_number', header: 'Compteur N°', sortable: true },
+    { field: 'keypad.serial_number', header: 'Clavier N°', sortable: true },
+
 ];
 
 // Initialiser avec les colonnes par défaut

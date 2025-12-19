@@ -1,10 +1,10 @@
 <?php
 
 namespace App\Models;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -14,22 +14,28 @@ class InterventionRequest extends Model
 
     // Définissez les champs que vous pouvez assigner en masse (Mass Assignable)
     protected $fillable = [
+        'id',
         'title',
         'description',
-        'requested_by_type', // Pour la relation polymorphe
-        'requested_by_id',   // Pour la relation polymorphe
+        'status',
+        'requested_by_user_id',
+        'requested_by_connection_id',
+        'assigned_to_user_id',
         'region_id',
-        'location_details',
-        'status', // Ex: 'Ouverte', 'En cours', 'Fermée'
-        'priority', // Ex: 'Faible', 'Moyenne', 'Urgent'
-        'reported_at', // Date et heure de signalement
-        'validator_id',
-        'validated_at',
-        'validation_notes',
-        'closed_at', // Date et heure de résolution
+        'zone_id',
+        'intervention_reason',
+        'category',
+        'technical_complexity',
+        'min_time_hours',
+        'max_time_hours',
+        'comments',
+        'priority',
+        'scheduled_date',
+        'completed_date',
+        'resolution_notes',
+        'gps_latitude',
+        'gps_longitude',
     ];
-
-    // Définissez les casts pour les dates
     protected $casts = [
         'reported_at' => 'datetime',
         'closed_at' => 'datetime',
@@ -40,26 +46,40 @@ class InterventionRequest extends Model
 
     /**
      * Obtient le modèle qui a créé la demande d'intervention (ex: User, Client).
+     * Cette relation est maintenant plus spécifique grâce aux foreign keys.
      */
-    public function requestedBy(): MorphTo
+    public function requestedByUser(): BelongsTo
     {
-        return $this->morphTo();
+        return $this->belongsTo(User::class, 'requested_by_user_id', 'id');
+    }
+
+    public function requestedByConnection(): BelongsTo
+    {
+        return $this->belongsTo(Connection::class, 'requested_by_connection_id');
+    }
+
+    /**
+     * Obtient le technicien assigné à la demande.
+     */
+    public function assignedToUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
     /**
      * Obtient la région à laquelle la demande est associée.
      */
     public function region(): BelongsTo
-    {
-        return $this->belongsTo(Region::class);
+ {
+ return $this->belongsTo(Region::class);
     }
 
     /**
-     * Obtient le superviseur qui a validé la demande.
+     * Obtient la zone à laquelle la demande est associée.
      */
-    public function validator(): BelongsTo
+    public function zone(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'validator_id');
+        return $this->belongsTo(Zone::class);
     }
 
     /**

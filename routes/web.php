@@ -103,6 +103,7 @@ Route::middleware('auth', 'verified')->group(function () {
 // ... autres routes
 
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
+Route::post('/interventions/bulk-destroy', [InterventionRequestController::class, 'bulkDestroy'])->name('interventions.bulkdestroy');
 
 
 });

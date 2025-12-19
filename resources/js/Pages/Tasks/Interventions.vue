@@ -1,18 +1,15 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { useForm, router, Head } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
-import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
-import Paginator from 'primevue/paginator';
 import Toast from 'primevue/toast';
 import Toolbar from 'primevue/toolbar';
 import IconField from 'primevue/iconfield';
@@ -21,9 +18,8 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import RadioButton from 'primevue/radiobutton';
 import MultiSelect from 'primevue/multiselect';
-import FileUpload from 'primevue/fileupload';
-import Checkbox from 'primevue/checkbox';
 import OverlayPanel from 'primevue/overlaypanel';
+import Calendar from 'primevue/calendar';
 import { useToast } from "primevue/usetoast";
 
 const props = defineProps({
@@ -33,450 +29,313 @@ const props = defineProps({
     connections: Array,
     regions: Array,
     zones: Array,
-    interventionReasons: Array,
+    // On reçoit les listes depuis le backend ou on utilise les constantes ci-dessous
     statuses: Array,
-    technicalComplexities: Array,
-    categories: Array,
     priorities: Array,
+    interventionReasons: Array
 });
 
-const toast = useToast();
-let debounceId = null;
-// Ajoutez cette fonction dans votre <script setup>
-const sortByProximity = () => {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((position) => {
-            router.get(route('connections.index'), {
-                user_lat: position.coords.latitude,
-                user_lng: position.coords.longitude,
-                search: search.value
-            }, { preserveState: true });
-        }, () => {
-            toast.add({severity:'error', summary: 'Erreur', detail: 'Géolocalisation refusée', life: 3000});
-        });
-    }
-};
+// Constantes locales au cas où elles ne sont pas fournies par le backend
+const REASONS = props.interventionReasons || [
+    'Dépannage Réseau Urgent', 'Réparation Éclairage Public', 'Entretien Réseau Planifié',
+    'Incident Majeur Réseau', 'Support Achat MobileMoney', 'Support Achat Token Impossible',
+    'Aide Recharge (Sans clavier)', 'Élagage Réseau', 'Réparation Chute de Tension',
+    'Coupure Individuelle (CI)', 'CI Équipement Client', 'CI Équipement Virunga',
+    'CI Vol de Câble', 'Dépannage Clavier Client', 'Réparation Compteur Limité',
+    'Rétablissement Déconnexion', 'Déplacement Câble (Planifié)', 'Déplacement Poteau (Planifié)',
+    'Reconnexion Client', 'Support Envoi Formulaire', 'Intervention Non-Classifiée'
+];
 
-const op = ref();
+const toast = useToast();
+const opFilters = ref();
+const isModalOpen = ref(false);
+const deleteDialog = ref(false);
 const dt = ref();
-const search = ref(props.filters?.search || '');
+const op = ref();
+const selectedItems = ref([]);
 
 // --- CONFIGURATION DES COLONNES ---
 const allColumns = [
     { field: 'title', header: 'Titre', sortable: true },
-    { field: 'description', header: 'Description', sortable: true },
     { field: 'status', header: 'Statut', sortable: true },
-    { field: 'requested_by_user_name', header: 'Demandé par (Utilisateur)', sortable: false },
-    { field: 'requested_by_connection_name', header: 'Demandé par (Client)', sortable: false },
-    { field: 'assigned_to_user_name', header: 'Assigné à', sortable: false },
+    { field: 'customer_code', header: 'Code Client', sortable: false },
+    { field: 'client_name', header: 'Nom Client', sortable: false },
     { field: 'region_name', header: 'Région', sortable: false },
-    { field: 'zone_name', header: 'Zone', sortable: false },
-    { field: 'intervention_reason', header: 'Raison', sortable: true },
-    { field: 'category', header: 'Catégorie', sortable: true },
-    { field: 'technical_complexity', header: 'Complexité', sortable: true },
     { field: 'priority', header: 'Priorité', sortable: true },
     { field: 'scheduled_date', header: 'Date Prévue', sortable: true },
-    { field: 'completed_date', header: 'Date Complétée', sortable: true },
-    { field: 'gps_latitude', header: 'Lat.', sortable: true },
-    { field: 'gps_longitude', header: 'Long.', sortable: true },
+    { field: 'assigned_to_user_name', header: 'Technicien', sortable: false },
+    { field: 'is_validated', header: 'Validée', sortable: true },
 ];
 
-// Initialiser avec les colonnes par défaut
-const selectedColumnFields = ref(allColumns.map(col => col.field));
+const selectedColumnFields = ref(['title', 'status', 'customer_code', 'client_name', 'priority', 'scheduled_date']);
 
-// Filtrage dynamique pour le tableau
 const displayedColumns = computed(() => {
     return allColumns.filter(col => selectedColumnFields.value.includes(col.field));
 });
 
-// --- FONCTIONS TOOLBAR ---
+// --- GESTION DES FILTRES ---
+const search = ref(props.filters?.search || '');
+const filterForm = ref({
+    status: props.filters?.status || null,
+    region_id: props.filters?.region_id || null,
+    priority: props.filters?.priority || null,
+});
+
+const activeFiltersCount = computed(() => {
+    return Object.values(filterForm.value).filter(v => v !== null && v !== '').length;
+});
+
+const applyFilters = () => {
+    router.get(route('interventions.index'), {
+        search: search.value,
+        ...filterForm.value
+    }, { preserveState: true, replace: true });
+};
+
+const resetFilters = () => {
+    filterForm.value = { status: null, region_id: null, priority: null };
+    search.value = '';
+    applyFilters();
+};
+
 const toggleColumnSelection = (event) => {
     op.value.toggle(event);
 };
 
-const exportCSV = () => {
-    dt.value.exportCSV();
+// --- ACTIONS DE SUPPRESSION ---
+const confirmDeleteSelected = () => {
+    router.post(route('interventions.bulk-destroy'), {
+        ids: selectedItems.value.map(i => i.id)
+    }, {
+        onSuccess: () => {
+            deleteDialog.value = false;
+            selectedItems.value = [];
+            toast.add({ severity: 'success', summary: 'Supprimé', detail: 'Éléments supprimés', life: 3000 });
+        }
+    });
 };
 
-const performSearch = () => {
-    clearTimeout(debounceId);
-    debounceId = setTimeout(() => {
-        router.get(route('interventions.index'), { search: search.value }, { preserveState: true, replace: true });
-    }, 300);
-};
+// --- FORMULAIRE MODAL ---
+const requester_type = ref('client');
 
-// --- PAGINATION & DONNÉES ---
-const interventionRequestList = computed(() => props.interventionRequests?.data || []);
-const totalRecords = computed(() => props.interventionRequests?.total || 0);
-const perPage = computed(() => props.interventionRequests?.per_page || 10);
-const currentPage = computed(() => props.interventionRequests?.current_page || 1);
-
-const onPage = (event) => {
-    router.get(route('interventions.index'), {
-        page: event.page + 1,
-        per_page: event.rows,
-        search: search.value
-    }, { preserveState: true });
-};
-
-const formatInterventionRequestList = computed(() => {
-    return interventionRequestList.value.map(ir => ({
-        ...ir,
-        requested_by_user_name: ir.requested_by_user?.name || '-',
-        requested_by_connection_name: ir.requested_by_connection ? `${ir.requested_by_connection.first_name} ${ir.requested_by_connection.last_name}`.trim() : '-',
-        assigned_to_user_name: ir.assigned_to_user?.name || '-',
-        region_name: ir.region?.designation || '-',
-        zone_name: ir.zone?.title || '-',
-        scheduled_date: ir.scheduled_date ? new Date(ir.scheduled_date).toLocaleDateString() : '-',
-        completed_date: ir.completed_date ? new Date(ir.completed_date).toLocaleDateString() : '-',
+const connectionsList = computed(() => {
+    return props.connections.map(c => ({
+        ...c,
+        search_label: `${c.customer_code} - ${c.first_name} ${c.last_name}`
     }));
 });
 
-// --- FORMULAIRES ---
-const isModalOpen = ref(false);
-const isImportModalOpen = ref(false);
-const selected = ref([]);
-const importForm = useForm({ file: null });
-const requester_type = ref('client'); // 'client' or 'agent'
-
 const form = useForm({
-    id: null, // For editing
-    title: '',
-    description: '',
-    status: 'pending',
-    requested_by_user_id: null,
-    requested_by_connection_id: null,
-    assigned_to_user_id: null,
-    region_id: null,
-    zone_id: null,
-    intervention_reason: '',
-    category: '',
-    technical_complexity: '',
-    min_time_hours: null,
-    max_time_hours: null,
-    comments: '',
-    priority: '',
-    scheduled_date: null,
-    completed_date: null,
-    resolution_notes: '',
-    gps_latitude: null,
-    gps_longitude: null,
-    is_validated: true, // Par défaut, la demande est validée
+    id: null, title: '', description: '', status: 'pending',
+    requested_by_user_id: null, requested_by_connection_id: null,
+    assigned_to_user_id: null, region_id: null, zone_id: null,
+    intervention_reason: '', priority: '', scheduled_date: null,
+    gps_latitude: null, gps_longitude: null, is_validated: true,
 });
 
 const openCreate = () => {
     form.reset();
-    requester_type.value = 'client'; // Default to client on create
-    form.requested_by_user_id = null;
-    form.requested_by_connection_id = null;
+    form.title = `PLT-${Math.floor(Date.now() / 1000)}`;
+    form.scheduled_date = new Date();
     isModalOpen.value = true;
 };
+
 const openEdit = (data) => {
     form.clearErrors();
-    form.defaults(data).reset(); // Use defaults and reset to populate form
+    form.defaults({
+        ...data,
+        scheduled_date: data.scheduled_date ? new Date(data.scheduled_date) : null
+    }).reset();
+    requester_type.value = data.requested_by_connection_id ? 'client' : 'agent';
     isModalOpen.value = true;
 };
 
-// Watcher pour auto-remplir les champs quand un client est sélectionné
-watch(() => form.requested_by_connection_id, (newConnectionId) => {
-    if (newConnectionId) {
-        const connection = props.connections.find(c => c.id === newConnectionId);
-        if (connection) {
-            form.region_id = connection.region_id;
-            form.zone_id = connection.zone_id;
-            form.gps_latitude = connection.gps_latitude;
-            form.gps_longitude = connection.gps_longitude;
-        }
-    } else {
-        // Optionnel: réinitialiser si aucun client n'est sélectionné
-        if (!form.id) { // seulement pour la création
-            form.reset('region_id', 'zone_id', 'gps_latitude', 'gps_longitude');
-        }
-    }
-});
-
-// Watcher to clear the other requester type when one is selected
-watch(requester_type, (newType) => {
-    if (newType === 'client') {
-        form.requested_by_user_id = null;
-    } else {
-        form.requested_by_connection_id = null;
-    }
-});
-
-const connectionsWithFullName = computed(() => {
-    return props.connections.map(c => ({ ...c, full_name_with_code: `${c.first_name} ${c.last_name} (${c.customer_code})` }));
-});
-
 const submit = () => {
-    const method = form.id ? 'put' : 'post';
-    const url = form.id ? route('connections.update', form.id) : route('connections.store');
-    form[method](url, {
+    const url = form.id ? route('interventions.update', form.id) : route('interventions.store');
+    form[form.id ? 'put' : 'post'](url, {
         onSuccess: () => {
             isModalOpen.value = false;
-            toast.add({severity:'success', summary: 'Succès', detail: 'Opération réussie', life: 3000});
+            toast.add({ severity: 'success', summary: 'Succès', life: 3000 });
         }
     });
 };
-const onFileSelect = (event) => { importForm.file = event.files[0]; };
 
-const doImport = () => {
-    // Assuming there's an import route for intervention requests
-    importForm.post(route('interventions.import'), {
-        onSuccess: () => {
-            isImportModalOpen.value = false;
-            toast.add({severity:'success', summary: 'Succès', detail: 'Données importées', life: 3000});
-        },
-    });
-};
-
-const bulkDelete = () => {
-    if (confirm(`Supprimer les ${selected.value.length} raccordements ?`)) {
-        router.post(route('connections.bulkdestroy'), { ids: selected.value.map(c => c.id) }, {
-            onSuccess: () => { selected.value = []; }
-        }); // This route should be for interventions, not connections
-    }
-};
+const formattedList = computed(() => (props.interventionRequests?.data || []).map(ir => ({
+    ...ir,
+    client_name: ir.requested_by_connection ? `${ir.requested_by_connection.first_name} ${ir.requested_by_connection.last_name}` : '-',
+    customer_code: ir.requested_by_connection ? ir.requested_by_connection.customer_code : '-',
+    assigned_to_user_name: ir.assigned_to_user ? ir.assigned_to_user.name : '-',
+    region_name: ir.region?.designation || '-',
+})));
 </script>
 
 <template>
-    <AppLayout title="Raccordements">
+    <AppLayout title="Interventions">
         <Toast />
         <div class="card">
             <Toolbar class="mb-4">
                 <template #start>
-                    <div class="flex items-center gap-2">
-                        <Button label="Nouvelle Demande" icon="pi pi-plus" @click="openCreate" />
-                        <Button label="Importer" icon="pi pi-upload" class="p-button-success" @click="isImportModalOpen = true" />
-
-                        <Button
-                            label="Plus proches"
-                            icon="pi pi-map-marker"
-                            class="p-button-info p-button-outlined"
-                            @click="sortByProximity"
-        />
-
-        <Button label="Supprimer" icon="pi pi-trash" class="p-button-danger" @click="bulkDelete" :disabled="!selected.length" />
-    </div>
-
+                    <div class="flex gap-2">
+                        <Button label="Nouvelle" icon="pi pi-plus" class="p-button-primary" @click="openCreate" />
+                        <Button label="Supprimer" icon="pi pi-trash" class="p-button-danger"
+                                @click="deleteDialog = true" :disabled="!selectedItems.length" />
+                    </div>
                 </template>
-
                 <template #end>
                     <div class="flex items-center gap-2">
                         <IconField>
-                            <InputIcon>
-                                <i class="pi pi-search" />
-                            </InputIcon>
-                            <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
+                            <InputIcon><i class="pi pi-search" /></InputIcon>
+                            <InputText v-model="search" placeholder="Recherche..." @input="applyFilters" />
                         </IconField>
 
-                        <Button label="Exporter" icon="pi pi-download" class="p-button-help" @click="exportCSV" />
+                        <Button type="button" icon="pi pi-filter" label="Filtres"
+                                :badge="activeFiltersCount > 0 ? activeFiltersCount.toString() : null"
+                                badgeClass="p-badge-danger"
+                                class="p-button-outlined p-button-secondary" @click="opFilters.toggle($event)" />
 
-                        <Button
-                            icon="pi pi-ellipsis-v"
-                            class="p-button-secondary p-button-text"
-                            @click="toggleColumnSelection"
-                        />
-
-                        <OverlayPanel ref="op" appendTo="body" style="width: 300px">
-                            <div class="font-semibold mb-3">Sélectionner les colonnes :</div>
-                            <MultiSelect
-                                v-model="selectedColumnFields"
-                                :options="allColumns"
-                                optionLabel="header"
-                                optionValue="field"
-                                display="chip"
-                                placeholder="Choisir les colonnes"
-                                class="w-full"
-                                :filter="true"
-                            />
-                        </OverlayPanel>
+                        <Button icon="pi pi-ellipsis-v" class="p-button-secondary p-button-text"
+                                @click="toggleColumnSelection" />
                     </div>
                 </template>
             </Toolbar>
 
-            <DataTable ref="dt" :value="formatInterventionRequestList" v-model:selection="selected" dataKey="id" responsiveLayout="scroll">
+            <OverlayPanel ref="op">
+                <div class="flex flex-col gap-2">
+                    <span class="font-bold">Colonnes à afficher</span>
+                    <MultiSelect v-model="selectedColumnFields" :options="allColumns" optionLabel="header" optionValue="field"
+                                 placeholder="Sélectionner" class="w-64" display="chip" />
+                </div>
+            </OverlayPanel>
+
+            <OverlayPanel ref="opFilters" style="width: 320px">
+                <div class="flex flex-col gap-4 p-2">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="font-bold">Filtres Avancés</span>
+                        <Button icon="pi pi-refresh" class="p-button-text p-button-sm" @click="resetFilters" />
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs font-bold uppercase text-gray-500">Statut</label>
+                            <Dropdown v-model="filterForm.status" :options="props.statuses" placeholder="Tous" class="w-full" showClear @change="applyFilters" />
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold uppercase text-gray-500">Région</label>
+                            <Dropdown v-model="filterForm.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter placeholder="Toutes" class="w-full" showClear @change="applyFilters" />
+                        </div>
+                    </div>
+                </div>
+            </OverlayPanel>
+
+            <DataTable ref="dt" :value="formattedList" v-model:selection="selectedItems" dataKey="id" responsiveLayout="scroll">
                 <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
                 <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable">
-                    <!-- Custom body templates can be added here if needed for specific fields -->
+                    <template #body="slotProps">
+                        <span v-if="col.field === 'status'" :class="'status-badge ' + slotProps.data.status">{{ slotProps.data.status }}</span>
+                        <span v-else-if="col.field === 'scheduled_date'">{{ slotProps.data.scheduled_date ? new Date(slotProps.data.scheduled_date).toLocaleDateString() : '-' }}</span>
+                        <i v-else-if="col.field === 'is_validated'" class="pi" :class="slotProps.data.is_validated ? 'pi-check-circle text-green-500' : 'pi-times-circle text-red-500'"></i>
+                        <span v-else>{{ slotProps.data[col.field] }}</span>
+                    </template>
                 </Column>
-
                 <Column header="Actions">
                     <template #body="{ data }">
                         <Button icon="pi pi-pencil" class="p-button-text" @click="openEdit(data)" />
                     </template>
                 </Column>
             </DataTable>
-
-            <Paginator
-                :rows="perPage"
-                :totalRecords="totalRecords"
-                :first="(currentPage - 1) * perPage"
-                @page="onPage"
-                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-                :rowsPerPageOptions="[10, 20, 50]"
-            />
         </div>
 
-      <Dialog
-    v-model:visible="isImportModalOpen"
-    header="Importer Excel/CSV"
-    modal
-    class="w-full max-w-md"
->
-    <div class="mt-2 space-y-4">
-        <p class="text-sm text-gray-600">Sélectionnez votre fichier .xlsx ou .csv pour mettre à jour la base de données.</p>
-
-        <FileUpload
-            mode="basic"
-            accept=".xlsx,.xls,.csv"
-            :maxFileSize="1000000"
-            @select="onFileSelect"
-            :auto="false"
-            chooseLabel="Choisir un fichier"
-            class="w-full"
-        />
-    </div>
-
-    <template #footer>
-        <div class="flex justify-end gap-3 mt-4">
-            <SecondaryButton @click="isImportModalOpen = false">Annuler</SecondaryButton>
-            <PrimaryButton
-                @click="doImport"
-                :disabled="importForm.processing || !importForm.file"
-            >
-                Lancer l'import
-            </PrimaryButton>
-        </div>
-    </template>
-</Dialog>
-       <Dialog
-    v-model:visible="isModalOpen"
-    :header="form.id ? 'Modifier l\'intervention' : 'Nouvelle demande d\'intervention'"
-    modal
-    class="w-full max-w-4xl mx-4"
->
-    <div class="max-h-[70vh] overflow-y-auto px-1 pt-4 pb-2">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-
-            <div class="md:col-span-2 space-y-1">
-                <InputLabel for="title" value="Titre de l'intervention" />
-                <TextInput id="title" v-model="form.title" class="w-full" placeholder="Ex: Panne compteur..." />
-                <InputError :message="form.errors.title" />
-            </div>
-
-            <div class="md:col-span-2 space-y-1">
-                <InputLabel value="Description détaillée" />
-                <textarea
-                    v-model="form.description"
-                    rows="3"
-                    class="w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                    placeholder="Détails techniques..."
-                ></textarea>
-                <InputError :message="form.errors.description" />
-            </div>
-
-            <div class="space-y-1">
-                <InputLabel value="Statut" />
-                <Dropdown v-model="form.status" :options="props.statuses" class="w-full border-gray-300" placeholder="Sélectionner un statut" />
-                <InputError :message="form.errors.status" />
-            </div>
-
-            <div class="space-y-1">
-                <InputLabel value="Assigné à (Technicien)" />
-                <Dropdown v-model="form.assigned_to_user_id" :options="props.users" optionLabel="name" optionValue="id" class="w-full border-gray-300" placeholder="Choisir un technicien" filter />
-                <InputError :message="form.errors.assigned_to_user_id" />
-            </div>
-
-            <div class="md:col-span-2 space-y-3 p-3 bg-gray-50 rounded-lg border">
-                <InputLabel value="Type de demandeur" class="font-semibold"/>
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center">
-                        <RadioButton v-model="requester_type" inputId="requesterTypeClient" name="requesterType" value="client" />
-                        <label for="requesterTypeClient" class="ml-2">Par un Client</label>
-                    </div>
-                    <div class="flex items-center">
-                        <RadioButton v-model="requester_type" inputId="requesterTypeAgent" name="requesterType" value="agent" />
-                        <label for="requesterTypeAgent" class="ml-2">Par un Agent</label>
-                    </div>
+        <Dialog v-model:visible="isModalOpen" :header="form.id ? 'Modifier' : 'Nouvelle Demande'" modal class="w-full max-w-4xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div class="md:col-span-2 space-y-1">
+                    <InputLabel value="Titre / Référence" />
+                    <TextInput v-model="form.title" class="w-full bg-gray-50" readonly />
                 </div>
 
-                <div v-if="requester_type === 'client'" class="space-y-1 pt-2">
-                    <InputLabel value="Client" />
-                    <Dropdown v-model="form.requested_by_connection_id" :options="connectionsWithFullName" optionLabel="full_name_with_code" optionValue="id" class="w-full border-gray-300" placeholder="Rechercher par nom ou code client..." filter>
-                    <template #value="slotProps">
-                        <div v-if="slotProps.value" class="truncate">
-                            {{ connectionsWithFullName.find(c => c.id === slotProps.value)?.full_name_with_code }}
+                <div class="md:col-span-2 space-y-1">
+                    <InputLabel value="Description" />
+                    <textarea v-model="form.description" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary" rows="3"></textarea>
+                </div>
+
+                <div class="md:col-span-2 p-4 bg-gray-50 border rounded-lg">
+                    <label class="font-bold block mb-3">Type de Demandeur</label>
+                    <div class="flex gap-6 mb-4">
+                        <div class="flex items-center gap-2">
+                            <RadioButton v-model="requester_type" value="client" inputId="c1" />
+                            <label for="c1">Client</label>
                         </div>
-                        <span v-else>{{ slotProps.placeholder }}</span>
-                    </template>
-                </Dropdown>
-                <InputError :message="form.errors.requested_by_connection_id" />
-            </div>
-                <div v-if="requester_type === 'agent'" class="space-y-1 pt-2">
-                    <InputLabel value="Agent interne" />
-                    <Dropdown v-model="form.requested_by_user_id" :options="props.users" optionLabel="name" optionValue="id" class="w-full border-gray-300" placeholder="Choisir un utilisateur" filter />
-                    <InputError :message="form.errors.requested_by_user_id" />
+                        <div class="flex items-center gap-2">
+                            <RadioButton v-model="requester_type" value="agent" inputId="c2" />
+                            <label for="c2">Agent Interne</label>
+                        </div>
+                    </div>
+
+                    <div v-if="requester_type === 'client'">
+                        <InputLabel value="Code ou Nom Client" />
+                        <Dropdown v-model="form.requested_by_connection_id"
+                                  :options="connectionsList"
+                                  optionLabel="search_label"
+                                  optionValue="id"
+                                  filter
+                                  placeholder="Rechercher un client..."
+                                  class="w-full mt-1">
+                            <template #option="slotProps">
+                                <div class="flex flex-col">
+                                    <span class="font-bold">{{ slotProps.option.customer_code }}</span>
+                                    <small class="text-gray-500">{{ slotProps.option.first_name }} {{ slotProps.option.last_name }}</small>
+                                </div>
+                            </template>
+                        </Dropdown>
+                    </div>
+                    <div v-else>
+                        <InputLabel value="Sélectionner l'Agent" />
+                        <Dropdown v-model="form.requested_by_user_id" :options="props.users" optionLabel="name" optionValue="id" filter class="w-full mt-1" />
+                    </div>
                 </div>
-            </div>
 
-            <div class="space-y-1">
-                <InputLabel value="Région / Zone" />
-                <div class="flex gap-2">
-                    <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" class="w-1/2 border-gray-300" placeholder="Région" filter />
-                    <Dropdown v-model="form.zone_id" :options="props.zones" optionLabel="title" optionValue="id" class="w-1/2 border-gray-300" placeholder="Zone" filter />
-                </div>
-            </div>
-
-            <div class="space-y-1">
-                <InputLabel value="Raison de l'intervention" />
-                <Dropdown v-model="form.intervention_reason" :options="props.interventionReasons" class="w-full border-gray-300" filter />
-            </div>
-
-            <div class="space-y-1">
-                <InputLabel value="Priorité" />
-                <Dropdown v-model="form.priority" :options="props.priorities" class="w-full border-gray-300" />
-            </div>
-
-            <div class="space-y-1">
-                <InputLabel value="Date prévue" />
-                <TextInput v-model="form.scheduled_date" type="date" class="w-full" />
-            </div>
-
-            <div class="space-y-1">
-                <InputLabel value="Estimation (Heures max)" />
-                <TextInput v-model="form.max_time_hours" type="number" class="w-full" />
-            </div>
-
-            <div class="md:col-span-2 grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
                 <div class="space-y-1">
-                    <InputLabel value="Latitude GPS" />
-                    <TextInput v-model="form.gps_latitude" type="number" step="0.0000001" class="w-full bg-white" />
+                    <InputLabel value="Raison" />
+                    <Dropdown v-model="form.intervention_reason" :options="REASONS" class="w-full" filter />
                 </div>
-                <div class="space-y-1">
-                    <InputLabel value="Longitude GPS" />
-                    <TextInput v-model="form.gps_longitude" type="number" step="0.0000001" class="w-full bg-white" />
+                <div class="space-y-1"><InputLabel value="Statut" /><Dropdown v-model="form.status" :options="props.statuses" class="w-full" /></div>
+                <div class="space-y-1"><InputLabel value="Assigné à" /><Dropdown v-model="form.assigned_to_user_id" :options="props.users" optionLabel="name" optionValue="id" class="w-full" filter /></div>
+                <div class="space-y-1"><InputLabel value="Région" /><Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" class="w-full" /></div>
+                <div class="space-y-1"><InputLabel value="Zone" /><Dropdown v-model="form.zone_id" :options="props.zones" optionLabel="title" optionValue="id" class="w-full" /></div>
+                <div class="space-y-1"><InputLabel value="Priorité" /><Dropdown v-model="form.priority" :options="props.priorities" class="w-full" /></div>
+                <div class="space-y-1"><InputLabel value="Date prévue" /><Calendar v-model="form.scheduled_date" class="w-full" showIcon dateFormat="dd/mm/yy" /></div>
+
+                <div class="md:col-span-2 grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><InputLabel value="Latitude" /><TextInput v-model="form.gps_latitude" class="w-full" type="number" step="any" /></div>
+                    <div class="space-y-1"><InputLabel value="Longitude" /><TextInput v-model="form.gps_longitude" class="w-full" type="number" step="any" /></div>
                 </div>
             </div>
+            <template #footer>
+                <div class="flex justify-end gap-2">
+                    <SecondaryButton @click="isModalOpen = false">Annuler</SecondaryButton>
+                    <PrimaryButton @click="submit" :disabled="form.processing">Enregistrer</PrimaryButton>
+                </div>
+            </template>
+        </Dialog>
 
-            <div class="md:col-span-2 flex items-center space-x-3 p-3">
-                <Checkbox v-model="form.is_validated" :binary="true" inputId="is_validated" />
-                <InputLabel for="is_validated" value="Demande Validée" />
-                <InputError :message="form.errors.is_validated" />
+        <Dialog v-model:visible="deleteDialog" header="Confirmation" modal class="w-96">
+            <div class="flex items-center gap-3">
+                <i class="pi pi-exclamation-triangle text-red-500 text-2xl" />
+                <span>Supprimer {{ selectedItems.length }} éléments ?</span>
             </div>
-        </div>
-    </div>
-
-    <template #footer>
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <SecondaryButton @click="isModalOpen = false">Annuler</SecondaryButton>
-            <PrimaryButton @click="submit" :disabled="form.processing">
-                <i v-if="form.processing" class="pi pi-spin pi-spinner mr-2"></i>
-                Enregistrer
-            </PrimaryButton>
-        </div>
-    </template>
-</Dialog>
+            <template #footer>
+                <Button label="Annuler" class="p-button-text" @click="deleteDialog = false" />
+                <Button label="Confirmer" class="p-button-danger" @click="confirmDeleteSelected" />
+            </template>
+        </Dialog>
     </AppLayout>
 </template>
+
+<style scoped>
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+/* Ajoutez ici vos styles personnalisés pour les statuts */
+</style>
