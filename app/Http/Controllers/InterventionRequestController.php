@@ -76,7 +76,7 @@ class InterventionRequestController extends Controller
             'users' => User::all(['id', 'name']),
             'regions' => Region::all(['id', 'designation']),
             'zones' => Zone::all(['id', 'title']),
-            'connections' => Connection::all(['id', 'customer_code', 'first_name', 'last_name', 'gps_latitude', 'gps_longitude']),
+            'connections' => Connection::all(['id', 'customer_code', 'first_name', 'last_name', 'gps_latitude', 'gps_longitude','zone_id','region_id']),
         ], $this->getConstants()));
     }
 
@@ -112,24 +112,75 @@ class InterventionRequestController extends Controller
         return Redirect::route('interventions.index')->with('success', 'Demande créée.');
     }
 
-    public function update(Request $request, InterventionRequest $interventionRequest)
+   public function update(Request $request, InterventionRequest $intervention)
+{
+    // Note: J'ai changé le nom de la variable en $intervention pour plus de clarté
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'status' => 'required|in:pending,assigned,in_progress,completed,cancelled', // Validation plus stricte
+        'description' => 'nullable|string',
+        'requested_by_user_id' => 'nullable|exists:users,id',
+        'requested_by_connection_id' => 'nullable|exists:connections,id',
+        'assigned_to_user_id' => 'nullable|exists:users,id',
+        'region_id' => 'nullable|exists:regions,id',
+        'zone_id' => 'nullable|exists:zones,id',
+        'intervention_reason' => 'nullable|string',
+        'category' => 'nullable|string',
+        'technical_complexity' => 'nullable|string',
+        'min_time_hours' => 'nullable|numeric|min:0',
+        'max_time_hours' => 'nullable|numeric|min:0',
+        'priority' => 'nullable|string',
+        'scheduled_date' => 'nullable|date',
+        'completed_date' => 'nullable|date|after_or_equal:scheduled_date',
+        'resolution_notes' => 'nullable|string',
+        'gps_latitude' => 'nullable|numeric',
+        'gps_longitude' => 'nullable|numeric',
+        'is_validated' => 'boolean',
+    ]);
+
+    // Mise à jour de l'instance
+    $intervention->update($validated);
+
+    // IMPORTANT : Supprimez le "return $validated" qui bloquait Inertia
+    return Redirect::route('interventions.index')->with('success', 'Mise à jour réussie.');
+}
+
+    public function assign(Request $request, InterventionRequest $intervention)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'status' => 'required|string',
             'assigned_to_user_id' => 'nullable|exists:users,id',
-            // Ajoutez les autres champs ici...
-            'is_validated' => 'boolean',
+            'status' => 'nullable', // Force le statut à "assigned"
         ]);
 
-        $interventionRequest->update($validated);
+        $intervention->update($validated);
 
-        return Redirect::back()->with('success', 'Mise à jour réussie.');
+        return Redirect::route('interventions.index')->with('success', 'Demande assignée avec succès.');
     }
+
 
     public function destroy(InterventionRequest $interventionRequest)
     {
         $interventionRequest->delete();
         return Redirect::back()->with('success', 'Supprimé.');
+    }
+
+    public function cancel(InterventionRequest $intervention)
+    {
+        $intervention->update([
+            'status' => 'cancelled',
+        ]);
+
+        return Redirect::route('interventions.index')->with('success', 'Demande annulée avec succès.');
+    }
+
+    public function validateIntervention(InterventionRequest $intervention)
+    {
+        $intervention->update([
+            'is_validated' => true,
+            'status' => 'completed', // Assuming validation means completion
+            'completed_date' => now(),
+        ]);
+
+        return Redirect::route('interventions.index')->with('success', 'Demande validée avec succès.');
     }
 }

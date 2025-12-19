@@ -18,6 +18,7 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import RadioButton from 'primevue/radiobutton';
 import MultiSelect from 'primevue/multiselect';
+import SplitButton from 'primevue/splitbutton';
 import OverlayPanel from 'primevue/overlaypanel';
 import Calendar from 'primevue/calendar';
 import { useToast } from "primevue/usetoast";
@@ -29,13 +30,11 @@ const props = defineProps({
     connections: Array,
     regions: Array,
     zones: Array,
-    // On reçoit les listes depuis le backend ou on utilise les constantes ci-dessous
     statuses: Array,
     priorities: Array,
     interventionReasons: Array
 });
 
-// Constantes locales au cas où elles ne sont pas fournies par le backend
 const REASONS = props.interventionReasons || [
     'Dépannage Réseau Urgent', 'Réparation Éclairage Public', 'Entretien Réseau Planifié',
     'Incident Majeur Réseau', 'Support Achat MobileMoney', 'Support Achat Token Impossible',
@@ -54,6 +53,9 @@ const dt = ref();
 const op = ref();
 const selectedItems = ref([]);
 
+// --- MÉMOIRE PERSISTANTE (Session utilisateur) ---
+const lastAssignedUserId = ref(null);
+
 // --- CONFIGURATION DES COLONNES ---
 const allColumns = [
     { field: 'title', header: 'Titre', sortable: true },
@@ -68,10 +70,7 @@ const allColumns = [
 ];
 
 const selectedColumnFields = ref(['title', 'status', 'customer_code', 'client_name', 'priority', 'scheduled_date']);
-
-const displayedColumns = computed(() => {
-    return allColumns.filter(col => selectedColumnFields.value.includes(col.field));
-});
+const displayedColumns = computed(() => allColumns.filter(col => selectedColumnFields.value.includes(col.field)));
 
 // --- GESTION DES FILTRES ---
 const search = ref(props.filters?.search || '');
@@ -81,9 +80,7 @@ const filterForm = ref({
     priority: props.filters?.priority || null,
 });
 
-const activeFiltersCount = computed(() => {
-    return Object.values(filterForm.value).filter(v => v !== null && v !== '').length;
-});
+const activeFiltersCount = computed(() => Object.values(filterForm.value).filter(v => v !== null && v !== '').length);
 
 const applyFilters = () => {
     router.get(route('interventions.index'), {
@@ -98,9 +95,7 @@ const resetFilters = () => {
     applyFilters();
 };
 
-const toggleColumnSelection = (event) => {
-    op.value.toggle(event);
-};
+const toggleColumnSelection = (event) => op.value.toggle(event);
 
 // --- ACTIONS DE SUPPRESSION ---
 const confirmDeleteSelected = () => {
@@ -137,6 +132,12 @@ const openCreate = () => {
     form.reset();
     form.title = `PLT-${Math.floor(Date.now() / 1000)}`;
     form.scheduled_date = new Date();
+
+    // Remplissage automatique du technicien par défaut (mémoire)
+    if (lastAssignedUserId.value) {
+        form.assigned_to_user_id = lastAssignedUserId.value;
+    }
+
     isModalOpen.value = true;
 };
 
@@ -150,13 +151,92 @@ const openEdit = (data) => {
     isModalOpen.value = true;
 };
 
+const isAssignModalOpen = ref(false);
+const assignForm = useForm({
+    id: null,
+    assigned_to_user_id: null,
+});
+
+/**
+ * AUTOMATISATION : Remplissage des données géographiques dès qu'un client est choisi
+ */
+const updateFormWithConnectionData = (connectionId) => {
+    const selectedConnection = props.connections.find(c => c.id === connectionId);
+    if (selectedConnection) {
+        form.region_id = selectedConnection.region_id;
+        form.zone_id = selectedConnection.zone_id;
+        form.gps_latitude = selectedConnection.gps_latitude;
+        form.gps_longitude = selectedConnection.gps_longitude;
+
+        toast.add({ severity: 'info', summary: 'Infos Client', detail: 'Localisation chargée automatiquement', life: 2000 });
+    }
+};
+
 const submit = () => {
+    // MÉMORISATION : On stocke l'ID du technicien avant l'envoi
+    if (form.assigned_to_user_id) {
+        lastAssignedUserId.value = form.assigned_to_user_id;
+    }
+     form.scheduled_date = form.scheduled_date ? new Date(form.scheduled_date).toISOString().slice(0, 19).replace('T', ' ') : null;
     const url = form.id ? route('interventions.update', form.id) : route('interventions.store');
+    console.log(form);
     form[form.id ? 'put' : 'post'](url, {
         onSuccess: () => {
             isModalOpen.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', life: 3000 });
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Enregistrement réussi', life: 3000 });
+
         }
+    });
+};
+
+const validateIntervention = (intervention) => {
+    router.put(route('interventions.validate', intervention.id), {}, {
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Intervention validée', life: 3000 });
+        },
+        onError: (errors) => {
+            console.error("Erreur lors de la validation de l'intervention", errors);
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de valider l\'intervention', life: 3000 });
+        }
+    });
+};
+
+const cancelIntervention = (intervention) => {
+    router.put(route('interventions.cancel', intervention.id), {}, {
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Intervention annulée', life: 3000 });
+        },
+        onError: (errors) => {
+            console.error("Erreur lors de l'annulation de l'intervention", errors);
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'annuler l\'intervention', life: 3000 });
+        }
+    });
+};
+
+const openAssignModal = (intervention) => {
+    assignForm.reset();
+    assignForm.id = intervention.id;
+    assignForm.assigned_to_user_id = intervention.assigned_to_user_id;
+    isAssignModalOpen.value = true;
+    assignForm.status = intervention.status; // Pré-remplir le statut actuel
+};
+
+const submitAssign = () => {
+    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+    console.log(assignForm);
+    assignForm.put(route('interventions.assign', assignForm.id), {
+        onSuccess: () => {
+            isAssignModalOpen.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Intervention assignée', life: 3000 });
+        },
+        onError: (errors) => {
+            console.error("Erreur lors de l'assignation de l'intervention", errors); // Log the errors
+            if (errors.status) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: errors.status, life: 3000 });
+            }
+
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'assigner l\'intervention', life: 3000 });
+        },
     });
 };
 
@@ -187,14 +267,10 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                             <InputIcon><i class="pi pi-search" /></InputIcon>
                             <InputText v-model="search" placeholder="Recherche..." @input="applyFilters" />
                         </IconField>
-
                         <Button type="button" icon="pi pi-filter" label="Filtres"
                                 :badge="activeFiltersCount > 0 ? activeFiltersCount.toString() : null"
-                                badgeClass="p-badge-danger"
-                                class="p-button-outlined p-button-secondary" @click="opFilters.toggle($event)" />
-
-                        <Button icon="pi pi-ellipsis-v" class="p-button-secondary p-button-text"
-                                @click="toggleColumnSelection" />
+                                badgeClass="p-badge-danger" class="p-button-outlined p-button-secondary" @click="opFilters.toggle($event)" />
+                        <Button icon="pi pi-ellipsis-v" class="p-button-secondary p-button-text" @click="toggleColumnSelection" />
                     </div>
                 </template>
             </Toolbar>
@@ -228,7 +304,6 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
 
             <DataTable ref="dt" :value="formattedList" v-model:selection="selectedItems" dataKey="id" responsiveLayout="scroll">
                 <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-
                 <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable">
                     <template #body="slotProps">
                         <span v-if="col.field === 'status'" :class="'status-badge ' + slotProps.data.status">{{ slotProps.data.status }}</span>
@@ -239,7 +314,37 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                 </Column>
                 <Column header="Actions">
                     <template #body="{ data }">
-                        <Button icon="pi pi-pencil" class="p-button-text" @click="openEdit(data)" />
+                        <SplitButton
+                            @click="openEdit(data)"
+                            icon="pi pi-cog"
+                            class="p-button-sm p-button-secondary"
+                            :model="[
+                                {
+                                    label: 'Valider',
+                                    icon: 'pi pi-check',
+                                    command: () => validateIntervention(data), // Valider
+                                    visible: !data.is_validated && data.status !== 'cancelled' // Visible si non validée et non annulée
+                                },
+                                {
+                                    label: 'Annuler',
+                                    icon: 'pi pi-times',
+                                    command: () => cancelIntervention(data), // Annuler
+                                    visible: data.status !== 'cancelled' // Visible si non annulée
+                                },
+                                {
+                                    label: 'Assigner',
+                                    icon: 'pi pi-user-plus',
+                                    command: () => openAssignModal(data),
+                                    visible: !data.assigned_to_user_id // Visible si non assignée
+                                }
+                            ]"
+                            v-if="!data.is_validated || data.status !== 'cancelled' || !data.assigned_to_user_id"
+                        ></SplitButton>
+
+                        <i v-if="data.status === 'completed'" class="pi pi-check-circle text-green-500 ml-2" v-tooltip.top="'Validée'" />
+                        <i v-if="data.status === 'cancelled'" class="pi pi-ban text-red-500 ml-2" v-tooltip.top="'Annulée'" />
+                        <i v-if="data.assigned_to_user_id" class="pi pi-user-check text-blue-500 ml-2" v-tooltip.top="'Assignée'" />
+
                     </template>
                 </Column>
             </DataTable>
@@ -274,6 +379,7 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                         <InputLabel value="Code ou Nom Client" />
                         <Dropdown v-model="form.requested_by_connection_id"
                                   :options="connectionsList"
+                                  @change="updateFormWithConnectionData(form.requested_by_connection_id)"
                                   optionLabel="search_label"
                                   optionValue="id"
                                   filter
@@ -297,12 +403,30 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                     <InputLabel value="Raison" />
                     <Dropdown v-model="form.intervention_reason" :options="REASONS" class="w-full" filter />
                 </div>
-                <div class="space-y-1"><InputLabel value="Statut" /><Dropdown v-model="form.status" :options="props.statuses" class="w-full" /></div>
-                <div class="space-y-1"><InputLabel value="Assigné à" /><Dropdown v-model="form.assigned_to_user_id" :options="props.users" optionLabel="name" optionValue="id" class="w-full" filter /></div>
-                <div class="space-y-1"><InputLabel value="Région" /><Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" class="w-full" /></div>
-                <div class="space-y-1"><InputLabel value="Zone" /><Dropdown v-model="form.zone_id" :options="props.zones" optionLabel="title" optionValue="id" class="w-full" /></div>
-                <div class="space-y-1"><InputLabel value="Priorité" /><Dropdown v-model="form.priority" :options="props.priorities" class="w-full" /></div>
-                <div class="space-y-1"><InputLabel value="Date prévue" /><Calendar v-model="form.scheduled_date" class="w-full" showIcon dateFormat="dd/mm/yy" /></div>
+                <div class="space-y-1">
+                    <InputLabel value="Statut" />
+                    <Dropdown v-model="form.status" :options="props.statuses" class="w-full" />
+                </div>
+                <div class="space-y-1">
+                    <InputLabel value="Assigné à (Technicien)" />
+                    <Dropdown v-model="form.assigned_to_user_id" :options="props.users" optionLabel="name" optionValue="id" class="w-full" filter placeholder="Choisir un technicien" />
+                </div>
+                <div class="space-y-1">
+                    <InputLabel value="Région" />
+                    <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" class="w-full" />
+                </div>
+                <div class="space-y-1">
+                    <InputLabel value="Zone" />
+                    <Dropdown v-model="form.zone_id" :options="props.zones" optionLabel="title" optionValue="id" class="w-full" filter />
+                </div>
+                <div class="space-y-1">
+                    <InputLabel value="Priorité" />
+                    <Dropdown v-model="form.priority" :options="props.priorities" class="w-full" />
+                </div>
+                <div class="space-y-1">
+                    <InputLabel value="Date prévue" />
+                    <Calendar v-model="form.scheduled_date" class="w-full" showIcon dateFormat="dd/mm/yy" />
+                </div>
 
                 <div class="md:col-span-2 grid grid-cols-2 gap-4">
                     <div class="space-y-1"><InputLabel value="Latitude" /><TextInput v-model="form.gps_latitude" class="w-full" type="number" step="any" /></div>
@@ -316,6 +440,27 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                 </div>
             </template>
         </Dialog>
+
+        <Dialog v-model:visible="isAssignModalOpen" header="Assignation Rapide" modal class="w-96">
+            <div class="flex flex-col gap-4 mt-2">
+                <div class="p-3 bg-blue-50 text-blue-700 text-sm rounded border-l-4 border-blue-500">
+                    ID Intervention: <strong>{{ assignForm.id }}</strong>
+                </div>
+                <div>
+                    <InputLabel value="Choisir le technicien" for="assignable_user_id" />
+                    <Dropdown v-model="assignForm.assigned_to_user_id" :options="props.users" optionLabel="name" optionValue="id" filter class="w-full" autofocus />
+                </div>
+                <div>
+                    <InputLabel value="Statut de l'intervention" for="assign_status" />
+                    <Dropdown v-model="assignForm.status" :options="props.statuses" placeholder="Sélectionner un statut" class="w-full" />
+                    <InputError :message="assignForm.errors.status" class="mt-2" />
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Confirmer" icon="pi pi-check" class="p-button-primary w-full" @click="submitAssign" :loading="assignForm.processing" />
+            </template>
+        </Dialog>
+
 
         <Dialog v-model:visible="deleteDialog" header="Confirmation" modal class="w-96">
             <div class="flex items-center gap-3">
@@ -337,5 +482,4 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
     font-size: 0.85rem;
     font-weight: 600;
 }
-/* Ajoutez ici vos styles personnalisés pour les statuts */
 </style>
