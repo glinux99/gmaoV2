@@ -109,6 +109,7 @@ Route::post('/interventions/bulk-destroy', [InterventionRequestController::class
 Route::put('/interventions/{intervention}/assign', [InterventionRequestController::class, 'assign'])->name('interventions.assign');
 Route::put('/interventions/{intervention}/cancel', [InterventionRequestController::class, 'cancel'])->name('interventions.cancel');
 Route::put('/interventions/{intervention}/validate', [InterventionRequestController::class, 'validateIntervention'])->name('interventions.validate');
+Route::post('/reports/reorder', [ReportController::class, 'reorder'])->name('reports.reorder');
 
 
 });

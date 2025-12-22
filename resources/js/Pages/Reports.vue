@@ -1,300 +1,345 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { ref, computed, watch, onMounted } from 'vue';
+import { Head } from '@inertiajs/vue3';
+import draggable from 'vuedraggable';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
-import { useConfirm } from "primevue/useconfirm";
 
-// PrimeVue component imports
+// PrimeVue Components
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
-import IconField from 'primevue/iconfield';
-import InputIcon from 'primevue/inputicon';
-import Toolbar from 'primevue/toolbar';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Toast from 'primevue/toast';
-import ConfirmDialog from 'primevue/confirmdialog';
-import Tag from 'primevue/tag';
+import ColorPicker from 'primevue/colorpicker';
+import Slider from 'primevue/slider';
+import SelectButton from 'primevue/selectbutton';
 import InputNumber from 'primevue/inputnumber';
+import TabView from 'primevue/tabview';
+import TabPanel from 'primevue/tabpanel';
 
-const props = defineProps({
-    reports: Object,
-    filters: Object,
-    dataSources: {
-        type: Array,
-        default: () => [
-            { label: 'Tâches par Statut', value: 'tasks_by_status' },
-            { label: 'Tâches par Priorité', value: 'tasks_by_priority' },
-            { label: 'Interventions par Type', value: 'interventions_by_type' },
-            { label: 'Pannes par Type de Défaut', value: 'failures_by_type' },
-            { label: 'Mouvements des Pièces Détachées', value: 'spare_parts_movement' },
-            { label: 'Volume Mensuel des Interventions', value: 'monthly_volume' },
-            { label: 'KPI - Nombre d\'utilisateurs', value: 'kpi_users_count' },
-            { label: 'KPI - Tâches Actives', value: 'kpi_active_tasks' },
-        ]
-    }
-});
+// --- DATA SOURCES DE TEST ---
+const dataOptions = [
+    { label: 'Performance Commerciale', value: 'sales', icon: 'pi pi-shopping-cart' },
+    { label: 'Taux de Conversion', value: 'conversion', icon: 'pi pi-users' },
+    { label: 'Flux de Trésorerie', value: 'cashflow', icon: 'pi pi-money-bill' },
+    { label: 'Satisfaction Client', value: 'csat', icon: 'pi pi-heart' },
+];
 
 const toast = useToast();
-const confirm = useConfirm();
+const localReports = ref([]);
+const widgetDialog = ref(false);
+const globalConfigDialog = ref(false);
+const activeWidgetIndex = ref(null);
 
-const reportDialog = ref(false);
-const submitted = ref(false);
-const editing = ref(false);
-const search = ref(props.filters?.search || '');
-
-const form = useForm({
-    id: null,
-    name: '',
-    description: '',
-    chart_type: 'bar',
-    data_source: null,
-    grid_options: {
-        col_span: 6,
-        row_span: 1,
-    },
+// --- CONFIGURATION GLOBALE ---
+const studioSettings = ref({
+    canvasBg: 'f1f5f9',
+    widgetBg: 'ffffff',
+    primaryColor: '4f46e5',
+    textColor: '1e293b',
+    borderRadius: 16,
+    gap: 20,
+    shadowSize: 'shadow-sm',
+    fontFamily: 'Inter, sans-serif'
 });
 
-const chartTypes = ref([ // Corrected variable name from 'chartType' to 'chartTypes'
-    { label: 'Barres', value: 'bar', icon: 'pi pi-chart-bar' },
-    { label: 'Ligne', value: 'line', icon: 'pi pi-chart-line' },
-    { label: 'Circulaire (Doughnut)', value: 'doughnut', icon: 'pi pi-chart-pie' },
-    { label: 'Tarte (Pie)', value: 'pie', icon: 'pi pi-chart-pie' },
-    { label: 'Indicateur Clé (KPI)', value: 'kpi', icon: 'pi pi-bolt' },
-]);
-
-// Helper for displaying preview icons
-const getChartIcon = (type) => {
-    const chart = chartTypes.value.find(c => c.value === type);
-    return chart ? chart.icon : 'pi pi-file';
-};
-
-const openNew = () => {
-    form.reset();
-    editing.value = false;
-    submitted.value = false;
-    reportDialog.value = true;
-};
-
-const editReport = (report) => {
-    form.id = report.id;
-    form.name = report.name;
-    form.description = report.description;
-    form.chart_type = report.chart_type;
-    form.data_source = report.data_source;
-    form.grid_options = {
-        col_span: report.grid_options?.col_span || 6,
-        row_span: report.grid_options?.row_span || 1,
-    };
-    editing.value = true;
-    reportDialog.value = true;
-};
-
-const saveReport = () => {
-    submitted.value = true;
-    if (!form.name || !form.chart_type || !form.data_source) {
-        toast.add({ severity: 'warn', summary: 'Champs requis', detail: 'Veuillez remplir les champs obligatoires.', life: 3000 });
-        return;
+const form = ref({
+    id: null,
+    name: '',
+    chart_type: 'bar',
+    data_source: 'sales',
+    col_span: 6,
+    row_span: 1,
+    customStyle: {
+        useCustom: false,
+        bg: 'ffffff',
+        text: '1e293b'
     }
+});
 
-    const url = editing.value ? route('reports.update', form.id) : route('reports.store');
-    form.submit(editing.value ? 'put' : 'post', url, {
-        onSuccess: () => {
-            reportDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Configuration enregistrée', life: 3000 });
+// --- LOGIQUE D'ÉDITION GROUPÉE ---
+const applyGlobalStyles = () => {
+    localReports.value = localReports.value.map(widget => ({
+        ...widget,
+        customStyle: {
+            ...widget.customStyle,
+            useCustom: false // Réinitialise le style local pour suivre le global
         }
-    });
+    }));
+    globalConfigDialog.value = false;
+    toast.add({ severity: 'success', summary: 'Style Global Appliqué', detail: 'Tous les widgets ont été harmonisés.' });
 };
 
-const deleteReport = (report) => {
-    confirm.require({
-        message: `Supprimer le widget "${report.name}" ?`,
-        header: 'Confirmation',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            router.delete(route('reports.destroy', report.id), {
-                onSuccess: () => toast.add({ severity: 'success', summary: 'Supprimé', detail: 'Rapport retiré du dashboard', life: 3000 }),
-            });
-        },
-    });
+// --- GESTION DES WIDGETS ---
+const openWidgetSettings = (widget = null, index = null) => {
+    if (widget) {
+        form.value = JSON.parse(JSON.stringify(widget));
+        activeWidgetIndex.value = index;
+    } else {
+        form.value = {
+            id: Date.now(),
+            name: 'Nouveau Rapport',
+            chart_type: 'bar',
+            data_source: 'sales',
+            col_span: 4,
+            row_span: 1,
+            customStyle: { useCustom: false, bg: 'ffffff', text: '1e293b' }
+        };
+    }
+    widgetDialog.value = true;
 };
 
-const handleSearch = () => {
-    router.get(route('reports.index'), { search: search.value }, { preserveState: true, replace: true });
+const saveWidget = () => {
+    if (activeWidgetIndex.value !== null) {
+        localReports.value[activeWidgetIndex.value] = { ...form.value };
+    } else {
+        localReports.value.push({ ...form.value });
+    }
+    widgetDialog.value = false;
+    activeWidgetIndex.value = null;
 };
+
+// --- GÉNÉRATEUR DE TEST INITIAL ---
+onMounted(() => {
+    localReports.value = [
+        { id: 1, name: 'Revenus Annuels', chart_type: 'line', data_source: 'sales', col_span: 8, row_span: 2, customStyle: { useCustom: false } },
+        { id: 2, name: 'Utilisateurs', chart_type: 'kpi', data_source: 'conversion', col_span: 4, row_span: 1, customStyle: { useCustom: false } },
+        { id: 3, name: 'Objectif Q4', chart_type: 'doughnut', data_source: 'csat', col_span: 4, row_span: 1, customStyle: { useCustom: false } },
+    ];
+});
 </script>
 
 <template>
-    <AppLayout title="Dashboard Builder">
-        <Head title="Configuration Dashboard" />
+    <AppLayout>
+        <Head title="Studio de Rapport" />
         <Toast />
-        <ConfirmDialog />
 
-        <div class="p-4"> <!-- Added padding to the main container -->
-            <Toolbar class="mb-5 shadow-sm border-round-xl bg-white">
-                <template #start>
-                    <div class="flex align-items-center gap-3">
-                        <i class="pi pi-th-large text-primary text-2xl"></i>
-                        <h2 class="m-0 font-bold text-900">Dashboard Builder</h2>
+        <div class="flex flex-col h-screen overflow-hidden">
+            <div class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between z-30">
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center text-white">
+                            <i class="pi pi-chart-line text-sm"></i>
+                        </div>
+                        <h1 class="text-sm font-black tracking-tight text-slate-800 uppercase">Pro Studio Builder</h1>
                     </div>
-                </template>
-                <template #end>
-                    <div class="flex gap-3">
-                        <IconField>
-                            <InputIcon><i class="pi pi-search" /></InputIcon>
-                            <InputText v-model="search" placeholder="Filtrer les widgets..." @input="handleSearch" class="border-round-lg" />
-                        </IconField>
-                        <Button label="Ajouter un Widget" icon="pi pi-plus" class="p-button-primary border-round-lg" @click="openNew" />
-                    </div>
-                </template>
-            </Toolbar>
-
-            <div class="dashboard-container">
-                <div
-                    v-for="report in reports.data"
-                    :key="report.id"
-                    class="report-widget shadow-1 hover:shadow-4 transition-all transition-duration-200"
-                    :style="{
-                        gridColumn: `span ${report.grid_options?.col_span || 6}`,
-                        gridRow: `span ${report.grid_options?.row_span || 1}`
-                    }"
-                >
-                    <div class="widget-inner">
-                        <div class="widget-header">
-                            <div class="flex flex-column">
-                                <span class="text-900 font-bold text-lg line-height-2">{{ report.name }}</span>
-                                <small class="text-500 font-medium">{{ report.data_source }}</small>
-                            </div>
-                            <div class="widget-actions">
-                                <Button icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-secondary" @click="editReport(report)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger" @click="deleteReport(report)" />
-                            </div>
-                        </div>
-
-                        <div class="widget-body">
-                            <div class="preview-placeholder">
-                                <i :class="getChartIcon(report.chart_type)" class="preview-icon"></i>
-                                <Tag :value="report.chart_type" severity="info" class="text-xs uppercase" />
-                            </div>
-                        </div>
-
-                        <div class="widget-footer">
-                            <div class="flex align-items-center gap-2">
-                                <i class="pi pi-arrows-h text-400"></i>
-                                <span class="text-sm text-600">Largeur : {{ report.grid_options?.col_span }}/12</span>
-                            </div>
-                        </div>
+                    <span class="h-6 w-px bg-slate-200"></span>
+                    <div class="flex gap-1">
+                        <Button label="Configurer Dashboard" icon="pi pi-sliders-v" class="p-button-text p-button-sm !text-slate-600" @click="globalConfigDialog = true" />
+                        <Button label="Ajouter Widget" icon="pi pi-plus-circle" class="p-button-text p-button-sm !text-slate-600" @click="openWidgetSettings()" />
                     </div>
                 </div>
 
-                <div v-if="reports.data.length === 0" class="col-12 flex flex-column align-items-center justify-content-center p-8 bg-white border-round-xl border-dashed border-2 border-300">
-                    <i class="pi pi-chart-line text-400 text-6xl mb-4"></i>
-                    <p class="text-xl text-500 font-medium">Aucun widget configuré. Commencez par en créer un !</p>
-                    <Button label="Créer mon premier widget" icon="pi pi-plus" class="mt-3" @click="openNew" />
+                <div class="flex items-center gap-3">
+                    <Button icon="pi pi-eye" class="p-button-rounded p-button-secondary p-button-text" />
+                    <Button label="Exporter Rapport" icon="pi pi-file-pdf" class="p-button-primary !rounded-xl px-4 shadow-lg shadow-indigo-100" />
+                </div>
+            </div>
+
+            <div class="flex-grow flex overflow-hidden">
+                <div class="flex-grow overflow-y-auto p-12 transition-all duration-700"
+                     :style="{ backgroundColor: '#' + studioSettings.canvasBg }">
+
+                    <div class="max-w-6xl mx-auto">
+                        <div class="flex items-center justify-between mb-12">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-white font-bold">A</div>
+                                <h2 class="text-xl font-bold tracking-tighter" :style="{ color: '#' + studioSettings.textColor }">ANALYTICS REPORT</h2>
+                            </div>
+                            <Tag value="Confidentiel - 2025" severity="secondary" class="!bg-white/50 backdrop-blur-md" />
+                        </div>
+
+                        <draggable
+                            v-model="localReports"
+                            item-key="id"
+                            class="grid grid-cols-12"
+                            :style="{ gap: studioSettings.gap + 'px' }"
+                            handle=".drag-handle"
+                            ghost-class="ghost-card"
+                        >
+                            <template #item="{ element, index }">
+                                <div
+                                    class="group relative flex flex-col transition-all duration-500 border border-transparent hover:border-indigo-400"
+                                    :style="{
+                                        gridColumn: `span ${element.col_span}`,
+                                        gridRow: `span ${element.row_span}`,
+                                        backgroundColor: element.customStyle?.useCustom ? '#' + element.customStyle.bg : '#' + studioSettings.widgetBg,
+                                        borderRadius: studioSettings.borderRadius + 'px',
+                                        color: element.customStyle?.useCustom ? '#' + element.customStyle.text : '#' + studioSettings.textColor
+                                    }"
+                                    :class="studioSettings.shadowSize"
+                                >
+                                    <div class="absolute -top-3 -right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                        <Button icon="pi pi-cog" class="p-button-rounded p-button-primary shadow-xl !w-8 !h-8" @click="openWidgetSettings(element, index)" />
+                                        <Button icon="pi pi-trash" class="p-button-rounded p-button-danger shadow-xl !w-8 !h-8" @click="localReports.splice(index, 1)" />
+                                    </div>
+
+                                    <div class="drag-handle absolute top-4 left-4 cursor-move opacity-0 group-hover:opacity-100 text-slate-300">
+                                        <i class="pi pi-th-large"></i>
+                                    </div>
+
+                                    <div class="p-8 flex flex-col h-full">
+                                        <span class="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-2">{{ element.name }}</span>
+
+                                        <div class="flex-grow flex items-center justify-center">
+                                            <template v-if="element.chart_type === 'kpi'">
+                                                <div class="text-center">
+                                                    <div class="text-5xl font-black leading-none tracking-tighter">
+                                                        {{ Math.floor(Math.random() * 80) + 20 }}<span class="text-indigo-500">.4</span>
+                                                    </div>
+                                                    <div class="text-xs font-bold mt-2 opacity-60">{{ element.data_source }}</div>
+                                                </div>
+                                            </template>
+                                            <template v-else>
+                                                <div class="w-full flex flex-col gap-4">
+                                                    <div class="flex items-end gap-2 h-24">
+                                                        <div v-for="i in 6" :key="i"
+                                                             class="flex-grow bg-indigo-500/20 rounded-t-lg transition-all duration-1000"
+                                                             :style="{ height: Math.floor(Math.random() * 100) + '%', backgroundColor: i % 2 === 0 ? '#' + studioSettings.primaryColor : '#' + studioSettings.primaryColor + '44' }">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </draggable>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <Dialog v-model:visible="reportDialog" modal :header="editing ? 'Modifier le Widget' : 'Nouveau Widget'" :style="{ width: '50rem' }" class="p-fluid border-round-xl">
-            <div class="grid mt-2">
-                <div class="col-12 mb-4">
-                    <label class="block font-bold mb-2">Nom du Widget</label>
-                    <InputText v-model.trim="form.name" placeholder="Ex: Volume de ventes mensuel" :class="{ 'p-invalid': submitted && !form.name }" />
-                    <small class="p-error" v-if="form.errors.name">{{ form.errors.name }}</small>
+        <Dialog v-model:visible="globalConfigDialog" modal header="Paramètres Globaux du Design" :style="{ width: '35rem' }" class="p-fluid">
+            <div class="grid grid-cols-2 gap-6 pt-4">
+                <div class="col-span-2 flex items-center gap-3 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 mb-2">
+                    <i class="pi pi-info-circle text-indigo-600 text-xl"></i>
+                    <p class="text-xs text-indigo-700 m-0 leading-relaxed font-medium">Les changements ici s'appliqueront à <b>tous les widgets</b> n'ayant pas de style personnalisé activé.</p>
                 </div>
 
-                <div class="col-12 mb-4">
-                    <label class="block font-bold mb-2">Description</label>
-                    <Textarea v-model="form.description" rows="2" placeholder="Expliquez ce que ce widget affiche..." />
+                <div class="field">
+                    <label class="font-bold text-xs uppercase tracking-widest text-slate-400">Fond Canvas</label>
+                    <div class="flex items-center gap-3 mt-2">
+                        <ColorPicker v-model="studioSettings.canvasBg" />
+                        <span class="text-sm font-mono uppercase">#{{ studioSettings.canvasBg }}</span>
+                    </div>
                 </div>
-
-                <div class="col-12 md:col-6 mb-4">
-                    <label class="block font-bold mb-2">Type d'Affichage</label> <!-- Corrected label text -->
-                    <Dropdown v-model="form.chart_type" :options="chartTypes" optionLabel="label" optionValue="value" placeholder="Type de graphique">
-                        <template #option="slotProps">
-                            <div class="flex align-items-center gap-2">
-                                <i :class="slotProps.option.icon"></i>
-                                <span>{{ slotProps.option.label }}</span>
-                            </div>
-                        </template>
-                    </Dropdown>
+                <div class="field">
+                    <label class="font-bold text-xs uppercase tracking-widest text-slate-400">Fond Widgets</label>
+                    <div class="flex items-center gap-3 mt-2">
+                        <ColorPicker v-model="studioSettings.widgetBg" />
+                        <span class="text-sm font-mono uppercase">#{{ studioSettings.widgetBg }}</span>
+                    </div>
                 </div>
-
-                <div class="col-12 md:col-6 mb-4">
-                    <label class="block font-bold mb-2">Source de Données</label>
-                    <Dropdown v-model="form.data_source" :options="props.dataSources" optionLabel="label" optionValue="value" placeholder="Données à extraire" filter />
+                <div class="field">
+                    <label class="font-bold text-xs uppercase tracking-widest text-slate-400">Couleur Principale</label>
+                    <div class="flex items-center gap-3 mt-2">
+                        <ColorPicker v-model="studioSettings.primaryColor" />
+                    </div>
                 </div>
+                <div class="field">
+                    <label class="font-bold text-xs uppercase tracking-widest text-slate-400">Bords Arrondis ({{ studioSettings.borderRadius }}px)</label>
+                    <Slider v-model="studioSettings.borderRadius" :min="0" :max="40" class="mt-4" />
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Réinitialiser tout le Dashboard" icon="pi pi-check" class="p-button-primary !rounded-xl p-4 shadow-lg" @click="applyGlobalStyles" />
+            </template>
+        </Dialog>
 
-                <div class="col-12">
-                    <div class="surface-100 p-3 border-round-lg mb-4">
-                        <h4 class="m-0 mb-3 flex align-items-center gap-2">
-                            <i class="pi pi-sliders-h text-primary"></i>
-                            Mise en page du Dashboard
-                        </h4>
-                        <div class="grid">
-                            <div class="col-12 md:col-6">
-                                <label class="block font-semibold mb-2">Largeur (Colonnes 1-12)</label>
-                                <InputNumber v-model="form.grid_options.col_span" :min="1" :max="12" showButtons buttonLayout="horizontal" incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" />
-                                <small class="text-500">12 = Pleine largeur, 6 = Moitié</small>
-                            </div>
-                            <div class="col-12 md:col-6">
-                                <label class="block font-semibold mb-2">Importance (Hauteur)</label>
-                                <InputNumber v-model="form.grid_options.row_span" :min="1" :max="4" showButtons buttonLayout="horizontal" incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" />
-                                <small class="text-500">1 = Standard, 2+ = Plus haut</small>
+        <Dialog v-model:visible="widgetDialog" modal header="Propriétés du Widget" :style="{ width: '45rem' }" class="p-fluid">
+            <TabView>
+                <TabPanel header="Contenu & Données">
+                    <div class="grid grid-cols-2 gap-6 pt-4">
+                        <div class="col-span-2">
+                            <label class="font-bold text-slate-700 block mb-2">Titre du Rapport</label>
+                            <InputText v-model="form.name" class="!rounded-xl" />
+                        </div>
+                        <div>
+                            <label class="font-bold text-slate-700 block mb-2">Source de Données</label>
+                            <Dropdown v-model="form.data_source" :options="dataOptions" optionLabel="label" optionValue="value" class="!rounded-xl" />
+                        </div>
+                        <div>
+                            <label class="font-bold text-slate-700 block mb-2">Type de Graphique</label>
+                            <SelectButton v-model="form.chart_type" :options="['bar', 'line', 'kpi', 'doughnut']" class="compact-select">
+                                <template #option="slotProps"><i :class="'pi pi-chart-' + slotProps.option"></i></template>
+                            </SelectButton>
+                        </div>
+                        <div class="col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <span class="block font-bold text-slate-700 mb-4">Dimensions sur la Grille</span>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-xs">Largeur ({{ form.col_span }}/12)</label>
+                                    <Slider v-model="form.col_span" :min="2" :max="12" />
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-xs">Hauteur (Lignes)</label>
+                                    <InputNumber v-model="form.row_span" showButtons buttonLayout="horizontal" :min="1" :max="3" />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </TabPanel>
+                <TabPanel header="Style Local (Canva-like)">
+                    <div class="flex flex-col gap-6 pt-4">
+                        <div class="flex items-center gap-3 p-3 border-2 border-dashed border-slate-200 rounded-2xl">
+                            <i class="pi pi-palette text-slate-400"></i>
+                            <span class="text-sm font-medium">Activer le style spécifique pour ce widget ?</span>
+                            <div class="ml-auto"><input type="checkbox" v-model="form.customStyle.useCustom" class="w-5 h-5" /></div>
+                        </div>
 
+                        <div v-if="form.customStyle.useCustom" class="grid grid-cols-2 gap-4 animate-fadein">
+                            <div class="field">
+                                <label class="block font-bold mb-2">Fond du Widget</label>
+                                <ColorPicker v-model="form.customStyle.bg" />
+                            </div>
+                            <div class="field">
+                                <label class="block font-bold mb-2">Couleur du Texte</label>
+                                <ColorPicker v-model="form.customStyle.text" />
+                            </div>
+                        </div>
+                        <div v-else class="text-center py-10 text-slate-400 italic text-sm">
+                            Ce widget suit les paramètres du Dashboard Global.
+                        </div>
+                    </div>
+                </TabPanel>
+            </TabView>
             <template #footer>
-                <Button label="Annuler" icon="pi pi-times" @click="reportDialog = false" class="p-button-text p-button-secondary" />
-                <Button :label="editing ? 'Mettre à jour le dashboard' : 'Ajouter au dashboard'" icon="pi pi-check" @click="saveReport" :loading="form.processing" class="p-button-primary" />
+                <Button label="Valider" icon="pi pi-check" class="p-button-primary !rounded-xl px-8" @click="saveWidget" />
             </template>
         </Dialog>
     </AppLayout>
 </template>
 
 <style scoped>
-/* Conteneur de la grille dynamique */
-.dashboard-container { /* Corrected class name from .dashboard-grid to .dashboard-container */
+.ghost-card {
+    opacity: 0.1;
+    transform: scale(0.9);
+}
+
+.animate-fadein {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Grille */
+.grid-cols-12 {
     display: grid;
-    grid-template-columns: repeat(12, 1fr); /* Grille de 12 colonnes */
-    grid-auto-rows: minmax(180px, auto); /* Hauteur de base des lignes */
-    gap: 1.5rem;
-    align-items: start;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-flow: dense;
 }
 
-/* Carte de widget */
-.report-widget {
-    background: #ffffff;
-    border-radius: 1rem;
-    overflow: hidden;
-    border: 1px solid #edf2f7;
-    height: 100%;
+/* PrimeVue SelectButton Compact */
+:deep(.p-selectbutton .p-button) {
+    @apply border-slate-200 !text-slate-400;
 }
-
-.widget-inner {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-.widget-header {
-    padding: 1.25rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid #f8fafc;
-}
-
-.widget-body {
-    flex-grow: 1;
-    padding: 1rem;
-    background: #fcfdfe;
-    display: flex; /* Added display flex to widget-body */
+:deep(.p-selectbutton .p-button.p-highlight) {
+    @apply !bg-indigo-600 !text-white !border-indigo-600;
 }
 </style>
