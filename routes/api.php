@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/bulk-destroy', [EquipmentController ::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
 Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
+Route::put('/interventions/{intervention}/validate', [InterventionRequestController::class, 'validateIntervention'])->name('interventions.validate');
 
 
 Route::apiResource("maintenancesx", InterventionRequestController::class);Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

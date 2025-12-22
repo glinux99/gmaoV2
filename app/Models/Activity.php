@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -19,6 +20,7 @@ class Activity extends Model implements HasMedia
 
         'task_id',
         'maintenance_id',
+        'intervention_request_id',
         'user_id', // The user who created the activity record
         'actual_start_time',
         'parent_id', // ID de l'activité parente
@@ -39,6 +41,30 @@ class Activity extends Model implements HasMedia
         'actual_end_time' => 'datetime',
 
     ];
+
+    protected static function booted(): void
+    {
+        static::updated(function (Activity $activity) {
+            if ($activity->isDirty('status')) {
+                $newStatus = $activity->status;
+
+                if ($activity->task_id) {
+                    $activity->task->update(['status' => $newStatus]);
+                    Log::info("Task {$activity->task_id} status updated to {$newStatus} due to activity {$activity->id} status change.");
+                }
+
+                if ($activity->maintenance_id) {
+                    $activity->maintenance->update(['status' => $newStatus]);
+                    Log::info("Maintenance {$activity->maintenance_id} status updated to {$newStatus} due to activity {$activity->id} status change.");
+                }
+
+                if ($activity->intervention_request_id) {
+                    $activity->interventionRequest->update(['status' => $newStatus]);
+                    Log::info("InterventionRequest {$activity->intervention_request_id} status updated to {$newStatus} due to activity {$activity->id} status change.");
+                }
+            }
+        });
+    }
    public function assignable(): MorphTo
     {
         return $this->morphTo();
@@ -50,6 +76,10 @@ class Activity extends Model implements HasMedia
      public function maintenance(): BelongsTo
     {
         return $this->belongsTo(Maintenance::class);
+    }
+    public function interventionRequest(): BelongsTo
+    {
+        return $this->belongsTo(InterventionRequest::class);
     }
     public function equipment(): BelongsToMany
     {

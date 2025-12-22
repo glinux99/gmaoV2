@@ -33,6 +33,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\TechnicianController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UnityController;
 
 /*
@@ -93,6 +94,7 @@ Route::middleware('auth', 'verified')->group(function () {
     'expenses' => ExpensesController::class,
     'connections' => ConnectionController::class,
     'interventions' => InterventionRequestController::class,
+    'reports' => ReportController::class,
   ]);
 
   Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');

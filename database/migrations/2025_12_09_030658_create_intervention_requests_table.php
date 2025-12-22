@@ -15,10 +15,10 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->enum('status', ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'])->default('pending');
+            $table->string('status')->nullable()->default('pending');
             $table->foreignId('requested_by_user_id')->nullable()->constrained('users')->onDelete('set null'); // User who created the request (e.g., an admin or technician)
             $table->foreignId('requested_by_connection_id')->nullable()->constrained('connections')->onDelete('set null'); // Connection (client) who made the request
-            $table->foreignId('assigned_to_user_id')->nullable()->constrained('users')->onDelete('set null'); // Technician assigned to the request
+            $table->nullableMorphs('assignable'); // Assignable to User or Team
             $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
             $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null');
             $table->enum('intervention_reason', [

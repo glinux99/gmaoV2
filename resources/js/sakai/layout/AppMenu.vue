@@ -97,7 +97,7 @@ const model = ref([
             {
                 label: 'Rapports',
                 icon: 'pi pi-fw pi-chart-bar',
-                to: '/repports',
+                to: '/reports',
                 /*can: 'repports'*/
             },
             {

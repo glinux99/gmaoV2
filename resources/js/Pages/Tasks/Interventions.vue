@@ -27,6 +27,7 @@ const props = defineProps({
     interventionRequests: Object,
     filters: Object,
     users: Array,
+    teams: Array,
     connections: Array,
     regions: Array,
     zones: Array,
@@ -54,7 +55,7 @@ const op = ref();
 const selectedItems = ref([]);
 
 // --- MÉMOIRE PERSISTANTE (Session utilisateur) ---
-const lastAssignedUserId = ref(null);
+const lastAssignable = ref({ type: null, id: null });
 
 // --- CONFIGURATION DES COLONNES ---
 const allColumns = [
@@ -65,7 +66,7 @@ const allColumns = [
     { field: 'region_name', header: 'Région', sortable: false },
     { field: 'priority', header: 'Priorité', sortable: true },
     { field: 'scheduled_date', header: 'Date Prévue', sortable: true },
-    { field: 'assigned_to_user_name', header: 'Technicien', sortable: false },
+    { field: 'assigned_to_name', header: 'Assigné à', sortable: false },
     { field: 'is_validated', header: 'Validée', sortable: true },
 ];
 
@@ -123,7 +124,7 @@ const connectionsList = computed(() => {
 const form = useForm({
     id: null, title: '', description: '', status: 'pending',
     requested_by_user_id: null, requested_by_connection_id: null,
-    assigned_to_user_id: null, region_id: null, zone_id: null,
+    assignable_type: null, assignable_id: null, region_id: null, zone_id: null,
     intervention_reason: '', priority: '', scheduled_date: null,
     gps_latitude: null, gps_longitude: null, is_validated: true,
 });
@@ -134,8 +135,9 @@ const openCreate = () => {
     form.scheduled_date = new Date();
 
     // Remplissage automatique du technicien par défaut (mémoire)
-    if (lastAssignedUserId.value) {
-        form.assigned_to_user_id = lastAssignedUserId.value;
+    if (lastAssignable.value.id) {
+        form.assignable_type = lastAssignable.value.type;
+        form.assignable_id = lastAssignable.value.id;
     }
 
     isModalOpen.value = true;
@@ -154,7 +156,8 @@ const openEdit = (data) => {
 const isAssignModalOpen = ref(false);
 const assignForm = useForm({
     id: null,
-    assigned_to_user_id: null,
+    assignable_type: null,
+    assignable_id: null,
 });
 
 /**
@@ -174,8 +177,9 @@ const updateFormWithConnectionData = (connectionId) => {
 
 const submit = () => {
     // MÉMORISATION : On stocke l'ID du technicien avant l'envoi
-    if (form.assigned_to_user_id) {
-        lastAssignedUserId.value = form.assigned_to_user_id;
+    if (form.assignable_id) {
+        lastAssignable.value.type = form.assignable_type;
+        lastAssignable.value.id = form.assignable_id;
     }
      form.scheduled_date = form.scheduled_date ? new Date(form.scheduled_date).toISOString().slice(0, 19).replace('T', ' ') : null;
     const url = form.id ? route('interventions.update', form.id) : route('interventions.store');
@@ -190,6 +194,7 @@ const submit = () => {
 };
 
 const validateIntervention = (intervention) => {
+console.log(intervention);
     router.put(route('interventions.validate', intervention.id), {}, {
         onSuccess: () => {
             toast.add({ severity: 'success', summary: 'Succès', detail: 'Intervention validée', life: 3000 });
@@ -216,7 +221,8 @@ const cancelIntervention = (intervention) => {
 const openAssignModal = (intervention) => {
     assignForm.reset();
     assignForm.id = intervention.id;
-    assignForm.assigned_to_user_id = intervention.assigned_to_user_id;
+    assignForm.assignable_type = intervention.assignable_type;
+    assignForm.assignable_id = intervention.assignable_id;
     isAssignModalOpen.value = true;
     assignForm.status = intervention.status; // Pré-remplir le statut actuel
 };
@@ -244,9 +250,25 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
     ...ir,
     client_name: ir.requested_by_connection ? `${ir.requested_by_connection.first_name} ${ir.requested_by_connection.last_name}` : '-',
     customer_code: ir.requested_by_connection ? ir.requested_by_connection.customer_code : '-',
-    assigned_to_user_name: ir.assigned_to_user ? ir.assigned_to_user.name : '-',
+    assigned_to_name: ir.assignable ? ir.assignable.name : '-',
     region_name: ir.region?.designation || '-',
 })));
+
+const assignableTypes = ref([
+    { label: 'Technicien', value: 'App\\Models\\User' },
+    { label: 'Équipe', value: 'App\\Models\\Team' },
+]);
+
+const getAssignables = (type) => {
+    if (type === 'App\\Models\\User') {
+        return props.users;
+    }
+    if (type === 'App\\Models\\Team') {
+        return props.teams;
+    }
+    return [];
+};
+
 </script>
 
 <template>
@@ -335,15 +357,15 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                                     label: 'Assigner',
                                     icon: 'pi pi-user-plus',
                                     command: () => openAssignModal(data),
-                                    visible: !data.assigned_to_user_id // Visible si non assignée
+                                    visible: !data.assignable_id // Visible si non assignée
                                 }
                             ]"
-                            v-if="!data.is_validated || data.status !== 'cancelled' || !data.assigned_to_user_id"
+                            v-if="!data.is_validated || data.status !== 'cancelled' || !data.assignable_id"
                         ></SplitButton>
 
                         <i v-if="data.status === 'completed'" class="pi pi-check-circle text-green-500 ml-2" v-tooltip.top="'Validée'" />
                         <i v-if="data.status === 'cancelled'" class="pi pi-ban text-red-500 ml-2" v-tooltip.top="'Annulée'" />
-                        <i v-if="data.assigned_to_user_id" class="pi pi-user-check text-blue-500 ml-2" v-tooltip.top="'Assignée'" />
+                        <i v-if="data.assignable_id" class="pi pi-user-check text-blue-500 ml-2" v-tooltip.top="'Assignée'" />
 
                     </template>
                 </Column>
@@ -407,10 +429,18 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                     <InputLabel value="Statut" />
                     <Dropdown v-model="form.status" :options="props.statuses" class="w-full" />
                 </div>
-                <div class="space-y-1">
-                    <InputLabel value="Assigné à (Technicien)" />
-                    <Dropdown v-model="form.assigned_to_user_id" :options="props.users" optionLabel="name" optionValue="id" class="w-full" filter placeholder="Choisir un technicien" />
+
+                <div class="md:col-span-2 grid grid-cols-2 gap-4 p-3 bg-gray-50 border rounded-lg">
+                    <div class="space-y-1">
+                        <InputLabel value="Assigner à (Type)" />
+                        <Dropdown v-model="form.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value" placeholder="Type" class="w-full" @change="form.assignable_id = null" />
+                    </div>
+                    <div class="space-y-1">
+                        <InputLabel value="Assigner à (Nom)" />
+                        <Dropdown v-model="form.assignable_id" :options="getAssignables(form.assignable_type)" optionLabel="name" optionValue="id" class="w-full" filter placeholder="Sélectionner..." :disabled="!form.assignable_type" />
+                    </div>
                 </div>
+
                 <div class="space-y-1">
                     <InputLabel value="Région" />
                     <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" class="w-full" />
@@ -447,8 +477,12 @@ const formattedList = computed(() => (props.interventionRequests?.data || []).ma
                     ID Intervention: <strong>{{ assignForm.id }}</strong>
                 </div>
                 <div>
-                    <InputLabel value="Choisir le technicien" for="assignable_user_id" />
-                    <Dropdown v-model="assignForm.assigned_to_user_id" :options="props.users" optionLabel="name" optionValue="id" filter class="w-full" autofocus />
+                    <InputLabel value="Type d'assignation" />
+                    <Dropdown v-model="assignForm.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value" class="w-full mb-2" @change="assignForm.assignable_id = null" />
+                </div>
+                <div>
+                    <InputLabel value="Assigner à" />
+                    <Dropdown v-model="assignForm.assignable_id" :options="getAssignables(assignForm.assignable_type)" optionLabel="name" optionValue="id" filter class="w-full" :disabled="!assignForm.assignable_type" />
                 </div>
                 <div>
                     <InputLabel value="Statut de l'intervention" for="assign_status" />

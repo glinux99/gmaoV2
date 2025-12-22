@@ -16,6 +16,7 @@ return new class extends Migration
 
             $table->foreignId('task_id')->nullable()->constrained('tasks')->onDelete('cascade');
             $table->foreignId('maintenance_id')->nullable()->constrained('maintenances')->onDelete('cascade');
+            $table->foreignId('intervention_request_id')->nullable()->constrained('intervention_requests')->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
 
             // Informations confirmées de la tâche

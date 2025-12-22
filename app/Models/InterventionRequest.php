@@ -20,7 +20,8 @@ class InterventionRequest extends Model
         'status',
         'requested_by_user_id',
         'requested_by_connection_id',
-        'assigned_to_user_id',
+        'assignable_id',
+        'assignable_type',
         'region_id',
         'zone_id',
         'intervention_reason',
@@ -35,6 +36,7 @@ class InterventionRequest extends Model
         'resolution_notes',
         'gps_latitude',
         'gps_longitude',
+
     ];
     protected $casts = [
         'reported_at' => 'datetime',
@@ -61,9 +63,9 @@ class InterventionRequest extends Model
     /**
      * Obtient le technicien assigné à la demande.
      */
-    public function assignedToUser(): BelongsTo
+    public function assignable()
     {
-        return $this->belongsTo(User::class, 'assigned_to_user_id');
+        return $this->morphTo();
     }
 
     /**
@@ -90,6 +92,11 @@ class InterventionRequest extends Model
     {
         // Supposons qu'une demande d'intervention peut générer au maximum une seule maintenance.
         return $this->hasOne(Maintenance::class);
+    }
+
+    public function activity(): HasOne
+    {
+        return $this->hasOne(Activity::class);
     }
 
     // Vous pourriez ajouter d'autres relations HasMany ici (ex: commentaires, logs d'activité)
