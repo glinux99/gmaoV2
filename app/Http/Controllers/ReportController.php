@@ -6,7 +6,9 @@ use App\Models\Report;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\File;
 
 class ReportController extends Controller
 {
@@ -112,6 +114,74 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Rapport mis à jour avec succès.');
     }
 
+   public function getModels()
+    {
+        $modelPath = app_path('Models');
+        $files = File::files($modelPath);
+
+        $models = collect($files)->map(function ($file) {
+            $name = $file->getFilenameWithoutExtension();
+            return [
+                'id'   => "App\\Models\\$name",
+                'name' => $name
+            ];
+        });
+
+        return response()->json($models);
+    }
+
+    /**
+     * Mission 2 : Extraire les données selon la config du widget (POST)
+     * Route: Route::post('/api/quantum/query', [QuantumReportController::class, 'fetchData']);
+     */
+    public function fetchData(Request $request)
+    {
+        $request->validate([
+            'model'   => 'required|string',
+            'column'  => 'required|string', // ex: 'price' ou 'id'
+            'method'  => 'required|in:SUM,AVG,COUNT,MAX',
+        ]);
+
+        $modelClass = $request->input('model');
+
+        // Vérification de sécurité pour s'assurer que la classe existe
+        if (!class_exists($modelClass) || !is_subclass_of($modelClass, \Illuminate\Database\Eloquent\Model::class)) {
+            return response()->json(['error' => 'Modèle introuvable'], 404);
+        }
+
+        // Calcul de la valeur KPI
+        $query = $modelClass::query();
+        $method = strtolower($request->input('method'));
+        $value = $query->$method($request->input('column'));
+
+        // Génération formatée pour Chart.js (Exemple : Groupé par mois)
+        $chartData = $this->generateChartData($modelClass, $request->input('column'), $method);
+
+        return response()->json([
+            'value'     => number_format($value, 2, '.', ' '),
+            'chart'     => $chartData,
+            'timestamp' => now()->toDateTimeString()
+        ]);
+    }
+
+    private function generateChartData($modelClass, $column, $method)
+    {
+        // Exemple simple : on groupe les données des 6 derniers mois
+        $data = DB::table((new $modelClass)->getTable())
+            ->select(DB::raw('MONTHNAME(created_at) as label'), DB::raw("$method($column) as value"))
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->groupBy('label')
+            ->get();
+
+        return [
+            'labels' => $data->pluck('label'),
+            'datasets' => [[
+                'label' => "Analyse $method",
+                'data'  => $data->pluck('value'),
+                'backgroundColor' => '#6366f1'
+            ]]
+        ];
+    }
     /**
      * Remove the specified resource from storage.
      */
@@ -119,5 +189,13 @@ class ReportController extends Controller
     {
         $report->delete();
         return redirect()->route('reports.index')->with('success', 'Rapport supprimé avec succès.');
+    }
+
+    public function reorder(Request $request)
+    {
+        foreach ($request->orders as $item) {
+            Report::where('id', $item['id'])->update(['order' => $item['order']]);
+        }
+        return back();
     }
 }

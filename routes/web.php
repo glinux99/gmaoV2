@@ -110,6 +110,8 @@ Route::put('/interventions/{intervention}/assign', [InterventionRequestControlle
 Route::put('/interventions/{intervention}/cancel', [InterventionRequestController::class, 'cancel'])->name('interventions.cancel');
 Route::put('/interventions/{intervention}/validate', [InterventionRequestController::class, 'validateIntervention'])->name('interventions.validate');
 Route::post('/reports/reorder', [ReportController::class, 'reorder'])->name('reports.reorder');
+Route::get('/quantum/models', [ReportController::class, 'getModels']);
+Route::get('/quantum/models', [ReportController::class, 'fetchData']);
 
 
 });

@@ -1,356 +1,1317 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
-import { Head } from '@inertiajs/vue3';
-import draggable from 'vuedraggable';
-import AppLayout from "@/sakai/layout/AppLayout.vue";
+/** * QUANTUM ARCHITECT OS v11.5 - "SUPREME EDITION"
+ * Moteur complet : Gestion de pages, Historique, Bridge Laravel, Import CSV & Table Builder
+ */
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import { useConfirm } from "primevue/useconfirm";
+import { faker } from '@faker-js/faker';
+import axios from 'axios';
 
-// Moteur de Graphiques & Export
-import { Bar, Line, Doughnut } from 'vue-chartjs';
+// --- INITIALISATION MOTEUR GRAPHIQUE ---
 import {
     Chart as ChartJS, Title, Tooltip, Legend, BarElement,
-    CategoryScale, LinearScale, PointElement, LineElement, ArcElement
+    CategoryScale, LinearScale, PointElement, LineElement, ArcElement, RadialLinearScale
 } from 'chart.js';
-import html2pdf from 'html2pdf.js';
+import { Bar, Line, Pie, Doughnut, Radar } from 'vue-chartjs';
+import draggable from 'vuedraggable';
 
-// PrimeVue Components
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import Toast from 'primevue/toast';
-import ColorPicker from 'primevue/colorpicker';
-import Slider from 'primevue/slider';
-import SelectButton from 'primevue/selectbutton';
-import TabView from 'primevue/tabview';
-import TabPanel from 'primevue/tabpanel';
-import FileUpload from 'primevue/fileupload';
+ChartJS.register(
+    Title, Tooltip, Legend, BarElement,
+    CategoryScale, LinearScale, PointElement, LineElement, ArcElement, RadialLinearScale
+);
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, PointElement, LineElement, ArcElement);
+// --- ÉTATS RÉACTIFS DE BASE ---
+const toast = useToast();
+const confirm = useConfirm();
+const isLoading = ref(false);
+const currentPageIdx = ref(0);
+const selectedWidgetIdx = ref(null);
+const zoomLevel = ref(0.80);
+const isDragging = ref(false);
+const pageDragIndex = ref(null); // Pour le drag-and-drop des pages
+const laravelModels = ref([]);
 
-const dataOptions = [
-    { label: 'Performance Commerciale', value: 'sales' },
-    { label: 'Taux de Conversion', value: 'conversion' },
-    { label: 'Flux de Trésorerie', value: 'cashflow' },
-    { label: 'Satisfaction Client', value: 'csat' },
+// --- CONFIGURATION DU TABLEAU (MODAL & CSV) ---
+const tableModal = ref(false);
+const tableConfig = reactive({
+    tempColumns: [],
+    tempRows: []
+});
+
+// --- SYSTÈME D'HISTORIQUE (ANTI-ERREUR .LENGTH) ---
+const history = ref([]);
+const historyIndex = ref(-1);
+
+const saveToHistory = () => {
+    if (!pages.value) return;
+    const state = JSON.stringify(pages.value);
+    if (historyIndex.value < history.value.length - 1) {
+        history.value = history.value.slice(0, historyIndex.value + 1);
+    }
+    history.value.push(state);
+    if (history.value.length > 50) history.value.shift();
+    historyIndex.value = history.value.length - 1;
+};
+
+const undo = () => {
+    if (historyIndex.value > 0) {
+        historyIndex.value--;
+        pages.value = JSON.parse(history.value[historyIndex.value]);
+        toast.add({ severity: 'info', summary: 'Action annulée', life: 800 });
+    }
+};
+
+const redo = () => {
+    if (history.value.length > 0 && historyIndex.value < history.value.length - 1) {
+        historyIndex.value++;
+        pages.value = JSON.parse(history.value[historyIndex.value]);
+        toast.add({ severity: 'info', summary: 'Action rétablie', life: 800 });
+    }
+};
+
+const canUndo = computed(() => history.value.length > 1 && historyIndex.value > 0);
+const canRedo = computed(() => history.value.length > 0 && historyIndex.value < history.value.length - 1);
+
+// --- NOUVEAU : Référentiel de styles ---
+const BORDER_STYLES = [
+    { label: 'Plein', value: 'solid' },
+    { label: 'Tirets', value: 'dashed' },
+    { label: 'Pointillés', value: 'dotted' },
+    { label: 'Aucun', value: 'none' }
 ];
 
-const toast = useToast();
-const widgetDialog = ref(false);
-const globalConfigDialog = ref(false);
-const isPreviewMode = ref(false);
-const activeWidgetIndex = ref(null);
+// --- NOUVEAU : Formats de page ---
+const PAGE_FORMATS = [
+    { name: 'A4', w: 793, h: 1122 },
+    { name: 'A3', w: 1122, h: 1587 },
+    { name: 'A2', w: 1587, h: 2245 },
+    { name: 'A1', w: 2245, h: 3179 },
+    { name: 'A0', w: 3179, h: 4494 },
+    { name: 'US Letter', w: 816, h: 1056 },
+];
 
-// --- GESTION MULTI-PAGES ---
-const currentPageIndex = ref(0);
+// --- RÉFÉRENTIELS DE DESIGN ---
+const FONTS = ['Inter', 'Roboto', 'Montserrat', 'Playfair Display', 'Fira Code', 'Lato'];
+const CHART_TYPES = [
+    { label: 'Barres', value: 'bar', icon: 'pi pi-chart-bar' },
+    { label: 'Lignes', value: 'line', icon: 'pi pi-chart-line' },
+    { label: 'Secteurs', value: 'pie', icon: 'pi pi-chart-pie' },
+    { label: 'Donut', value: 'doughnut', icon: 'pi pi-circle' },
+    { label: 'Radar', value: 'radar', icon: 'pi pi-directions' }
+];
+
+// --- STRUCTURE DU DOCUMENT ---
 const pages = ref([
-    { id: Date.now(), name: 'Page 1', widgets: [] }
+    {
+        id: 'p_initial',
+        name: 'Nouveau Rapport',
+        background: '#ffffff',
+        format: PAGE_FORMATS[0],
+        orientation: 'portrait',
+        layoutMode: 'absolute', // 'absolute' or 'grid'
+        widgets: []
+    }
 ]);
 
-const currentWidgets = computed({
-    get: () => pages.value[currentPageIndex.value].widgets,
-    set: (val) => pages.value[currentPageIndex.value].widgets = val
-});
-
-const addPage = () => {
-    pages.value.push({ id: Date.now(), name: `Page ${pages.value.length + 1}`, widgets: [] });
-    currentPageIndex.value = pages.value.length - 1;
-};
-
-const removePage = (index) => {
-    if (pages.value.length > 1) {
-        pages.value.splice(index, 1);
-        currentPageIndex.value = Math.max(0, index - 1);
-    }
-};
-
-// --- CONFIGURATION DU STUDIO ---
-const studioSettings = ref({
-    canvasBg: 'e2e8f0',
-    paperBg: 'ffffff',
-    primaryColor: '4f46e5',
-    textColor: '1e293b',
-    borderRadius: 12,
-    gap: 24,
-    pagePadding: 60,
-    dashboardTitle: 'ANALYTICS REPORT PRO',
-    titlePos: { x: 60, y: 50 },
-    titleStyle: { size: 48, color: '1e293b', weight: '900', letterSpacing: -2 },
-    footerText: '© 2025 BUSINESS INTELLIGENCE - DOCUMENT CONFIDENTIEL',
-    footerPos: { x: 60, y: 740 },
-    footerStyle: { size: 10, color: '94a3b8', spacing: 2 },
-    logoUrl: null,
-    logoWidth: 100,
-    logoPos: { x: 950, y: 40 },
-});
-
-const form = ref({
-    id: null,
-    name: '',
-    chart_type: 'bar',
-    data_source: 'sales',
-    col_span: 6,
-    row_span: 1,
-    customStyle: { useCustom: false, bg: 'ffffff', text: '1e293b' }
-});
-
-// --- DRAG & DROP ---
-const activeDrag = ref(null);
-let dragOffset = { x: 0, y: 0 };
-
-const startDragging = (target, e) => {
-    if (isPreviewMode.value) return;
-    activeDrag.value = target;
-    dragOffset.x = e.clientX - target.x;
-    dragOffset.y = e.clientY - target.y;
-    window.addEventListener('mousemove', doDrag);
-    window.addEventListener('mouseup', stopDrag);
-};
-
-const doDrag = (e) => {
-    if (activeDrag.value) {
-        activeDrag.value.x = e.clientX - dragOffset.x;
-        activeDrag.value.y = e.clientY - dragOffset.y;
-    }
-};
-
-const stopDrag = () => {
-    activeDrag.value = null;
-    window.removeEventListener('mousemove', doDrag);
-};
-
-const generateChartData = (label) => ({
-    labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
-    datasets: [{
-        label: label,
-        backgroundColor: '#' + studioSettings.value.primaryColor,
-        borderColor: '#' + studioSettings.value.primaryColor,
-        data: Array.from({ length: 6 }, () => Math.floor(Math.random() * 100)),
-        borderRadius: 6,
-        tension: 0.4
-    }]
-});
-
-// --- EXPORT PDF SANS ERREUR DE NODE ---
-const exportPDF = async () => {
-    const originalPageIndex = currentPageIndex.value;
-    isPreviewMode.value = true;
-
-    toast.add({ severity: 'info', summary: 'Export en cours', detail: 'Veuillez patienter...' });
-
-    // Configuration
-    const opt = {
-        margin: 0,
-        filename: `${studioSettings.value.dashboardTitle}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+// --- GESTION DES WIDGETS (FACTORY) ---
+const addWidget = (type) => {
+    let newWidget = {
+        id: 'w_' + Date.now(),
+        type,
+        colSpan: 4, // Pour le mode grille
+        rowSpan: 2, // Pour le mode grille
+        x: 100, y: 150, w: type === 'kpi' ? 250 : 450, h: type === 'kpi' ? 140 : 300,
+        isLocked: false,
+        isSyncing: false,
+        chartType: type === 'chart' ? 'bar' : null,
+        style: {
+            backgroundColor: type === 'text' ? 'transparent' : '#ffffff',
+            borderRadius: 8,
+            borderWidth: type === 'text' ? 0 : (type === 'shape' ? 0 : 1),
+            borderColor: '#CBD5E1',
+            borderStyle: 'solid',
+            opacity: 1,
+            zIndex: 10,
+            shadow: type === 'text' ? 'none' : '0 4px 6px -1px rgba(0,0,0,0.1)',
+            rotation: 0,
+            padding: 15
+        },
+        config: { headerBg: '#1e293b', headerColor: '#ffffff', striped: true, fontSize: 12, cellPadding: 8 },
+        data: { columns: [], rows: [] }
     };
 
-    try {
-        // Initialisation de l'objet html2pdf
-        let worker = html2pdf().set(opt).from(document.getElementById('report-canvas')).toPdf();
-
-        // Ajout des pages suivantes
-        for (let i = 0; i < pages.value.length; i++) {
-            currentPageIndex.value = i;
-            await nextTick();
-            // Petit délai pour le rendu des graphiques Chart.js
-            await new Promise(resolve => setTimeout(resolve, 600));
-
-            const element = document.getElementById('report-canvas');
-
-            if (i === 0) {
-                worker = worker.get('pdf').then((pdf) => { /* page 1 déjà chargée via .from() */ });
-            } else {
-                worker = worker.get('pdf').then((pdf) => {
-                    pdf.addPage();
-                    return html2pdf().set(opt).from(element).toContainer().toCanvas().toPdf();
-                });
-            }
-        }
-
-        await worker.save();
-        toast.add({ severity: 'success', summary: 'Export terminé' });
-    } catch (err) {
-        console.error(err);
-        toast.add({ severity: 'error', summary: 'Erreur Export', detail: 'Impossible de générer le PDF' });
-    } finally {
-        currentPageIndex.value = originalPageIndex;
-        isPreviewMode.value = false;
-    }
-};
-
-const openWidgetSettings = (widget = null, index = null) => {
-    if (widget) {
-        form.value = JSON.parse(JSON.stringify(widget));
-        activeWidgetIndex.value = index;
-    } else {
-        form.value = {
-            id: Date.now(), name: 'Nouveau Graphique', chart_type: 'bar', data_source: 'sales',
-            col_span: 6, row_span: 1, customStyle: { useCustom: false, bg: 'ffffff', text: '1e293b' }
+    if (type === 'text') {
+        newWidget.content = "Double-cliquez pour éditer le texte...";
+        newWidget.config = {
+            font: 'Inter',
+            size: 18,
+            color: '#1E293B',
+            align: 'left',
+            weight: '500',
+            italic: false,
+            underline: false,
+            uppercase: false
+        };
+    } else if (type === 'chart') {
+        newWidget.dataSources = [{ model: null, column: null, formula: 'count', color: '#6366F1' }];
+        newWidget.data = {
+            labels: ['Jan', 'Fev', 'Mar'],
+            datasets: [{ label: 'Exemple', data: [10, 45, 23], backgroundColor: '#6366F1' }]
+        };
+        newWidget.config = { timeScale: 'months' };
+    } else if (type === 'table') {
+        newWidget.data = {
+            columns: ['Référence', 'Status', 'Total'],
+            rows: [{ Référence: 'INV-001', Status: 'Payé', Total: '1,200 €' }]
+        };
+    } else if (type === 'kpi') {
+        newWidget.config = { label: 'VENTES TOTALES', value: '0.00', color: '#6366F1', prefix: '$', trend: '+0%' };
+    } else if (type === 'image') {
+        newWidget.imageUrl = null;
+    } else if (type === 'shape') {
+        newWidget.w = 300; newWidget.h = 10; // Taille par défaut pour une ligne
+        newWidget.style.backgroundColor = 'transparent'; // Les formes n'ont pas de fond par défaut
+        newWidget.style.borderWidth = 0;
+        newWidget.style.padding = 0;
+        newWidget.config = {
+            shapeType: 'line', // line, rectangle, ellipse, circle, triangle, star
+            strokeColor: '#334155', // Couleur du trait
+            strokeWidth: 4,
+            strokeStyle: 'solid'
         };
     }
-    widgetDialog.value = true;
+
+    pages.value[currentPageIdx.value].widgets.push(newWidget);
+    selectedWidgetIdx.value = pages.value[currentPageIdx.value].widgets.length - 1;
+    saveToHistory();
 };
 
-const saveWidget = () => {
-    const data = { ...form.value, chartData: generateChartData(form.value.name) };
-    if (activeWidgetIndex.value !== null) currentWidgets.value[activeWidgetIndex.value] = data;
-    else currentWidgets.value.push(data);
-    widgetDialog.value = false;
-    activeWidgetIndex.value = null;
+// --- GESTION DES WIDGETS (CLONAGE/SUPPRESSION) ---
+const cloneWidget = (idx) => {
+    const original = pages.value[currentPageIdx.value].widgets[idx];
+    const newWidget = JSON.parse(JSON.stringify(original));
+    newWidget.id = 'w_' + Date.now();
+    newWidget.x += 20;
+    newWidget.y += 20;
+    pages.value[currentPageIdx.value].widgets.push(newWidget);
+    selectedWidgetIdx.value = pages.value[currentPageIdx.value].widgets.length - 1;
+    saveToHistory();
+    toast.add({ severity: 'info', summary: 'Dupliqué', detail: 'Le bloc a été cloné.', life: 2000 });
 };
 
-const onLogoUpload = (event) => {
-    const file = event.files[0];
+const deleteWidget = (idx) => {
+    confirm.require({
+        message: 'Voulez-vous vraiment supprimer ce bloc ?',
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        accept: () => {
+            pages.value[currentPageIdx.value].widgets.splice(idx, 1);
+            selectedWidgetIdx.value = null;
+            saveToHistory();
+        }
+    });
+};
+
+// --- LOGIQUE ÉDITEUR DE TABLEAU ---
+const openTableEditor = () => {
+    if (currentWidget.value && currentWidget.value.type === 'table') {
+        tableConfig.tempColumns = [...currentWidget.value.data.columns];
+        tableConfig.tempRows = JSON.parse(JSON.stringify(currentWidget.value.data.rows));
+        tableModal.value = true;
+    }
+};
+
+const addTableColumn = () => {
+    const name = `Col ${tableConfig.tempColumns.length + 1}`;
+    tableConfig.tempColumns.push(name);
+    tableConfig.tempRows.forEach(r => r[name] = '-');
+};
+
+const deleteTableColumn = (colName) => {
+    const index = tableConfig.tempColumns.indexOf(colName);
+    if (index > -1) {
+        tableConfig.tempColumns.splice(index, 1);
+        tableConfig.tempRows.forEach(row => {
+            delete row[colName];
+        });
+    }
+};
+
+const addTableRow = () => {
+    const row = {};
+    tableConfig.tempColumns.forEach(c => row[c] = '');
+    tableConfig.tempRows.push(row);
+};
+
+const saveTableStructure = () => {
+    currentWidget.value.data.columns = [...tableConfig.tempColumns];
+    currentWidget.value.data.rows = [...tableConfig.tempRows];
+    tableModal.value = false;
+    saveToHistory();
+};
+
+// --- LOGIQUE IMPORT CSV ---
+const handleCSVImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = (e) => { studioSettings.value.logoUrl = e.target.result; };
-    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+        const content = e.target.result;
+        const lines = content.split('\n');
+        if (lines.length > 0) {
+            const headers = lines[0].split(',').map(h => h.trim());
+            const rows = lines.slice(1).filter(l => l.trim() !== "").map(line => {
+                const values = line.split(',');
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = values[i]?.trim() || '');
+                return obj;
+            });
+            tableConfig.tempColumns = headers;
+            tableConfig.tempRows = rows;
+            if (currentWidget.value && currentWidget.value.type === 'table') {
+                currentWidget.value.data.columns = headers;
+                currentWidget.value.data.rows = rows;
+                saveToHistory();
+            }
+            toast.add({ severity: 'success', summary: 'CSV Importé', detail: `${rows.length} lignes chargées.` });
+        }
+    };
+    reader.readAsText(file);
 };
 
-onMounted(() => {
-    pages.value[0].widgets = [
-        { id: 1, name: 'Revenus Annuels', chart_type: 'line', col_span: 8, row_span: 1, chartData: generateChartData('Revenus'), customStyle: { useCustom: false } },
-        { id: 2, name: 'Satisfaction', chart_type: 'kpi', col_span: 4, row_span: 1, customStyle: { useCustom: false } }
-    ];
+// --- MANIPULATION DES OBJETS (DRAG/RESIZE) ---
+const startDragging = (e, item, idx) => {
+    selectedWidgetIdx.value = idx; // Sélectionne le widget au début du drag
+    isDragging.value = true;
+    const startX = e.clientX; const startY = e.clientY;
+    const initX = item.x; const initY = item.y;
+
+    const onMove = (ev) => {
+        if (isDragging.value) { item.x = initX + (ev.clientX - startX) / zoomLevel.value; item.y = initY + (ev.clientY - startY) / zoomLevel.value; }
+    };
+
+    const onUp = () => {
+        isDragging.value = false;
+        saveToHistory();
+        window.removeEventListener('mouseup', onUp, { once: true });
+        window.removeEventListener('mousemove', onMove);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp, { once: true });
+};
+
+const startResizing = (e, item) => {
+    e.preventDefault(); e.stopPropagation();
+    const startW = item.w; const startH = item.h;
+    const startX = e.clientX; const startY = e.clientY;
+
+    const onMove = (ev) => {
+        item.w = Math.max(50, startW + (ev.clientX - startX) / zoomLevel.value);
+        item.h = Math.max(30, startH + (ev.clientY - startY) / zoomLevel.value);
+    };
+
+    const onUp = () => {
+        saveToHistory();
+        window.removeEventListener('mousemove', onMove);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp, { once: true });
+};
+
+// --- BRIDGE LARAVEL ELOQUENT ---
+const syncWithLaravel = async (widget) => {
+    if (widget.type === 'kpi' && !widget.dataSource) return;
+    if (widget.type === 'chart' && widget.dataSources.length === 0) return;
+
+    widget.isSyncing = true;
+    try {
+        const res = await axios.post('/api/quantum/query', {
+            type: widget.type,
+            config: {
+                ...(widget.type === 'kpi' && {
+                    model: widget.dataSource,
+                    column: widget.dataField,
+                    method: widget.formula
+                }),
+                ...(widget.type === 'chart' && { sources: widget.dataSources, timeScale: widget.config.timeScale }),
+            }
+        });
+        if (widget.type === 'chart') widget.data = res.data; // La réponse de l'API doit être { labels: [...], datasets: [...] }
+        if (widget.type === 'kpi') widget.config.value = res.data.value;
+        saveToHistory();
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Erreur Backend' });
+    } finally { widget.isSyncing = false; }
+};
+
+// --- GESTION DES PAGES ---
+const addPage = () => {
+    pages.value.push({
+        id: 'p_' + Date.now(),
+        name: `Page ${pages.value.length + 1}`,
+        background: '#ffffff',
+        format: PAGE_FORMATS[0], // Format A4 par défaut
+        orientation: 'portrait', // Orientation par défaut
+        layoutMode: 'absolute',
+        widgets: []
+    });
+    saveToHistory();
+    toast.add({ severity: 'success', summary: 'Page Ajoutée', life: 1500 });
+    // On ne change pas de page automatiquement, l'utilisateur peut cliquer dessus
+};
+
+const deletePage = (index) => {
+    if (pages.value.length <= 1) {
+        toast.add({ severity: 'warn', summary: 'Action impossible', detail: 'Le document doit contenir au moins une page.', life: 3000 });
+        return;
+    }
+    pages.value.splice(index, 1);
+    if (currentPageIdx.value >= pages.value.length) {
+        currentPageIdx.value = pages.value.length - 1;
+    }
+    saveToHistory();
+    toast.add({ severity: 'info', summary: 'Page supprimée', life: 1500 });
+};
+
+const duplicatePage = (index) => {
+    const originalPage = pages.value[index];
+    const newPage = JSON.parse(JSON.stringify(originalPage));
+    newPage.id = 'p_' + Date.now();
+    newPage.name = `${originalPage.name} (Copie)`;
+    pages.value.splice(index + 1, 0, newPage);
+    saveToHistory();
+    toast.add({ severity: 'success', summary: 'Page Dupliquée', life: 1500 });
+};
+
+const updatePageName = (page) => {
+    // Ici, vous pourriez appeler une route API pour sauvegarder le nom
+    saveToHistory();
+};
+
+const handlePageDrop = (event, dropIndex) => {
+    const draggedIndex = pageDragIndex.value;
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+    const pageToMove = pages.value.splice(draggedIndex, 1)[0];
+    pages.value.splice(dropIndex, 0, pageToMove);
+    pageDragIndex.value = null;
+    saveToHistory();
+};
+
+// --- GESTION DES CALQUES ---
+const moveZIndex = (mode) => {
+    const w = currentWidget.value;
+    if (!w) return;
+    if (mode === 'up') w.style.zIndex += 10;
+    if (mode === 'down') w.style.zIndex = Math.max(0, w.style.zIndex - 10);
+    saveToHistory();
+};
+
+// --- GESTION DES IMAGES ---
+const imgUploadRefs = ref({});
+
+const handleImageUpload = (event, widget) => {
+    const file = event.target.files[0];
+    if (file) widget.imageUrl = URL.createObjectURL(file);
+}
+
+const triggerImageUpload = (widgetId) => {
+    const input = imgUploadRefs.value[widgetId];
+    if (input) input.click();
+};
+
+// --- EXPORT PDF ---
+const exportPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const { default: html2canvas } = await import('html2canvas');
+    isLoading.value = true;
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    for (let i = 0; i < pages.value.length; i++) {
+        currentPageIdx.value = i;
+        await nextTick();
+        await new Promise(r => setTimeout(r, 600));
+        const canvas = await html2canvas(document.getElementById('studio-canvas'), { scale: 2 });
+        if (i > 0) doc.addPage();
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+    }
+    doc.save('Export_Quantum.pdf');
+    isLoading.value = false;
+};
+
+// --- RACCOURCIS CLAVIER ---
+const handleKeys = (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') return;
+    if (e.key === 'Delete' && selectedWidgetIdx.value !== null) {
+        pages.value[currentPageIdx.value].widgets.splice(selectedWidgetIdx.value, 1);
+        selectedWidgetIdx.value = null;
+        saveToHistory();
+    }
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+};
+
+// --- COMPUTED HELPERS ---
+const currentWidget = computed(() => {
+    const p = pages.value[currentPageIdx.value];
+    return (p && selectedWidgetIdx.value !== null) ? p.widgets[selectedWidgetIdx.value] : null;
 });
+
+const canvasStyles = computed(() => {
+    const page = pages.value[currentPageIdx.value];
+    if (!page) return {};
+    const format = page.format;
+    const isLandscape = page.orientation === 'landscape';
+
+    return {
+        width: (isLandscape ? format.h : format.w) + 'px',
+        height: (isLandscape ? format.w : format.h) + 'px',
+        backgroundColor: page.background,
+        transform: `scale(${zoomLevel.value})`,
+        transformOrigin: 'top center'
+    };
+});
+
+const getWidgetStyle = (w) => ({
+    position: 'absolute',
+    left: w.x + 'px',
+    top: w.y + 'px',
+    width: w.w + 'px',
+    height: w.h + 'px',
+    zIndex: w.style.zIndex || 10,
+    opacity: w.style.opacity,
+    backgroundColor: w.style.backgroundColor,
+    borderRadius: w.style.borderRadius + 'px',
+    border: `${w.style.borderWidth}px ${w.style.borderStyle} ${w.style.borderColor}`,
+    boxShadow: w.style.shadow,
+    transform: `rotate(${w.style.rotation}deg)`,
+    padding: w.style.padding + 'px'
+});
+
+const getGridWidgetStyle = (w) => ({
+    gridColumn: `span ${w.colSpan || 4}`,
+    gridRow: `span ${w.rowSpan || 2}`,
+    zIndex: w.style.zIndex || 10,
+    opacity: w.style.opacity,
+    backgroundColor: w.style.backgroundColor,
+    borderRadius: w.style.borderRadius + 'px',
+    border: w.style.borderStyle === 'none' ? 'none' : `${w.style.borderWidth}px ${w.style.borderStyle} ${w.style.borderColor}`,
+    boxShadow: w.style.shadow,
+    transform: `rotate(${w.style.rotation}deg)`,
+    padding: w.style.padding + 'px'
+});
+
+
+const getChartType = (type) => {
+    const map = { bar: Bar, line: Line, pie: Pie, doughnut: Doughnut, radar: Radar };
+    return map[type] || Bar;
+};
+
+// --- CYCLE DE VIE ---
+onMounted(() => {
+    // Récupérer les modèles Laravel disponibles
+    axios.get('/api/quantum/models').then(res => {
+        laravelModels.value = res.data;
+    }).catch(() => {
+        // Utiliser des données Faker en cas d'échec
+        laravelModels.value = ['User', 'Product', 'Order', 'Invoice'];
+        toast.add({ severity: 'warn', summary: 'Mode Démo', detail: 'Impossible de charger les modèles Laravel. Utilisation de données fictives.', life: 3000 });
+    });
+
+    window.addEventListener('keydown', handleKeys);
+
+    // Attendre que les données initiales (si asynchrones) soient chargées avant de sauvegarder l'historique
+    nextTick(() => {
+        if (pages.value) {
+            history.value = [JSON.stringify(pages.value)];
+            historyIndex.value = 0;
+        }
+    });
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', handleKeys);
+});
+
+// Watcher pour détecter les changements de propriétés et sauvegarder l'historique
+watch(currentWidget, (newValue) => {
+    if (newValue && !isDragging.value) {
+        saveToHistory();
+    }
+}, { deep: true });
+
+
 </script>
-
 <template>
-    <AppLayout>
-        <Head title="Studio Pro Builder" />
-        <Toast />
+  <div class="quantum-studio h-screen flex flex-col bg-[#050507] text-slate-200 overflow-hidden font-sans select-none">
 
-        <div class="flex flex-col h-screen bg-slate-900 overflow-hidden font-sans">
-            <div class="h-16 bg-slate-800 border-b border-white/5 px-6 flex items-center justify-between z-50 shadow-xl">
-                <div class="flex items-center gap-4">
-                    <div class="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
-                        <i class="pi pi-palette text-white"></i>
+    <header class="h-16 border-b border-white/5 bg-black/60 backdrop-blur-2xl flex items-center justify-between px-6 z-[100]">
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-3 group cursor-pointer">
+          <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+            <i class="pi pi-bolt text-white"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] font-black tracking-[0.2em] uppercase leading-none">Quantum <span class="text-indigo-400">Omni</span></span>
+            <span class="text-[8px] text-slate-500 font-bold tracking-tighter uppercase mt-1">v11.5 Studio Engine</span>
+          </div>
+        </div>
+
+        <div class="h-8 w-px bg-white/10 mx-2"></div>
+
+        <div class="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
+          <Button icon="pi pi-undo" @click="undo" :disabled="!canUndo" class="p-button-text p-button-sm text-slate-400" v-tooltip.bottom="'Annuler (Ctrl+Z)'" />
+          <Button icon="pi pi-redo" @click="redo" :disabled="!canRedo" class="p-button-text p-button-sm text-slate-400" v-tooltip.bottom="'Rétablir (Ctrl+Y)'" />
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="flex items-center bg-black/40 rounded-full px-3 py-1.5 border border-white/10 gap-4">
+          <div class="flex items-center gap-2">
+             <Button icon="pi pi-chevron-left" @click="currentPageIdx--" :disabled="currentPageIdx === 0" class="p-button-text p-button-xs" />
+             <span class="text-[10px] font-black uppercase tracking-widest min-w-[80px] text-center">Page {{ currentPageIdx + 1 }} / {{ pages.length }}</span>
+             <Button icon="pi pi-chevron-right" @click="currentPageIdx++" :disabled="currentPageIdx === pages.length - 1" class="p-button-text p-button-xs" />
+          </div>
+          <div class="h-4 w-px bg-white/10"></div>
+          <div class="flex items-center gap-3">
+            <i class="pi pi-search text-[10px] text-slate-500"></i>
+            <Slider v-model="zoomLevel" :min="0.2" :max="2" :step="0.01" class="w-24" />
+            <span class="text-[10px] font-mono text-indigo-400 w-10 text-right">{{ Math.round(zoomLevel * 100) }}%</span>
+          </div>
+        </div>
+
+        <Button icon="pi pi-cloud-download" label="EXPORT PDF HD" @click="exportPDF" :loading="isLoading" class="p-button-indigo shadow-xl shadow-indigo-500/20 font-black p-button-sm italic" />
+      </div>
+    </header>
+
+    <div class="flex-grow flex overflow-hidden">
+
+      <aside class="w-20 border-r border-white/5 bg-black/20 flex flex-col items-center py-8 gap-6 shrink-0">
+        <button v-for="t in ['text', 'chart', 'table', 'kpi', 'image', 'shape']" :key="t" @click="addWidget(t)"
+                class="group relative w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-indigo-600 transition-all shadow-sm">
+          <i :class="{'pi pi-align-left':t==='text', 'pi pi-chart-bar':t==='chart', 'pi pi-table':t==='table', 'pi pi-bolt':t==='kpi', 'pi pi-image':t==='image', 'pi pi-minus':t==='shape'}" class="text-xl text-slate-400 group-hover:text-white"></i>
+          <span class="absolute left-16 bg-indigo-600 text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 uppercase tracking-tighter whitespace-nowrap z-50 shadow-xl">{{ t }}</span>
+        </button>
+      </aside>
+
+      <main class="flex-grow overflow-auto bg-[#0a0a0c] p-20 flex justify-center custom-scrollbar relative" @click="selectedWidgetIdx = null">
+
+        <div id="studio-canvas" :style="canvasStyles" class="relative shadow-[0_40px_120px_rgba(0,0,0,0.7)] transition-all duration-300 origin-top">
+
+          <!-- MODE ABSOLUTE -->
+          <template v-if="pages[currentPageIdx].layoutMode === 'absolute'">
+            <div v-for="(w, idx) in pages[currentPageIdx].widgets" :key="w.id"
+                 :style="getWidgetStyle(w)"
+                 :class="['group/widget', selectedWidgetIdx === idx ? 'ring-2 ring-indigo-500' : '', w.isLocked ? 'cursor-default' : 'cursor-move']"
+                 @click.stop="selectedWidgetIdx = idx"
+                 @mousedown.stop="!w.isLocked && startDragging($event, w, idx)">
+                <div class="absolute -top-11 left-0 flex gap-1 opacity-0 group-hover/widget:opacity-100 transition-all no-drag z-[60] bg-slate-900/80 backdrop-blur-sm border border-white/10 rounded-lg shadow-2xl">
+                    <div class="p-2 text-indigo-400 cursor-move" v-tooltip.bottom="'Déplacer'">
+                        <i class="pi pi-arrows-alt text-[10px]"></i>
                     </div>
-                    <span class="text-white font-black text-xs uppercase tracking-tighter">Report Studio <span class="text-indigo-400">v3.5</span></span>
+                    <button @click.stop="w.isLocked = !w.isLocked" class="p-2 hover:text-orange-400" v-tooltip.bottom="'Verrouiller'">
+                        <i :class="w.isLocked ? 'pi pi-lock text-orange-400' : 'pi pi-lock-open'" class="text-[10px]"></i>
+                    </button>
+                    <button @click.stop="cloneWidget(idx)" class="p-2 hover:text-green-400" v-tooltip.bottom="'Dupliquer'">
+                        <i class="pi pi-copy text-[10px]"></i>
+                    </button>
+                    <button @click.stop="deleteWidget(idx)" class="p-2 hover:text-red-400" v-tooltip.bottom="'Supprimer'">
+                        <i class="pi pi-trash text-[10px]"></i>
+                    </button>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <Button :icon="isPreviewMode ? 'pi pi-pencil' : 'pi pi-eye'" :label="isPreviewMode ? 'Éditer' : 'Aperçu'"
-                            class="p-button-text p-button-sm !text-slate-300" @click="isPreviewMode = !isPreviewMode" />
-                    <Button label="Design" icon="pi pi-sliders-h" class="p-button-text p-button-sm !text-slate-300" @click="globalConfigDialog = true" />
-                    <Button label="Ajouter" icon="pi pi-plus" class="p-button-indigo !rounded-xl shadow-lg" @click="openWidgetSettings()" />
-                    <Button label="Exporter PDF" icon="pi pi-file-export" class="p-button-success !rounded-xl ml-2 shadow-lg" @click="exportPDF" />
+                <!-- Contenu du widget (répliqué depuis le mode grille) -->
+                <div v-if="w.type === 'text'" class="w-full h-full no-drag flex-grow">
+                    <div contenteditable="true" @blur="w.content = $event.target.innerText; saveToHistory();"
+                         class="w-full h-full outline-none leading-snug"
+                         :style="{
+                            fontFamily: w.config.font,
+                            fontSize: w.config.size+'px',
+                            color: w.config.color,
+                            textAlign: w.config.align,
+                            fontWeight: w.config.weight,
+                            fontStyle: w.config.italic ? 'italic' : 'normal',
+                            textDecoration: w.config.underline ? 'underline' : 'none',
+                            textTransform: w.config.uppercase ? 'uppercase' : 'none'
+                         }">
+                      {{ w.content }}
+                    </div>
+                </div>
+
+                <div v-if="w.type === 'table'" class="w-full h-full overflow-hidden no-drag bg-white rounded-lg shadow-inner flex-grow">
+                    <table class="w-full h-full border-collapse">
+                        <thead :style="{ background: w.config.headerBg, color: w.config.headerColor }">
+                            <tr><th v-for="col in w.data.columns" :key="col" :style="{ padding: w.config.cellPadding+'px' }" class="text-left uppercase text-[9px] font-black">{{ col }}</th></tr>
+                        </thead>
+                        <tbody :style="{ fontSize: w.config.fontSize+'px' }">
+                            <tr v-for="(row, ri) in w.data.rows" :key="ri" :class="w.config.striped && ri%2===0 ? 'bg-slate-50' : 'bg-white'">
+                                <td v-for="col in w.data.columns" :key="col" :style="{ padding: w.config.cellPadding+'px' }" class="border-b border-slate-100 text-slate-800">
+                                    {{ row[col] }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div v-if="w.type === 'chart'" class="w-full h-full p-2 pointer-events-none flex-grow">
+                    <component :is="getChartType(w.chartType)" :data="w.data" :options="{ responsive: true, maintainAspectRatio: false }" />
+                </div>
+
+                <div v-if="w.type === 'kpi'" class="w-full h-full flex flex-col justify-center px-4 no-drag flex-grow">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">{{ w.config.label }}</span>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-black text-slate-900 tracking-tighter" :style="{ color: w.config.color }">{{ w.config.prefix }}{{ w.config.value }}</span>
+                        <span class="text-[10px] font-bold text-emerald-500">{{ w.config.trend }}</span>
+                    </div>
+                </div>
+
+                <div v-if="w.type === 'image'" class="w-full h-full no-drag flex-grow">
+                    <img v-if="w.imageUrl" :src="w.imageUrl" class="w-full h-full object-cover" />
+                    <div v-else class="w-full h-full bg-slate-100 flex items-center justify-center flex-col text-slate-400">
+                        <i class="pi pi-image text-4xl"></i>
+                        <span class="text-xs mt-2">Utilisez l'inspecteur pour choisir</span>
+                    </div>
+                    <input type="file" accept="image/*" @change="handleImageUpload($event, w)" class="hidden" :ref="el => imgUploadRefs[w.id] = el" />
+                </div>
+
+                <div v-if="w.type === 'shape'" class="w-full h-full flex items-center justify-center no-drag flex-grow">
+                    <svg width="100%" height="100%" :viewBox="`0 0 ${w.w} ${w.h}`" preserveAspectRatio="none">
+                        <line v-if="w.config.shapeType === 'line'" x1="0" :y1="w.config.strokeWidth / 2" :x2="w.w" :y2="w.config.strokeWidth / 2" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" :stroke-dasharray="w.config.strokeStyle === 'dashed' ? '10,5' : (w.config.strokeStyle === 'dotted' ? '2,5' : 'none')" />
+                        <rect v-if="w.config.shapeType === 'rectangle'" x="0" y="0" width="100%" height="100%" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" :stroke-dasharray="w.config.strokeStyle === 'dashed' ? '10,5' : (w.config.strokeStyle === 'dotted' ? '2,5' : 'none')" />
+                        <ellipse v-if="w.config.shapeType === 'ellipse'" :cx="w.w/2" :cy="w.h/2" :rx="w.w/2 - w.config.strokeWidth/2" :ry="w.h/2 - w.config.strokeWidth/2" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" :stroke-dasharray="w.config.strokeStyle === 'dashed' ? '10,5' : (w.config.strokeStyle === 'dotted' ? '2,5' : 'none')" />
+                        <circle v-if="w.config.shapeType === 'circle'" :cx="w.w/2" :cy="w.h/2" :r="Math.min(w.w, w.h)/2 - w.config.strokeWidth/2" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" :stroke-dasharray="w.config.strokeStyle === 'dashed' ? '10,5' : (w.config.strokeStyle === 'dotted' ? '2,5' : 'none')" />
+                        <polygon v-if="w.config.shapeType === 'triangle'" :points="`${w.w/2},${w.config.strokeWidth} ${w.config.strokeWidth},${w.h-w.config.strokeWidth} ${w.w-w.config.strokeWidth},${w.h-w.config.strokeWidth}`" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" :stroke-dasharray="w.config.strokeStyle === 'dashed' ? '10,5' : (w.config.strokeStyle === 'dotted' ? '2,5' : 'none')" />
+                        <polygon v-if="w.config.shapeType === 'star'" points="100,10 40,198 190,78 10,78 160,198" :transform="`scale(${w.w/200}, ${w.h/208})`" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth * (200/w.w)" :stroke-dasharray="w.config.strokeStyle === 'dashed' ? '10,5' : (w.config.strokeStyle === 'dotted' ? '2,5' : 'none')" />
+                    </svg>
+                </div>
+
+                <div class="absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize flex items-end justify-end p-1 no-drag" @mousedown.stop="startResizing($event, w)">
+                    <div class="w-2 h-2 bg-indigo-500 rounded-sm opacity-0 group-hover/widget:opacity-100"></div>
+                </div>
+            </div>
+          </template>
+
+          <!-- MODE GRID -->
+          <draggable v-else-if="pages[currentPageIdx].layoutMode === 'grid'"
+                     v-model="pages[currentPageIdx].widgets" item-key="id"
+                     class="grid grid-cols-12 auto-rows-min h-full gap-4 p-4"
+                     handle=".grid-drag-handle">
+            <template #item="{ element: w, index: idx }">
+              <div :style="getGridWidgetStyle(w)"
+                   :class="['group/widget relative flex flex-col', selectedWidgetIdx === idx ? 'ring-2 ring-indigo-500' : '']"
+                   @click.stop="selectedWidgetIdx = idx">
+
+                <div class="absolute -top-11 left-0 flex gap-1 opacity-0 group-hover/widget:opacity-100 transition-all no-drag z-[60] bg-slate-900/80 backdrop-blur-sm border border-white/10 rounded-lg shadow-2xl">
+                <button class="p-2 hover:text-indigo-400 cursor-move grid-drag-handle" v-tooltip.bottom="'Déplacer'">
+                    <i class="pi pi-arrows-alt text-[10px]"></i>
+                </button>
+                <button @click.stop="w.isLocked = !w.isLocked" class="p-2 hover:text-orange-400" v-tooltip.bottom="'Verrouiller'">
+                    <i :class="w.isLocked ? 'pi pi-lock text-orange-400' : 'pi pi-lock-open'" class="text-[10px]"></i>
+                </button>
+                <button @click.stop="cloneWidget(idx)" class="p-2 hover:text-green-400" v-tooltip.bottom="'Dupliquer'">
+                    <i class="pi pi-copy text-[10px]"></i>
+                </button>
+                <button @click.stop="deleteWidget(idx)" class="p-2 hover:text-red-400" v-tooltip.bottom="'Supprimer'">
+                    <i class="pi pi-trash text-[10px]"></i>
+                </button>
+            </div>
+            <div v-if="w.type === 'text'" class="w-full h-full no-drag flex-grow">
+                <div contenteditable="true" @blur="w.content = $event.target.innerText; saveToHistory();"
+                     class="w-full h-full outline-none leading-snug"
+                     :style="{
+                        fontFamily: w.config.font,
+                        fontSize: w.config.size+'px',
+                        color: w.config.color,
+                        textAlign: w.config.align,
+                        fontWeight: w.config.weight,
+                        fontStyle: w.config.italic ? 'italic' : 'normal',
+                        textDecoration: w.config.underline ? 'underline' : 'none',
+                        textTransform: w.config.uppercase ? 'uppercase' : 'none'
+                     }">
+                  {{ w.content }}
                 </div>
             </div>
 
-            <div class="flex-grow overflow-auto p-8 flex flex-col items-center custom-scrollbar" :style="{ backgroundColor: '#' + studioSettings.canvasBg }">
+            <div v-if="w.type === 'table'" class="w-full h-full overflow-hidden no-drag bg-white rounded-lg shadow-inner flex-grow">
+                <table class="w-full h-full border-collapse">
+                    <thead :style="{ background: w.config.headerBg, color: w.config.headerColor }">
+                        <tr><th v-for="col in w.data.columns" :key="col" :style="{ padding: w.config.cellPadding+'px' }" class="text-left uppercase text-[9px] font-black">{{ col }}</th></tr>
+                    </thead>
+                    <tbody :style="{ fontSize: w.config.fontSize+'px' }">
+                        <tr v-for="(row, ri) in w.data.rows" :key="ri" :class="w.config.striped && ri%2===0 ? 'bg-slate-50' : 'bg-white'">
+                            <td v-for="col in w.data.columns" :key="col" :style="{ padding: w.config.cellPadding+'px' }" class="border-b border-slate-100 text-slate-800">
+                                {{ row[col] }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-                <div v-if="!isPreviewMode" class="flex items-center gap-2 mb-6 bg-slate-800/50 p-1.5 rounded-2xl border border-white/5 shadow-2xl">
-                    <div v-for="(page, idx) in pages" :key="page.id" class="flex items-center group relative">
-                        <Button :label="page.name" @click="currentPageIndex = idx"
-                            :class="['p-button-sm !rounded-xl !px-4 !py-2 !transition-all !border-none', currentPageIndex === idx ? 'p-button-indigo shadow-lg shadow-indigo-500/20' : 'p-button-text !text-slate-400']"
-                        />
-                        <button v-if="pages.length > 1" @click.stop="removePage(idx)" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] z-10">
-                           <i class="pi pi-times"></i>
-                        </button>
-                    </div>
-                    <Button icon="pi pi-plus" @click="addPage" class="p-button-rounded p-button-text p-button-sm !text-indigo-400 ml-1" />
+            <div v-if="w.type === 'chart'" class="w-full h-full p-2 pointer-events-none flex-grow">
+                <component :is="getChartType(w.chartType)" :data="w.data" :options="{ responsive: true, maintainAspectRatio: false }" />
+            </div>
+
+            <div v-if="w.type === 'kpi'" class="w-full h-full flex flex-col justify-center px-4 no-drag flex-grow">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">{{ w.config.label }}</span>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-3xl font-black text-slate-900 tracking-tighter" :style="{ color: w.config.color }">{{ w.config.prefix }}{{ w.config.value }}</span>
+                    <span class="text-[10px] font-bold text-emerald-500">{{ w.config.trend }}</span>
                 </div>
+            </div>
 
-                <div id="report-canvas" class="transition-all duration-500 shadow-2xl relative overflow-hidden flex-shrink-0"
-                     :style="{ width: '1120px', height: '791px', backgroundColor: '#' + studioSettings.paperBg, borderRadius: isPreviewMode ? '0px' : '8px' }">
+            <div v-if="w.type === 'image'" class="w-full h-full no-drag flex-grow">
+                <img v-if="w.imageUrl" :src="w.imageUrl" class="w-full h-full object-cover" />
+                <div v-else class="w-full h-full bg-slate-100 flex items-center justify-center flex-col text-slate-400">
+                    <i class="pi pi-image text-4xl"></i>
+                    <span class="text-xs mt-2">Utilisez l'inspecteur pour choisir</span>
+                </div>
+                <input type="file" accept="image/*" @change="handleImageUpload($event, w)" class="hidden" :ref="el => imgUploadRefs[w.id] = el" />
+            </div>
 
-                    <div class="absolute cursor-move select-none group" :style="{ left: studioSettings.titlePos.x + 'px', top: studioSettings.titlePos.y + 'px', zIndex: 100 }" @mousedown="startDragging(studioSettings.titlePos, $event)">
-                        <input v-model="studioSettings.dashboardTitle" :disabled="isPreviewMode" class="bg-transparent border-none outline-none focus:ring-1 ring-indigo-500 rounded p-1"
-                               :style="{ fontSize: studioSettings.titleStyle.size + 'px', color: '#' + studioSettings.titleStyle.color, fontWeight: studioSettings.titleStyle.weight, letterSpacing: studioSettings.titleStyle.letterSpacing + 'px', width: '850px' }" />
+            <div v-if="w.type === 'shape'" class="w-full h-full flex items-center justify-center no-drag flex-grow">
+                <svg width="100%" height="100%" :viewBox="`0 0 ${w.w} ${w.h}`" preserveAspectRatio="none">
+                    <line v-if="w.config.shapeType === 'line'" x1="0" :y1="w.config.strokeWidth / 2" :x2="w.w" :y2="w.config.strokeWidth / 2" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" />
+                    <rect v-if="w.config.shapeType === 'rectangle'" x="0" y="0" width="100%" height="100%" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" :stroke-dasharray="w.config.strokeStyle === 'dashed' ? '10,5' : (w.config.strokeStyle === 'dotted' ? '2,5' : 'none')" />
+                    <ellipse v-if="w.config.shapeType === 'ellipse'" :cx="w.w/2" :cy="w.h/2" :rx="w.w/2 - w.config.strokeWidth/2" :ry="w.h/2 - w.config.strokeWidth/2" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" />
+                    <circle v-if="w.config.shapeType === 'circle'" :cx="w.w/2" :cy="w.h/2" :r="Math.min(w.w, w.h)/2 - w.config.strokeWidth/2" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" />
+                    <polygon v-if="w.config.shapeType === 'triangle'" :points="`${w.w/2},${w.config.strokeWidth} ${w.config.strokeWidth},${w.h-w.config.strokeWidth} ${w.w-w.config.strokeWidth},${w.h-w.config.strokeWidth}`" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth" />
+                    <polygon v-if="w.config.shapeType === 'star'" points="100,10 40,198 190,78 10,78 160,198" :transform="`scale(${w.w/200}, ${w.h/208})`" :fill="w.style.backgroundColor" :stroke="w.config.strokeColor" :stroke-width="w.config.strokeWidth * (200/w.w)" />
+                </svg>
+            </div>
+
+              </div>
+            </template>
+          </draggable>
+        </div>
+      </main>
+
+      <aside class="w-[380px] border-l border-white/5 bg-black/40 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+        <div v-if="currentWidget" class="p-8 space-y-10 animate-in fade-in slide-in-from-right duration-300">
+
+            <header class="flex justify-between items-center border-b border-white/10 pb-6">
+                <h3 class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 italic">Inspecteur Omni</h3>
+                <div class="flex gap-2">
+                    <button @click="moveZIndex('up')" class="p-2 bg-white/5 rounded-lg hover:bg-white/10"><i class="pi pi-angle-up"></i></button>
+                    <button @click="moveZIndex('down')" class="p-2 bg-white/5 rounded-lg hover:bg-white/10"><i class="pi pi-angle-down"></i></button>
+                </div>
+            </header>
+
+            <!-- SECTION APPARENCE (COMMUNE) -->
+            <section class="space-y-6">
+                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Apparence</h4>
+                <div class="bg-white/5 p-4 rounded-xl space-y-4">
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Fond</label>
+                        <div class="flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                            <input type="color" v-model="currentWidget.style.backgroundColor" class="w-8 h-6 bg-transparent cursor-pointer border-none">
+                            <InputText :value="currentWidget.style.backgroundColor" @update:modelValue="v => currentWidget.style.backgroundColor = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Bordure</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <InputNumber v-model="currentWidget.style.borderWidth" :min="0" :max="20" class="p-inputtext-sm" :disabled="currentWidget.style.borderStyle === 'none'" />
+                            <Dropdown v-model="currentWidget.style.borderStyle" :options="BORDER_STYLES" optionLabel="label" optionValue="value" class="p-inputtext-sm col-span-2" />
+                        </div>
+                        <div class="flex items-center gap-2 bg-black/20 p-1 rounded-lg mt-2">
+                            <input type="color" v-model="currentWidget.style.borderColor" class="w-8 h-6 bg-transparent cursor-pointer border-none">
+                            <InputText :value="currentWidget.style.borderColor" @update:modelValue="v => currentWidget.style.borderColor = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Rayon ({{ currentWidget.style.borderRadius }}px)</label>
+                        <Slider v-model="currentWidget.style.borderRadius" :min="0" :max="50" />
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION GRID LAYOUT -->
+            <section v-if="pages[currentPageIdx].layoutMode === 'grid'" class="space-y-6">
+                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Disposition Grille</h4>
+                <div class="bg-white/5 p-4 rounded-xl space-y-4">
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Colonnes ({{ currentWidget.colSpan }}/12)</label>
+                        <Slider v-model="currentWidget.colSpan" :min="1" :max="12" />
+                    </div>
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Lignes ({{ currentWidget.rowSpan }})</label>
+                        <Slider v-model="currentWidget.rowSpan" :min="1" :max="12" />
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="currentWidget.type === 'table'" class="space-y-4">
+                <Button label="MODIFIER STRUCTURE / CSV" icon="pi pi-table" @click="openTableEditor" class="w-full p-button-outlined p-button-sm" />
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="field">
+                        <label class="text-[8px] uppercase opacity-50 block mb-1">Header Fond</label>
+                        <input type="color" v-model="currentWidget.config.headerBg" class="w-full h-8 bg-transparent cursor-pointer" />
+                    </div>
+                    <div class="field">
+                        <label class="text-[8px] uppercase opacity-50 block mb-1">Texte Fond</label>
+                        <input type="color" v-model="currentWidget.config.headerColor" class="w-full h-8 bg-transparent cursor-pointer" />
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="currentWidget.type === 'text'" class="space-y-6">
+                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Typographie</h4>
+                <div class="bg-white/5 p-4 rounded-xl space-y-4">
+                    <Dropdown v-model="currentWidget.config.font" :options="FONTS" class="w-full text-xs" />
+                    <div class="flex items-center gap-4">
+                        <Slider v-model="currentWidget.config.size" :min="8" :max="120" class="flex-grow" />
+                        <span class="text-[10px] font-mono text-indigo-400">{{ currentWidget.config.size }}px</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button @click="currentWidget.config.weight = currentWidget.config.weight === '900' ? '500' : '900'" :class="{'bg-indigo-600 text-white': currentWidget.config.weight === '900'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-bold"></i></button>
+                        <button @click="currentWidget.config.italic = !currentWidget.config.italic" :class="{'bg-indigo-600 text-white': currentWidget.config.italic}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-italic"></i></button>
+                        <button @click="currentWidget.config.underline = !currentWidget.config.underline" :class="{'bg-indigo-600 text-white': currentWidget.config.underline}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">U</button>
+                        <button @click="currentWidget.config.uppercase = !currentWidget.config.uppercase" :class="{'bg-indigo-600 text-white': currentWidget.config.uppercase}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Aa</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button @click="currentWidget.config.align = 'left'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'left'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-left"></i></button>
+                        <button @click="currentWidget.config.align = 'center'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'center'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-center"></i></button>
+                        <button @click="currentWidget.config.align = 'right'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'right'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-right"></i></button>
+                        <button @click="currentWidget.config.align = 'justify'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'justify'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-justify"></i></button>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <label class="text-[9px] font-black uppercase opacity-40">Couleur</label>
+                        <div class="flex-grow flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                            <input type="color" v-model="currentWidget.config.color" class="w-8 h-6 bg-transparent cursor-pointer border-none">
+                            <InputText :value="currentWidget.config.color" @update:modelValue="v => currentWidget.config.color = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION SHAPE -->
+            <section v-if="currentWidget.type === 'shape'" class="space-y-6">
+                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Style de la Forme</h4>
+                <div class="bg-white/5 p-4 rounded-xl space-y-4">
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Type de Forme</label>
+                        <Dropdown v-model="currentWidget.config.shapeType" :options="['line', 'rectangle', 'ellipse', 'circle', 'triangle', 'star']" class="w-full text-xs" />
+                    </div>
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Couleur du Trait</label>
+                        <div class="flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                            <input type="color" v-model="currentWidget.config.strokeColor" class="w-8 h-6 bg-transparent cursor-pointer border-none">
+                            <InputText :value="currentWidget.config.strokeColor" @update:modelValue="v => currentWidget.config.strokeColor = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Épaisseur du Trait ({{ currentWidget.config.strokeWidth }}px)</label>
+                        <Slider v-model="currentWidget.config.strokeWidth" :min="1" :max="50" />
+                    </div>
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Style du Trait</label>
+                        <Dropdown v-model="currentWidget.config.strokeStyle" :options="BORDER_STYLES" optionLabel="label" optionValue="value" class="w-full text-xs" />
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="currentWidget.type === 'kpi'" class="space-y-6">
+                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Configuration KPI</h4>
+                <div class="bg-white/5 p-4 rounded-xl space-y-4">
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40">Libellé</label>
+                        <InputText v-model="currentWidget.config.label" class="w-full text-xs" />
+                    </div>
+                    <div class="field">
+                        <label class="text-[9px] font-black uppercase opacity-40">Préfixe</label>
+                        <InputText v-model="currentWidget.config.prefix" class="w-full text-xs" />
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <label class="text-[9px] font-black uppercase opacity-40">Couleur Valeur</label>
+                        <div class="flex-grow flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                            <input type="color" v-model="currentWidget.config.color" class="w-8 h-6 bg-transparent cursor-pointer border-none">
+                            <InputText :value="currentWidget.config.color" @update:modelValue="v => currentWidget.config.color = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="currentWidget.type === 'image'" class="space-y-4">
+                <Button label="CHANGER L'IMAGE" icon="pi pi-upload" @click="triggerImageUpload(currentWidget.id)" class="w-full p-button-outlined p-button-sm" />
+            </section>
+
+            <section v-if="['chart', 'kpi'].includes(currentWidget.type)" class="space-y-6">
+                <h4 class="text-[9px] font-black uppercase tracking-widest text-indigo-400 italic">Source de Données</h4>
+                <div class="bg-indigo-600/5 border border-indigo-600/20 p-5 rounded-2xl space-y-4">
+                    <div v-if="currentWidget.type === 'kpi'">
+                        <Dropdown v-model="currentWidget.dataSource" :options="laravelModels" placeholder="Modèle Laravel" class="w-full text-xs" />
+                        <InputText v-model="currentWidget.dataField" placeholder="Attribut SQL" class="w-full text-xs font-mono mt-2" />
                     </div>
 
-                    <div class="absolute cursor-move group" :style="{ left: studioSettings.logoPos.x + 'px', top: studioSettings.logoPos.y + 'px', zIndex: 101 }" @mousedown="startDragging(studioSettings.logoPos, $event)">
-                        <div v-if="studioSettings.logoUrl" class="relative">
-                            <img :src="studioSettings.logoUrl" :style="{ width: studioSettings.logoWidth + 'px' }" class="object-contain" />
-                        </div>
-                        <div v-else-if="!isPreviewMode" class="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-white/50">
-                            <FileUpload mode="basic" @select="onLogoUpload" :auto="true" chooseLabel="Logo" class="p-button-text p-button-sm" />
+                    <Button label="SYNC LARAVEL" icon="pi pi-refresh" @click="syncWithLaravel(currentWidget)" :loading="currentWidget.isSyncing" class="w-full p-button-indigo p-button-sm font-black" />
+                </div>
+                <div v-if="currentWidget.type === 'chart'" class="grid grid-cols-2 gap-2">
+                    <button v-for="ct in CHART_TYPES" :key="ct.value" @click="currentWidget.chartType = ct.value"
+                            :class="currentWidget.chartType === ct.value ? 'bg-indigo-600 border-indigo-500' : 'bg-white/5 border-white/5'"
+                            class="flex flex-col items-center p-3 rounded-xl border transition-all">
+                        <i :class="ct.icon" class="text-lg"></i>
+                        <span class="text-[8px] font-black uppercase mt-2">{{ ct.label }}</span>
+                    </button>
+                </div>
+                <div v-if="currentWidget.type === 'chart'">
+                    <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic mt-6 mb-2">Échelle de Temps (Axe X)</h4>
+                     <Dropdown v-model="currentWidget.config.timeScale" :options="['minutes', 'hours', 'days', 'weeks', 'months']" placeholder="Axe X" class="w-full text-xs" />
+                </div>
+            </section>
+
+            <section v-if="currentWidget.type === 'chart'" class="space-y-4">
+                <h4 class="text-[9px] font-black uppercase tracking-widest text-indigo-400 italic">Séries de Données</h4>
+                <div v-for="(source, i) in currentWidget.dataSources" :key="i" class="bg-white/5 p-4 rounded-xl space-y-3 border-l-4" :style="{borderColor: source.color}">
+                    <Dropdown v-model="source.model" :options="laravelModels" placeholder="Modèle Laravel" class="w-full text-xs" />
+                    <InputText v-model="source.column" placeholder="Attribut SQL" class="w-full text-xs font-mono" />
+                    <input type="color" v-model="source.color" class="w-full h-8 bg-transparent cursor-pointer" />
+                    <Button icon="pi pi-times" @click="currentWidget.dataSources.splice(i, 1)" class="p-button-danger p-button-text p-button-sm" />
+                </div>
+                <Button label="Ajouter une série" icon="pi pi-plus" @click="currentWidget.dataSources.push({ model: null, column: null, formula: null, color: '#'+(Math.random()*0xFFFFFF<<0).toString(16) })" class="p-button-outlined p-button-sm w-full" />
+            </section>
+        </div>
+
+        <div v-else class="p-8 space-y-8">
+            <TabView>
+                <TabPanel header="Document">
+                    <div class="p-4 space-y-6">
+                        <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 italic">Format & Fond</h3>
+                        <div class="bg-white/5 p-6 rounded-2xl space-y-6">
+                            <div class="field">
+                                <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Format</label>
+                                <Dropdown v-model="pages[currentPageIdx].format" :options="PAGE_FORMATS" optionLabel="name" class="w-full text-xs" />
+                            </div>
+                            <div class="field">
+                                <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Orientation</label>
+                                <SelectButton v-model="pages[currentPageIdx].orientation" :options="[{label: 'Portrait', value: 'portrait'}, {label: 'Paysage', value: 'landscape'}]" optionLabel="label" optionValue="value" class="w-full" />
+                            </div>
+                            <div class="field">
+                                <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Couleur de fond</label>
+                                <input type="color" v-model="pages[currentPageIdx].background" class="w-full h-10 bg-transparent cursor-pointer" />
+                            </div>
+                            <div class="field">
+                                <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Mode de Disposition</label>
+                                <SelectButton v-model="pages[currentPageIdx].layoutMode" :options="[{label: 'Libre', value: 'absolute'}, {label: 'Grille', value: 'grid'}]" optionLabel="label" optionValue="value" class="w-full" />
+                            </div>
                         </div>
                     </div>
-
-                    <div class="absolute inset-0 pointer-events-none" :style="{ padding: studioSettings.pagePadding + 'px', paddingTop: '160px' }">
-                        <draggable v-model="currentWidgets" item-key="id" class="grid grid-cols-12 pointer-events-auto" :style="{ gap: studioSettings.gap + 'px' }" handle=".drag-handle" :disabled="isPreviewMode">
-                            <template #item="{ element, index }">
-                                <div class="group relative flex flex-col transition-all border border-transparent"
-                                     :style="{ gridColumn: `span ${element.col_span}`, gridRow: `span ${element.row_span}`, backgroundColor: element.customStyle?.useCustom ? '#' + element.customStyle.bg : '#ffffff', borderRadius: studioSettings.borderRadius + 'px', color: element.customStyle?.useCustom ? '#' + element.customStyle.text : '#' + studioSettings.textColor, boxShadow: isPreviewMode ? 'none' : '0 4px 6px -1px rgb(0 0 0 / 0.1)' }">
-                                    <div v-if="!isPreviewMode" class="drag-handle absolute -left-3 top-4 cursor-move opacity-0 group-hover:opacity-100 bg-white shadow-md p-1.5 rounded-md text-slate-300 z-20"><i class="pi pi-th-large"></i></div>
-                                    <div v-if="!isPreviewMode" class="absolute -top-3 -right-3 flex gap-2 opacity-0 group-hover:opacity-100 z-20">
-                                        <Button icon="pi pi-cog" class="p-button-rounded !w-8 !h-8 shadow-lg" @click="openWidgetSettings(element, index)" />
-                                        <Button icon="pi pi-trash" class="p-button-rounded p-button-danger !w-8 !h-8 shadow-lg" @click="currentWidgets.splice(index, 1)" />
-                                    </div>
-                                    <div class="p-8 h-full flex flex-col">
-                                        <input v-model="element.name" :disabled="isPreviewMode" class="canvas-input-small text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-6 w-full" />
-                                        <div class="flex-grow flex items-center justify-center min-h-[160px]">
-                                            <template v-if="element.chart_type === 'kpi'"><div class="text-center"><div class="text-6xl font-black">{{ Math.floor(Math.random() * 90) + 10 }}<span class="text-indigo-500">.4%</span></div></div></template>
-                                            <template v-else-if="element.chart_type === 'bar'"><Bar :data="element.chartData" :options="{ responsive: true, maintainAspectRatio: false }" /></template>
-                                            <template v-else-if="element.chart_type === 'line'"><Line :data="element.chartData" :options="{ responsive: true, maintainAspectRatio: false }" /></template>
-                                            <template v-else-if="element.chart_type === 'doughnut'"><Doughnut :data="element.chartData" :options="{ responsive: true, maintainAspectRatio: false }" /></template>
-                                        </div>
-                                    </div>
+                </TabPanel>
+                <TabPanel header="Pages">
+                    <div class="p-4 space-y-4">
+                        <Button label="Ajouter une page" icon="pi pi-plus" @click="addPage" class="w-full p-button-outlined p-button-sm" />
+                        <div class="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                            <div v-for="(page, index) in pages" :key="page.id"
+                                 class="flex items-center gap-3 p-2 rounded-lg border-2"
+                                 :class="currentPageIdx === index ? 'bg-indigo-500/20 border-indigo-500' : 'bg-white/5 border-transparent hover:border-white/20'"
+                                 draggable="true"
+                                 @dragstart="pageDragIndex = index"
+                                 @dragover.prevent
+                                 @drop="handlePageDrop($event, index)"
+                                 @click="currentPageIdx = index">
+                                <div class="w-16 h-20 bg-white flex-shrink-0 rounded-sm shadow-md overflow-hidden">
+                                    <!-- Mini preview could go here -->
                                 </div>
-                            </template>
-                        </draggable>
+                                <div class="flex-grow">
+                                    <InputText v-model="page.name" @click.stop @blur="updatePageName(page)" class="p-inputtext-sm w-full mt-1 bg-black/20 border-white/10" />
+                                </div>
+                                <div class="flex flex-col">
+                                    <Button icon="pi pi-copy" @click.stop="duplicatePage(index)" v-tooltip.left="'Dupliquer'" class="p-button-secondary p-button-text p-button-sm" />
+                                    <Button icon="pi pi-trash" @click.stop="deletePage(index)" v-tooltip.left="'Supprimer'" class="p-button-danger p-button-text p-button-sm" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </TabPanel>
+            </TabView>
+        </div>
+      </aside>
+    </div>
 
-                    <div class="absolute cursor-move select-none group" :style="{ left: studioSettings.footerPos.x + 'px', top: studioSettings.footerPos.y + 'px', zIndex: 100 }" @mousedown="startDragging(studioSettings.footerPos, $event)">
-                        <input v-model="studioSettings.footerText" :disabled="isPreviewMode" class="bg-transparent border-none outline-none w-[1000px] text-center"
-                               :style="{ fontSize: studioSettings.footerStyle.size + 'px', color: '#' + studioSettings.footerStyle.color, letterSpacing: studioSettings.footerStyle.spacing + 'px' }" />
-                    </div>
+    <Dialog v-model:visible="tableModal" header="Éditeur de Données Quantum" :style="{width: '80vw'}" modal class="p-fluid">
+        <div class="grid grid-cols-12 gap-8 p-4">
+            <div class="col-span-3 border-r border-white/10 pr-6 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h5 class="text-indigo-400 font-bold uppercase text-[10px]">Colonnes</h5>
+                    <Button icon="pi pi-plus" @click="addTableColumn" class="p-button-rounded p-button-text p-button-sm" />
+                </div>
+                <div v-for="(col, idx) in tableConfig.tempColumns" :key="idx" class="flex gap-2">
+                    <InputText v-model="tableConfig.tempColumns[idx]" class="p-inputtext-sm" />
+                    <Button icon="pi pi-times" @click="deleteTableColumn(col)" class="p-button-danger p-button-text p-button-sm" />
+                </div>
+                <div class="pt-6 border-t border-white/10">
+                    <Button label="IMPORTER CSV" icon="pi pi-upload" class="p-button-help p-button-sm" @click="$refs.csvInput.click()" />
+                    <input type="file" ref="csvInput" class="hidden" accept=".csv" @change="handleCSVImport" />
+                </div>
+            </div>
+            <div class="col-span-9">
+                <div class="flex justify-between items-center mb-4">
+                    <h5 class="text-slate-400 font-bold uppercase text-[10px]">Prévisualisation des données</h5>
+                    <Button label="Ajouter une ligne" icon="pi pi-plus-circle" @click="addTableRow" class="p-button-sm p-button-outlined w-auto" />
+                </div>
+                <div class="max-h-[500px] overflow-auto border border-white/5 rounded-xl">
+                    <table class="w-full text-xs">
+                        <thead class="bg-white/5 sticky top-0">
+                            <tr><th v-for="col in tableConfig.tempColumns" :key="col" class="p-3 text-left font-black uppercase opacity-40">{{ col }}</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(row, rIdx) in tableConfig.tempRows" :key="rIdx" class="border-t border-white/5">
+                                <td v-for="col in tableConfig.tempColumns" :key="col" class="p-1">
+                                    <InputText v-model="row[col]" class="p-inputtext-sm border-none bg-transparent" />
+                                </td>
+                                <td class="p-1 w-12 text-center">
+                                    <Button icon="pi pi-trash" @click="tableConfig.tempRows.splice(rIdx, 1)" class="p-button-danger p-button-text p-button-sm" />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
+        <template #footer>
+            <Button label="Annuler" icon="pi pi-times" @click="tableModal = false" class="p-button-text" />
+            <Button label="Enregistrer les modifications" icon="pi pi-check" @click="saveTableStructure" class="p-button-indigo" />
+        </template>
+    </Dialog>
 
-        <Dialog v-model:visible="globalConfigDialog" modal header="Configuration du Studio" :style="{ width: '30rem' }" class="p-fluid">
-            <TabView>
-                <TabPanel header="Couleurs & Grille">
-                    <div class="flex flex-col gap-6 py-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="field"><label class="font-bold text-xs uppercase text-slate-400 block mb-2">Plan de travail</label><ColorPicker v-model="studioSettings.canvasBg" /></div>
-                            <div class="field"><label class="font-bold text-xs uppercase text-slate-400 block mb-2">Papier PDF</label><ColorPicker v-model="studioSettings.paperBg" /></div>
-                        </div>
-                        <div class="field"><label class="font-bold text-xs uppercase text-slate-400 block mb-4">Gouttière Grille ({{ studioSettings.gap }}px)</label><Slider v-model="studioSettings.gap" :min="0" :max="60" /></div>
-                        <div class="field"><label class="font-bold text-xs uppercase text-slate-400 block mb-4">Arrondis Widgets ({{ studioSettings.borderRadius }}px)</label><Slider v-model="studioSettings.borderRadius" :min="0" :max="40" /></div>
-                    </div>
-                </TabPanel>
-            </TabView>
-        </Dialog>
-
-        <Dialog v-model:visible="widgetDialog" modal header="Propriétés du Widget" :style="{ width: '40rem' }" class="p-fluid">
-            <TabView>
-                <TabPanel header="Contenu">
-                    <div class="grid grid-cols-2 gap-4 py-4">
-                        <div class="col-span-2"><label class="font-bold block mb-2">Titre du Widget</label><InputText v-model="form.name" /></div>
-                        <div class="field"><label class="font-bold block mb-2">Type</label><SelectButton v-model="form.chart_type" :options="['bar', 'line', 'kpi', 'doughnut']" /></div>
-                        <div class="field"><label class="font-bold block mb-2">Données Source</label><Dropdown v-model="form.data_source" :options="dataOptions" optionLabel="label" optionValue="value" /></div>
-                        <div class="col-span-2 bg-slate-50 p-6 rounded-2xl"><label class="font-bold block mb-4">Largeur Grille ({{ form.col_span }} colonnes)</label><Slider v-model="form.col_span" :min="2" :max="12" /></div>
-                    </div>
-                </TabPanel>
-                <TabPanel header="Style Local">
-                    <div class="py-4">
-                        <div class="flex items-center justify-between p-4 bg-indigo-50 rounded-xl mb-6">
-                            <span class="font-bold">Outrepasser le design global</span>
-                            <input type="checkbox" v-model="form.customStyle.useCustom" class="w-5 h-5" />
-                        </div>
-                        <div v-if="form.customStyle.useCustom" class="grid grid-cols-2 gap-4">
-                            <div><label class="block mb-2 font-bold">Fond Widget</label><ColorPicker v-model="form.customStyle.bg" /></div>
-                            <div><label class="block mb-2 font-bold">Couleur Texte</label><ColorPicker v-model="form.customStyle.text" /></div>
-                        </div>
-                    </div>
-                </TabPanel>
-            </TabView>
-            <template #footer><Button label="Enregistrer" icon="pi pi-check" @click="saveWidget" class="p-button-indigo !rounded-xl" /></template>
-        </Dialog>
-    </AppLayout>
+    <Toast position="bottom-right" />
+    <ConfirmDialog />
+  </div>
 </template>
-
 <style scoped>
-.grid-cols-12 { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-flow: dense; }
-#report-canvas { background-image: radial-gradient(#e2e8f0 1.2px, transparent 1.2px); background-size: 25px 25px; }
-.canvas-input-small { background: transparent; border: none; outline: none; border-bottom: 1px dashed transparent; transition: all 0.2s; width: 100%; }
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-:deep(.p-selectbutton .p-button.p-highlight) { background: #4f46e5 !important; color: white !important; }
+/* =========================================================================================
+   1. VARIABLES & CORE ARCHITECTURE
+   ========================================================================================= */
+
+/* QUANTUM STUDIO OS - DESIGN SYSTEM v6.5
+  Core Stylesheet: Layout, Components & Animations
+*/
+/* QUANTUM ARCHITECT UI - DESIGN SYSTEM v7.2
+  Architectural Stylesheet for High-End Document Engine
+*/
+
+/* 1. RESET & VARIABLES GLOBALES */
+:root {
+  --q-bg: #020203;
+  --q-surface: #08080a;
+  --q-indigo: #6366f1;
+  --q-indigo-glow: rgba(99, 102, 241, 0.4);
+  --q-border: rgba(255, 255, 255, 0.05);
+  --q-text-muted: #64748b;
+  --q-canvas-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
+  --q-transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+  outline-color: var(--q-indigo);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--q-bg);
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* 2. GESTION DES SCROLLBARS (Style Cyber-Minimaliste) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--q-indigo);
+}
+
+/* 3. STRUCTURE DU CANEVAS (L60-L150) */
+#studio-capture-area {
+  user-select: none;
+  background-color: #ffffff;
+  position: relative;
+  box-shadow: var(--q-canvas-shadow);
+  transform-origin: top center;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s;
+}
+
+/* Effet de grain sur le papier */
+#studio-capture-area::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.02;
+  pointer-events: none;
+  background-image: url("https://www.transparenttextures.com/patterns/pinstripe-light.png");
+}
+
+/* 4. ÉLÉMENTS MOBILES & WIDGETS (L110-L200) */
+.group\/widget {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.grid .group\/widget {
+    display: flex; flex-direction: column;
+}
+.group\/widget:hover {
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+}
+
+/* Poignée de redimensionnement */
+.cursor-nwse-resize {
+  transition: opacity 0.2s;
+  background: linear-gradient(135deg, transparent 50%, var(--q-indigo) 50%);
+  border-bottom-right-radius: 12px;
+}
+
+/* 5. OVERRIDES PRIME VUE (L160-L280) */
+
+/* TabView Sidebar */
+.quantum-sidebar-tabs .p-tabview-nav {
+  background: transparent !important;
+  border: none !important;
+  display: flex !important;
+}
+
+.quantum-sidebar-tabs .p-tabview-nav li {
+  flex: 1;
+}
+
+.quantum-sidebar-tabs .p-tabview-nav li .p-tabview-nav-link {
+  background: transparent !important;
+  border: none !important;
+  padding: 1.25rem 0.5rem !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--q-text-muted) !important;
+  transition: var(--q-transition);
+  border-bottom: 2px solid transparent !important;
+}
+
+.quantum-sidebar-tabs .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  color: white !important;
+  border-bottom-color: var(--q-indigo) !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+}
+
+/* Accordion Inspecteur */
+.p-accordion .p-accordion-header .p-accordion-header-link {
+  background: #0d0d11 !important;
+  border: 1px solid var(--q-border) !important;
+  color: #94a3b8 !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.15em !important;
+  padding: 1.25rem !important;
+  border-radius: 12px !important;
+  margin-top: 0.5rem;
+}
+
+.p-accordion .p-accordion-content {
+  background: transparent !important;
+  border: none !important;
+  padding: 1.5rem 0.5rem !important;
+}
+
+/* Inputs & Numbers */
+.quantum-field-number .p-inputnumber-input {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid var(--q-border) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  padding: 0.75rem !important;
+  border-radius: 10px !important;
+  width: 100%;
+}
+
+/* 6. SYSTÈME DE GRILLE & GUIDES (L290-L340) */
+.grid-active {
+  background-image: radial-gradient(var(--q-indigo) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+/* 7. ANIMATIONS DE L'INTERFACE (L310+) */
+@keyframes quantum-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: quantum-fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Mode Chargement */
+.system-loading {
+  filter: grayscale(0.5) blur(4px);
+  pointer-events: none;
+  cursor: wait;
+}
+
+/* Bouton Spécial Indigo */
+.p-button-indigo {
+  background: var(--q-indigo) !important;
+  border: none !important;
+  transition: var(--q-transition) !important;
+}
+
+.p-button-indigo:hover {
+  background: #4f46e5 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px var(--q-indigo-glow) !important;
+}
+
+/* 8. ÉTAT ÉDITION (ContentEditable) */
+[contenteditable="true"]:focus {
+  outline: 2px solid var(--q-indigo);
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 4px;
+}
+
+/* 9. EXPORT PDF FIXES */
+@media print {
+  header, aside, footer, button {
+    display: none !important;
+  }
+  body, .quantum-os-root {
+    background: white !important;
+  }
+  #studio-capture-area {
+    transform: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}
+
+/* 10. EFFETS DE CALQUES (Layers) */
+.layer-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.layer-item::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--q-indigo);
+  transition: width 0.3s ease;
+}
+
+.layer-item:hover::after {
+  width: 100%;
+}
 </style>
