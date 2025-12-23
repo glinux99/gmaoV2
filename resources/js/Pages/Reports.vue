@@ -29,8 +29,17 @@ const currentPageIdx = ref(0);
 const selectedWidgetIdx = ref(null);
 const zoomLevel = ref(0.80);
 const isDragging = ref(false);
-const pageDragIndex = ref(null); // Pour le drag-and-drop des pages
+const pageDragIndex = ref(null);
 const laravelModels = ref([]);
+
+// --- NOUVEAU : Gestion du thème ---
+const currentTheme = ref('dark'); // 'dark' ou 'light'
+
+// --- NOUVEAU : Gestion des templates ---
+const reportTemplates = ref([]);
+const saveTemplateDialog = ref(false);
+const newTemplateName = ref('');
+const selectedTemplateToLoad = ref(null);
 
 // --- CONFIGURATION DU TABLEAU (MODAL & CSV) ---
 const tableModal = ref(false);
@@ -141,6 +150,7 @@ const addWidget = (type) => {
         data: { columns: [], rows: [] }
     };
 
+    // Configuration spécifique par type de widget
     if (type === 'text') {
         newWidget.content = "Double-cliquez pour éditer le texte...";
         newWidget.config = {
@@ -166,7 +176,15 @@ const addWidget = (type) => {
             rows: [{ Référence: 'INV-001', Status: 'Payé', Total: '1,200 €' }]
         };
     } else if (type === 'kpi') {
-        newWidget.config = { label: 'VENTES TOTALES', value: '0.00', color: '#6366F1', prefix: '$', trend: '+0%' };
+        newWidget.dataSource = { model: null, column: null, method: 'COUNT' };
+        newWidget.config = {
+            label: 'NOUVEAU KPI',
+            value: '0.00',
+            color: '#6366F1',
+            prefix: '',
+            trend: '',
+            timeScale: 'days' // Intervalle par défaut
+        };
     } else if (type === 'image') {
         newWidget.imageUrl = null;
     } else if (type === 'shape') {
@@ -322,27 +340,35 @@ const startResizing = (e, item) => {
 
 // --- BRIDGE LARAVEL ELOQUENT ---
 const syncWithLaravel = async (widget) => {
-    if (widget.type === 'kpi' && !widget.dataSource) return;
-    if (widget.type === 'chart' && widget.dataSources.length === 0) return;
+    if ((widget.type === 'chart' && (!widget.dataSources || widget.dataSources.some(s => !s.model || !s.column))) ||
+        (widget.type === 'kpi' && (!widget.dataSource || !widget.dataSource.model || !widget.dataSource.column))) {
+        toast.add({ severity: 'warn', summary: 'Configuration incomplète', detail: 'Veuillez sélectionner un modèle et un champ.', life: 4000 });
+        return;
+    }
 
     widget.isSyncing = true;
     try {
-        const res = await axios.post('/api/quantum/query', {
-            type: widget.type,
-            config: {
-                ...(widget.type === 'kpi' && {
-                    model: widget.dataSource,
-                    column: widget.dataField,
-                    method: widget.formula
-                }),
-                ...(widget.type === 'chart' && { sources: widget.dataSources, timeScale: widget.config.timeScale }),
-            }
-        });
-        if (widget.type === 'chart') widget.data = res.data; // La réponse de l'API doit être { labels: [...], datasets: [...] }
-        if (widget.type === 'kpi') widget.config.value = res.data.value;
+        const payload = { type: widget.type };
+        if (widget.type === 'chart') payload.config = { sources: widget.dataSources, timeScale: widget.config.timeScale };
+        if (widget.type === 'kpi') payload.config = { ...widget.dataSource, timeScale: widget.config.timeScale };
+
+        const res = await axios.post(route('quantum.query'), payload);
+
+        if (widget.type === 'chart') {
+            widget.data = res.data;
+            toast.add({ severity: 'success', summary: 'Synchronisé', detail: 'Les données du graphique ont été mises à jour.', life: 2000 });
+        }
+
+        // Logique pour le KPI
+        if (widget.type === 'kpi') {
+            widget.config.value = res.data.value;
+            widget.config.label = res.data.label;
+            toast.add({ severity: 'success', summary: 'Synchronisé', detail: 'La valeur du KPI a été mise à jour.', life: 2000 });
+        }
         saveToHistory();
     } catch (e) {
-        toast.add({ severity: 'error', summary: 'Erreur Backend' });
+        console.error("Erreur lors de la synchronisation:", e);
+        toast.add({ severity: 'error', summary: 'Erreur Backend', detail: e.response?.data?.message || 'Impossible de récupérer les données.' });
     } finally { widget.isSyncing = false; }
 };
 
@@ -399,6 +425,126 @@ const handlePageDrop = (event, dropIndex) => {
     saveToHistory();
 };
 
+// --- NOUVEAU : GESTION DES TEMPLATES ---
+
+const saveCurrentReportAsTemplate = async () => {
+    if (!newTemplateName.value.trim()) {
+        toast.add({ severity: 'warn', summary: 'Nom requis', detail: 'Veuillez donner un nom à votre modèle.', life: 3000 });
+        return;
+    }
+    try {
+        const payload = { name: newTemplateName.value, content: JSON.stringify(pages.value) };
+        const response = await axios.post(route('report-templates.store'), payload);
+        reportTemplates.value.push(response.data);
+        saveTemplateDialog.value = false;
+        toast.add({ severity: 'success', summary: 'Modèle Sauvegardé', detail: `Le modèle "${newTemplateName.value}" a été créé.`, life: 3000 });
+    } catch (error) {
+        console.error("Erreur lors de la sauvegarde du modèle:", error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de sauvegarder le modèle.', life: 4000 });
+    }
+};
+
+const loadTemplate = async (templateId) => {
+    if (!templateId) return;
+
+    confirm.require({
+        message: 'Charger ce modèle remplacera votre rapport actuel. Voulez-vous continuer ?',
+        header: 'Confirmation de chargement',
+        icon: 'pi pi-exclamation-triangle',
+        accept: async () => {
+            try {
+                const response = await axios.get(route('report-templates.show', templateId));
+                pages.value = JSON.parse(response.data.content);
+                currentPageIdx.value = 0;
+                selectedWidgetIdx.value = null;
+                history.value = [JSON.stringify(pages.value)];
+                historyIndex.value = 0;
+                toast.add({ severity: 'success', summary: 'Modèle Chargé', detail: `Le modèle "${response.data.name}" est prêt.`, life: 3000 });
+            } catch (error) {
+                console.error("Erreur lors du chargement du modèle:", error);
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger le modèle.', life: 4000 });
+            } finally {
+                selectedTemplateToLoad.value = null;
+            }
+        },
+        reject: () => {
+            selectedTemplateToLoad.value = null; // Réinitialiser le dropdown si l'utilisateur annule
+        }
+    });
+};
+
+const deleteTemplate = (templateId, templateName) => {
+    confirm.require({
+        message: `Êtes-vous sûr de vouloir supprimer le modèle "${templateName}" ? Cette action est irréversible.`,
+        header: 'Confirmation de suppression',
+        icon: 'pi pi-trash',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            try {
+                await axios.delete(route('report-templates.destroy', templateId));
+                reportTemplates.value = reportTemplates.value.filter(t => t.id !== templateId);
+                toast.add({ severity: 'success', summary: 'Supprimé', detail: `Le modèle "${templateName}" a été supprimé.`, life: 3000 });
+            } catch (error) {
+                console.error("Erreur lors de la suppression du modèle:", error);
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer le modèle.', life: 4000 });
+            }
+        }
+    });
+};
+
+// --- NOUVEAU : GESTION DES TEMPLATES ---
+const openSaveTemplateDialog = () => {
+    newTemplateName.value = pages.value[currentPageIdx.value].name;
+    saveTemplateDialog.value = true;
+};
+
+// const saveCurrentReportAsTemplate = async () => {
+//     if (!newTemplateName.value.trim()) {
+//         toast.add({ severity: 'warn', summary: 'Nom requis', detail: 'Veuillez donner un nom à votre modèle.', life: 3000 });
+//         return;
+//     }
+//     try {
+//         const payload = {
+//             name: newTemplateName.value,
+//             content: JSON.stringify(pages.value) // Sauvegarde de l'état complet des pages
+//         };
+//         // Note: Assurez-vous que la route 'report-templates.store' existe dans votre backend
+//         const response = await axios.post(route('report-templates.store'), payload); // Changed from 'report-templates.store' to 'report-templates.store'
+//         reportTemplates.value.push(response.data); // Ajouter le nouveau template à la liste
+//         saveTemplateDialog.value = false;
+//         toast.add({ severity: 'success', summary: 'Modèle Sauvegardé', detail: `Le modèle "${newTemplateName.value}" a été créé.`, life: 3000 });
+//     } catch (error) {
+//         console.error("Erreur lors de la sauvegarde du modèle:", error);
+//         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de sauvegarder le modèle.', life: 4000 });
+//     }
+// };
+
+// const loadTemplate = async (templateId) => {
+//     if (!templateId) return;
+
+//     confirm.require({
+//         message: 'Charger ce modèle remplacera votre rapport actuel. Voulez-vous continuer ?',
+//         header: 'Confirmation de chargement',
+//         icon: 'pi pi-exclamation-triangle',
+//         accept: async () => {
+//             try {
+//                 // Note: Assurez-vous que la route 'report-templates.show' existe
+//                 const response = await axios.get(route('report-templates.show', templateId));
+//                 pages.value = JSON.parse(response.data.content);
+//                 currentPageIdx.value = 0;
+//                 selectedWidgetIdx.value = null;
+//                 history.value = [JSON.stringify(pages.value)]; // Réinitialiser l'historique
+//                 historyIndex.value = 0;
+//                 toast.add({ severity: 'success', summary: 'Modèle Chargé', detail: `Le modèle "${response.data.name}" est prêt.`, life: 3000 });
+//             } catch (error) {
+//                 console.error("Erreur lors du chargement du modèle:", error);
+//                 toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger le modèle.', life: 4000 });
+//             } finally {
+//                 selectedTemplateToLoad.value = null; // Réinitialiser le dropdown
+//             }
+//         }
+//     });
+// };
 // --- GESTION DES CALQUES ---
 const moveZIndex = (mode) => {
     const w = currentWidget.value;
@@ -511,7 +657,15 @@ const getChartType = (type) => {
 // --- CYCLE DE VIE ---
 onMounted(() => {
     // Récupérer les modèles Laravel disponibles
-    axios.get('/api/quantum/models').then(res => {
+    // NOUVEAU : Récupérer les templates de rapport existants
+    axios.get(route('report-templates.index')).then(res => {
+        reportTemplates.value = res.data;
+    }).catch(() => {
+        toast.add({ severity: 'warn', summary: 'Mode Démo', detail: 'Impossible de charger les modèles de rapport.', life: 3000 });
+    });
+
+
+    axios.get('/quantum/models').then(res => {
         laravelModels.value = res.data;
     }).catch(() => {
         // Utiliser des données Faker en cas d'échec
@@ -544,9 +698,15 @@ watch(currentWidget, (newValue) => {
 
 </script>
 <template>
-  <div class="quantum-studio h-screen flex flex-col bg-[#050507] text-slate-200 overflow-hidden font-sans select-none">
+  <div :class="[
+    'quantum-studio h-screen flex flex-col overflow-hidden font-sans select-none',
+    currentTheme === 'dark' ? 'bg-[#050507] text-slate-200' : 'bg-slate-100 text-slate-800'
+  ]">
 
-    <header class="h-16 border-b border-white/5 bg-black/60 backdrop-blur-2xl flex items-center justify-between px-6 z-[100]">
+    <header :class="[
+        'h-16 flex items-center justify-between px-6 z-[100] shrink-0',
+        currentTheme === 'dark' ? 'border-b border-white/5 bg-black/60 backdrop-blur-2xl' : 'border-b border-slate-200 bg-white/80 backdrop-blur-xl'
+    ]">
       <div class="flex items-center gap-6">
         <div class="flex items-center gap-3 group cursor-pointer">
           <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
@@ -558,28 +718,54 @@ watch(currentWidget, (newValue) => {
           </div>
         </div>
 
-        <div class="h-8 w-px bg-white/10 mx-2"></div>
+        <div :class="['h-8 w-px mx-2', currentTheme === 'dark' ? 'bg-white/10' : 'bg-slate-300']"></div>
 
-        <div class="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
-          <Button icon="pi pi-undo" @click="undo" :disabled="!canUndo" class="p-button-text p-button-sm text-slate-400" v-tooltip.bottom="'Annuler (Ctrl+Z)'" />
-          <Button icon="pi pi-redo" @click="redo" :disabled="!canRedo" class="p-button-text p-button-sm text-slate-400" v-tooltip.bottom="'Rétablir (Ctrl+Y)'" />
+        <div :class="['flex items-center gap-1 p-1 rounded-lg', currentTheme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-slate-200/50 border border-slate-300/50']">
+          <Button icon="pi pi-undo" @click="undo" :disabled="!canUndo" :class="['p-button-text p-button-sm', currentTheme === 'dark' ? 'text-slate-400' : 'text-slate-600']" v-tooltip.bottom="'Annuler (Ctrl+Z)'" />
+          <Button icon="pi pi-redo" @click="redo" :disabled="!canRedo" :class="['p-button-text p-button-sm', currentTheme === 'dark' ? 'text-slate-400' : 'text-slate-600']" v-tooltip.bottom="'Rétablir (Ctrl+Y)'" />
         </div>
       </div>
 
+      <!-- NOUVEAU : Gestion des templates -->
+      <div class="flex items-center gap-2">
+          <Button label="Sauvegarder comme modèle" icon="pi pi-save" @click="openSaveTemplateDialog" :class="['p-button-text p-button-sm', currentTheme === 'dark' ? 'text-slate-400' : 'text-slate-600']" />
+          <Dropdown v-model="selectedTemplateToLoad"
+                :options="reportTemplates"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Charger un modèle"
+                @change="loadTemplate($event.value)"
+                :class="['p-inputtext-sm w-56', currentTheme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-slate-300']"
+                :showClear="true">
+            <template #option="slotProps">
+                <div class="flex justify-between items-center w-full">
+                    <span>{{ slotProps.option.name }}</span>
+                    <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-rounded p-button-sm" @click.stop="deleteTemplate(slotProps.option.id, slotProps.option.name)" v-tooltip.left="'Supprimer ce modèle'"/>
+                </div>
+            </template>
+        </Dropdown>
+      </div>
+
       <div class="flex items-center gap-4">
-        <div class="flex items-center bg-black/40 rounded-full px-3 py-1.5 border border-white/10 gap-4">
+        <div :class="['flex items-center rounded-full px-3 py-1.5 gap-4', currentTheme === 'dark' ? 'bg-black/40 border border-white/10' : 'bg-slate-200/50 border border-slate-300/50']">
           <div class="flex items-center gap-2">
              <Button icon="pi pi-chevron-left" @click="currentPageIdx--" :disabled="currentPageIdx === 0" class="p-button-text p-button-xs" />
              <span class="text-[10px] font-black uppercase tracking-widest min-w-[80px] text-center">Page {{ currentPageIdx + 1 }} / {{ pages.length }}</span>
              <Button icon="pi pi-chevron-right" @click="currentPageIdx++" :disabled="currentPageIdx === pages.length - 1" class="p-button-text p-button-xs" />
           </div>
-          <div class="h-4 w-px bg-white/10"></div>
+          <div :class="['h-4 w-px', currentTheme === 'dark' ? 'bg-white/10' : 'bg-slate-300']"></div>
           <div class="flex items-center gap-3">
             <i class="pi pi-search text-[10px] text-slate-500"></i>
             <Slider v-model="zoomLevel" :min="0.2" :max="2" :step="0.01" class="w-24" />
-            <span class="text-[10px] font-mono text-indigo-400 w-10 text-right">{{ Math.round(zoomLevel * 100) }}%</span>
+            <span :class="['text-[10px] font-mono w-10 text-right', currentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600']">{{ Math.round(zoomLevel * 100) }}%</span>
           </div>
         </div>
+
+        <!-- NOUVEAU : Bouton de changement de thème -->
+        <Button @click="currentTheme = currentTheme === 'dark' ? 'light' : 'dark'"
+                :icon="currentTheme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'"
+                :class="['p-button-text p-button-rounded', currentTheme === 'dark' ? 'text-slate-400' : 'text-slate-600']"
+                v-tooltip.bottom="currentTheme === 'dark' ? 'Thème Clair' : 'Thème Sombre'" />
 
         <Button icon="pi pi-cloud-download" label="EXPORT PDF HD" @click="exportPDF" :loading="isLoading" class="p-button-indigo shadow-xl shadow-indigo-500/20 font-black p-button-sm italic" />
       </div>
@@ -587,17 +773,21 @@ watch(currentWidget, (newValue) => {
 
     <div class="flex-grow flex overflow-hidden">
 
-      <aside class="w-20 border-r border-white/5 bg-black/20 flex flex-col items-center py-8 gap-6 shrink-0">
+      <aside :class="['w-20 flex flex-col items-center py-8 gap-6 shrink-0', currentTheme === 'dark' ? 'border-r border-white/5 bg-black/20' : 'border-r border-slate-200 bg-slate-100']">
         <button v-for="t in ['text', 'chart', 'table', 'kpi', 'image', 'shape']" :key="t" @click="addWidget(t)"
-                class="group relative w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-indigo-600 transition-all shadow-sm">
-          <i :class="{'pi pi-align-left':t==='text', 'pi pi-chart-bar':t==='chart', 'pi pi-table':t==='table', 'pi pi-bolt':t==='kpi', 'pi pi-image':t==='image', 'pi pi-minus':t==='shape'}" class="text-xl text-slate-400 group-hover:text-white"></i>
+                :class="['group relative w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-indigo-600 transition-all', currentTheme === 'dark' ? 'bg-white/5 border border-white/5' : 'bg-white border border-slate-200 shadow-sm']">
+          <i :class="[
+              {'pi pi-align-left':t==='text', 'pi pi-chart-bar':t==='chart', 'pi pi-table':t==='table', 'pi pi-bolt':t==='kpi', 'pi pi-image':t==='image', 'pi pi-minus':t==='shape'},
+              'text-xl group-hover:text-white',
+              currentTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+          ]"></i>
           <span class="absolute left-16 bg-indigo-600 text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 uppercase tracking-tighter whitespace-nowrap z-50 shadow-xl">{{ t }}</span>
         </button>
       </aside>
 
-      <main class="flex-grow overflow-auto bg-[#0a0a0c] p-20 flex justify-center custom-scrollbar relative" @click="selectedWidgetIdx = null">
+      <main :class="['flex-grow overflow-auto p-20 flex justify-center custom-scrollbar relative', currentTheme === 'dark' ? 'bg-[#0a0a0c]' : 'bg-slate-200']" @click="selectedWidgetIdx = null">
 
-        <div id="studio-canvas" :style="canvasStyles" class="relative shadow-[0_40px_120px_rgba(0,0,0,0.7)] transition-all duration-300 origin-top">
+        <div id="studio-canvas" :style="canvasStyles" :class="['relative transition-all duration-300 origin-top', currentTheme === 'dark' ? 'shadow-[0_40px_120px_rgba(0,0,0,0.7)]' : 'shadow-2xl']">
 
           <!-- MODE ABSOLUTE -->
           <template v-if="pages[currentPageIdx].layoutMode === 'absolute'">
@@ -606,7 +796,7 @@ watch(currentWidget, (newValue) => {
                  :class="['group/widget', selectedWidgetIdx === idx ? 'ring-2 ring-indigo-500' : '', w.isLocked ? 'cursor-default' : 'cursor-move']"
                  @click.stop="selectedWidgetIdx = idx"
                  @mousedown.stop="!w.isLocked && startDragging($event, w, idx)">
-                <div class="absolute -top-11 left-0 flex gap-1 opacity-0 group-hover/widget:opacity-100 transition-all no-drag z-[60] bg-slate-900/80 backdrop-blur-sm border border-white/10 rounded-lg shadow-2xl">
+                <div :class="['absolute -top-11 left-0 flex gap-1 opacity-0 group-hover/widget:opacity-100 transition-all no-drag z-[60] backdrop-blur-sm rounded-lg shadow-2xl', currentTheme === 'dark' ? 'bg-slate-900/80 border border-white/10' : 'bg-white/80 border border-slate-200']">
                     <div class="p-2 text-indigo-400 cursor-move" v-tooltip.bottom="'Déplacer'">
                         <i class="pi pi-arrows-alt text-[10px]"></i>
                     </div>
@@ -703,7 +893,7 @@ watch(currentWidget, (newValue) => {
                    @click.stop="selectedWidgetIdx = idx">
 
                 <div class="absolute -top-11 left-0 flex gap-1 opacity-0 group-hover/widget:opacity-100 transition-all no-drag z-[60] bg-slate-900/80 backdrop-blur-sm border border-white/10 rounded-lg shadow-2xl">
-                <button class="p-2 hover:text-indigo-400 cursor-move grid-drag-handle" v-tooltip.bottom="'Déplacer'">
+                <button :class="['p-2 hover:text-indigo-400 cursor-move grid-drag-handle', currentTheme === 'dark' ? '' : 'text-slate-700']" v-tooltip.bottom="'Déplacer'">
                     <i class="pi pi-arrows-alt text-[10px]"></i>
                 </button>
                 <button @click.stop="w.isLocked = !w.isLocked" class="p-2 hover:text-orange-400" v-tooltip.bottom="'Verrouiller'">
@@ -786,11 +976,11 @@ watch(currentWidget, (newValue) => {
         </div>
       </main>
 
-      <aside class="w-[380px] border-l border-white/5 bg-black/40 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+      <aside :class="['w-[380px] flex flex-col shrink-0 overflow-y-auto custom-scrollbar', currentTheme === 'dark' ? 'border-l border-white/5 bg-black/40' : 'border-l border-slate-200 bg-slate-50']">
         <div v-if="currentWidget" class="p-8 space-y-10 animate-in fade-in slide-in-from-right duration-300">
 
-            <header class="flex justify-between items-center border-b border-white/10 pb-6">
-                <h3 class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 italic">Inspecteur Omni</h3>
+            <header :class="['flex justify-between items-center pb-6', currentTheme === 'dark' ? 'border-b border-white/10' : 'border-b border-slate-200']">
+                <h3 :class="['text-[10px] font-black uppercase tracking-[0.3em] italic', currentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600']">Inspecteur Omni</h3>
                 <div class="flex gap-2">
                     <button @click="moveZIndex('up')" class="p-2 bg-white/5 rounded-lg hover:bg-white/10"><i class="pi pi-angle-up"></i></button>
                     <button @click="moveZIndex('down')" class="p-2 bg-white/5 rounded-lg hover:bg-white/10"><i class="pi pi-angle-down"></i></button>
@@ -799,22 +989,22 @@ watch(currentWidget, (newValue) => {
 
             <!-- SECTION APPARENCE (COMMUNE) -->
             <section class="space-y-6">
-                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Apparence</h4>
-                <div class="bg-white/5 p-4 rounded-xl space-y-4">
+                <h4 :class="['text-[9px] font-black uppercase tracking-widest italic', currentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400']">Apparence</h4>
+                <div :class="['p-4 rounded-xl space-y-4', currentTheme === 'dark' ? 'bg-white/5' : 'bg-white border border-slate-200']">
                     <div class="field">
                         <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Fond</label>
-                        <div class="flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                        <div :class="['flex items-center gap-2 p-1 rounded-lg', currentTheme === 'dark' ? 'bg-black/20' : 'bg-slate-100']">
                             <input type="color" v-model="currentWidget.style.backgroundColor" class="w-8 h-6 bg-transparent cursor-pointer border-none">
-                            <InputText :value="currentWidget.style.backgroundColor" @update:modelValue="v => currentWidget.style.backgroundColor = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
+                            <InputText :value="currentWidget.style.backgroundColor" @update:modelValue="v => currentWidget.style.backgroundColor = v" :class="['p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1', currentTheme === 'dark' ? '' : 'text-slate-700']" />
                         </div>
                     </div>
                     <div class="field">
                         <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Bordure</label>
                         <div class="grid grid-cols-3 gap-2">
                             <InputNumber v-model="currentWidget.style.borderWidth" :min="0" :max="20" class="p-inputtext-sm" :disabled="currentWidget.style.borderStyle === 'none'" />
-                            <Dropdown v-model="currentWidget.style.borderStyle" :options="BORDER_STYLES" optionLabel="label" optionValue="value" class="p-inputtext-sm col-span-2" />
+                            <Dropdown v-model="currentWidget.style.borderStyle" :options="BORDER_STYLES" optionLabel="label" optionValue="value" :class="['p-inputtext-sm col-span-2', currentTheme === 'dark' ? '' : 'light-dropdown']" />
                         </div>
-                        <div class="flex items-center gap-2 bg-black/20 p-1 rounded-lg mt-2">
+                        <div :class="['flex items-center gap-2 p-1 rounded-lg mt-2', currentTheme === 'dark' ? 'bg-black/20' : 'bg-slate-100']">
                             <input type="color" v-model="currentWidget.style.borderColor" class="w-8 h-6 bg-transparent cursor-pointer border-none">
                             <InputText :value="currentWidget.style.borderColor" @update:modelValue="v => currentWidget.style.borderColor = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
                         </div>
@@ -828,8 +1018,8 @@ watch(currentWidget, (newValue) => {
 
             <!-- SECTION GRID LAYOUT -->
             <section v-if="pages[currentPageIdx].layoutMode === 'grid'" class="space-y-6">
-                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Disposition Grille</h4>
-                <div class="bg-white/5 p-4 rounded-xl space-y-4">
+                <h4 :class="['text-[9px] font-black uppercase tracking-widest italic', currentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400']">Disposition Grille</h4>
+                <div :class="['p-4 rounded-xl space-y-4', currentTheme === 'dark' ? 'bg-white/5' : 'bg-white border border-slate-200']">
                     <div class="field">
                         <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Colonnes ({{ currentWidget.colSpan }}/12)</label>
                         <Slider v-model="currentWidget.colSpan" :min="1" :max="12" />
@@ -856,28 +1046,28 @@ watch(currentWidget, (newValue) => {
             </section>
 
             <section v-if="currentWidget.type === 'text'" class="space-y-6">
-                <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Typographie</h4>
-                <div class="bg-white/5 p-4 rounded-xl space-y-4">
-                    <Dropdown v-model="currentWidget.config.font" :options="FONTS" class="w-full text-xs" />
+                <h4 :class="['text-[9px] font-black uppercase tracking-widest italic', currentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400']">Typographie</h4>
+                <div :class="['p-4 rounded-xl space-y-4', currentTheme === 'dark' ? 'bg-white/5' : 'bg-white border border-slate-200']">
+                    <Dropdown v-model="currentWidget.config.font" :options="FONTS" :class="['w-full text-xs', currentTheme === 'dark' ? '' : 'light-dropdown']" />
                     <div class="flex items-center gap-4">
                         <Slider v-model="currentWidget.config.size" :min="8" :max="120" class="flex-grow" />
-                        <span class="text-[10px] font-mono text-indigo-400">{{ currentWidget.config.size }}px</span>
+                        <span :class="['text-[10px] font-mono', currentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600']">{{ currentWidget.config.size }}px</span>
                     </div>
                     <div class="grid grid-cols-4 gap-2">
-                        <button @click="currentWidget.config.weight = currentWidget.config.weight === '900' ? '500' : '900'" :class="{'bg-indigo-600 text-white': currentWidget.config.weight === '900'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-bold"></i></button>
-                        <button @click="currentWidget.config.italic = !currentWidget.config.italic" :class="{'bg-indigo-600 text-white': currentWidget.config.italic}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-italic"></i></button>
-                        <button @click="currentWidget.config.underline = !currentWidget.config.underline" :class="{'bg-indigo-600 text-white': currentWidget.config.underline}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">U</button>
-                        <button @click="currentWidget.config.uppercase = !currentWidget.config.uppercase" :class="{'bg-indigo-600 text-white': currentWidget.config.uppercase}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Aa</button>
+                        <button @click="currentWidget.config.weight = currentWidget.config.weight === '900' ? '500' : '900'" :class="[{'bg-indigo-600 text-white': currentWidget.config.weight === '900'}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors"><i class="pi pi-bold"></i></button>
+                        <button @click="currentWidget.config.italic = !currentWidget.config.italic" :class="[{'bg-indigo-600 text-white': currentWidget.config.italic}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors"><i class="pi pi-italic"></i></button>
+                        <button @click="currentWidget.config.underline = !currentWidget.config.underline" :class="[{'bg-indigo-600 text-white': currentWidget.config.underline}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors">U</button>
+                        <button @click="currentWidget.config.uppercase = !currentWidget.config.uppercase" :class="[{'bg-indigo-600 text-white': currentWidget.config.uppercase}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors">Aa</button>
                     </div>
                     <div class="grid grid-cols-4 gap-2">
-                        <button @click="currentWidget.config.align = 'left'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'left'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-left"></i></button>
-                        <button @click="currentWidget.config.align = 'center'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'center'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-center"></i></button>
-                        <button @click="currentWidget.config.align = 'right'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'right'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-right"></i></button>
-                        <button @click="currentWidget.config.align = 'justify'" :class="{'bg-indigo-600 text-white': currentWidget.config.align === 'justify'}" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><i class="pi pi-align-justify"></i></button>
+                        <button @click="currentWidget.config.align = 'left'" :class="[{'bg-indigo-600 text-white': currentWidget.config.align === 'left'}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors"><i class="pi pi-align-left"></i></button>
+                        <button @click="currentWidget.config.align = 'center'" :class="[{'bg-indigo-600 text-white': currentWidget.config.align === 'center'}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors"><i class="pi pi-align-center"></i></button>
+                        <button @click="currentWidget.config.align = 'right'" :class="[{'bg-indigo-600 text-white': currentWidget.config.align === 'right'}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors"><i class="pi pi-align-right"></i></button>
+                        <button @click="currentWidget.config.align = 'justify'" :class="[{'bg-indigo-600 text-white': currentWidget.config.align === 'justify'}, currentTheme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-200 hover:bg-slate-300']" class="p-2 rounded-lg transition-colors"><i class="pi pi-align-justify"></i></button>
                     </div>
                     <div class="flex items-center gap-4">
                         <label class="text-[9px] font-black uppercase opacity-40">Couleur</label>
-                        <div class="flex-grow flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                        <div :class="['flex-grow flex items-center gap-2 p-1 rounded-lg', currentTheme === 'dark' ? 'bg-black/20' : 'bg-slate-100']">
                             <input type="color" v-model="currentWidget.config.color" class="w-8 h-6 bg-transparent cursor-pointer border-none">
                             <InputText :value="currentWidget.config.color" @update:modelValue="v => currentWidget.config.color = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
                         </div>
@@ -914,10 +1104,7 @@ watch(currentWidget, (newValue) => {
             <section v-if="currentWidget.type === 'kpi'" class="space-y-6">
                 <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Configuration KPI</h4>
                 <div class="bg-white/5 p-4 rounded-xl space-y-4">
-                    <div class="field">
-                        <label class="text-[9px] font-black uppercase opacity-40">Libellé</label>
-                        <InputText v-model="currentWidget.config.label" class="w-full text-xs" />
-                    </div>
+                    <!-- Champs de configuration de base du KPI -->
                     <div class="field">
                         <label class="text-[9px] font-black uppercase opacity-40">Préfixe</label>
                         <InputText v-model="currentWidget.config.prefix" class="w-full text-xs" />
@@ -926,7 +1113,7 @@ watch(currentWidget, (newValue) => {
                         <label class="text-[9px] font-black uppercase opacity-40">Couleur Valeur</label>
                         <div class="flex-grow flex items-center gap-2 bg-black/20 p-1 rounded-lg">
                             <input type="color" v-model="currentWidget.config.color" class="w-8 h-6 bg-transparent cursor-pointer border-none">
-                            <InputText :value="currentWidget.config.color" @update:modelValue="v => currentWidget.config.color = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" />
+                            <InputText :value="currentWidget.config.color" @update:modelValue="v => currentWidget.config.color = v" class="p-inputtext-sm flex-grow font-mono uppercase !bg-transparent border-none shadow-none p-1" :style="{color: currentWidget.config.color}" />
                         </div>
                     </div>
                 </div>
@@ -937,34 +1124,37 @@ watch(currentWidget, (newValue) => {
             </section>
 
             <section v-if="['chart', 'kpi'].includes(currentWidget.type)" class="space-y-6">
-                <h4 class="text-[9px] font-black uppercase tracking-widest text-indigo-400 italic">Source de Données</h4>
-                <div class="bg-indigo-600/5 border border-indigo-600/20 p-5 rounded-2xl space-y-4">
-                    <div v-if="currentWidget.type === 'kpi'">
-                        <Dropdown v-model="currentWidget.dataSource" :options="laravelModels" placeholder="Modèle Laravel" class="w-full text-xs" />
-                        <InputText v-model="currentWidget.dataField" placeholder="Attribut SQL" class="w-full text-xs font-mono mt-2" />
+                <h4 :class="['text-[9px] font-black uppercase tracking-widest italic', currentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600']">Source de Données</h4>
+                <div class="bg-indigo-900/20 border border-indigo-500/30 p-5 rounded-2xl space-y-4">
+                    <div v-if="currentWidget.type === 'kpi'" class="space-y-3">
+                        <Dropdown v-model="currentWidget.dataSource.model" :options="laravelModels" optionLabel="name" optionValue="name" placeholder="Modèle Laravel" :class="['w-full text-xs', currentTheme === 'dark' ? '' : 'light-dropdown']" />
+                        <Dropdown v-if="currentWidget.dataSource.model" v-model="currentWidget.dataSource.column" :options="laravelModels.find(m => m.name === currentWidget.dataSource.model)?.columns || []" placeholder="Champ" :class="['w-full text-xs font-mono', currentTheme === 'dark' ? '' : 'light-dropdown']" />
+                        <Dropdown v-model="currentWidget.dataSource.method" :options="['COUNT', 'SUM', 'AVG', 'MAX', 'MIN']" placeholder="Méthode SQL" :class="['w-full text-xs', currentTheme === 'dark' ? '' : 'light-dropdown']" />
+                        <Dropdown v-model="currentWidget.config.timeScale" :options="['minutes', 'hours', 'days', 'weeks', 'months']" placeholder="Intervalle de données" :class="['w-full text-xs', currentTheme === 'dark' ? '' : 'light-dropdown']" />
                     </div>
-
                     <Button label="SYNC LARAVEL" icon="pi pi-refresh" @click="syncWithLaravel(currentWidget)" :loading="currentWidget.isSyncing" class="w-full p-button-indigo p-button-sm font-black" />
                 </div>
+
+                <!-- Configuration spécifique aux graphiques -->
                 <div v-if="currentWidget.type === 'chart'" class="grid grid-cols-2 gap-2">
                     <button v-for="ct in CHART_TYPES" :key="ct.value" @click="currentWidget.chartType = ct.value"
-                            :class="currentWidget.chartType === ct.value ? 'bg-indigo-600 border-indigo-500' : 'bg-white/5 border-white/5'"
+                            :class="[currentWidget.chartType === ct.value ? 'bg-indigo-600 border-indigo-500 text-white' : (currentTheme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200')]"
                             class="flex flex-col items-center p-3 rounded-xl border transition-all">
                         <i :class="ct.icon" class="text-lg"></i>
                         <span class="text-[8px] font-black uppercase mt-2">{{ ct.label }}</span>
                     </button>
                 </div>
                 <div v-if="currentWidget.type === 'chart'">
-                    <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-500 italic mt-6 mb-2">Échelle de Temps (Axe X)</h4>
-                     <Dropdown v-model="currentWidget.config.timeScale" :options="['minutes', 'hours', 'days', 'weeks', 'months']" placeholder="Axe X" class="w-full text-xs" />
+                    <h4 :class="['text-[9px] font-black uppercase tracking-widest italic mt-6 mb-2', currentTheme === 'dark' ? 'text-slate-500' : 'text-slate-400']">Échelle de Temps (Axe X)</h4>
+                     <Dropdown v-model="currentWidget.config.timeScale" :options="['minutes', 'hours', 'days', 'weeks', 'months']" placeholder="Axe X" :class="['w-full text-xs', currentTheme === 'dark' ? '' : 'light-dropdown']" />
                 </div>
             </section>
 
             <section v-if="currentWidget.type === 'chart'" class="space-y-4">
-                <h4 class="text-[9px] font-black uppercase tracking-widest text-indigo-400 italic">Séries de Données</h4>
-                <div v-for="(source, i) in currentWidget.dataSources" :key="i" class="bg-white/5 p-4 rounded-xl space-y-3 border-l-4" :style="{borderColor: source.color}">
-                    <Dropdown v-model="source.model" :options="laravelModels" placeholder="Modèle Laravel" class="w-full text-xs" />
-                    <InputText v-model="source.column" placeholder="Attribut SQL" class="w-full text-xs font-mono" />
+                <h4 :class="['text-[9px] font-black uppercase tracking-widest italic', currentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600']">Séries de Données</h4>
+                <div v-for="(source, i) in currentWidget.dataSources" :key="i" :class="['p-4 rounded-xl space-y-3 border-l-4', currentTheme === 'dark' ? 'bg-white/5' : 'bg-white border border-slate-200']" :style="{borderColor: source.color}">
+                    <Dropdown v-model="source.model" :options="laravelModels" optionLabel="name" optionValue="name" placeholder="Modèle Laravel" :class="['w-full text-xs', currentTheme === 'dark' ? '' : 'light-dropdown']" />
+                    <Dropdown v-if="source.model" v-model="source.column" :options="laravelModels.find(m => m.name === source.model)?.columns || []" placeholder="Champ" :class="['w-full text-xs font-mono mt-2', currentTheme === 'dark' ? '' : 'light-dropdown']" />
                     <input type="color" v-model="source.color" class="w-full h-8 bg-transparent cursor-pointer" />
                     <Button icon="pi pi-times" @click="currentWidget.dataSources.splice(i, 1)" class="p-button-danger p-button-text p-button-sm" />
                 </div>
@@ -976,18 +1166,18 @@ watch(currentWidget, (newValue) => {
             <TabView>
                 <TabPanel header="Document">
                     <div class="p-4 space-y-6">
-                        <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 italic">Format & Fond</h3>
-                        <div class="bg-white/5 p-6 rounded-2xl space-y-6">
+                        <h3 :class="['text-[10px] font-black uppercase tracking-[0.4em] italic', currentTheme === 'dark' ? 'text-indigo-400' : 'text-indigo-600']">Format & Fond</h3>
+                        <div :class="['p-6 rounded-2xl space-y-6', currentTheme === 'dark' ? 'bg-white/5' : 'bg-white border border-slate-200']">
                             <div class="field">
                                 <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Format</label>
-                                <Dropdown v-model="pages[currentPageIdx].format" :options="PAGE_FORMATS" optionLabel="name" class="w-full text-xs" />
+                                <Dropdown v-model="pages[currentPageIdx].format" :options="PAGE_FORMATS" optionLabel="name" :class="['w-full text-xs', currentTheme === 'dark' ? '' : 'light-dropdown']" />
                             </div>
                             <div class="field">
                                 <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Orientation</label>
                                 <SelectButton v-model="pages[currentPageIdx].orientation" :options="[{label: 'Portrait', value: 'portrait'}, {label: 'Paysage', value: 'landscape'}]" optionLabel="label" optionValue="value" class="w-full" />
                             </div>
                             <div class="field">
-                                <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Couleur de fond</label>
+                                <label class="text-[9px] font-black uppercase opacity-40 mb-2 block">Couleur de Fond</label>
                                 <input type="color" v-model="pages[currentPageIdx].background" class="w-full h-10 bg-transparent cursor-pointer" />
                             </div>
                             <div class="field">
@@ -1003,7 +1193,7 @@ watch(currentWidget, (newValue) => {
                         <div class="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
                             <div v-for="(page, index) in pages" :key="page.id"
                                  class="flex items-center gap-3 p-2 rounded-lg border-2"
-                                 :class="currentPageIdx === index ? 'bg-indigo-500/20 border-indigo-500' : 'bg-white/5 border-transparent hover:border-white/20'"
+                                 :class="currentPageIdx === index ? 'bg-indigo-500/20 border-indigo-500' : (currentTheme === 'dark' ? 'bg-white/5 border-transparent hover:border-white/20' : 'bg-white border-transparent hover:border-slate-300')"
                                  draggable="true"
                                  @dragstart="pageDragIndex = index"
                                  @dragover.prevent
@@ -1013,7 +1203,7 @@ watch(currentWidget, (newValue) => {
                                     <!-- Mini preview could go here -->
                                 </div>
                                 <div class="flex-grow">
-                                    <InputText v-model="page.name" @click.stop @blur="updatePageName(page)" class="p-inputtext-sm w-full mt-1 bg-black/20 border-white/10" />
+                                    <InputText v-model="page.name" @click.stop @blur="updatePageName(page)" :class="['p-inputtext-sm w-full mt-1', currentTheme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-white border-slate-300']" />
                                 </div>
                                 <div class="flex flex-col">
                                     <Button icon="pi pi-copy" @click.stop="duplicatePage(index)" v-tooltip.left="'Dupliquer'" class="p-button-secondary p-button-text p-button-sm" />
@@ -1073,6 +1263,19 @@ watch(currentWidget, (newValue) => {
             <Button label="Enregistrer les modifications" icon="pi pi-check" @click="saveTableStructure" class="p-button-indigo" />
         </template>
     </Dialog>
+
+    <!-- NOUVEAU : Dialogue pour sauvegarder un template -->
+    <Dialog v-model:visible="saveTemplateDialog" header="Sauvegarder comme Modèle" :style="{width: '30rem'}" modal>
+        <div class="field">
+            <label for="templateName" class="font-semibold">Nom du modèle</label>
+            <InputText id="templateName" v-model="newTemplateName" class="w-full mt-2" @keyup.enter="saveCurrentReportAsTemplate" />
+        </div>
+        <template #footer>
+            <Button label="Annuler" icon="pi pi-times" @click="saveTemplateDialog = false" class="p-button-text" />
+            <Button label="Sauvegarder" icon="pi pi-check" @click="saveCurrentReportAsTemplate" />
+        </template>
+    </Dialog>
+
 
     <Toast position="bottom-right" />
     <ConfirmDialog />
@@ -1234,6 +1437,18 @@ body {
   padding: 0.75rem !important;
   border-radius: 10px !important;
   width: 100%;
+}
+
+/* Styles pour le thème clair */
+.light-dropdown .p-dropdown-label,
+.light-dropdown .p-dropdown-trigger {
+    color: #334155; /* text-slate-700 */
+}
+.light-dropdown {
+    background-color: #ffffff;
+}
+.light-dropdown:not(.p-disabled):hover {
+    border-color: #94a3b8; /* slate-400 */
 }
 
 /* 6. SYSTÈME DE GRILLE & GUIDES (L290-L340) */

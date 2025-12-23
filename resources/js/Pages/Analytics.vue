@@ -1,113 +1,266 @@
 <script setup>
 import AppLayout from "@/sakai/layout/AppLayout.vue";
-import { computed } from 'vue';
-import Card from 'primevue/card';
-import Chart from 'primevue/chart';
+import { ref, computed, nextTick } from 'vue';
+import { Head } from '@inertiajs/vue3';
+import { useToast } from 'primevue/usetoast';
+import { useConfirm } from "primevue/useconfirm";
+import axios from 'axios';
 
+// --- PDF & EXPORT ---
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+// --- COMPOSANTS PRIMEVUE ---
+import Carousel from 'primevue/carousel';
+import Button from 'primevue/button';
+import ProgressSpinner from 'primevue/progressspinner';
+import ConfirmDialog from 'primevue/confirmdialog';
+
+// --- MOTEUR GRAPHIQUE ---
+import {
+    Chart as ChartJS, Title, Tooltip, Legend, BarElement,
+    CategoryScale, LinearScale, PointElement, LineElement, ArcElement, RadialLinearScale
+} from 'chart.js';
+import { Bar, Line, Pie, Doughnut, Radar } from 'vue-chartjs';
+
+ChartJS.register(
+    Title, Tooltip, Legend, BarElement,
+    CategoryScale, LinearScale, PointElement, LineElement, ArcElement, RadialLinearScale
+);
+
+// --- PROPS & ÉTATS ---
 const props = defineProps({
-    // La liste des configurations de rapport à afficher
-    reportWidgets: {
-        type: Array,
-        required: true,
-    },
-    // Un objet contenant les données réelles pour chaque source de données
-    // Exemple: { tasks_by_status: { labels: [...], data: [...] }, ... }
-    reportData: {
-        type: Object,
-        required: true,
-    }
+    reportTemplates: { type: Array, default: () => [] }
 });
 
-// Options de base pour les graphiques, peuvent être étendues
-const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
+const toast = useToast();
+const confirm = useConfirm();
+const isLoading = ref(false);
+const selectedTemplate = ref(null);
+const pages = ref([]);
+const currentPageIdx = ref(0);
+
+// --- LOGIQUE DE SÉLECTION ---
+const isTemplateActive = (id) => selectedTemplate.value?.id === id;
+
+const selectTemplate = async (template) => {
+    if (isTemplateActive(template.id)) return;
+
+    isLoading.value = true;
+    selectedTemplate.value = template;
+
+    try {
+        await new Promise(r => setTimeout(r, 400)); // Effet de transition
+        pages.value = typeof template.content === 'string' ? JSON.parse(template.content) : template.content;
+        currentPageIdx.value = 0;
+        await syncAllWidgets();
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Contenu du template corrompu.' });
+        pages.value = [];
+    } finally {
+        isLoading.value = false;
+    }
 };
 
-const kpiWidgets = computed(() => props.reportWidgets.filter(w => w.chart_type === 'kpi'));
-const chartWidgets = computed(() => props.reportWidgets.filter(w => w.chart_type !== 'kpi'));
+// --- SYNCHRONISATION DES DONNÉES ---
+const syncAllWidgets = async () => {
+    if (!pages.value.length) return;
+    const promises = [];
 
-/**
- * Formate les données pour un widget spécifique.
- * @param {Object} widget - La configuration du widget.
- * @returns {Object} - Les données formatées pour le composant Chart de PrimeVue.
- */
-const getChartDataForWidget = (widget) => {
-    const data = props.reportData[widget.data_source];
-    if (!data) {
-        return { labels: ['Données non disponibles'], datasets: [{ data: [1] }] };
+    pages.value.forEach(page => {
+        page.widgets.forEach(widget => {
+            if (['chart', 'kpi'].includes(widget.type)) {
+                widget.isSyncing = true;
+                const payload = {
+                    type: widget.type,
+                    config: widget.type === 'chart'
+                        ? { sources: widget.dataSources, timeScale: widget.config.timeScale || 'days' }
+                        : { model: widget.dataSource, column: widget.dataColumn, method: widget.dataMethod || 'COUNT' }
+                };
+
+                const p = axios.post(route('quantum.query'), payload)
+                    .then(res => {
+                        if (widget.type === 'chart') widget.data = res.data;
+                        if (widget.type === 'kpi') widget.config.value = res.data.value;
+                    })
+                    .finally(() => widget.isSyncing = false);
+                promises.push(p);
+            }
+        });
+    });
+    await Promise.all(promises);
+};
+
+// --- LOGIQUE D'EXPORTATION ---
+const exportToPDF = async () => {
+    isLoading.value = true;
+    toast.add({ severity: 'info', summary: 'Export', detail: 'Génération du document multi-pages...' });
+
+    try {
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const canvasElement = document.getElementById('report-canvas');
+
+        for (let i = 0; i < pages.value.length; i++) {
+            currentPageIdx.value = i;
+            await nextTick();
+            await new Promise(r => setTimeout(r, 600)); // Temps de rendu
+
+            const canvas = await html2canvas(canvasElement, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            if (i > 0) doc.addPage();
+            doc.addImage(imgData, 'PNG', 0, 0, 210, 297);
+        }
+
+        doc.save(`Rapport_${selectedTemplate.value.name}.pdf`);
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'PDF téléchargé.' });
+    } catch (err) {
+        toast.add({ severity: 'error', summary: 'Erreur Export', detail: 'Échec de la génération.' });
+    } finally {
+        isLoading.value = false;
     }
+};
 
-    // Logique de formatage basée sur le type de graphique
-    const baseDatasetOptions = {
-        backgroundColor: ['#42A5F5', '#FFA726', '#66BB6A', '#EF5350', '#AB47BC', '#26C6DA', '#FFCA28'],
-        borderColor: '#1E88E5',
-    };
+const sendByEmail = () => {
+    confirm.require({
+        message: 'Souhaitez-vous recevoir ce rapport par email immédiatement ?',
+        header: 'Envoi par Email',
+        icon: 'pi pi-envelope',
+        accept: async () => {
+            try {
+                await axios.post(route('quantum.share'), { template_id: selectedTemplate.value.id, pages: pages.value });
+                toast.add({ severity: 'success', summary: 'Envoyé', detail: 'Vérifiez votre boîte de réception.' });
+            } catch (e) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'envoyer l\'email.' });
+            }
+        }
+    });
+};
 
-    if (widget.chart_type === 'line' || widget.chart_type === 'bar') {
-        return {
-            labels: data.labels || [],
-            datasets: [{
-                label: widget.name,
-                data: data.data || [],
-                ...baseDatasetOptions
-            }]
-        };
-    }
-
+// --- STYLES & RENDU ---
+const canvasStyles = computed(() => {
+    const page = pages.value[currentPageIdx.value];
+    if (!page) return {};
+    const format = page.format || { w: 793, h: 1122 };
+    const isLandscape = page.orientation === 'landscape';
     return {
-        labels: data.labels || [],
-        datasets: [{
-            data: data.data || [],
-            ...baseDatasetOptions
-        }]
+        width: (isLandscape ? format.h : format.w) + 'px',
+        height: (isLandscape ? format.w : format.h) + 'px',
+        backgroundColor: page.background || '#ffffff',
+        transform: `scale(0.75)`,
+        transformOrigin: 'top center'
     };
+});
+
+const getWidgetStyle = (w) => ({
+    position: 'absolute',
+    left: w.x + 'px', top: w.y + 'px',
+    width: w.w + 'px', height: w.h + 'px',
+    zIndex: w.style?.zIndex || 10,
+    backgroundColor: w.style?.backgroundColor || 'transparent',
+    borderRadius: (w.style?.borderRadius || 0) + 'px',
+    border: `${w.style?.borderWidth || 0}px ${w.style?.borderStyle || 'solid'} ${w.style?.borderColor || '#000'}`,
+    transform: `rotate(${w.style?.rotation || 0}deg)`,
+    padding: (w.style?.padding || 0) + 'px',
+    overflow: 'hidden'
+});
+
+const getChartComponent = (type) => {
+    const map = { bar: Bar, line: Line, pie: Pie, doughnut: Doughnut, radar: Radar };
+    return map[type] || Bar;
 };
 
-const getGridClass = (widget) => {
-    const colSpan = widget.grid_options?.col_span || 6;
-    return `col-span-12 md:col-span-${colSpan}`;
-};
-
-const getRowStyle = (widget) => {
-    const rowSpan = widget.grid_options?.row_span || 1;
-    // Chaque unité de hauteur correspond à 24rem (environ 384px)
-    return { minHeight: `${rowSpan * 24}rem` };
-};
-
+const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } };
 </script>
 
 <template>
-    <AppLayout title="Analyse et Rapports">
-        <Head title="Analyse" />
+    <AppLayout>
+        <Head title="Quantum Analytics" />
+        <ConfirmDialog />
 
-        <div class="grid grid-cols-12 gap-6">
+        <div class="bg-[#f8fafc] min-h-screen p-6">
+            <header class="flex justify-between items-end mb-8">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
+                        Quantum <span class="text-indigo-600">Architect</span>
+                    </h1>
+                    <p class="text-slate-500 text-xs font-medium">Reporting Haute Fidélité v11.5</p>
+                </div>
 
-            <!-- Section pour les indicateurs clés (KPI) -->
-            <div v-for="widget in kpiWidgets" :key="widget.id" :class="getGridClass(widget)">
-                <Card class="h-full flex flex-col justify-center items-center text-center p-4">
-                    <template #title><span class="text-lg font-semibold text-gray-500">{{ widget.name }}</span></template>
-                    <template #content>
-                        <div class="text-5xl font-bold text-primary-600 mt-2">
-                            {{ reportData[widget.data_source]?.value ?? 'N/A' }}
+                <div v-if="selectedTemplate" class="flex gap-2">
+                    <Button icon="pi pi-refresh" @click="syncAllWidgets" :loading="isLoading" class="p-button-sm p-button-text p-button-secondary" />
+                    <div class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1">
+                        <Button icon="pi pi-file-pdf" @click="exportToPDF" v-tooltip.bottom="'Télécharger PDF'" class="p-button-text p-button-sm p-button-secondary" />
+                        <Button icon="pi pi-envelope" @click="sendByEmail" v-tooltip.bottom="'Envoyer Email'" class="p-button-text p-button-sm p-button-secondary" />
+                    </div>
+                </div>
+            </header>
+
+            <section class="mb-10">
+                <Carousel :value="reportTemplates" :numVisible="4" :numScroll="1" :circular="true" class="custom-carousel">
+                    <template #item="slotProps">
+                        <div class="p-2">
+                            <div @click="selectTemplate(slotProps.data)"
+                                :class="['card-v11', isTemplateActive(slotProps.data.id) ? 'active' : '']">
+                                <div class="icon-box"><i class="pi pi-file text-xl"></i></div>
+                                <div class="content">
+                                    <span class="title">{{ slotProps.data.name }}</span>
+                                    <span class="subtitle">Format A4</span>
+                                </div>
+                            </div>
                         </div>
                     </template>
-                </Card>
-            </div>
+                </Carousel>
+            </section>
 
-            <!-- Section pour les graphiques -->
-            <div v-for="widget in chartWidgets" :key="widget.id" :class="getGridClass(widget)">
-                <Card class="h-full">
-                    <template #title>{{ widget.name }}</template>
-                    <template #subtitle>{{ widget.description }}</template>
-                    <template #content>
-                        <div class="relative" :style="getRowStyle(widget)">
-                            <Chart :type="widget.chart_type" :data="getChartDataForWidget(widget)" :options="chartOptions" class="absolute top-0 left-0 w-full h-full" />
+            <div class="viewport-container">
+                <transition name="quantum-fade" mode="out-in">
+                    <div v-if="selectedTemplate && pages.length > 0" :key="selectedTemplate.id" class="flex flex-col items-center">
+                        <div class="flex items-center gap-6 mb-8 bg-white/80 backdrop-blur-md border border-white px-4 py-2 rounded-2xl shadow-sm">
+                            <Button icon="pi pi-chevron-left" @click="currentPageIdx--" :disabled="currentPageIdx === 0" class="p-button-rounded p-button-text p-button-sm" />
+                            <span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Page {{ currentPageIdx + 1 }} / {{ pages.length }}</span>
+                            <Button icon="pi pi-chevron-right" @click="currentPageIdx++" :disabled="currentPageIdx === pages.length - 1" class="p-button-rounded p-button-text p-button-sm" />
                         </div>
-                    </template>
-                </Card>
-            </div>
 
+                        <div id="report-canvas" :style="canvasStyles" class="relative bg-white shadow-2xl">
+                            <div v-for="w in pages[currentPageIdx].widgets" :key="w.id" :style="getWidgetStyle(w)">
+                                <div v-if="w.type === 'text'" :style="{ fontFamily: w.config.font, fontSize: w.config.size+'px', color: w.config.color, textAlign: w.config.align, fontWeight: w.config.weight }">
+                                    {{ w.content }}
+                                </div>
+                                <div v-if="w.type === 'chart'" class="w-full h-full p-2">
+                                    <component :is="getChartComponent(w.chartType)" :data="w.data" :options="chartOptions" />
+                                </div>
+                                <div v-if="w.type === 'kpi'" class="w-full h-full flex flex-col justify-center text-center">
+                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">{{ w.config.label }}</span>
+                                    <div class="text-3xl font-black" :style="{ color: w.config.color || '#4F46E5' }">
+                                        {{ w.config.prefix || '' }}{{ w.config.value }}
+                                    </div>
+                                </div>
+                                <div v-if="w.isSyncing" class="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
+                                    <ProgressSpinner style="width:20px;height:20px" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="empty-state">
+                        <i class="pi pi-clone text-4xl text-slate-300 mb-4"></i>
+                        <h3 class="text-slate-400 font-bold uppercase tracking-widest text-sm">Sélectionnez un modèle</h3>
+                    </div>
+                </transition>
+            </div>
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.card-v11 { @apply bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-all duration-300 relative; }
+.card-v11:hover { @apply border-indigo-300 -translate-y-1 shadow-lg; }
+.card-v11.active { @apply border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/10; }
+.icon-box { @apply w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400; }
+.active .icon-box { @apply bg-indigo-600 text-white shadow-lg; }
+.content .title { @apply block text-sm font-bold text-slate-800 truncate w-32; }
+.content .subtitle { @apply block text-[10px] text-slate-400 font-medium uppercase mt-0.5; }
+.viewport-container { @apply bg-slate-200/50 rounded-[2rem] p-10 min-h-[800px] border border-slate-200/60 flex justify-center; }
+.quantum-fade-enter-active, .quantum-fade-leave-active { transition: all 0.4s ease; }
+.quantum-fade-enter-from, .quantum-fade-leave-to { opacity: 0; transform: translateY(10px); }
+.empty-state { @apply flex flex-col items-center justify-center w-full h-[500px]; }
+</style>

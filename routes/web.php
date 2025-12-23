@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\AnalyticController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginController;
@@ -34,6 +35,7 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportTemplateController;
 use App\Http\Controllers\UnityController;
 
 /*
@@ -95,6 +97,9 @@ Route::middleware('auth', 'verified')->group(function () {
     'connections' => ConnectionController::class,
     'interventions' => InterventionRequestController::class,
     'reports' => ReportController::class,
+ 'report-templates' => ReportTemplateController::class,
+ 'analytics' => AnalyticController::class,
+
   ]);
 
   Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
@@ -110,8 +115,8 @@ Route::put('/interventions/{intervention}/assign', [InterventionRequestControlle
 Route::put('/interventions/{intervention}/cancel', [InterventionRequestController::class, 'cancel'])->name('interventions.cancel');
 Route::put('/interventions/{intervention}/validate', [InterventionRequestController::class, 'validateIntervention'])->name('interventions.validate');
 Route::post('/reports/reorder', [ReportController::class, 'reorder'])->name('reports.reorder');
-Route::get('/quantum/models', [ReportController::class, 'getModels']);
-Route::get('/quantum/models', [ReportController::class, 'fetchData']);
+Route::get('quantum/models', [ReportController::class, 'getModels']);
+Route::post('quantum/query', [ReportController::class, 'fetchData'])->name('quantum.query');
 
 
 });

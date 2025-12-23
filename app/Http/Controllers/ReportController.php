@@ -3,31 +3,189 @@
 namespace App\Http\Controllers;
 
 use App\Models\Report;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\{Auth, DB, File, Schema};
 use Inertia\Inertia;
-use Illuminate\Support\Facades\File;
 
 class ReportController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Synchronise et liste les modèles disponibles ainsi que leurs colonnes.
      */
+    public function getModels()
+    {
+        try {
+            $modelPath = app_path('Models');
+            if (!File::isDirectory($modelPath)) return response()->json([]);
+
+            $files = File::files($modelPath);
+
+            $models = collect($files)->map(function ($file) {
+                $name = $file->getFilenameWithoutExtension();
+                $className = "App\\Models\\$name";
+
+                if (class_exists($className)) {
+                    $model = new $className;
+                    return [
+                        'id'      => $name, // On garde le nom court pour faciliter le mapping front
+                        'full_id' => $className,
+                        'name'    => $name,
+                        'columns' => Schema::getColumnListing($model->getTable()),
+                    ];
+                }
+                return null;
+            })->filter()->values();
+
+            return response()->json($models);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Point d'entrée unique pour l'extraction des données (Charts & KPIs).
+     */
+    public function fetchData(Request $request)
+    {
+        $validated = $request->validate([
+            'type'   => 'required|string|in:chart,kpi',
+            'config' => 'required|array',
+            // Validation commune
+            'config.timeScale' => 'required|string',
+            // Validation spécifique
+            'config.sources' => 'required_if:type,chart|array',
+            'config.model'   => 'required_if:type,kpi|string',
+            'config.column'  => 'required_if:type,kpi|string',
+            'config.method'  => 'required_if:type,kpi|string|in:COUNT,SUM,AVG,MAX,MIN',
+        ]);
+
+        if ($validated['type'] === 'chart') {
+            return $this->fetchChartData($validated['config']);
+        }
+
+        return $this->fetchKPIData($validated['config']);
+    }
+
+    /**
+     * Logique spécifique pour les widgets KPI (Valeur unique)
+     */
+    private function fetchKPIData($config)
+    {
+        $modelClass = "App\\Models\\" . $config['model'];
+        $column = $config['column'];
+        $method = strtolower($config['method']);
+        $timeScale = $config['timeScale'];
+
+        if (!class_exists($modelClass)) {
+            return response()->json(['error' => 'Modèle introuvable'], 404);
+        }
+
+        $dateRange = $this->getDateRange($timeScale);
+
+        $value = $modelClass::query()
+            ->where('created_at', '>=', $dateRange)
+            ->$method($column);
+
+        return response()->json([
+            'value' => is_numeric($value) ? number_format($value, 2, '.', '') : $value,
+            'label' => strtoupper($method) . "($column)"
+        ]);
+    }
+
+    /**
+     * Logique spécifique pour les Graphiques (Séries temporelles)
+     */
+    private function fetchChartData($config)
+    {
+        $timeScale = $config['timeScale'];
+        $dateFormat = $this->getDateFormat($timeScale);
+        $dateRange = $this->getDateRange($timeScale);
+
+        $allLabels = collect();
+        $datasets = [];
+
+        foreach ($config['sources'] as $source) {
+            $modelClass = "App\\Models\\" . $source['model'];
+            $column = $source['column'];
+            $color = $source['color'] ?? '#6366F1';
+
+            if (!class_exists($modelClass)) continue;
+
+            $model = new $modelClass;
+            $results = DB::table($model->getTable())
+                ->select(
+                    DB::raw("DATE_FORMAT(created_at, '$dateFormat') as label"),
+                    DB::raw("COUNT($column) as total")
+                )
+                ->where('created_at', '>=', $dateRange)
+                ->groupBy('label')
+                ->orderBy(DB::raw("MIN(created_at)"), 'ASC')
+                ->pluck('total', 'label');
+
+            // Fusionner les labels pour avoir un axe X commun
+            $allLabels = $allLabels->merge($results->keys())->unique()->sort();
+
+            $datasets[] = [
+                'label'           => "{$source['model']} ({$column})",
+                'data'            => $results, // On stocke temporairement l'objet complet
+                'original_results'=> $results,
+                'borderColor'     => $color,
+                'backgroundColor' => $color . '33',
+                'borderWidth'     => 2,
+                'tension'         => 0.4,
+                'fill'            => true,
+            ];
+        }
+
+        // Réaligner les données de chaque dataset sur les labels globaux (remplir par 0 si vide)
+        $formattedDatasets = collect($datasets)->map(function ($ds) use ($allLabels) {
+            $alignedData = $allLabels->map(fn($l) => $ds['original_results']->get($l, 0))->values();
+            unset($ds['original_results']); // Nettoyage
+            $ds['data'] = $alignedData;
+            return $ds;
+        });
+
+        return response()->json([
+            'labels'   => $allLabels->values(),
+            'datasets' => $formattedDatasets,
+        ]);
+    }
+
+    // --- HELPERS TEMPORELS ---
+
+    private function getDateFormat($timeScale) {
+        return match ($timeScale) {
+            'minutes' => '%H:%i',
+            'hours'   => '%H:00',
+            'days'    => '%d %b',
+            'weeks'   => 'Sem %u',
+            'months'  => '%b %Y',
+            default   => '%Y-%m-%d',
+        };
+    }
+
+    private function getDateRange($timeScale) {
+        return match ($timeScale) {
+            'minutes' => now()->subHours(1),
+            'hours'   => now()->subHours(24),
+            'days'    => now()->subDays(30),
+            'weeks'   => now()->subWeeks(12),
+            'months'  => now()->subMonths(12),
+            default   => now()->subDays(30),
+        };
+    }
+
+    // --- CRUD MÉTHODES ---
+
     public function index(Request $request)
     {
         $query = Report::query()->with('user:id,name');
 
-        // --- FILTRES ---
-        $query->when($request->report_type && $request->report_type !== 'all', fn($q) => $q->where('report_type', $request->report_type))
-              ->when($request->status && $request->status !== 'all', fn($q) => $q->where('status', $request->status));
-
-        // --- RECHERCHE ---
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'like', "%{$request->search}%")
+                  ->orWhere('description', 'like', "%{$request->search}%");
+            });
         }
 
         return Inertia::render('Reports', [
@@ -36,166 +194,26 @@ class ReportController extends Controller
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return Inertia::render('Reports/Create', [
-            'reportTypes' => ['daily', 'weekly', 'monthly', 'custom'], // Example types
-            'statuses' => ['generated', 'pending', 'failed'], // Example statuses
-            'users' => User::all(['id', 'name']),
-        ]);
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'report_type' => 'required|string|in:daily,weekly,monthly,custom',
-            'parameters' => 'nullable|array',
-            'status' => 'nullable|string|in:generated,pending,failed',
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string',
+            'report_type'  => 'required|string|in:daily,weekly,monthly,custom',
+            'parameters'   => 'nullable|array',
+            'status'       => 'nullable|string',
             'scheduled_at' => 'nullable|date',
         ]);
 
         $validated['user_id'] = Auth::id();
-        $validated['status'] = $validated['status'] ?? 'pending';
-
         Report::create($validated);
 
-        return redirect()->route('reports.index')->with('success', 'Rapport créé avec succès.');
+        return redirect()->route('reports.index')->with('success', 'Rapport Quantum enregistré.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Report $report)
-    {
-        return Inertia::render('Reports/Show', [
-            'report' => $report->load('user'),
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Report $report)
-    {
-        return Inertia::render('Reports/Edit', [
-            'report' => $report->load('user'),
-            'reportTypes' => ['daily', 'weekly', 'monthly', 'custom'],
-            'statuses' => ['generated', 'pending', 'failed'],
-            'users' => User::all(['id', 'name']),
-        ]);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Report $report)
-    {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'report_type' => 'required|string|in:daily,weekly,monthly,custom',
-            'parameters' => 'nullable|array',
-            'status' => 'required|string|in:generated,pending,failed',
-            'scheduled_at' => 'nullable|date',
-            'file_path' => 'nullable|string', // Allow updating file path if report is generated
-            'generated_at' => 'nullable|date', // Allow updating generated_at
-        ]);
-
-        $report->update($validated);
-
-        return redirect()->route('reports.index')->with('success', 'Rapport mis à jour avec succès.');
-    }
-
-   public function getModels()
-    {
-        $modelPath = app_path('Models');
-        $files = File::files($modelPath);
-
-        $models = collect($files)->map(function ($file) {
-            $name = $file->getFilenameWithoutExtension();
-            return [
-                'id'   => "App\\Models\\$name",
-                'name' => $name
-            ];
-        });
-
-        return response()->json($models);
-    }
-
-    /**
-     * Mission 2 : Extraire les données selon la config du widget (POST)
-     * Route: Route::post('/api/quantum/query', [QuantumReportController::class, 'fetchData']);
-     */
-    public function fetchData(Request $request)
-    {
-        $request->validate([
-            'model'   => 'required|string',
-            'column'  => 'required|string', // ex: 'price' ou 'id'
-            'method'  => 'required|in:SUM,AVG,COUNT,MAX',
-        ]);
-
-        $modelClass = $request->input('model');
-
-        // Vérification de sécurité pour s'assurer que la classe existe
-        if (!class_exists($modelClass) || !is_subclass_of($modelClass, \Illuminate\Database\Eloquent\Model::class)) {
-            return response()->json(['error' => 'Modèle introuvable'], 404);
-        }
-
-        // Calcul de la valeur KPI
-        $query = $modelClass::query();
-        $method = strtolower($request->input('method'));
-        $value = $query->$method($request->input('column'));
-
-        // Génération formatée pour Chart.js (Exemple : Groupé par mois)
-        $chartData = $this->generateChartData($modelClass, $request->input('column'), $method);
-
-        return response()->json([
-            'value'     => number_format($value, 2, '.', ' '),
-            'chart'     => $chartData,
-            'timestamp' => now()->toDateTimeString()
-        ]);
-    }
-
-    private function generateChartData($modelClass, $column, $method)
-    {
-        // Exemple simple : on groupe les données des 6 derniers mois
-        $data = DB::table((new $modelClass)->getTable())
-            ->select(DB::raw('MONTHNAME(created_at) as label'), DB::raw("$method($column) as value"))
-            ->where('created_at', '>=', now()->subMonths(6))
-            ->groupBy('label')
-            ->get();
-
-        return [
-            'labels' => $data->pluck('label'),
-            'datasets' => [[
-                'label' => "Analyse $method",
-                'data'  => $data->pluck('value'),
-                'backgroundColor' => '#6366f1'
-            ]]
-        ];
-    }
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Report $report)
     {
         $report->delete();
-        return redirect()->route('reports.index')->with('success', 'Rapport supprimé avec succès.');
-    }
-
-    public function reorder(Request $request)
-    {
-        foreach ($request->orders as $item) {
-            Report::where('id', $item['id'])->update(['order' => $item['order']]);
-        }
-        return back();
+        return back()->with('success', 'Supprimé.');
     }
 }
