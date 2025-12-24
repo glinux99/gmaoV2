@@ -1,11 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, Head } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import DataTable from 'primevue/datatable';
@@ -21,6 +17,7 @@ import MultiSelect from 'primevue/multiselect';
 import SplitButton from 'primevue/splitbutton';
 import OverlayPanel from 'primevue/overlaypanel';
 import Calendar from 'primevue/calendar';
+import Tag from 'primevue/tag';
 import { useToast } from "primevue/usetoast";
 
 const props = defineProps({
@@ -36,16 +33,6 @@ const props = defineProps({
     interventionReasons: Array
 });
 
-const REASONS = props.interventionReasons || [
-    'Dépannage Réseau Urgent', 'Réparation Éclairage Public', 'Entretien Réseau Planifié',
-    'Incident Majeur Réseau', 'Support Achat MobileMoney', 'Support Achat Token Impossible',
-    'Aide Recharge (Sans clavier)', 'Élagage Réseau', 'Réparation Chute de Tension',
-    'Coupure Individuelle (CI)', 'CI Équipement Client', 'CI Équipement Virunga',
-    'CI Vol de Câble', 'Dépannage Clavier Client', 'Réparation Compteur Limité',
-    'Rétablissement Déconnexion', 'Déplacement Câble (Planifié)', 'Déplacement Poteau (Planifié)',
-    'Reconnexion Client', 'Support Envoi Formulaire', 'Intervention Non-Classifiée'
-];
-
 const toast = useToast();
 const opFilters = ref();
 const isModalOpen = ref(false);
@@ -53,35 +40,30 @@ const deleteDialog = ref(false);
 const dt = ref();
 const op = ref();
 const selectedItems = ref([]);
-
-// --- MÉMOIRE PERSISTANTE (Session utilisateur) ---
 const lastAssignable = ref({ type: null, id: null });
 
-// --- CONFIGURATION DES COLONNES ---
+// --- CONFIGURATION V11 ---
 const allColumns = [
-    { field: 'title', header: 'Titre', sortable: true },
+    { field: 'title', header: 'Référence', sortable: true },
     { field: 'status', header: 'Statut', sortable: true },
     { field: 'customer_code', header: 'Code Client', sortable: false },
     { field: 'client_name', header: 'Nom Client', sortable: false },
     { field: 'region_name', header: 'Région', sortable: false },
     { field: 'priority', header: 'Priorité', sortable: true },
-    { field: 'scheduled_date', header: 'Date Prévue', sortable: true },
+    { field: 'scheduled_date', header: 'Échéance', sortable: true },
     { field: 'assigned_to_name', header: 'Assigné à', sortable: false },
-    { field: 'is_validated', header: 'Validée', sortable: true },
 ];
 
-const selectedColumnFields = ref(['title', 'status', 'customer_code', 'client_name', 'priority', 'scheduled_date']);
+const selectedColumnFields = ref(['title', 'status', 'client_name', 'priority', 'scheduled_date', 'assigned_to_name']);
 const displayedColumns = computed(() => allColumns.filter(col => selectedColumnFields.value.includes(col.field)));
 
-// --- GESTION DES FILTRES ---
+// --- LOGIQUE FILTRES ---
 const search = ref(props.filters?.search || '');
 const filterForm = ref({
     status: props.filters?.status || null,
     region_id: props.filters?.region_id || null,
     priority: props.filters?.priority || null,
 });
-
-const activeFiltersCount = computed(() => Object.values(filterForm.value).filter(v => v !== null && v !== '').length);
 
 const applyFilters = () => {
     router.get(route('interventions.index'), {
@@ -90,37 +72,27 @@ const applyFilters = () => {
     }, { preserveState: true, replace: true });
 };
 
-const resetFilters = () => {
-    filterForm.value = { status: null, region_id: null, priority: null };
-    search.value = '';
-    applyFilters();
+// --- STYLISATION DES BADGES (V11 Design) ---
+const getStatusSeverity = (status) => {
+    switch (status?.toLowerCase()) {
+        case 'completed': return 'success';
+        case 'pending': return 'warning';
+        case 'cancelled': return 'danger';
+        case 'in_progress': return 'info';
+        default: return 'secondary';
+    }
 };
 
-const toggleColumnSelection = (event) => op.value.toggle(event);
-
-// --- ACTIONS DE SUPPRESSION ---
-const confirmDeleteSelected = () => {
-    router.post(route('interventions.bulk-destroy'), {
-        ids: selectedItems.value.map(i => i.id)
-    }, {
-        onSuccess: () => {
-            deleteDialog.value = false;
-            selectedItems.value = [];
-            toast.add({ severity: 'success', summary: 'Supprimé', detail: 'Éléments supprimés', life: 3000 });
-        }
-    });
+const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+        case 'haute': return '#ef4444';
+        case 'moyenne': return '#f59e0b';
+        case 'basse': return '#10b981';
+        default: return '#64748b';
+    }
 };
 
-// --- FORMULAIRE MODAL ---
-const requester_type = ref('client');
-
-const connectionsList = computed(() => {
-    return props.connections.map(c => ({
-        ...c,
-        search_label: `${c.customer_code} - ${c.first_name} ${c.last_name}`
-    }));
-});
-
+// --- FORMULAIRE & ACTIONS ---
 const form = useForm({
     id: null, title: '', description: '', status: 'pending',
     requested_by_user_id: null, requested_by_connection_id: null,
@@ -133,13 +105,6 @@ const openCreate = () => {
     form.reset();
     form.title = `PLT-${Math.floor(Date.now() / 1000)}`;
     form.scheduled_date = new Date();
-
-    // Remplissage automatique du technicien par défaut (mémoire)
-    if (lastAssignable.value.id) {
-        form.assignable_type = lastAssignable.value.type;
-        form.assignable_id = lastAssignable.value.id;
-    }
-
     isModalOpen.value = true;
 };
 
@@ -149,371 +114,244 @@ const openEdit = (data) => {
         ...data,
         scheduled_date: data.scheduled_date ? new Date(data.scheduled_date) : null
     }).reset();
-    requester_type.value = data.requested_by_connection_id ? 'client' : 'agent';
     isModalOpen.value = true;
-};
-
-const isAssignModalOpen = ref(false);
-const assignForm = useForm({
-    id: null,
-    assignable_type: null,
-    assignable_id: null,
-});
-
-/**
- * AUTOMATISATION : Remplissage des données géographiques dès qu'un client est choisi
- */
-const updateFormWithConnectionData = (connectionId) => {
-    const selectedConnection = props.connections.find(c => c.id === connectionId);
-    if (selectedConnection) {
-        form.region_id = selectedConnection.region_id;
-        form.zone_id = selectedConnection.zone_id;
-        form.gps_latitude = selectedConnection.gps_latitude;
-        form.gps_longitude = selectedConnection.gps_longitude;
-
-        toast.add({ severity: 'info', summary: 'Infos Client', detail: 'Localisation chargée automatiquement', life: 2000 });
-    }
-};
-
-const submit = () => {
-    // MÉMORISATION : On stocke l'ID du technicien avant l'envoi
-    if (form.assignable_id) {
-        lastAssignable.value.type = form.assignable_type;
-        lastAssignable.value.id = form.assignable_id;
-    }
-     form.scheduled_date = form.scheduled_date ? new Date(form.scheduled_date).toISOString().slice(0, 19).replace('T', ' ') : null;
-    const url = form.id ? route('interventions.update', form.id) : route('interventions.store');
-    console.log(form);
-    form[form.id ? 'put' : 'post'](url, {
-        onSuccess: () => {
-            isModalOpen.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Enregistrement réussi', life: 3000 });
-
-        }
-    });
-};
-
-const validateIntervention = (intervention) => {
-console.log(intervention);
-    router.put(route('interventions.validate', intervention.id), {}, {
-        onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Intervention validée', life: 3000 });
-        },
-        onError: (errors) => {
-            console.error("Erreur lors de la validation de l'intervention", errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de valider l\'intervention', life: 3000 });
-        }
-    });
-};
-
-const cancelIntervention = (intervention) => {
-    router.put(route('interventions.cancel', intervention.id), {}, {
-        onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Intervention annulée', life: 3000 });
-        },
-        onError: (errors) => {
-            console.error("Erreur lors de l'annulation de l'intervention", errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'annuler l\'intervention', life: 3000 });
-        }
-    });
-};
-
-const openAssignModal = (intervention) => {
-    assignForm.reset();
-    assignForm.id = intervention.id;
-    assignForm.assignable_type = intervention.assignable_type;
-    assignForm.assignable_id = intervention.assignable_id;
-    isAssignModalOpen.value = true;
-    assignForm.status = intervention.status; // Pré-remplir le statut actuel
-};
-
-const submitAssign = () => {
-    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-    console.log(assignForm);
-    assignForm.put(route('interventions.assign', assignForm.id), {
-        onSuccess: () => {
-            isAssignModalOpen.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Intervention assignée', life: 3000 });
-        },
-        onError: (errors) => {
-            console.error("Erreur lors de l'assignation de l'intervention", errors); // Log the errors
-            if (errors.status) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: errors.status, life: 3000 });
-            }
-
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'assigner l\'intervention', life: 3000 });
-        },
-    });
 };
 
 const formattedList = computed(() => (props.interventionRequests?.data || []).map(ir => ({
     ...ir,
     client_name: ir.requested_by_connection ? `${ir.requested_by_connection.first_name} ${ir.requested_by_connection.last_name}` : '-',
     customer_code: ir.requested_by_connection ? ir.requested_by_connection.customer_code : '-',
-    assigned_to_name: ir.assignable ? ir.assignable.name : '-',
+    assigned_to_name: ir.assignable ? ir.assignable.name : 'Non assigné',
     region_name: ir.region?.designation || '-',
 })));
 
-const assignableTypes = ref([
-    { label: 'Technicien', value: 'App\\Models\\User' },
-    { label: 'Équipe', value: 'App\\Models\\Team' },
-]);
+const assignableTypes = [{ label: 'Technicien', value: 'App\\Models\\User' }, { label: 'Équipe', value: 'App\\Models\\Team' }];
+const getAssignables = (type) => type === 'App\\Models\\User' ? props.users : (type === 'App\\Models\\Team' ? props.teams : []);
 
-const getAssignables = (type) => {
-    if (type === 'App\\Models\\User') {
-        return props.users;
-    }
-    if (type === 'App\\Models\\Team') {
-        return props.teams;
-    }
-    return [];
+const submit = () => {
+    const url = form.id ? route('interventions.update', form.id) : route('interventions.store');
+    form.post(url, { onSuccess: () => isModalOpen.value = false });
 };
-
 </script>
 
 <template>
-    <AppLayout title="Interventions">
+    <AppLayout>
+        <Head title="Gestion des Interventions" />
         <Toast />
-        <div class="card">
-            <Toolbar class="mb-4">
-                <template #start>
+
+        <div class="quantum-v11-container p-4 lg:p-8 bg-[#f8fafc] min-h-screen">
+
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
+                        Interventions <span class="text-indigo-600">Field Service</span>
+                    </h1>
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">Opérations & Maintenance Réseau</p>
+                </div>
+                <div class="flex gap-2">
+                    <Button label="Nouvelle Intervention" icon="pi pi-plus"
+                            class="p-button-indigo shadow-lg shadow-indigo-200" @click="openCreate" />
+                </div>
+            </div>
+
+            <div class="bg-white/70 backdrop-blur-md border border-white shadow-sm rounded-2xl p-4 mb-6">
+                <div class="flex flex-wrap items-center justify-between gap-4">
                     <div class="flex gap-2">
-                        <Button label="Nouvelle" icon="pi pi-plus" class="p-button-primary" @click="openCreate" />
-                        <Button label="Supprimer" icon="pi pi-trash" class="p-button-danger"
-                                @click="deleteDialog = true" :disabled="!selectedItems.length" />
-                    </div>
-                </template>
-                <template #end>
-                    <div class="flex items-center gap-2">
-                        <IconField>
-                            <InputIcon><i class="pi pi-search" /></InputIcon>
-                            <InputText v-model="search" placeholder="Recherche..." @input="applyFilters" />
+                        <IconField iconPosition="left">
+                            <InputIcon class="pi pi-search" />
+                            <InputText v-model="search" placeholder="Rechercher une référence..."
+                                       class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="applyFilters" />
                         </IconField>
-                        <Button type="button" icon="pi pi-filter" label="Filtres"
-                                :badge="activeFiltersCount > 0 ? activeFiltersCount.toString() : null"
-                                badgeClass="p-badge-danger" class="p-button-outlined p-button-secondary" @click="opFilters.toggle($event)" />
-                        <Button icon="pi pi-ellipsis-v" class="p-button-secondary p-button-text" @click="toggleColumnSelection" />
+                        <Button icon="pi pi-filter" :label="activeFiltersCount > 0 ? activeFiltersCount.toString() : 'Filtres'"
+                                class="p-button-text p-button-secondary p-button-sm font-bold" @click="opFilters.toggle($event)" />
                     </div>
-                </template>
-            </Toolbar>
 
-            <OverlayPanel ref="op">
-                <div class="flex flex-col gap-2">
-                    <span class="font-bold">Colonnes à afficher</span>
-                    <MultiSelect v-model="selectedColumnFields" :options="allColumns" optionLabel="header" optionValue="field"
-                                 placeholder="Sélectionner" class="w-64" display="chip" />
-                </div>
-            </OverlayPanel>
-
-            <OverlayPanel ref="opFilters" style="width: 320px">
-                <div class="flex flex-col gap-4 p-2">
-                    <div class="flex justify-between items-center border-b pb-2">
-                        <span class="font-bold">Filtres Avancés</span>
-                        <Button icon="pi pi-refresh" class="p-button-text p-button-sm" @click="resetFilters" />
-                    </div>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-xs font-bold uppercase text-gray-500">Statut</label>
-                            <Dropdown v-model="filterForm.status" :options="props.statuses" placeholder="Tous" class="w-full" showClear @change="applyFilters" />
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold uppercase text-gray-500">Région</label>
-                            <Dropdown v-model="filterForm.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter placeholder="Toutes" class="w-full" showClear @change="applyFilters" />
-                        </div>
+                    <div class="flex items-center gap-2">
+                        <Button v-if="selectedItems.length" icon="pi pi-trash" label="Supprimer"
+                                class="p-button-danger p-button-text p-button-sm animate-fadein" @click="deleteDialog = true" />
+                        <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
                     </div>
                 </div>
-            </OverlayPanel>
+            </div>
 
-            <DataTable ref="dt" :value="formattedList" v-model:selection="selectedItems" dataKey="id" responsiveLayout="scroll">
-                <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-                <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable">
-                    <template #body="slotProps">
-                        <span v-if="col.field === 'status'" :class="'status-badge ' + slotProps.data.status">{{ slotProps.data.status }}</span>
-                        <span v-else-if="col.field === 'scheduled_date'">{{ slotProps.data.scheduled_date ? new Date(slotProps.data.scheduled_date).toLocaleDateString() : '-' }}</span>
-                        <i v-else-if="col.field === 'is_validated'" class="pi" :class="slotProps.data.is_validated ? 'pi-check-circle text-green-500' : 'pi-times-circle text-red-500'"></i>
-                        <span v-else>{{ slotProps.data[col.field] }}</span>
-                    </template>
-                </Column>
-                <Column header="Actions">
-                    <template #body="{ data }">
-                        <SplitButton
-                            @click="openEdit(data)"
-                            icon="pi pi-cog"
-                            class="p-button-sm p-button-secondary"
-                            :model="[
-                                {
-                                    label: 'Valider',
-                                    icon: 'pi pi-check',
-                                    command: () => validateIntervention(data), // Valider
-                                    visible: !data.is_validated && data.status !== 'cancelled' // Visible si non validée et non annulée
-                                },
-                                {
-                                    label: 'Annuler',
-                                    icon: 'pi pi-times',
-                                    command: () => cancelIntervention(data), // Annuler
-                                    visible: data.status !== 'cancelled' // Visible si non annulée
-                                },
-                                {
-                                    label: 'Assigner',
-                                    icon: 'pi pi-user-plus',
-                                    command: () => openAssignModal(data),
-                                    visible: !data.assignable_id // Visible si non assignée
-                                }
-                            ]"
-                            v-if="!data.is_validated || data.status !== 'cancelled' || !data.assignable_id"
-                        ></SplitButton>
+            <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
+                <DataTable :value="formattedList" v-model:selection="selectedItems" dataKey="id"
+                           :rows="10" paginator class="p-datatable-sm quantum-table"
+                           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                           currentPageReportTemplate="{first} à {last} sur {totalRecords}">
 
-                        <i v-if="data.status === 'completed'" class="pi pi-check-circle text-green-500 ml-2" v-tooltip.top="'Validée'" />
-                        <i v-if="data.status === 'cancelled'" class="pi pi-ban text-red-500 ml-2" v-tooltip.top="'Annulée'" />
-                        <i v-if="data.assignable_id" class="pi pi-user-check text-blue-500 ml-2" v-tooltip.top="'Assignée'" />
+                    <Column selectionMode="multiple" headerStyle="width: 3rem" />
 
-                    </template>
-                </Column>
-            </DataTable>
+                    <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable">
+                        <template #header>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">{{ col.header }}</span>
+                        </template>
+
+                        <template #body="{ data, field }">
+                            <span v-if="field === 'title'" class="font-bold text-slate-800 tracking-tight">{{ data.title }}</span>
+
+                            <Tag v-else-if="field === 'status'" :value="data.status"
+                                 :severity="getStatusSeverity(data.status)" class="uppercase text-[9px] px-2" />
+
+                            <div v-else-if="field === 'priority'" class="flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: getPriorityColor(data.priority) }"></div>
+                                <span class="text-xs font-medium">{{ data.priority }}</span>
+                            </div>
+
+                            <div v-else-if="field === 'assigned_to_name'" class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                                    {{ data.assigned_to_name.charAt(0) }}
+                                </div>
+                                <span class="text-xs">{{ data.assigned_to_name }}</span>
+                            </div>
+
+                            <span v-else class="text-slate-600 text-sm">{{ data[field] }}</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" headerStyle="width: 5rem">
+                        <template #body="{ data }">
+                            <Button icon="pi pi-arrow-right" class="p-button-rounded p-button-text p-button-secondary"
+                                    @click="openEdit(data)" v-tooltip.left="'Gérer'" />
+                        </template>
+                    </Column>
+                </DataTable>
+            </div>
         </div>
 
-        <Dialog v-model:visible="isModalOpen" :header="form.id ? 'Modifier' : 'Nouvelle Demande'" modal class="w-full max-w-4xl">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                <div class="md:col-span-2 space-y-1">
-                    <InputLabel value="Titre / Référence" />
-                    <TextInput v-model="form.title" class="w-full bg-gray-50" readonly />
-                </div>
+        <Dialog v-model:visible="isModalOpen" modal :header="form.id ? 'Détails Intervention' : 'Création de Ticket'"
+                class="quantum-dialog w-full max-w-4xl" :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
 
-                <div class="md:col-span-2 space-y-1">
-                    <InputLabel value="Description" />
-                    <textarea v-model="form.description" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary" rows="3"></textarea>
-                </div>
-
-                <div class="md:col-span-2 p-4 bg-gray-50 border rounded-lg">
-                    <label class="font-bold block mb-3">Type de Demandeur</label>
-                    <div class="flex gap-6 mb-4">
-                        <div class="flex items-center gap-2">
-                            <RadioButton v-model="requester_type" value="client" inputId="c1" />
-                            <label for="c1">Client</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <RadioButton v-model="requester_type" value="agent" inputId="c2" />
-                            <label for="c2">Agent Interne</label>
-                        </div>
-                    </div>
-
-                    <div v-if="requester_type === 'client'">
-                        <InputLabel value="Code ou Nom Client" />
-                        <Dropdown v-model="form.requested_by_connection_id"
-                                  :options="connectionsList"
-                                  @change="updateFormWithConnectionData(form.requested_by_connection_id)"
-                                  optionLabel="search_label"
-                                  optionValue="id"
-                                  filter
-                                  placeholder="Rechercher un client..."
-                                  class="w-full mt-1">
-                            <template #option="slotProps">
-                                <div class="flex flex-col">
-                                    <span class="font-bold">{{ slotProps.option.customer_code }}</span>
-                                    <small class="text-gray-500">{{ slotProps.option.first_name }} {{ slotProps.option.last_name }}</small>
+            <div class="p-2">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div class="md:col-span-7 space-y-6">
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-3">Origine de la demande</label>
+                            <div class="flex gap-4">
+                                <div class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3"
+                                     :class="requester_type === 'client' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white'"
+                                     @click="requester_type = 'client'">
+                                    <i class="pi pi-users"></i>
+                                    <span class="text-xs font-bold">Client Externe</span>
                                 </div>
-                            </template>
-                        </Dropdown>
-                    </div>
-                    <div v-else>
-                        <InputLabel value="Sélectionner l'Agent" />
-                        <Dropdown v-model="form.requested_by_user_id" :options="props.users" optionLabel="name" optionValue="id" filter class="w-full mt-1" />
-                    </div>
-                </div>
+                                <div class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3"
+                                     :class="requester_type === 'agent' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white'"
+                                     @click="requester_type = 'agent'">
+                                    <i class="pi pi-user"></i>
+                                    <span class="text-xs font-bold">Agent Interne</span>
+                                </div>
+                            </div>
 
-                <div class="space-y-1">
-                    <InputLabel value="Raison" />
-                    <Dropdown v-model="form.intervention_reason" :options="REASONS" class="w-full" filter />
-                </div>
-                <div class="space-y-1">
-                    <InputLabel value="Statut" />
-                    <Dropdown v-model="form.status" :options="props.statuses" class="w-full" />
-                </div>
+                            <div class="mt-4">
+                                <Dropdown v-model="form.requested_by_connection_id" :options="connectionsList"
+                                          optionLabel="search_label" optionValue="id" filter placeholder="Rechercher..."
+                                          class="w-full quantum-input" v-if="requester_type === 'client'" />
+                                <Dropdown v-model="form.requested_by_user_id" :options="props.users"
+                                          optionLabel="name" optionValue="id" filter class="w-full quantum-input" v-else />
+                            </div>
+                        </div>
 
-                <div class="md:col-span-2 grid grid-cols-2 gap-4 p-3 bg-gray-50 border rounded-lg">
-                    <div class="space-y-1">
-                        <InputLabel value="Assigner à (Type)" />
-                        <Dropdown v-model="form.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value" placeholder="Type" class="w-full" @change="form.assignable_id = null" />
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-[10px] font-black uppercase text-slate-400 mb-1 block">Sujet / Description</label>
+                                <InputText v-model="form.title" class="w-full font-bold mb-2" readonly placeholder="Référence auto" />
+                                <textarea v-model="form.description" rows="4"
+                                          class="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm"
+                                          placeholder="Expliquez le problème technique ici..."></textarea>
+                            </div>
+                        </div>
                     </div>
-                    <div class="space-y-1">
-                        <InputLabel value="Assigner à (Nom)" />
-                        <Dropdown v-model="form.assignable_id" :options="getAssignables(form.assignable_type)" optionLabel="name" optionValue="id" class="w-full" filter placeholder="Sélectionner..." :disabled="!form.assignable_type" />
+
+                    <div class="md:col-span-5 space-y-4">
+                        <div class="p-4 bg-indigo-900 rounded-2xl text-white shadow-xl">
+                            <h4 class="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Assignation & Délai</h4>
+                            <div class="space-y-4">
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] font-bold uppercase">Priorité</label>
+                                    <Dropdown v-model="form.priority" :options="props.priorities" class="w-full bg-white/10 border-none text-white rounded-lg" />
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] font-bold uppercase">Assigné à</label>
+                                    <Dropdown v-model="form.assignable_id" :options="getAssignables(form.assignable_type)"
+                                              optionLabel="name" optionValue="id" class="w-full bg-white/10 border-none text-white rounded-lg" />
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] font-bold uppercase">Échéance</label>
+                                    <Calendar v-model="form.scheduled_date" class="w-full" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                             <div class="p-3 bg-slate-100 rounded-xl text-center">
+                                <span class="block text-[8px] font-black uppercase text-slate-400">Région</span>
+                                <span class="text-[10px] font-bold">{{ props.regions.find(r => r.id === form.region_id)?.designation || 'N/A' }}</span>
+                             </div>
+                             <div class="p-3 bg-slate-100 rounded-xl text-center">
+                                <span class="block text-[8px] font-black uppercase text-slate-400">Zone</span>
+                                <span class="text-[10px] font-bold">{{ props.zones.find(z => z.id === form.zone_id)?.title || 'N/A' }}</span>
+                             </div>
+                        </div>
                     </div>
-                </div>
-
-                <div class="space-y-1">
-                    <InputLabel value="Région" />
-                    <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" class="w-full" />
-                </div>
-                <div class="space-y-1">
-                    <InputLabel value="Zone" />
-                    <Dropdown v-model="form.zone_id" :options="props.zones" optionLabel="title" optionValue="id" class="w-full" filter />
-                </div>
-                <div class="space-y-1">
-                    <InputLabel value="Priorité" />
-                    <Dropdown v-model="form.priority" :options="props.priorities" class="w-full" />
-                </div>
-                <div class="space-y-1">
-                    <InputLabel value="Date prévue" />
-                    <Calendar v-model="form.scheduled_date" class="w-full" showIcon dateFormat="dd/mm/yy" />
-                </div>
-
-                <div class="md:col-span-2 grid grid-cols-2 gap-4">
-                    <div class="space-y-1"><InputLabel value="Latitude" /><TextInput v-model="form.gps_latitude" class="w-full" type="number" step="any" /></div>
-                    <div class="space-y-1"><InputLabel value="Longitude" /><TextInput v-model="form.gps_longitude" class="w-full" type="number" step="any" /></div>
                 </div>
             </div>
+
             <template #footer>
-                <div class="flex justify-end gap-2">
-                    <SecondaryButton @click="isModalOpen = false">Annuler</SecondaryButton>
-                    <PrimaryButton @click="submit" :disabled="form.processing">Enregistrer</PrimaryButton>
+                <div class="flex justify-between items-center w-full px-2">
+                    <Button label="Annuler" icon="pi pi-times" class="p-button-text p-button-secondary" @click="isModalOpen = false" />
+                    <Button label="Enregistrer l'Intervention" icon="pi pi-save"
+                            class="p-button-indigo px-6 shadow-lg shadow-indigo-100" @click="submit" :loading="form.processing" />
                 </div>
             </template>
         </Dialog>
 
-        <Dialog v-model:visible="isAssignModalOpen" header="Assignation Rapide" modal class="w-96">
-            <div class="flex flex-col gap-4 mt-2">
-                <div class="p-3 bg-blue-50 text-blue-700 text-sm rounded border-l-4 border-blue-500">
-                    ID Intervention: <strong>{{ assignForm.id }}</strong>
-                </div>
-                <div>
-                    <InputLabel value="Type d'assignation" />
-                    <Dropdown v-model="assignForm.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value" class="w-full mb-2" @change="assignForm.assignable_id = null" />
-                </div>
-                <div>
-                    <InputLabel value="Assigner à" />
-                    <Dropdown v-model="assignForm.assignable_id" :options="getAssignables(assignForm.assignable_type)" optionLabel="name" optionValue="id" filter class="w-full" :disabled="!assignForm.assignable_type" />
-                </div>
-                <div>
-                    <InputLabel value="Statut de l'intervention" for="assign_status" />
-                    <Dropdown v-model="assignForm.status" :options="props.statuses" placeholder="Sélectionner un statut" class="w-full" />
-                    <InputError :message="assignForm.errors.status" class="mt-2" />
-                </div>
+        <OverlayPanel ref="op" class="quantum-overlay">
+            <div class="p-2 space-y-3">
+                <span class="text-[10px] font-black uppercase text-slate-400 block border-b pb-2">Colonnes actives</span>
+                <MultiSelect v-model="selectedColumnFields" :options="allColumns" optionLabel="header" optionValue="field"
+                             display="chip" class="w-64 quantum-multiselect" />
             </div>
-            <template #footer>
-                <Button label="Confirmer" icon="pi pi-check" class="p-button-primary w-full" @click="submitAssign" :loading="assignForm.processing" />
-            </template>
-        </Dialog>
+        </OverlayPanel>
 
-
-        <Dialog v-model:visible="deleteDialog" header="Confirmation" modal class="w-96">
-            <div class="flex items-center gap-3">
-                <i class="pi pi-exclamation-triangle text-red-500 text-2xl" />
-                <span>Supprimer {{ selectedItems.length }} éléments ?</span>
-            </div>
-            <template #footer>
-                <Button label="Annuler" class="p-button-text" @click="deleteDialog = false" />
-                <Button label="Confirmer" class="p-button-danger" @click="confirmDeleteSelected" />
-            </template>
-        </Dialog>
     </AppLayout>
 </template>
 
 <style scoped>
-.status-badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
+/* STYLE V11 CUSTOM TOKENS */
+.p-button-indigo {
+    background: #4f46e5;
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 12px;
+}
+
+.card-v11 :deep(.p-datatable-thead > tr > th) {
+    background: #fdfdfd;
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.card-v11 :deep(.p-datatable-tbody > tr) {
+    transition: all 0.2s;
+}
+
+.card-v11 :deep(.p-datatable-tbody > tr:hover) {
+    background: #f8faff !important;
+}
+
+.quantum-input :deep(.p-inputtext) {
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Transitions */
+.animate-fadein {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>
