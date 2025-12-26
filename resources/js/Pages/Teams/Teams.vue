@@ -1,24 +1,29 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { Head, useForm, router, usePage } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Head, useForm, router } from '@inertiajs/vue3';
+import debounce from 'lodash/debounce';
+
+// --- COMPOSANTS DE BASE ---
 import AppLayout from "@/sakai/layout/AppLayout.vue";
+
+// --- PRIME VUE ULTIMATE V11 ---
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
-
-// Import des composants PrimeVue manquants utilisés dans le template
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
-import Toolbar from 'primevue/toolbar';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
-import MultiSelect from 'primevue/multiselect'; // Nécessaire pour les membres
-import Calendar from 'primevue/calendar'; // Nécessaire pour la date
+import MultiSelect from 'primevue/multiselect';
+import Calendar from 'primevue/calendar';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
+import Avatar from 'primevue/avatar';
+import AvatarGroup from 'primevue/avatargroup';
+import Tag from 'primevue/tag';
 
 const props = defineProps({
     regions: Array,
@@ -29,320 +34,226 @@ const props = defineProps({
 
 const toast = useToast();
 const confirm = useConfirm();
+const dt = ref();
 
-const labelDialog = ref(false);
-const submitted = ref(false);
-const editing = ref(false);
-const search = ref(props.filters?.search || '');
-const selectedTeams = ref(null); // NOUVEAU: Pour la suppression multiple
+const filters = ref({
+    search: props.filters?.search || '',
+    region_id: props.filters?.region_id || null,
+    leader_id: props.filters?.leader_id || null,
+});
 
-const { user } = usePage().props.auth;
+const selectedTeams = ref([]);
+const isModalOpen = ref(false);
 
 const form = useForm({
     id: null,
     name: '',
     team_leader_id: null,
     creation_date: null,
-    members: [], // Tableau d'IDs des techniciens
+    members: [],
 });
 
-// --- LOGIQUE DE SUPPRESSION MULTIPLE (NOUVEAU) ---
+// --- ACTIONS ---
+const applyFilters = debounce(() => {
+    router.get(route('teams.index'), { ...filters.value }, { preserveState: true, replace: true });
+}, 400);
 
-const hasSelectedTeams = computed(() => selectedTeams.value && selectedTeams.value.length > 0);
-
-const confirmDeleteSelected = () => {
-    if (!hasSelectedTeams.value) {
-        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner au moins une équipe.', life: 3000 });
-        return;
-    }
-
-    confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer les ${selectedTeams.value.length} équipes sélectionnées ?`,
-        header: 'Confirmation de suppression multiple',
-        icon: 'pi pi-exclamation-triangle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            deleteSelectedTeams();
-        },
-    });
+const resetFilters = () => {
+    filters.value = { search: '', region_id: null, leader_id: null };
+    applyFilters();
 };
 
-const deleteSelectedTeams = () => {
-    const ids = selectedTeams.value.map(team => team.id);
+const exportCSV = () => dt.value.exportCSV();
 
-    // Assurez-vous d'avoir une route 'teams.bulkDestroy' définie en POST (avec _method DELETE si nécessaire)
-    router.post(route('teams.bulkDestroy'), { ids: ids }, {
-        onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: `${ids.length} équipes supprimées avec succès.`, life: 3000 });
-            selectedTeams.value = null; // Désélectionner
-        },
-        onError: () => {
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression multiple.', life: 3000 });
-        },
-        preserveState: false,
-    });
-};
-
-
-// --- LOGIQUE DE FORMULAIRE ---
-
-const updateTeamMembers = (event) => {
-    // Si le chef d'équipe est sélectionné, l'ajouter aux membres (si non présent)
-    const leaderId = event?.value || form.team_leader_id;
-    if (leaderId && !form.members.includes(leaderId)) {
-        form.members = [...form.members, leaderId];
-    }
-};
-
-const openNew = () => {
+const openCreate = () => {
     form.reset();
-    editing.value = false;
-    submitted.value = false;
-    // Pré-remplir la date de création avec aujourd'hui
     form.creation_date = new Date();
-    labelDialog.value = true;
-};
-
-const hideDialog = () => {
-    labelDialog.value = false;
-    submitted.value = false;
+    isModalOpen.value = true;
 };
 
 const editTeam = (team) => {
     form.id = team.id;
     form.name = team.name;
     form.team_leader_id = team.team_leader_id;
-    form.creation_date = team.creation_date ? new Date(team.creation_date) : null;
-    form.members = team.members.map(member => member.id);
-    editing.value = true;
-    labelDialog.value = true;
+    form.creation_date = new Date(team.creation_date);
+    form.members = team.members ? team.members.map(m => m.id) : [];
+    isModalOpen.value = true;
 };
 
 const saveTeam = () => {
-    submitted.value = true;
-
-    // Logique pour générer le nom si vide (utilise la computed property)
-    if (!form.name.trim()) {
-        form.name = teamNameComputed.value;
-    }
-
-    // Assurez-vous que le chef d'équipe est dans la liste des membres avant de soumettre
-    if (form.team_leader_id && !form.members.includes(form.team_leader_id)) {
-        form.members.push(form.team_leader_id);
-    }
-
-    // Si team_leader_id n'est toujours pas défini (même si optionnel), utilisez l'utilisateur actuel
-    if (!form.team_leader_id && user?.id) {
-        form.team_leader_id = user.id;
-    }
-
-    // Validation minimale côté client
-    if (!form.name.trim() || !form.team_leader_id) {
-        toast.add({ severity: 'warn', summary: 'Attention', detail: "Le nom de l'équipe et le chef d'équipe sont requis.", life: 3000 });
-        return;
-    }
-
-
-    const url = editing.value ? route('teams.update', form.id) : route('teams.store');
-    const method = editing.value ? 'put' : 'post';
-
-    form.submit(method, url, {
+    const url = form.id ? route('teams.update', form.id) : route('teams.store');
+    form.submit(form.id ? 'put' : 'post', url, {
         onSuccess: () => {
-            labelDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: `Équipe ${editing.value ? 'mise à jour' : 'créée'} avec succès`, life: 3000 });
-            form.reset();
-            selectedTeams.value = null; // Réinitialiser la sélection
-        },
-        onError: (errors) => {
-            console.error("Erreur lors de la sauvegarde de l'équipe", errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue.', life: 3000 });
+            isModalOpen.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Équipe mise à jour', life: 3000 });
         }
     });
 };
-
-const deleteTeam = (team) => {
-    confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer l'équipe "${team.name}" ?`,
-        header: 'Confirmation de suppression',
-        icon: 'pi pi-info-circle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            router.delete(route('teams.destroy', team.id), {
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: 'Équipe supprimée avec succès', life: 3000 });
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression.', life: 3000 });
-                }
-            });
-        },
-    });
-};
-
-const dt = ref();
-const exportCSV = () => {
-    dt.value.exportCSV();
-};
-
-let timeoutId = null;
-const performSearch = () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-        router.get(route('teams.index'), { search: search.value }, {
-            preserveState: true,
-            replace: true,
-        });
-    }, 300);
-};
-
-
-const teamNameComputed = computed(() => {
-    if (form.team_leader_id) {
-        const teamLeader = props.technicians.find(tech => tech.id === form.team_leader_id);
-        if (teamLeader) {
-            const dateToUse = form.creation_date ? new Date(form.creation_date) : new Date();
-            const today = dateToUse;
-
-            const formattedDate = today.getFullYear().toString() +
-                                (today.getMonth() + 1).toString().padStart(2, '0') +
-                                today.getDate().toString().padStart(2, '0');
-            return `Équipe-${teamLeader.name.substring(0, 3).toUpperCase()}-${formattedDate}`;
-        }
-    }
-    return '';
-});
-
-const dialogTitle = computed(() => editing.value ? 'Modifier l\'Équipe' : 'Créer une nouvelle Équipe');
-
 </script>
 
 <template>
     <AppLayout title="Gestion des Équipes">
-        <Head title="Équipes" />
+        <Toast />
+        <ConfirmDialog />
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                    <Toolbar class="mb-4">
-                        <template #start>
-                            <div class="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
-                                <span class="block mt-2 md:mt-0 p-input-icon-left flex align-items-center">
-                                    <Button label="Ajouter une equipe" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
-                                    <Button label="Supprimer la sélection" icon="pi pi-trash" class="p-button-sm p-button-danger mr-2"
-                                        :disabled="!hasSelectedTeams" @click="confirmDeleteSelected" />
-                                </span>
-                            </div>
-                        </template>
+        <div class="min-h-screen bg-slate-50 p-4 md:p-10 font-sans">
 
-                        <template #end>
-                            <IconField class="mr-2">
-                                <InputIcon><i class="pi pi-search" /></InputIcon>
-                                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-                            </IconField>
-                            <Button label="Exporter" icon="pi pi-upload" class="p-button-help" @click="exportCSV($event)" />
-                        </template>
-                    </Toolbar>
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-[2rem] bg-slate-900 shadow-xl shadow-slate-200">
+                        <i class="pi pi-users text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tighter text-slate-900 md:text-4xl">Unités de Terrain</h1>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Management des ressources V11</p>
+                    </div>
+                </div>
 
-                    <DataTable ref="dt" :value="teams" dataKey="id" :paginator="true" :rows="10"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        :rowsPerPageOptions="[5, 10, 25]"
-                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} équipes"
-                        responsiveLayout="scroll"
-                        :selection="selectedTeams" @update:selection="selectedTeams = $event">
-
-                        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-
-                        <Column field="name" header="Nom de l'équipe" :sortable="true" headerStyle="width:25%; min-width:10rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.name }}
-                            </template>
-                        </Column>
-                        <Column field="team_leader.name" header="Chef d'équipe" :sortable="true" headerStyle="width:20%; min-width:10rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.team_leader ? slotProps.data.team_leader.name : 'N/A' }}
-                            </template>
-                        </Column>
-                        <Column field="members" header="Membres" headerStyle="width:35%; min-width:15rem;">
-                            <template #body="slotProps">
-                                <span v-if="slotProps.data.members && slotProps.data.members.length > 0">
-                                    <span v-for="(member, index) in slotProps.data.members" :key="member.id">
-                                        {{ member.name }}{{ index < slotProps.data.members.length - 1 ? ', ' : '' }}
-                                    </span>
-                                </span>
-                                <span v-else>Aucun membre</span>
-                            </template>
-                        </Column>
-                        <Column headerStyle="min-width:10rem;" header="Actions" bodyStyle="text-align: right">
-                            <template #body="slotProps">
-                                <Button icon="pi pi-pencil" class="p-button-rounded mr-2" severity="info"
-                                    @click="editTeam(slotProps.data)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded " severity="error"
-                                    @click="deleteTeam(slotProps.data)" />
-                            </template>
-                        </Column>
-                    </DataTable>
-
-                    <Dialog v-model:visible="labelDialog" modal :header="dialogTitle" :style="{ width: '40rem' }">
-                        <span v-if="editing" class="text-surface-500 dark:text-surface-400 block mb-4">Mettez à jour les informations de l'équipe.</span>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="team_leader" class="font-semibold w-24">Chef d'équipe *</label>
-                            <Dropdown id="team_leader" v-model="form.team_leader_id" :options="technicians" optionLabel="name" optionValue="id" placeholder="Sélectionner un chef d'équipe" class="flex-auto"
-                                :class="{ 'p-invalid': submitted && !form.team_leader_id }" @change="updateTeamMembers" />
-                        </div>
-                        <small class="p-error block mb-4" v-if="form.errors.team_leader_id">{{ form.errors.team_leader_id }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="name" class="font-semibold w-24">Nom de l'équipe</label>
-                            <InputText id="name" v-model.trim="form.name" autofocus :placeholder="teamNameComputed"
-                                :class="{ 'p-invalid': submitted && !form.name.trim() && !teamNameComputed }" class="flex-auto" autocomplete="off" />
-                        </div>
-                         <small class="p-error block mb-4" v-if="form.errors.name">{{ form.errors.name }}</small>
-                         <small class="p-info block mb-4 text-sm" v-else-if="!form.name && teamNameComputed">Le nom sera généré automatiquement : **{{ teamNameComputed }}**</small>
-
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="creation_date" class="font-semibold w-24">Date de création</label>
-                            <Calendar id="creation_date" v-model="form.creation_date" dateFormat="dd/mm/yy" showIcon class="flex-auto" />
-                        </div>
-                        <small class="p-error block mb-4" v-if="form.errors.creation_date">{{ form.errors.creation_date }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-    <label for="members" class="font-semibold w-24">Membres (Techniciens)</label>
-
-    <MultiSelect id="members" v-model="form.members" :options="technicians" optionLabel="name" optionValue="id"
-                 placeholder="Sélectionner les membres" :filter="true" class="w-full" :style="{ width: '30rem' }" display="chip" />
-
-</div>
-<small class="p-error block mb-4" v-if="form.errors.members">{{ form.errors.members }}</small>
-                        <div class="flex justify-end gap-2 pt-4">
-                            <Button type="button" label="Annuler" severity="secondary" @click="hideDialog"></Button>
-                            <Button type="button" label="Sauvegarder" @click="saveTeam" :loading="form.processing"></Button>
-                        </div>
-                    </Dialog>
+                <div class="flex w-full items-center gap-3 lg:w-auto">
+                    <button @click="exportCSV" class="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-emerald-600 shadow-sm transition-all hover:bg-emerald-50 active:scale-95 lg:flex-none">
+                        <i class="pi pi-file-excel"></i> Export Excel
+                    </button>
+                    <button @click="openCreate" class="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 lg:flex-none">
+                        <i class="pi pi-plus-circle"></i> Nouvelle Équipe
+                    </button>
                 </div>
             </div>
+
+            <div class="mb-6 flex flex-wrap items-center gap-4 rounded-[2.5rem] border border-white bg-white/50 p-4 shadow-sm backdrop-blur-md">
+                <div class="relative flex-1 min-w-[280px]">
+                    <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input v-model="filters.search" type="text" placeholder="Rechercher une unité..." @input="applyFilters"
+                           class="w-full rounded-2xl border-none bg-white py-3 pl-12 text-sm font-semibold shadow-inner focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+
+                <Dropdown v-model="filters.region_id" :options="regions" optionLabel="name" optionValue="id" placeholder="Toutes les régions"
+                          class="w-full !rounded-2xl !border-none !bg-white !shadow-sm md:w-56" @change="applyFilters" />
+
+                <button @click="resetFilters" class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm hover:text-red-500 transition-colors">
+                    <i class="pi pi-filter-slash"></i>
+                </button>
+            </div>
+
+            <div class="overflow-hidden rounded-[3rem] border border-white bg-white shadow-2xl shadow-slate-200/60">
+                <DataTable :value="teams" ref="dt" v-model:selection="selectedTeams" dataKey="id"
+                           scrollable scrollHeight="600px" class="v11-table">
+
+                    <Column selectionMode="multiple" headerStyle="width: 4rem" class="pl-8"></Column>
+
+                    <Column header="Désignation de l'Unité" minWidth="300px">
+                        <template #body="{ data }">
+                            <div class="group flex cursor-pointer items-center gap-4 py-2" @click="editTeam(data)">
+                                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 transition-all group-hover:bg-indigo-600 group-hover:text-white text-slate-500">
+                                    <i class="pi pi-shield text-xl"></i>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-lg font-black tracking-tight text-slate-800">{{ data.name }}</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-500">ID: #{{ data.id.toString().padStart(4, '0') }}</span>
+                                </div>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Commandement" minWidth="200px">
+                        <template #body="{ data }">
+                            <div v-if="data.team_leader" class="flex w-fit items-center gap-3 rounded-full bg-slate-50 p-1 pr-4 border border-slate-100">
+                                <Avatar :label="data.team_leader.name[0]" shape="circle" class="!bg-slate-900 !text-white !font-black" />
+                                <span class="text-sm font-bold text-slate-700">{{ data.team_leader.name }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Effectifs" minWidth="250px">
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-3">
+                                <AvatarGroup v-if="data.members?.length">
+                                    <Avatar v-for="m in data.members.slice(0, 3)" :key="m.id" :label="m.name[0]" shape="circle" class="!border-2 !border-white !bg-indigo-100 !text-indigo-700 !font-bold" />
+                                    <Avatar v-if="data.members.length > 3" :label="`+${data.members.length - 3}`" shape="circle" class="!bg-slate-800 !text-white !text-xs" />
+                                </AvatarGroup>
+                                <span class="text-[10px] font-black uppercase text-slate-400">{{ data.members?.length || 0 }} pers.</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" alignFrozen="right" frozen class="pr-8">
+                        <template #body="{ data }">
+                            <div class="flex justify-end gap-2">
+                                <Button icon="pi pi-pencil" text rounded @click="editTeam(data)" class="!text-slate-400 hover:!bg-indigo-50 hover:!text-indigo-600 transition-all" />
+                                <Button icon="pi pi-trash" text rounded severity="danger" class="!opacity-50 hover:!opacity-100 transition-all" />
+                            </div>
+                        </template>
+                    </Column>
+                </DataTable>
+            </div>
         </div>
+
+        <Dialog v-model:visible="isModalOpen" modal position="right" :draggable="false"
+                class="!m-0 !h-screen !max-h-none" :style="{ width: '450px' }">
+
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
+                        <i class="pi pi-file-edit"></i>
+                    </div>
+                    <span class="text-xl font-black tracking-tighter text-slate-900">Fiche de l'unité</span>
+                </div>
+            </template>
+
+            <form @submit.prevent="saveTeam" class="flex h-full flex-col gap-6 py-4 font-sans">
+                <div class="space-y-6 flex-grow overflow-y-auto px-1">
+                    <div class="rounded-[2rem] bg-slate-50 p-6 border border-slate-100 space-y-5">
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nom de l'équipe</label>
+                            <InputText v-model="form.name" placeholder="Ex: EQP-DELTA-01" class="w-full !rounded-2xl !border-none !shadow-sm !py-4" />
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Chef d'unité</label>
+                            <Dropdown v-model="form.team_leader_id" :options="technicians" optionLabel="name" optionValue="id"
+                                      placeholder="Désigner un leader" filter class="!rounded-2xl !border-none !shadow-sm" />
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Membres assignés</label>
+                            <MultiSelect v-model="form.members" :options="technicians" optionLabel="name" optionValue="id"
+                                         placeholder="Sélectionner les membres" filter display="chip" class="!rounded-2xl !border-none !shadow-sm" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto border-t border-slate-100 pt-6 flex gap-3">
+                    <button type="button" @click="isModalOpen = false" class="flex-1 rounded-2xl py-4 text-sm font-bold text-slate-400 hover:bg-slate-50 transition-colors">Annuler</button>
+                    <button type="submit" :disabled="form.processing" class="flex-[2] rounded-2xl bg-slate-900 py-4 text-sm font-black text-white shadow-xl transition-all hover:bg-black active:scale-95">
+                        Confirmer les modifications
+                    </button>
+                </div>
+            </form>
+        </Dialog>
     </AppLayout>
 </template>
 
-<style scoped>
-/* Les styles restent inchangés et sont toujours valides */
-.p-datatable .p-datatable-header {
-    border-bottom: 1px solid var(--surface-d);
+<style>
+/* Style spécifique pour la table afin d'affiner le rendu Tailwind avec PrimeVue */
+.v11-table .p-datatable-thead > tr > th {
+    background: #f8fafc !important;
+    color: #94a3b8 !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.15em !important;
+    padding: 1.5rem 1rem !important;
+    border: none !important;
 }
 
-.p-datatable .p-column-header-content {
-    justify-content: space-between;
+.v11-table .p-datatable-tbody > tr {
+    transition: all 0.2s ease;
 }
 
-/* ... autres styles de boutons ... */
+.v11-table .p-datatable-tbody > tr:hover {
+    background: #f1f5f9/50 !important;
+}
+
+.p-dialog-mask {
+    backdrop-filter: blur(4px);
+}
 </style>

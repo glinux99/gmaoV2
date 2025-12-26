@@ -1,13 +1,14 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useForm, router, Head } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
+import debounce from 'lodash/debounce';
+
+// --- COMPOSANTS DE BASE ---
 import AppLayout from '@/sakai/layout/AppLayout.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import InputError from '@/Components/InputError.vue';
+
+// --- PRIME VUE ULTIMATE ---
+import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import DataTable from 'primevue/datatable';
@@ -15,454 +16,554 @@ import Column from 'primevue/column';
 import Paginator from 'primevue/paginator';
 import Avatar from 'primevue/avatar';
 import Toast from 'primevue/toast';
+import { useToast } from "primevue/usetoast";
 import ConfirmDialog from 'primevue/confirmdialog';
+import { useConfirm } from "primevue/useconfirm";
 import MultiSelect from 'primevue/multiselect';
+import OverlayPanel from 'primevue/overlaypanel';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import InputText from 'primevue/inputtext';
+import Tag from 'primevue/tag';
+import Textarea from 'primevue/textarea';
+import Sidebar from 'primevue/sidebar';
+
+const { t } = useI18n();
+const toast = useToast();
+const confirm = useConfirm();
 
 const props = defineProps({
-  technicians: Object, // pagination Laravel { data, links, meta }
-  regions: Array,
-  filters: Object,
+    technicians: Object,
+    regions: Array,
+    filters: Object,
 });
 
-// Recherche serveur
+// --- ÉTAT DU COMPOSANT ---
 const search = ref(props.filters?.search || '');
-let debounceId = null;
+const showFilters = ref(false);
+const opColumns = ref();
+const selectedTechs = ref([]);
+const fileInput = ref(null);
+const loading = ref(false);
 
-// Toutes les colonnes disponibles
-const allColumns = ref([
-  { field: 'name', header: 'Technicien' },
-  { field: 'fonction', header: 'Fonction' },
-  { field: 'region', header: 'Région' },
-  { field: 'numero', header: 'Numéro' },
-  { field: 'pointure', header: 'Pointure' },
-  { field: 'size', header: 'Taille' },
-  { field: 'email', header: 'Email' },
-  { field: 'extra_attributes', header: 'Autres caractéristiques' },
-]);
-// Colonnes pour MultiSelect (à définir si ce n'est pas déjà fait)
-
-// Référence pour l'OverlayPanel
-const op = ref();
-
-// Fonction pour afficher l'OverlayPanel
-const toggleColumnSelection = (event) => {
-    op.value.toggle(event);
-};
-// Colonnes visibles par défaut
-const visibleColumns = ref(allColumns.value.slice(0, 4).map(col => col.field)); // Affiche les 4 premières par défaut
-
-const performSearch = () => {
-  clearTimeout(debounceId);
-  debounceId = setTimeout(() => {
-    router.get(route('technicians.index'), { search: search.value }, { preserveState: true, replace: true });
-  }, 300);
-};
-
-// Liste paginée
-const techList = computed(() => props.technicians?.data || []);
-const links = computed(() => props.technicians?.links || []);
-const totalRecords = computed(() => props.technicians?.meta?.total || 0);
-const currentPage = computed(() => props.technicians?.meta?.current_page || 1);
-const perPage = computed(() => props.technicians?.meta?.per_page || 10);
-
-const onPage = (event) => {
-  router.get(route('technicians.index'), { page: event.page + 1, per_page: event.rows, search: search.value }, { preserveState: true, replace: true });
-};
-
-
-// Sélection multiple
-const selected = ref([]);
-const bulkDisabled = computed(() => !selected.value || selected.value.length < 2);
-
-// Modales
-const isModalOpen = ref(false);
-const isDeleteModalOpen = ref(false);
-const isImportModalOpen = ref(false);
-const toDelete = ref(null);
-const importFile = ref(null);
-
-// Formulaire création/édition
-const form = useForm({
-  id: null,
-  name: '',
-  email: '',
-  password: '',
-  password_confirmation: '',
-  fonction: null,
-  numero: '',
-  region: '',
-  pointure: '',
-  size: '',
-  profile_photo: null,
-  profile_photo_preview: null,
-  extra_attributes: [], // [{ key:'', value:'' }]
+// Filtres avancés
+const filterForm = ref({
+    region: props.filters?.region || null,
+    fonction: props.filters?.fonction || null,
 });
 
-// Options dropdown
-const fonctionOptions = [
-  'Technicien Journalier',
-  'Technicien Stagiaire',
-  "Technicien Chef d'équipe",
-  'Superviseur',
-  'Chef de Travaux',
-  'Superviseur Maintenance',
-  'Superviseur Raccordement',
-  'Superviseur Intervention',
-  'Responsable Réseau',
-  'Responsable Centrale',
-].map(name => ({ label: name, value: name }));
+const allColumns = ref([
+    { field: 'name', header: 'Technicien' },
+    { field: 'fonction', header: 'Fonction' },
+    { field: 'region', header: 'Région' },
+    { field: 'numero', header: 'Téléphone' },
+    { field: 'email', header: 'Email' },
+    { field: 'pointure', header: 'Équipement' },
+]);
 
-const regionOptions = computed(() => (props.regions || []).map(r => ({ label: r.designation, value: r.designation })));
+const visibleColumns = ref(['name', 'fonction', 'region', 'numero']);
 
-// Modale création
-const openCreate = () => {
-  isModalOpen.value = true;
-  form.reset();
-  form.extra_attributes = [];
-  form.profile_photo = null;
-  form.profile_photo_preview = null;
-};
+// --- FORMULAIRE ULTIMATE ---
+const form = useForm({
+    id: null,
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    fonction: null,
+    numero: '',
+    region: '',
+    pointure: '',
+    size: '',
+    profile_photo: null,
+    profile_photo_preview: null,
+    status: 'active'
+});
 
-// Modale édition
-const openEdit = (t) => {
-  isModalOpen.value = true;
-  form.clearErrors();
-  form.id = t.id;
-  form.name = t.name;
-  form.email = t.email;
-  form.fonction = t.fonction;
-  form.numero = t.numero;
-  form.region = t.region;
-  form.pointure = t.pointure;
-  form.size = t.size;
-  form.password = '';
-  form.password_confirmation = '';
-  form.profile_photo = null;
-  form.profile_photo_preview = t.profile_photo_url || null;
-  // extra_attributes si présent (objet -> tableau clé/valeur)
-  if (t.extra_attributes && typeof t.extra_attributes === 'object' && !Array.isArray(t.extra_attributes)) {
-    form.extra_attributes = Object.entries(t.extra_attributes).map(([key, value]) => ({ key, value }));
-  } else if (Array.isArray(t.extra_attributes)) {
-    form.extra_attributes = t.extra_attributes;
-  } else {
-    form.extra_attributes = [];
-  }
-};
+// --- LOGIQUE PHOTO ---
+const triggerFileInput = () => fileInput.value.click();
 
-const closeModal = () => { isModalOpen.value = false; };
-
-// Gérer upload photo
 const handlePhotoChange = (e) => {
-  const file = e.target.files?.[0];
-  if (file) {
-    form.profile_photo = file;
-    const reader = new FileReader();
-    reader.onload = (ev) => { form.profile_photo_preview = ev.target.result; };
-    reader.readAsDataURL(file);
-  }
+    const file = e.target.files[0];
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Image trop lourde (Max 2MB)', life: 3000 });
+            return;
+        }
+        form.profile_photo = file;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            form.profile_photo_preview = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
 };
 
-// Repeater caractéristiques
-const addExtra = () => form.extra_attributes.push({ key: '', value: '' });
-const removeExtra = (i) => form.extra_attributes.splice(i, 1);
+const removePhoto = () => {
+    form.profile_photo = null;
+    form.profile_photo_preview = null;
+    if (fileInput.value) fileInput.value.value = null;
+};
 
-// Soumission création/édition
+// --- ACTIONS CRUD ---
+const isModalOpen = ref(false);
+
+const openCreate = () => {
+    form.reset();
+    form.clearErrors();
+    form.profile_photo_preview = null;
+    form.profile_photo = null; // Ensure the actual file is also reset
+    isModalOpen.value = true;
+};
+
+const openEdit = (tech) => {
+    form.clearErrors();
+    form.id = tech.id;
+    form.name = tech.name;
+    form.email = tech.email;
+    form.fonction = tech.fonction;
+    form.numero = tech.numero;
+    form.region = tech.region;
+    form.pointure = tech.pointure;
+    form.size = tech.size;
+    form.profile_photo_preview = tech.profile_photo_url;
+    isModalOpen.value = true;
+};
+
 const submit = () => {
-  const url = form.id ? route('technicians.update', form.id) : route('technicians.store');
-  form.transform((data) => {
-    const fd = new FormData();
-    if (data.id) fd.append('_method', 'PUT');
-    const simple = ['name','email','password','password_confirmation','fonction','numero','region','pointure','size'];
-    simple.forEach(k => { if (data[k] !== undefined && data[k] !== null && data[k] !== '') fd.append(k, data[k]); });
-    // extra_attributes en tableau: extra_attributes[0][key], [0][value]
-    (data.extra_attributes || []).forEach((item, idx) => {
-      if ((item.key ?? '') !== '') {
-        fd.append(`extra_attributes[${idx}][key]`, item.key);
-        fd.append(`extra_attributes[${idx}][value]`, item.value ?? '');
-      }
+    const url = form.id ? route('technicians.update', form.id) : route('technicians.store');
+    form.post(url, {
+        forceFormData: true,
+        onSuccess: () => {
+            isModalOpen.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Opération réussie', life: 3000 });
+        },
     });
-    if (data.profile_photo instanceof File) fd.append('profile_photo', data.profile_photo);
-    return fd;
-  }).post(url, {
-    forceFormData: true,
-    preserveScroll: true,
-    onSuccess: () => { closeModal(); },
-  });
 };
 
-// Suppression simple
-const confirmDelete = (t) => { toDelete.value = t; isDeleteModalOpen.value = true; };
-const doDelete = () => {
-  router.delete(route('technicians.destroy', toDelete.value.id), { onSuccess: () => { isDeleteModalOpen.value = false; } });
+const confirmDeleteSelected = () => {
+    confirm.require({
+        message: `Êtes-vous sûr de vouloir supprimer les ${selectedTechs.value.length} techniciens sélectionnés ?`,
+        header: 'Confirmation de suppression multiple',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        acceptLabel: 'Supprimer',
+        rejectLabel: 'Annuler',
+        accept: () => {
+            deleteSelected();
+        }
+    });
 };
 
-// Suppression multiple
-const bulkDelete = () => {
-  if (!selected.value.length) return;
-  if (!confirm(`Supprimer ${selected.value.length} technicien(s) sélectionné(s) ?`)) return;
-  router.post(route('technicians.bulkdestroy'), { ids: selected.value.map(t => t.id) });
+const deleteSelected = () => {
+    const ids = selectedTechs.value.map(t => t.id);
+    router.post(route('technicians.bulkDestroy'), { ids }, {
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Succès', detail: `${ids.length} techniciens supprimés.`, life: 3000 });
+            selectedTechs.value = [];
+        },
+        onError: () => toast.add({ severity: 'error', summary: 'Erreur', detail: 'La suppression multiple a échoué.', life: 3000 })
+    });
 };
 
-// Export/Import
-const dt = ref();
-const exportCSV = () => {
-    dt.value.exportCSV();
+const deleteTech = (tech) => {
+    confirm.require({
+        message: `Voulez-vous supprimer définitivement ${tech.name} ?`,
+        header: 'Confirmation de suppression',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            router.delete(route('technicians.destroy', tech.id), {
+                onSuccess: () => toast.add({ severity: 'info', summary: 'Supprimé', detail: 'Technicien retiré', life: 3000 })
+            });
+        }
+    });
 };
 
-const openImport = () => { isImportModalOpen.value = true; importFile.value = null; };
-const doImport = () => {
-  if (!importFile.value) return;
-  const fd = new FormData(); fd.append('file', importFile.value);
-  router.post(route('technicians.import'), fd, { forceFormData: true, onSuccess: () => { isImportModalOpen.value = false; } });
+// --- FILTRAGE & RECHERCHE ---
+const updateFilters = debounce(() => {
+    loading.value = true;
+    router.get(route('technicians.index'), {
+        search: search.value,
+        region: filterForm.value.region,
+        fonction: filterForm.value.fonction,
+    }, {
+        preserveState: true,
+        replace: true,
+        onFinish: () => loading.value = false
+    });
+}, 500);
+
+const resetFilters = () => {
+    filterForm.value = { region: null, fonction: null };
+    search.value = '';
+    updateFilters();
 };
+
+const exportData = (type) => {
+    window.location.href = route('technicians.export', { type, ...filterForm.value, search: search.value });
+};
+
+// Options
+const fonctionOptions = [
+    { label: 'Superviseur', value: 'Superviseur' },
+    { label: 'Technicien Chef', value: 'Technicien Chef' },
+    { label: 'Technicien Journalier', value: 'Technicien Journalier' }
+];
+const regionOptions = computed(() => (props.regions || []).map(r => ({ label: r.designation, value: r.designation })));
 </script>
 
 <template>
-  <AppLayout title="Techniciens">
-    <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 leading-tight">Techniciens</h2>
-    </template>
+    <AppLayout title="Ultimate Technicians Manager">
+        <Head title="Techniciens Ultimate V11" />
+        <Toast />
+        <ConfirmDialog />
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                   <Toolbar class="mb-4">
-    <template #start>
-        <div class="flex items-center gap-2">
-            <Button
-                label="Nouveau Technicien"
-                icon="pi pi-plus"
-                @click="openCreate"
-                class="p-button-primary"
-            />
-            <Button
-                label="Importer"
-                icon="pi pi-upload"
-                @click="openImport"
-                class="p-button-success p-button-outlined"
-            />
-            <Button
-                :label="`Supprimer (${selected.length || 0})`"
-                icon="pi pi-trash"
-                @click="bulkDelete"
-                :disabled="bulkDisabled"
-                class="p-button-danger"
-            />
-        </div>
-    </template>
+        <div class="p-4 md:p-8 bg-[#F8FAFC] min-h-screen">
 
-    <template #end>
-        <div class="flex items-center gap-2">
-            <IconField>
-                <InputIcon>
-                    <i class="pi pi-search" />
-                </InputIcon>
-                <InputText
-                    v-model="search"
-                    placeholder="Rechercher..."
-                    @input="performSearch"
-                />
-            </IconField>
-
-            <Button
-                label="Exporter"
-                icon="pi pi-download"
-                class="p-button-help"
-                @click="exportCSV($event)"
-            />
-
-    <div class="flex items-center gap-2">
-        <Button
-            icon="pi pi-ellipsis-v"
-            class="p-button-secondary p-button-text"
-            @click="toggleColumnSelection"
-            aria-haspopup="true"
-            aria-controls="column_op"
-        />
-
-        <OverlayPanel ref="op" appendTo="body" id="column_op" class="p-4">
-            <div class="font-semibold mb-3">Sélectionner les colonnes :</div>
-
-            <MultiSelect
-                v-model="visibleColumns"
-                :options="allColumns"
-                optionLabel="header"
-                optionValue="field"
-                display="chip"
-                placeholder="Choisir les colonnes"
-                class="w-full max-w-xs"  />
-        </OverlayPanel>
-    </div>
-        </div>
-    </template>
-</Toolbar>
-                        <DataTable :value="techList"  ref="dt"  dataKey="id" :paginator="true" :rows="10" v-model:selection="selected" selectionMode="multiple" responsiveLayout="scroll" stripedRows >
-              <Column selectionMode="multiple" headerStyle="width: 3rem" :exportable="false"></Column>
-              <Column v-if="visibleColumns.includes('name')" field="name" header="Technicien" :sortable="true">
-                <template #body="{ data }">
-                  <div class="flex items-center gap-3">
-                    <Avatar :image="data.profile_photo_url || '/assets/media/avatars/blank.png'" :label="!data.profile_photo_url ? (data.name?.charAt(0) || '') : ''" shape="circle" size="large" />
-                    <div>
-                      <div class="font-semibold">{{ data.name }}</div>
-                      <div class="text-sm text-gray-500">{{ data.email }}</div>
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
+                <div class="flex items-center gap-5">
+                    <div class="w-16 h-16 bg-emerald-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-emerald-200 rotate-6 hover:rotate-0 transition-all duration-500">
+                        <i class="pi pi-users text-white text-3xl"></i>
                     </div>
-                  </div>
-                </template>
-              </Column>
-              <Column v-if="visibleColumns.includes('fonction')" field="fonction" header="Fonction" :sortable="true" style="min-width: 10rem;"></Column>
-              <Column v-if="visibleColumns.includes('region')" field="region" header="Région" :sortable="true" style="min-width: 10rem;"></Column>
-              <Column v-if="visibleColumns.includes('numero')" field="numero" header="Numéro" style="min-width: 10rem;"></Column>
-              <Column v-if="visibleColumns.includes('pointure')" field="pointure" header="Pointure" :sortable="true" style="min-width: 8rem;"></Column>
-              <Column v-if="visibleColumns.includes('size')" field="size" header="Taille" :sortable="true" style="min-width: 8rem;"></Column>
-              <Column v-if="visibleColumns.includes('email')" field="email" header="Email" :sortable="true" style="min-width: 15rem;"></Column>
-              <Column v-if="visibleColumns.includes('extra_attributes')" header="Autres caractéristiques" class="hidden md:table-cell">
-                <template #body="{ data }">
-                  <div v-if="data.extra_attributes && Object.keys(data.extra_attributes).length > 0">
-                    <ul class="list-disc list-inside">
-                      <li v-for="(value, key) in data.extra_attributes" :key="key">
-                        <strong>{{ key }}:</strong> {{ value }}
-                      </li>
-                    </ul>
-                  </div>
-                  <div v-else>
-                    N/A
-                  </div>
-                </template>
-              </Column>
-              <Column header="Actions" :exportable="false" style="min-width: 9rem">
-                <template #body="{ data }">
-                  <SecondaryButton class="mr-2" @click="openEdit(data)"><i class="pi pi-pencil"></i></SecondaryButton>
-                  <DangerButton @click="confirmDelete(data)"><i class="pi pi-trash"></i></DangerButton>
-                </template>
-              </Column>
-            </DataTable>
-            <Paginator v-if="totalRecords > perPage" :rows="perPage" :totalRecords="totalRecords" :rowsPerPageOptions="[5, 10, 20, 50]" @page="onPage" :first="(currentPage - 1) * perPage"></Paginator>
+                    <div>
+                        <h1 class="text-4xl font-black text-slate-900 tracking-tighter italic">V11 Ultimate</h1>
+                        <p class="text-slate-400 font-bold text-xs uppercase tracking-[0.3em]">Master Database Control</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 bg-white p-2.5 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-white">
+                    <Button icon="pi pi-file-excel" severity="secondary" text class="rounded-full" @click="exportData('excel')" v-tooltip.bottom="'Export Excel'" />
+                    <Button icon="pi pi-file-pdf" severity="secondary" text class="rounded-full" @click="exportData('pdf')" v-tooltip.bottom="'Export PDF'" />
+                    <div class="h-8 w-[1px] bg-slate-100 mx-2"></div>
+                    <Button label="Enrôler Technicien" icon="pi pi-plus-circle" severity="success" raised @click="openCreate" class="rounded-2xl font-black px-8 py-3 bg-emerald-600 border-none" />
                 </div>
             </div>
+
+            <div class="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/60 border border-white overflow-hidden">
+
+                <div class="p-8 flex flex-wrap items-center justify-between gap-6 bg-gradient-to-r from-white to-slate-50/50">
+                    <div class="flex items-center gap-4 w-full md:w-auto">
+                        <IconField iconPosition="left" class="w-full md:w-96">
+                            <InputIcon class="pi pi-search text-emerald-500" />
+                            <InputText v-model="search" placeholder="Rechercher par nom, email, matricule..." @input="updateFilters"
+                                class="w-full border-none bg-white shadow-inner rounded-2xl py-4 focus:ring-2 focus:ring-emerald-500/10" />
+                        </IconField>
+                        <Button icon="pi pi-sliders-v" severity="secondary" text class="bg-white shadow-sm border border-slate-100 rounded-2xl p-4" @click="showFilters = true" />
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-black text-slate-400 uppercase mr-2">{{ selectedTechs.length }} sélectionné(s)</span>
+                        <Button icon="pi pi-columns" text severity="secondary" @click="(e) => opColumns.toggle(e)" class="rounded-xl border border-slate-200" />
+                        <Button v-if="selectedTechs.length" label="Supprimer la sélection" icon="pi pi-trash" severity="danger" @click="confirmDeleteSelected"
+                                class="p-button-sm rounded-xl" />
+                    </div>
+                </div>
+
+                <DataTable :value="technicians.data" v-model:selection="selectedTechs" dataKey="id"
+                    class="p-datatable-v11-ultimate" scrollable scrollHeight="600px" :scrollable="true">
+
+                    <Column selectionMode="multiple" headerStyle="width: 4rem" class="pl-8"></Column>
+
+                    <Column header="Profil Technicien" minWidth="300px">
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-5 group cursor-pointer" @click="openEdit(data)">
+                                <div class="relative">
+                                    <Avatar :image="data.profile_photo_url || null" :label="data.profile_photo_url ? '' : data.name[0]" shape="circle" size="xlarge"
+                                        class="shadow-lg border-2 border-white group-hover:scale-110 transition-transform duration-300" :class="{'bg-slate-200 text-slate-700': !data.profile_photo_url}" />
+                                    <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-white rounded-full"></div>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="font-black text-slate-800 text-lg leading-tight">{{ data.name }}</span>
+                                    <span class="text-xs text-emerald-600 font-bold uppercase tracking-tighter">{{ data.email }}</span>
+                                </div>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('fonction')" field="fonction" header="Affectation" minWidth="200px">
+                        <template #body="{ data }">
+                            <Tag :value="data.fonction" severity="secondary" class="bg-slate-100 text-slate-600 font-black rounded-lg px-3" />
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('region')" field="region" header="Zone">
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-map-marker text-red-400"></i>
+                                <span class="font-bold text-slate-600">{{ data.region }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('numero')" field="numero" header="Contact">
+                        <template #body="{ data }">
+                            <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded-md">{{ data.numero }}</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Expertise" class="text-center">
+                        <template #body>
+                            <div class="flex gap-1 justify-center">
+                                <i class="pi pi-star-fill text-yellow-400 text-[10px]" v-for="i in 3" :key="i"></i>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" alignFrozen="right" frozen class="text-right pr-8">
+                        <template #body="{ data }">
+                            <div class="flex justify-end gap-2">
+                                <Button icon="pi pi-pencil" text rounded severity="info" @click="openEdit(data)" class="hover:bg-blue-50" />
+                                <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteTech(data)" class="hover:bg-red-50" />
+                            </div>
+                        </template>
+                    </Column>
+                </DataTable>
+
+                <Paginator :rows="technicians.per_page" :totalRecords="technicians.total" @page="onPage"
+                    :first="(technicians.current_page - 1) * technicians.per_page"
+                    template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                    :rowsPerPageOptions="[10, 20, 50]" class="py-8 bg-slate-50/50" />
+            </div>
+        </div>
+
+        <Dialog v-model:visible="isModalOpen" modal position="right" :header="form.id ? 'Fiche Technicien' : 'Nouvel Enrôlement'"
+            :style="{ width: '60vw' }" class="v11-dialog-ultimate" :draggable="false">
+
+            <form @submit.prevent="submit" class="p-4 space-y-8">
+                <div class="grid grid-cols-12 gap-10">
+
+                 <div class="col-span-12 md:col-span-4">
+        <div class="sticky top-0">
+            <div class="relative group bg-white rounded-[2.5rem] p-3 border border-slate-200 shadow-2xl transition-all duration-500 hover:border-emerald-300">
+
+               <div class="relative w-full aspect-square overflow-hidden rounded-[2.5rem] bg-slate-100 shadow-2xl border-4 border-white group">
+
+    <div
+        class="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-110"
+        :style="{
+            backgroundImage: form.profile_photo_preview ? `url(${form.profile_photo_preview})` : 'none'
+        }"
+    >
+        <div v-if="!form.profile_photo_preview" class="w-full h-full flex items-center justify-center">
+            <span class="text-[14rem] font-black text-slate-200 uppercase select-none">
+                {{ form.name ? form.name[0] : 'U' }}
+            </span>
+        </div>
+    </div>
+
+    <div
+        @click="triggerFileInput"
+        class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-[2px] z-10"
+    >
+        <div class="w-24 h-24 bg-white/95 text-slate-900 rounded-full flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-500 border-8 border-emerald-500/10">
+            <i class="pi pi-camera text-4xl"></i>
+        </div>
+    </div>
+
+    <button
+        v-if="form.profile_photo_preview"
+        type="button"
+        @click.stop="removePhoto"
+        class="absolute top-5 right-5 w-12 h-12 bg-white/90 text-red-500 rounded-2xl flex items-center justify-center shadow-xl hover:bg-red-500 hover:text-white hover:scale-110 transition-all z-20 border border-white/50 backdrop-blur-md"
+        v-tooltip.left="'Supprimer la photo'"
+    >
+        <i class="pi pi-trash text-xl"></i>
+    </button>
+
+</div>
+
+                <input type="file" ref="fileInput" class="hidden" @change="handlePhotoChange" accept="image/*" />
+
+                <div class="py-6 text-center">
+                    <h3 class="font-black text-slate-900 text-2xl tracking-tighter leading-none mb-2">
+                        {{ form.name || 'Nouveau Profil' }}
+                    </h3>
+                    <span class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] bg-emerald-50 px-4 py-1.5 rounded-full">
+                        Identité Visuelle
+                    </span>
+                </div>
             </div>
 
-
-    <!-- Modale création/édition -->
-    <Dialog v-model:visible="isModalOpen" modal :header="form.id ? 'Modifier le technicien' : 'Créer un technicien'" :style="{ width: '50rem' }" class="p-fluid">
-      <form @submit.prevent="submit" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <InputLabel for="name" value="Nom" />
-            <TextInput id="name" v-model="form.name" type="text" class="mt-1 block w-full" required />
-            <InputError :message="form.errors.name" class="mt-2" />
-          </div>
-          <div>
-            <InputLabel for="email" value="Email" />
-            <TextInput id="email" v-model="form.email" type="email" class="mt-1 block w-full" required />
-            <InputError :message="form.errors.email" class="mt-2" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <InputLabel for="fonction" value="Fonction" />
-            <Dropdown id="fonction" v-model="form.fonction" :options="fonctionOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner une fonction" class="mt-1 block w-full" filter />
-            <InputError :message="form.errors.fonction" class="mt-2" />
-          </div>
-          <div>
-            <InputLabel for="region" value="Région" />
-            <Dropdown id="region" v-model="form.region" :options="regionOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner une région" class="mt-1 block w-full" filter />
-            <InputError :message="form.errors.region" class="mt-2" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <InputLabel for="numero" value="Numéro" />
-            <TextInput id="numero" v-model="form.numero" type="text" class="mt-1 block w-full" />
-            <InputError :message="form.errors.numero" class="mt-2" />
-          </div>
-          <div>
-            <InputLabel for="pointure" value="Pointure" />
-            <TextInput id="pointure" v-model="form.pointure" type="text" class="mt-1 block w-full" />
-            <InputError :message="form.errors.pointure" class="mt-2" />
-          </div>
-          <div>
-            <InputLabel for="size" value="Taille (vêtements)" />
-            <TextInput id="size" v-model="form.size" type="text" class="mt-1 block w-full" />
-            <InputError :message="form.errors.size" class="mt-2" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <InputLabel for="password" :value="form.id ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'" />
-            <TextInput id="password" v-model="form.password" type="password" class="mt-1 block w-full" :required="!form.id" />
-            <InputError :message="form.errors.password" class="mt-2" />
-          </div>
-          <div>
-            <InputLabel for="password_confirmation" value="Confirmer le mot de passe" />
-            <TextInput id="password_confirmation" v-model="form.password_confirmation" type="password" class="mt-1 block w-full" :required="!form.id" />
-            <InputError :message="form.errors.password_confirmation" class="mt-2" />
-          </div>
-        </div>
-
-        <div class="mt-2">
-          <InputLabel value="Caractéristiques additionnelles" />
-          <div v-for="(item, idx) in form.extra_attributes" :key="idx" class="flex gap-2 mt-2">
-            <TextInput v-model="item.key" placeholder="Clé" class="flex-1" />
-            <TextInput v-model="item.value" placeholder="Valeur" class="flex-1" />
-            <DangerButton type="button" @click="removeExtra(idx)"><i class="pi pi-trash"></i></DangerButton>
-          </div>
-          <SecondaryButton type="button" class="mt-2" @click="addExtra"><i class="pi pi-plus mr-2"></i>Ajouter une caractéristique</SecondaryButton>
-        </div>
-
-        <div class="mt-4 p-4 border rounded">
-          <InputLabel value="Photo de profil" />
-          <div class="flex items-center gap-4 mt-2">
-            <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-              <img v-if="form.profile_photo_preview" :src="form.profile_photo_preview" class="w-full h-full object-cover" />
-              <i v-else class="pi pi-user text-2xl text-gray-400"></i>
+            <div class="mt-4 p-5 bg-slate-900 rounded-[2rem] shadow-xl border-t border-slate-800">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex items-center justify-center">
+                            <div class="absolute w-full h-full bg-emerald-500/20 rounded-full animate-ping"></div>
+                            <div class="w-3 h-3 bg-emerald-400 rounded-full relative shadow-[0_0_15px_rgba(52,211,153,1)]"></div>
+                        </div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Compte Actif</span>
+                    </div>
+                    <i class="pi pi-verified text-emerald-400 text-xl"></i>
+                </div>
             </div>
-            <input type="file" accept="image/*" @change="handlePhotoChange" />
-          </div>
-          <InputError :message="form.errors.profile_photo" class="mt-2" />
         </div>
+    </div>
 
-        <div class="flex justify-end gap-2 mt-6">
-          <SecondaryButton type="button" @click="closeModal">Annuler</SecondaryButton>
-          <PrimaryButton type="submit">{{ form.id ? 'Mettre à jour' : 'Créer' }}</PrimaryButton>
-        </div>
-      </form>
-    </Dialog>
+                    <div class="col-span-12 md:col-span-8 space-y-8">
+                        <div>
+                            <span class="v11-header-label">Informations Générales</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div class="flex flex-col gap-2">
+                                    <label for="name" class="v11-label">Nom complet</label>
+                                    <InputText id="name" v-model="form.name" class="v11-input-ultimate" placeholder="ex: Jean Dupont" required />
+                                    <small class="p-error" v-if="form.errors.name">{{ form.errors.name }}</small>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <label for="email" class="v11-label">Email Professionnel</label>
+                                    <InputText id="email" v-model="form.email" type="email" class="v11-input-ultimate" placeholder="tech@entreprise.com" required />
+                                    <small class="p-error" v-if="form.errors.email">{{ form.errors.email }}</small>
+                                </div>
+                            </div>
+                        </div>
 
-    <!-- Modale suppression -->
-    <Dialog v-model:visible="isDeleteModalOpen" modal header="Confirmer la suppression" :style="{ width: '30rem' }">
-      <div>
-        <p>Supprimer le technicien <strong>{{ toDelete?.name }}</strong> ?</p>
-        <div class="flex justify-end gap-2 mt-4">
-          <SecondaryButton @click="isDeleteModalOpen = false">Annuler</SecondaryButton>
-          <DangerButton @click="doDelete">Supprimer</DangerButton>
-        </div>
-      </div>
-    </Dialog>
+                        <div>
+                            <span class="v11-header-label">Affectation & Rôle</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div class="flex flex-col gap-2">
+                                    <label for="fonction" class="v11-label">Fonction</label>
+                                    <Dropdown v-model="form.fonction" :options="fonctionOptions" optionLabel="label" optionValue="value"
+                                        placeholder="Sélectionner un rôle" class="v11-dropdown-ultimate" id="fonction" />
+                                    <small class="p-error" v-if="form.errors.fonction">{{ form.errors.fonction }}</small>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <label for="region" class="v11-label">Région</label>
+                                    <Dropdown v-model="form.region" :options="regionOptions" optionLabel="label" optionValue="value"
+                                        placeholder="Zone d'intervention" class="v11-dropdown-ultimate" id="region" />
+                                    <small class="p-error" v-if="form.errors.region">{{ form.errors.region }}</small>
+                                </div>
+                            </div>
+                        </div>
 
-    <!-- Modale import -->
-    <Dialog v-model:visible="isImportModalOpen" modal header="Importer des techniciens (CSV)" :style="{ width: '30rem' }">
-      <div class="p-fluid">
-        <input type="file" accept=".csv,text/csv" @change="e => importFile.value = e.target.files?.[0]" />
-        <div class="flex justify-end gap-2 mt-4">
-          <SecondaryButton @click="isImportModalOpen = false">Annuler</SecondaryButton>
-          <PrimaryButton @click="doImport">Importer</PrimaryButton>
-        </div>
-      </div>
-    </Dialog>
-  </AppLayout>
+                        <div>
+                            <span class="v11-header-label">Données de Sécurité (EPI)</span>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                                <div class="flex flex-col gap-2">
+                                    <label for="numero" class="v11-label">Téléphone</label>
+                                    <InputText id="numero" v-model="form.numero" class="v11-input-ultimate !bg-white" />
+                                    <small class="p-error" v-if="form.errors.numero">{{ form.errors.numero }}</small>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <label for="pointure" class="v11-label">Pointure</label>
+                                    <InputText id="pointure" v-model="form.pointure" class="v11-input-ultimate !bg-white" />
+                                    <small class="p-error" v-if="form.errors.pointure">{{ form.errors.pointure }}</small>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <label for="size" class="v11-label">Taille (Vêtement)</label>
+                                    <InputText id="size" v-model="form.size" class="v11-input-ultimate !bg-white" />
+                                    <small class="p-error" v-if="form.errors.size">{{ form.errors.size }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!form.id" class="p-6 bg-blue-50/30 rounded-3xl border border-blue-100">
+                            <span class="v11-header-label !text-blue-700">Sécurité du compte</span>
+                            <div class="grid grid-cols-2 gap-6 mt-4">
+                                <InputText v-model="form.password" type="password" placeholder="Mot de passe" class="v11-input-ultimate !bg-white" />
+                                <small class="p-error" v-if="form.errors.password">{{ form.errors.password }}</small>
+                                <InputText v-model="form.password_confirmation" type="password" placeholder="Confirmer" class="v11-input-ultimate !bg-white" />
+                                <small class="p-error" v-if="form.errors.password_confirmation">{{ form.errors.password_confirmation }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-4 mt-12 pt-8 border-t border-slate-100">
+                    <Button label="Fermer sans enregistrer" severity="secondary" outlined @click="isModalOpen = false" class="rounded-2xl px-10" />
+                    <Button :label="form.id ? 'Valider les modifications' : 'Créer le profil'" severity="primary" raised :loading="form.processing" @click="submit"
+                            class="rounded-2xl px-12 shadow-xl shadow-indigo-200" />
+                </div>
+            </form>
+        </Dialog>
+
+        <Sidebar v-model:visible="showFilters" position="right" class="w-full md:w-96">
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <i class="pi pi-filter-fill text-emerald-500"></i>
+                    <span class="font-black text-xl uppercase italic">Filtres Avancés</span>
+                </div>
+            </template>
+            <div class="flex flex-col gap-8 mt-10">
+                <div class="flex flex-col gap-3">
+                    <label class="v11-label">Par Région</label>
+                    <Dropdown v-model="filterForm.region" :options="regionOptions" optionLabel="label" optionValue="value"
+                        placeholder="Toutes les régions" showClear class="v11-dropdown-ultimate" />
+                </div>
+                <div class="flex flex-col gap-3">
+                    <label class="v11-label">Par Fonction</label>
+                    <Dropdown v-model="filterForm.fonction" :options="fonctionOptions" optionLabel="label" optionValue="value"
+                        placeholder="Toutes les fonctions" showClear class="v11-dropdown-ultimate" />
+                </div>
+                <div class="mt-auto flex flex-col gap-3">
+                    <Button label="Appliquer les filtres" severity="primary" raised @click="updateFilters" class="justify-center" />
+                    <Button label="Réinitialiser tout" severity="secondary" outlined @click="resetFilters" class="justify-center" />
+                </div>
+            </div>
+        </Sidebar>
+
+        <OverlayPanel ref="opColumns">
+            <div class="p-4 w-72 flex flex-col gap-4">
+                <span class="font-black text-xs uppercase tracking-widest border-b pb-2">Colonnes Affichées</span>
+                <MultiSelect v-model="visibleColumns" :options="allColumns" optionLabel="header" optionValue="field"
+                    display="chip" class="w-full border-none bg-slate-50" />
+            </div>
+        </OverlayPanel>
+
+    </AppLayout>
 </template>
 
-<style scoped>
-    .p-overlaypanel {
-    max-width: 100vw !important;
+<style lang="scss">
+/* --- ULTIMATE V11 DESIGN SYSTEM --- */
+
+.p-datatable-v11-ultimate {
+    .p-datatable-thead > tr > th {
+        @apply bg-transparent text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] py-8 border-b border-slate-100;
+    }
+    .p-datatable-tbody > tr {
+        @apply transition-all duration-500 border-b border-slate-50;
+        &:hover { @apply bg-emerald-50/30 scale-[1.002] shadow-sm; }
+        td { @apply py-6 text-sm font-semibold text-slate-700; }
+    }
 }
-.p-overlaypanel-content {
-    max-width: 100vw !important;
-    box-sizing: border-box; /* S'assure que le padding est inclus dans la largeur */
+
+.v11-label {
+    @apply text-[10px] font-black text-slate-400 uppercase tracking-widest;
 }
+
+.v11-header-label {
+    @apply text-xs font-black text-slate-900 uppercase tracking-tighter border-l-4 border-emerald-500 pl-3;
+}
+
+.v11-input-ultimate {
+    @apply bg-slate-50 border-slate-200/60 rounded-2xl py-4 px-6 text-sm font-bold text-slate-700 transition-all w-full placeholder:text-slate-300;
+    &:focus { @apply bg-white ring-4 ring-emerald-500/5 border-emerald-500 shadow-xl shadow-emerald-100/20; }
+}
+
+.v11-dropdown-ultimate {
+    @apply bg-slate-50 border-slate-200/60 rounded-2xl w-full transition-all py-1 px-2;
+    .p-dropdown-label { @apply font-bold text-sm text-slate-700 py-3; }
+    &.p-focus { @apply ring-4 ring-emerald-500/5 border-emerald-500 bg-white; }
+}
+
+.v11-dialog-ultimate {
+    @apply rounded-[4rem] overflow-hidden border-none;
+    .p-dialog-header {
+        .p-dialog-header-icon {
+            @apply w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors;
+            .pi { @apply text-slate-500 text-lg; }
+        }
+        @apply px-12 pt-12 border-none;
+        .p-dialog-title { @apply font-black text-4xl text-slate-900 tracking-tighter italic; }
+    }
+    .p-dialog-content { @apply px-12 pb-12 scrollbar-hide; }
+}
+
+.p-sidebar {
+    @apply rounded-l-[3rem] shadow-2xl;
+    .p-sidebar-header { @apply px-8 pt-8; }
+    .p-sidebar-content { @apply px-8; }
+}
+
+/* Scrollbar invisible pour le look moderne */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 </style>

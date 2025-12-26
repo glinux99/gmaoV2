@@ -13,7 +13,14 @@ import ToastService from 'primevue/toastservice';
 
 import '@/sakai/assets/styles.scss';
 import '@/sakai/assets/tailwind.css';
+import { createI18n } from 'vue-i18n';
 import { definePreset } from '@primevue/themes';
+
+// 1. Importer les fichiers de traduction
+import fr from './locales/fr.json';
+import en from './locales/en.json';
+import sw from './locales/sw.json';
+import de from './locales/de.json';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Sakai';
 const MyCustomPreset = definePreset (Aura, {
@@ -32,6 +39,20 @@ const MyCustomPreset = definePreset (Aura, {
         }
     }
 });
+
+// 2. Configurer i18n avec les messages importés
+const i18n = createI18n({
+    legacy: false, // Important pour le mode Composition API
+    locale: 'fr', // Langue par défaut
+    fallbackLocale: 'fr',
+    messages: {
+        fr, // Raccourci pour fr: fr
+        en, // Raccourci pour en: en
+        sw,
+        de,
+    },
+});
+
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
@@ -50,6 +71,7 @@ createInertiaApp({
                     }
                 }
             })
+            .use(i18n)
             .use(ToastService)
             .use(ConfirmationService)
             .mixin({

@@ -154,7 +154,15 @@ const getStatusLabel = (status) => {
         default: return status;
     }
 };
+const formatDay = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
+const formatTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+};
 
 // --- PRÉPARATION DES DONNÉES D'INSTRUCTIONS (sécurisée) ---
 // Note: Cette fonction ne doit pas appeler parseJson si les données sont déjà parsées
@@ -770,248 +778,220 @@ const removeSparePartReturned = (index) => {
                             <p class="text-xl text-700">Aucune activité à afficher pour le moment.</p>
                             <p class="text-600">Revenez plus tard ou ajoutez une nouvelle tâche.</p>
                         </div>
+<Dialog
+    v-model:visible="equipmentDialog"
+    modal
+    :header="dialogTitle"
+    class="p-fluid"
+    :style="{ width: '50rem' }"
+    :breakpoints="{ '960px': '75vw', '641px': '90vw' }"
+>
+    <div class="grid">
+        <div class="col-12 field">
+            <label for="parent_id" class="font-bold text-900">{{ t('equipments.dialog.parentLabel') }}</label>
+            <Dropdown
+                id="parent_id"
+                v-model="form.parent_id"
+                :options="parentEquipments"
+                optionLabel="designation"
+                optionValue="id"
+                :placeholder="t('equipments.dialog.parentPlaceholder')"
+                showClear
+                filter
+            />
+            <small class="p-error">{{ form.errors.parent_id }}</small>
+        </div>
 
-                        <Dialog v-model:visible="activityDialogVisible" modal :header="isCreatingSubActivity ? 'Créer une Sous-Activité' : 'Compléter ou Modifier l\'Activité'" :style="{ width: '45rem' }" class="p-fluid">
-                            <div class="p-grid p-col-12 p-nogutter">
-                                <div class="field p-col-12" v-if="isCreatingSubActivity">
-                                    <Tag icon="pi pi-link" severity="secondary" :value="`Liée à l'activité #${selectedActivity.id}`" class="mb-3" />
-                                </div>
-                                <div class="field p-col-12">
-                                    <label for="status" class="font-semibold">Statut de l'activité</label>
-                                    <Dropdown id="status" class="w-full" v-model="form.status" :options="['scheduled', 'in_progress', 'completed', 'completed_with_issues', 'suspended', 'canceled', 'awaiting_resources', 'to_be_reviewed_later']" :optionLabel="getStatusLabel" placeholder="Changer le statut" />
-                                    <small class="p-error">{{ form.errors.status }}</small>
-                                </div>
-                                <div class="field p-col-12">
-                                    <label for="description" class="font-semibold">Description du problème et résolution</label>
-                                    <Textarea id="description" class="w-full" v-model="form.problem_resolution_description" rows="4" />
-                                    <small class="p-error">{{ form.errors.problem_resolution_description }}</small>
-                                </div>
-                                <div class="field p-col-12">
-                                    <label for="proposals" class="font-semibold">Propositions / Recommandations</label>
-                                    <Textarea id="proposals" class="w-full" v-model="form.proposals" rows="3" />
-                                    <small class="p-error">{{ form.errors.proposals }}</small>
-                                </div>
-                                <div class="field p-col-12 hidden">
-                                    <label for="instructions" class="font-semibold">Instructions laissées</label>
-                                    <Textarea id="instructions" class="w-full" v-model="form.instructions" rows="3" />
-                                    <small class="p-error">{{ form.errors.instructions }}</small>
-                                </div>
-                                <div class="field p-col-12">
-                                    <label for="additional_information" class="font-semibold">Informations additionnelles</label>
-                                    <Textarea id="additional_information" class="w-full" v-model="form.additional_information" rows="3" />
-                                    <small class="p-error">{{ form.errors.additional_information }}</small>
-                                </div>
-                                <div class="p-grid p-col-12 flex flex-wrap">
-                                    <div class="field p-col-6 w-full md:w-6/12">
-                                        <label for="actual_start_time" class="font-semibold">Heure de début réelle</label>
-                                        <Calendar id="actual_start_time" class="w-full" v-model="form.actual_start_time" showTime dateFormat="dd/mm/yy" showIcon />
-                                        <small class="p-error">{{ form.errors.actual_start_time }}</small>
-                                    </div>
-                                    <div class="field p-col-6 w-full md:w-6/12">
-                                        <label for="scheduled_start_time" class="font-semibold">Heure de début planifiée</label>
-                                        <Calendar id="scheduled_start_time" class="w-full" v-model="form.scheduled_start_time" showTime dateFormat="dd/mm/yy" showIcon />
-                                        <small class="p-error">{{ form.errors.scheduled_start_time }}</small>
-                                    </div>
-                                    <div class="field p-col-6 w-full md:w-6/12">
-                                        <label for="actual_end_time" class="font-semibold">Heure de fin réelle</label>
-                                        <Calendar id="actual_end_time" class="w-full" v-model="form.actual_end_time" showTime dateFormat="dd/mm/yy" showIcon />
-                                        <small class="p-error">{{ form.errors.actual_end_time }}</small>
-                                    </div>
-                                </div>
-                                <div class="p-grid p-col-12 flex flex-wrap">
-                                    <div class="field p-col-6 w-full md:w-6/12">
-                                        <label for="jobber" class="font-semibold">Intervenant</label>
-                                        <InputText id="jobber" class="w-full" v-model="form.jobber" />
-                                        <small class="p-error">{{ form.errors.jobber }}</small>
-                                    </div>
-                                    <div class="field p-col-6 w-full md:w-6/12">
-                                        <label for="user_id" class="font-semibold">Utilisateur</label>
-                                        <Dropdown id="user_id" class="w-full" v-model="form.user_id"
-                                                    :options="props.users" optionLabel="name" optionValue="id"
-                                                    placeholder="Sélectionner un utilisateur" filter />
-                                        <small class="p-error">{{ form.errors.user_id }}</small>
-                                    </div>
-                                </div>
-                            </div>
+        <div v-if="!isChild" class="col-12 md:col-6 field">
+            <label for="tag" class="font-bold text-900">{{ t('equipments.dialog.tag') }}</label>
+            <InputText id="tag" v-model.trim="form.tag" :class="{ 'p-invalid': form.errors.tag }" />
+            <small class="p-error">{{ form.errors.tag }}</small>
+        </div>
 
-                            <Divider />
-                            <h4 class="font-bold mb-3">Réponses aux Instructions 📝</h4>
+        <div :class="isChild ? 'col-12' : 'col-12 md:col-6'" class="field">
+            <label for="designation" class="font-bold text-900">{{ t('equipments.dialog.designation') }}</label>
+            <InputText id="designation" v-model.trim="form.designation" :class="{ 'p-invalid': form.errors.designation }" />
+            <small class="p-error">{{ form.errors.designation }}</small>
+        </div>
 
-                            <div v-if="selectedActivity?.task?.instructions?.length > 0">
-                                <div v-for="instruction in selectedActivity.task.instructions" :key="instruction.id" class="field mb-4 p-3 border rounded-lg bg-gray-50">
-                                    <label :for="`instruction-${instruction.id}`" class="font-semibold block mb-2">
-                                        {{ instruction.label }}
-                                        <span v-if="instruction.is_required" class="text-red-500 ml-1">*</span>
-                                    </label>
+        <div class="col-12 md:col-6 field">
+            <label for="equipment_type_id" class="font-bold text-900">{{ t('equipments.dialog.type') }}</label>
+            <div class="flex gap-2">
+                <Dropdown
+                    id="equipment_type_id"
+                    v-model="form.equipment_type_id"
+                    :options="equipmentTypes"
+                    optionLabel="name"
+                    optionValue="id"
+                    class="flex-grow-1"
+                    :placeholder="t('equipments.dialog.typePlaceholder')"
+                    :class="{ 'p-invalid': form.errors.equipment_type_id }"
+                />
+                <Button icon="pi pi-plus" severity="secondary" @click="openNewEquipmentType" :title="t('equipments.dialog.addType')" />
+            </div>
+            <small class="p-error">{{ form.errors.equipment_type_id }}</small>
+        </div>
 
-                                    <InputText v-if="instruction.type === 'text'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" />
-                                    <InputNumber v-else-if="instruction.type === 'number'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" :useGrouping="false" />
-                                    <Calendar v-else-if="instruction.type === 'date'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" showIcon dateFormat="dd/mm/yy" />
-                                    <Dropdown v-else-if="instruction.type === 'boolean'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" :options="[{label: 'Oui', value: '1'}, {label: 'Non', value: '0'}]" optionLabel="label" optionValue="value" placeholder="Sélectionner" class="w-full" />
-                                    <Textarea v-else-if="instruction.type === 'textarea'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" rows="3" />
+        <div class="col-12 md:col-6 field">
+            <label for="region_id" class="font-bold text-900">{{ t('equipments.dialog.region') }}</label>
+            <Dropdown id="region_id" v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('equipments.dialog.regionPlaceholder')" />
+            <small class="p-error">{{ form.errors.region_id }}</small>
+        </div>
 
-                                    <div v-else class="text-gray-500 text-sm">
-                                        Le type d'instruction '{{ instruction.type }}' n'est pas encore supporté pour la saisie.
-                                    </div>
+        <div class="col-12 md:col-4 field">
+            <label for="brand" class="font-bold text-900">{{ t('equipments.dialog.brand') }}</label>
+            <InputText id="brand" v-model.trim="form.brand" :class="{ 'p-invalid': form.errors.brand }" />
+            <small class="p-error">{{ form.errors.brand }}</small>
+        </div>
 
-                                    <small class="p-error">{{ form.errors[`instruction_answers.${instruction.id}`] }}</small>
-                                </div>
-                            </div>
+        <div class="col-12 md:col-4 field">
+            <label for="model" class="font-bold text-900">{{ t('equipments.dialog.model') }}</label>
+            <InputText id="model" v-model.trim="form.model" :class="{ 'p-invalid': form.errors.model }" />
+            <small class="p-error">{{ form.errors.model }}</small>
+        </div>
 
-                            <div v-else-if="selectedActivity?.maintenance_id">
-                                <div v-for="instruction in selectedActivity.maintenance.instructions" :key="instruction.id" class="field mb-4 p-3 border rounded-lg bg-gray-50">
-                                    <label :for="`instruction-${instruction.id}`" class="font-semibold block mb-2">
-                                        {{ instruction.label }}
-                                        <span v-if="instruction.is_required" class="text-red-500 ml-1">*</span>
-                                    </label>
+        <div v-if="showPuissance" class="col-12 md:col-4 field">
+            <label for="puissance" class="font-bold text-900">{{ t('equipments.dialog.power') }}</label>
+            <InputNumber id="puissance" v-model="form.puissance" suffix=" kW" :min="0" :class="{ 'p-invalid': form.errors.puissance }" />
+            <small class="p-error">{{ form.errors.puissance }}</small>
+        </div>
 
-                                    <InputText v-if="instruction.type === 'text'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" />
-                                    <InputNumber v-else-if="instruction.type === 'number'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" :useGrouping="false" />
-                                    <Calendar v-else-if="instruction.type === 'date'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" showIcon dateFormat="dd/mm/yy" />
-                                    <Dropdown v-else-if="instruction.type === 'boolean'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" :options="[{label: 'Oui', value: '1'}, {label: 'Non', value: '0'}]" optionLabel="label" optionValue="value" placeholder="Sélectionner" class="w-full" />
-                                    <Textarea v-else-if="instruction.type === 'textarea'" :id="`instruction-${instruction.id}`" v-model="form.instruction_answers[instruction.id]" class="w-full" rows="3" />
+        <div class="col-12 md:col-4 field">
+            <label for="serial_number" class="font-bold text-900">{{ t('equipments.dialog.serialNumber') }}</label>
+            <InputText id="serial_number" v-model.trim="form.serial_number" :class="{ 'p-invalid': form.errors.serial_number }" />
+            <small class="p-error">{{ form.errors.serial_number }}</small>
+        </div>
 
-                                    <div v-else class="text-gray-500 text-sm">
-                                        Le type d'instruction '{{ instruction.type }}' n'est pas encore supporté pour la saisie.
-                                    </div>
+        <div class="col-12 md:col-4 field">
+            <label for="price" class="font-bold text-900">{{ t('equipments.dialog.price') }}</label>
+            <InputNumber id="price" v-model="form.price" mode="currency" currency="EUR" locale="fr-FR" :class="{ 'p-invalid': form.errors.price }" />
+            <small class="p-error">{{ form.errors.price }}</small>
+        </div>
 
-                                    <small class="p-error">{{ form.errors[`instruction_answers.${instruction.id}`] }}</small>
-                                </div>
-                            </div>
+        <div class="col-12 md:col-4 field">
+            <label for="status" class="font-bold text-900">{{ t('equipments.dialog.status') }}</label>
+            <Dropdown id="status" v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" :class="{ 'p-invalid': form.errors.status }" />
+            <small class="p-error">{{ form.errors.status }}</small>
+        </div>
 
-                            <div v-else>
-                                <p class="text-gray-500">Aucune instruction spécifique pour cette tâche.</p>
-                            </div>
+        <div v-if="isStockStatus" class="col-12 field">
+            <label for="quantity" class="font-bold text-900">{{ t('equipments.dialog.stockQuantity') }}</label>
+            <InputNumber id="quantity" v-model="form.quantity" :min="0" :class="{ 'p-invalid': form.errors.quantity }" />
+            <small class="p-error">{{ form.errors.quantity }}</small>
+        </div>
 
-                            <Divider />
-                            <h4 class="font-bold mb-3">Pièces de rechange utilisées 🛠️ <Tag :value="`${serviceOrderCost.toFixed(0)} XOF`" severity="secondary" /></h4>
+        <div class="col-12 md:col-6 field">
+            <label for="purchase_date" class="font-bold text-900">{{ t('equipments.dialog.purchaseDate') }}</label>
+            <Calendar id="purchase_date" v-model="form.purchase_date" dateFormat="dd/mm/yy" showIcon :class="{ 'p-invalid': form.errors.purchase_date }" />
+            <small class="p-error">{{ form.errors.purchase_date }}</small>
+        </div>
 
-                            <div v-if="form.spare_parts_used.length > 0">
-                                <div v-for="(part, index) in form.spare_parts_used" :key="`used-${index}`" class="flex align-items-center mb-2 p-2 border-1 border-round surface-hover relative">
-                                    <span class="flex-grow-1 font-semibold text-700">
-                                        **{{ part.quantity }} x {{ getSparePartReference(part.id) }}**
-                                    </span>
-                                    <div class="flex-shrink-0">
-                                        <Button
-                                            icon="pi pi-pencil"
-                                            class="p-button-info p-button-text p-button-rounded mr-1"
-                                            @click="openSparePartDialog('used', part, index)"
-                                            v-tooltip.top="'Modifier la pièce'"
-                                        />
-                                        <Button
-                                            icon="pi pi-trash"
-                                            class="p-button-danger p-button-text p-button-rounded"
-                                            @click="removeSparePartUsed(index)"
-                                            v-tooltip.top="'Supprimer la pièce'"
-                                        />
-                                    </div>
-                                    <small class="p-error absolute bottom-0 left-0">{{ form.errors[`spare_parts_used.${index}.id`] || form.errors[`spare_parts_used.${index}.quantity`] }}</small>
-                                </div>
-                            </div>
-                            <div v-else>
-                                <p class="text-gray-500">Aucune pièce utilisée enregistrée.</p>
-                            </div>
+        <div class="col-12 md:col-6 field">
+            <label for="warranty_end_date" class="font-bold text-900">{{ t('equipments.dialog.warrantyEnd') }}</label>
+            <Calendar id="warranty_end_date" v-model="form.warranty_end_date" dateFormat="dd/mm/yy" showIcon :class="{ 'p-invalid': form.errors.warranty_end_date }" />
+            <small class="p-error">{{ form.errors.warranty_end_date }}</small>
+        </div>
 
-                            <Button
-                                label="Ajouter une pièce utilisée"
-                                icon="pi pi-plus"
-                                class="p-button-text p-button-sm mt-2"
-                                @click="openSparePartDialog('used')"
-                            />
+        <div class="col-12 field">
+            <label for="location" class="font-bold text-900">{{ t('equipments.dialog.location') }}</label>
+            <InputText id="location" v-model.trim="form.location" :class="{ 'p-invalid': form.errors.location }" />
+            <small class="p-error">{{ form.errors.location }}</small>
+        </div>
 
-                            <Divider />
-                            <h4 class="font-bold mb-3">Pièces de rechange retournées ♻️</h4>
+        <div class="col-12">
+            <Divider align="left" type="solid">
+                <span class="font-bold">{{ t('equipments.dialog.characteristics') }}</span>
+            </Divider>
 
-                            <div v-if="form.spare_parts_returned.length > 0">
-                                <div v-for="(part, index) in form.spare_parts_returned" :key="`returned-${index}`" class="flex align-items-center mb-2 p-2 border-1 border-round surface-hover relative">
-                                    <span class="flex-grow-1 font-semibold text-700">
-                                        **{{ part.quantity }} x {{ getSparePartReference(part.id) }}**
-                                    </span>
-                                    <div class="flex-shrink-0">
-                                        <Button
-                                            icon="pi pi-pencil"
-                                            class="p-button-info p-button-text p-button-rounded mr-1"
-                                            @click="openSparePartDialog('returned', part, index)"
-                                            v-tooltip.top="'Modifier la pièce'"
-                                        />
-                                        <Button
-                                            icon="pi pi-trash"
-                                            class="p-button-danger p-button-text p-button-rounded"
-                                            @click="removeSparePartReturned(index)"
-                                            v-tooltip.top="'Supprimer la pièce'"
-                                        />
-                                    </div>
-                                    <small class="p-error absolute bottom-0 left-0">{{ form.errors[`spare_parts_returned.${index}.id`] || form.errors[`spare_parts_returned.${index}.quantity`] }}</small>
-                                </div>
-                            </div>
-                            <div v-else>
-                                <p class="text-gray-500">Aucune pièce retournée enregistrée.</p>
-                            </div>
-                            <Button
-                                label="Ajouter une pièce retournée"
-                                icon="pi pi-plus"
-                                class="p-button-text p-button-sm mt-2"
-                                @click="openSparePartDialog('returned')"
-                            />
+            <div class="field mb-4">
+                <label for="label_id" class="font-bold text-900">{{ t('equipments.dialog.importCharacteristics') }}</label>
+                <Dropdown id="label_id" v-model="form.label_id" :options="labels" optionLabel="designation" optionValue="id" showClear filter />
+            </div>
 
-                            <template #footer>
-                                <Button label="Annuler" icon="pi pi-times" @click="hideDialog" class="p-button-text p-button-secondary" />
-                                <Button
-                                    :label="isCreatingSubActivity ? 'Créer la Sous-activité' : 'Sauvegarder'"
-                                    icon="pi pi-check"
-                                    @click="saveActivity"
-                                    :loading="form.processing"
-                                    class="p-button-info"
-                                />
-                            </template>
-                        </Dialog>
+            <div v-for="(char, index) in form.characteristics" :key="index" class="flex flex-column md:flex-row gap-2 mb-3 align-items-start border-bottom-1 surface-border pb-3">
+                <div class="flex-grow-1">
+                    <InputText v-model="char.name" :placeholder="t('equipments.dialog.characteristicNamePlaceholder')" class="w-full" :class="{ 'p-invalid': form.errors[`characteristics.${index}.name`] }" />
+                    <small class="p-error" v-if="form.errors[`characteristics.${index}.name`]">{{ form.errors[`characteristics.${index}.name`] }}</small>
+                </div>
 
-                        <Dialog v-model:visible="sparePartDialogVisible" modal :header="sparePartData.index === -1 ? 'Ajouter une ou plusieurs pièces' : 'Modifier une pièce'" :style="{ width: '30rem' }" class="p-fluid">
-                            <div class="field">
-                                <label for="spare-part-id" class="font-semibold">Pièce(s) de rechange</label>
+                <div class="w-full md:w-12rem">
+                    <Dropdown v-model="char.type" :options="characteristicTypes" optionLabel="label" optionValue="value" class="w-full" />
+                </div>
 
-                                <MultiSelect
-                                    v-if="sparePartData.index === -1"
-                                    id="spare-part-id"
-                                    v-model="sparePartData.ids"
-                                    :options="sparePartOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Sélectionner une ou plusieurs pièces"
-                                    class="w-full"
-                                    filter
-                                    display="chip"
-                                />
+                <div class="flex-grow-2 w-full">
+                    <InputText v-if="char.type === 'text'" v-model="char.value" class="w-full" />
+                    <InputNumber v-else-if="char.type === 'number'" v-model="char.value" class="w-full" />
+                    <Calendar v-else-if="char.type === 'date'" v-model="char.value" dateFormat="dd/mm/yy" class="w-full" />
+                    <InputSwitch v-else-if="char.type === 'boolean'" v-model="char.value" />
 
-                                <Dropdown
-                                    v-else
-                                    id="spare-part-id-single"
-                                    v-model="sparePartData.ids[0]"
-                                    :options="sparePartOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Sélectionner une pièce"
-                                    class="w-full"
-                                    filter
-                                />
-                            </div>
-                            <div class="field">
-                                <label for="spare-part-quantity" class="font-semibold">Quantité</label>
-                                <InputNumber
-                                    id="spare-part-quantity"
-                                    v-model="sparePartData.quantity"
-                                    placeholder="Quantité"
-                                    :min="1"
-                                    :max="99999"
-                                    class="w-full"
-                                    :useGrouping="false"
-                                />
-                            </div>
-                            <template #footer>
-                                <Button label="Annuler" icon="pi pi-times" @click="sparePartDialogVisible = false" class="p-button-text" />
-                                <Button label="Sauvegarder" icon="pi pi-check" @click="saveSparePart" class="p-button-primary" />
-                            </template>
-                        </Dialog>
+                    <div v-else-if="char.type === 'file'" class="flex flex-column gap-2">
+                        <input type="file" @change="char.value = $event.target.files[0]" class="p-inputtext p-2 border-1 surface-border border-round" />
+                        <a v-if="typeof char.value === 'string'" :href="`/storage/${char.value}`" target="_blank" class="text-primary font-medium">
+                            <i class="pi pi-download mr-1"></i> {{ char.value.split('/').pop() }}
+                        </a>
+                    </div>
+                </div>
+
+                <Button icon="pi pi-trash" severity="danger" text rounded @click="removeCharacteristic(index)" :disabled="form.characteristics.length === 1" />
+            </div>
+
+            <Button :label="t('equipments.dialog.addCharacteristic')" icon="pi pi-plus" text @click="addCharacteristic" :disabled="isChild" class="mt-2" />
+        </div>
+    </div>
+
+    <template #footer>
+        <Button :label="t('equipments.dialog.cancel')" icon="pi pi-times" text @click="hideDialog" />
+        <Button :label="t('equipments.dialog.save')" icon="pi pi-check" @click="saveEquipment" :loading="form.processing" />
+    </template>
+</Dialog>
+                      <Dialog v-model:visible="sparePartDialogVisible" modal
+        :header="sparePartData.index === -1 ? 'Ajouter des Ressources' : 'Modifier la Ressource'"
+        class="quantum-dialog w-full max-w-lg"
+        :pt="{
+            mask: { style: 'backdrop-filter: blur(4px)' },
+            header: { class: 'p-6 bg-slate-50 border-b border-slate-100' }
+        }">
+
+    <div class="p-6 space-y-6">
+        <div class="p-4 bg-indigo-50 border-2 border-indigo-100 rounded-2xl flex items-center gap-4">
+            <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-200">
+                <i class="pi pi-search text-white"></i>
+            </div>
+            <div class="flex-1">
+                <label class="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-1">Catalogue Pièces</label>
+
+                <MultiSelect v-if="sparePartData.index === -1" v-model="sparePartData.ids" :options="sparePartOptions"
+                             optionLabel="label" optionValue="value" placeholder="Rechercher une référence..."
+                             filter display="chip" class="w-full border-none bg-transparent shadow-none" />
+
+                <Dropdown v-else v-model="sparePartData.ids[0]" :options="sparePartOptions"
+                          optionLabel="label" optionValue="value" filter
+                          class="w-full border-none bg-transparent shadow-none" />
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1 text-center">Quantité Requis</label>
+            <div class="flex items-center justify-center gap-4">
+                <Button icon="pi pi-minus" class="p-button-rounded p-button-outlined p-button-secondary border-slate-200"
+                        @click="sparePartData.quantity > 1 ? sparePartData.quantity-- : null" />
+
+                <InputNumber v-model="sparePartData.quantity" class="text-center w-32" :min="1"
+                             inputClass="text-center text-2xl font-black text-slate-800 border-none shadow-none" />
+
+                <Button icon="pi pi-plus" class="p-button-rounded p-button-outlined p-button-secondary border-slate-200"
+                        @click="sparePartData.quantity++" />
+            </div>
+        </div>
+    </div>
+
+    <template #footer>
+        <div class="flex gap-2 p-2">
+            <Button label="Annuler" class="p-button-text p-button-secondary flex-1" @click="sparePartDialogVisible = false" />
+            <Button label="Valider l'Ajout" icon="pi pi-check" class="p-button-indigo flex-1 h-12 rounded-xl shadow-lg shadow-indigo-100" @click="saveSparePart" />
+        </div>
+    </template>
+</Dialog>
 
                     </template>
                 </Card>

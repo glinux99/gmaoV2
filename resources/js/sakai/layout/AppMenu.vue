@@ -4,68 +4,63 @@ import { ref } from 'vue';
 import AppMenuItem from './AppMenuItem.vue';
 
 const model = ref([
-    {
-        label: 'Dashboard',
+    { label: 'menu.dashboard.title',
         items: [
-            { label: 'Acceuil', icon: 'pi pi-fw pi-home', to: '/dashboard' },
-            { label: 'Analyse', icon: 'pi pi-fw pi-chart-line', to: '/analytics', }
+            { label: 'menu.dashboard.home', icon: 'pi pi-fw pi-home', to: '/dashboard' },
+            { label: 'menu.dashboard.analytics', icon: 'pi pi-fw pi-chart-line', to: '/analytics', }
 
         ]
     },
-    {
-        label: 'Gestions des Actifs',
+    { label: 'menu.assetManagement.title',
         items: [
-            { label: 'Inventaires', icon: 'pi pi-fw pi-sync', to: '/spare-part-movements', /*can: 'inventories'*/ },
+            { label: 'menu.assetManagement.inventories', icon: 'pi pi-fw pi-sync', to: '/spare-part-movements', /*can: 'inventories'*/ },
             // { label: 'Sortie', icon: 'pi pi-fw pi-arrow-circle-up', to: '/sorties', /*can: 'sorties'*/ },
             // { label: 'Entrée', icon: 'pi pi-fw pi-arrow-circle-down', to: '/entries', /*can: 'entries'*/ },
-            { label: 'Piece detachees', icon: 'pi pi-fw pi-book', to: '/spare-parts', /*can: 'categories'*/ }
-       , { label: 'Equipements', icon: 'pi pi-fw pi-cog', to: '/equipments', /*can: 'equipment'*/ }
+            { label: 'menu.assetManagement.spareParts', icon: 'pi pi-fw pi-book', to: '/spare-parts', /*can: 'categories'*/ }
+       , { label: 'menu.assetManagement.equipments', icon: 'pi pi-fw pi-cog', to: '/equipments', /*can: 'equipment'*/ }
 
         ]
     },
-    {
-        label: 'Gestion de taches',
+    { label: 'menu.taskManagement.title',
         items: [
-            { label: 'Agenda', icon: 'pi pi-fw pi-calendar', to: '/agenda', /*can: 'projects'*/ },
-            { label: 'Mes activités', icon: 'pi pi-fw pi-list', to: '/activities', /*can: 'projects'*/ },
-            { label: 'Ordre de Travail', icon: 'pi pi-fw pi-check-square', to: '/tasks', /*can: 'projects'*/ },
-            { label: 'Demande d\'Interventions', icon: 'pi pi-fw pi-exclamation-circle', to: '/interventions', /*can: 'projects'*/ },
-            { label: 'Plan de maintenance', icon: 'pi pi-fw pi-wrench', to: '/maintenances', /*can: 'projects'*/ },
-            { label: 'Raccordements', icon: 'pi pi-fw pi-sitemap', to: '/connections', /*can: 'projects'*/ },
-            { label: 'Dépenses', icon: 'pi pi-fw pi-money-bill', to: '/expenses', /*can: 'expenses'*/ },
+            { label: 'menu.taskManagement.agenda', icon: 'pi pi-fw pi-calendar', to: '/agenda', /*can: 'projects'*/ },
+            { label: 'menu.taskManagement.myActivities', icon: 'pi pi-fw pi-list', to: '/activities', /*can: 'projects'*/ },
+            { label: 'menu.taskManagement.workOrder', icon: 'pi pi-fw pi-check-square', to: '/tasks', /*can: 'projects'*/ },
+            { label: 'menu.taskManagement.interventionRequests', icon: 'pi pi-fw pi-exclamation-circle', to: '/interventions', /*can: 'projects'*/ },
+            { label: 'menu.taskManagement.maintenancePlan', icon: 'pi pi-fw pi-wrench', to: '/maintenances', /*can: 'projects'*/ },
+            { label: 'menu.taskManagement.connections', icon: 'pi pi-fw pi-sitemap', to: '/connections', /*can: 'projects'*/ },
+            { label: 'menu.taskManagement.expenses', icon: 'pi pi-fw pi-money-bill', to: '/expenses', /*can: 'expenses'*/ },
           ]
     },
-    {
-        label: 'Gestion des equipes',
+    { label: 'menu.teamManagement.title',
         items: [
-            { label: 'Equipes', icon: 'pi pi-fw pi-users', to: '/teams', /*can: 'teams'*/ },
-            { label: 'Techniciens', icon: 'pi pi-fw pi-user', to: '/technicians', /*can: 'techniciens'*/ }
+            { label: 'menu.teamManagement.teams', icon: 'pi pi-fw pi-users', to: '/teams', /*can: 'teams'*/ },
+            { label: 'menu.teamManagement.technicians', icon: 'pi pi-fw pi-user', to: '/technicians', /*can: 'techniciens'*/ }
         ]
     },
 
-    {
-        label: 'Gestion des RH',
+    { label: 'menu.hrManagement.title',
         items: [
             {
-                label: 'Employés',
+                label: 'menu.hrManagement.employees',
                 icon: 'pi pi-fw pi-users',
                 to: '/employees',
                 /*can: 'employees'*/
             },
             {
-                label: 'Congés',
+                label: 'menu.hrManagement.leaves',
                 icon: 'pi pi-fw pi-calendar-times',
                 to: '/leaves',
                 /*can: 'leaves'*/
             },
             // {
-            //     label: 'Présences',
+            //     label: 'menu.hrManagement.attendances',
             //     icon: 'pi pi-fw pi-clock',
             //     to: '/attendances',
             //     /*can: 'attendances'*/
             // },
             {
-                label: 'Paie',
+                label: 'menu.hrManagement.payroll',
                 icon: 'pi pi-fw pi-money-bill',
                 to: '/payroll',
                 /*can: 'payroll'*/
@@ -73,61 +68,58 @@ const model = ref([
             }
         ]
     },
-    {
-        label: 'SYSTEME CONFIGURATION',
+    { label: 'menu.systemConfiguration.title',
         items: [
             {
-                label: 'Gestion utilisateurs',
+                label: 'menu.systemConfiguration.userManagement',
                 icon: 'pi pi-fw pi-shield',
                 /*can: ['read user', 'read role', 'read permission'],*/
                 items: [
                     {
-                        label: 'Utilisateurs',
+                        label: 'menu.systemConfiguration.users',
                         to: '/users',
                         /*can: 'read user'*/
                     },
                     {
-                        label: 'Roles',
+                        label: 'menu.systemConfiguration.roles',
                         to: '/roles',
                         /*can: 'read role'*/
                     },
                     {
-                        label: 'Permissions',
+                        label: 'menu.systemConfiguration.permissions',
                         to: '/permissions',
                         /*can: 'read permission'*/
                     }
                 ]
             },
             {
-                label: 'Rapports',
+                label: 'menu.systemConfiguration.reports',
                 icon: 'pi pi-fw pi-chart-bar',
                 to: '/reports',
                 /*can: 'repports'*/
             },
             {
-                label: 'Maps',
+                label: 'menu.systemConfiguration.maps',
                 icon: 'pi pi-fw pi-map-marker',
                 to: '/googlemaps'
             },
             {
-                label: 'Region',
+                label: 'menu.systemConfiguration.regions',
                 icon: 'pi pi-fw pi-map',
                 to: '/regions'
             },
-            {
-                label: 'Engins roulants',
+            { label: 'menu.systemConfiguration.rollingStock',
                 icon: 'pi pi-fw pi-car',
                 to: '/engins'
             },
-                        { label: 'Unités', icon: 'pi pi-fw pi-tag', to: '/unities', /*can: 'unities'*/ }
-, {
-                label: 'Labels',
+            { label: 'menu.systemConfiguration.units', icon: 'pi pi-fw pi-tag', to: '/unities', /*can: 'unities'*/ },
+            { label: 'menu.systemConfiguration.labels',
                 icon: 'pi pi-fw pi-pencil',
                 to: '/labels',
                 /*can: 'priority'*/
             },
             {
-                label: 'Priorité du système',
+                label: 'menu.systemConfiguration.systemPriority',
                 icon: 'pi pi-fw pi-sort-amount-up',
                 to: '/priorities',
                 /*can: 'priority'*/

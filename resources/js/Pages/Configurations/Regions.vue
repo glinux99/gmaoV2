@@ -1,15 +1,17 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
+import { useI18n } from 'vue-i18n';
 
-// Importez les composants PrimeVue nécessaires pour les nouvelles fonctionnalités
+// Core V11 API
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+
+// PrimeVue Components
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import IconField from 'primevue/iconfield';
-import InputIcon from 'primevue/inputicon';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Toolbar from 'primevue/toolbar';
@@ -18,41 +20,75 @@ import Dropdown from 'primevue/dropdown';
 import InputNumber from 'primevue/inputnumber';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
-import FileUpload from 'primevue/fileupload'; // Ajouté pour l'import
+import FileUpload from 'primevue/fileupload';
+import Tag from 'primevue/tag';
+import ProgressBar from 'primevue/progressbar';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import Avatar from 'primevue/avatar';
+import SelectButton from 'primevue/selectbutton';
+import MultiSelect from 'primevue/multiselect';
+import Slider from 'primevue/slider';
 
+const { t } = useI18n();
 const props = defineProps({
     regions: Array,
     filters: Object,
 });
 
+// --- ÉTATS RÉACTIFS ---
 const toast = useToast();
 const confirm = useConfirm();
-
-const labelDialog = ref(false); // Dialogue Création/Modification
-const importDialog = ref(false); // Dialogue Importation (NOUVEAU)
+const dt = ref();
+const labelDialog = ref(false);
+const importDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
-const search = ref(props.filters?.search || '');
-const selectedRegions = ref(null); // Pour la suppression multiple (NOUVEAU)
+const loading = ref(false);
+const selectedRegions = ref(null);
 
-// Pour le File Upload (NOUVEAU)
-const fileUploadRef = ref(null);
-const fileImportForm = useForm({
-    file: null,
-});
-
-
+// --- FORMULAIRES ---
 const form = useForm({
     id: null,
     designation: '',
-    type_centrale: null,
-    puissance_centrale: null,
+    type_centrale: 'solaire',
+    puissance_centrale: 0,
+    description: '',
+    status: 'active'
 });
 
-const dt = ref(); // Référence à la DataTable pour l'export
+// --- SYSTÈME DE FILTRES AVANCÉS (V11 Custom) ---
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    type_centrale: { value: null, matchMode: FilterMatchMode.IN },
+    puissance_centrale: { value: [0, 1000], matchMode: FilterMatchMode.BETWEEN },
+    status: { value: null, matchMode: FilterMatchMode.EQUALS }
+});
 
-// --- CRUD de base (Création/Modification/Suppression unitaire) ---
+const initFilters = () => {
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        type_centrale: { value: null, matchMode: FilterMatchMode.IN },
+        puissance_centrale: { value: [0, 1000], matchMode: FilterMatchMode.BETWEEN },
+        status: { value: null, matchMode: FilterMatchMode.EQUALS }
+    };
+};
 
+// --- LOGIQUE DE CALCUL DES STATS ---
+const stats = computed(() => {
+    const data = props.regions || [];
+    const totalMWValue = data.reduce((acc, curr) => acc + (parseFloat(curr.puissance_centrale) || 0), 0);
+    return {
+        total: data.length,
+        totalMW: totalMWValue.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+        avgPower: data.length > 0 ? (totalMWValue / data.length).toFixed(1) : 0,
+        highPerf: data.filter(r => r.puissance_centrale > 500).length
+    };
+});
+
+// --- MÉTHODES D'ACTION ---
 const openNew = () => {
     form.reset();
     editing.value = false;
@@ -60,314 +96,288 @@ const openNew = () => {
     labelDialog.value = true;
 };
 
-const hideDialog = () => {
-    labelDialog.value = false;
-    submitted.value = false;
-};
-
 const editRegion = (region) => {
-    form.id = region.id;
-    form.designation = region.designation;
-    form.type_centrale = region.type_centrale;
-    form.puissance_centrale = region.puissance_centrale;
+    form.clearErrors();
+    Object.assign(form, region);
     editing.value = true;
     labelDialog.value = true;
 };
 
 const saveRegion = () => {
     submitted.value = true;
-    if (!form.designation) {
-        return;
-    }
+    if (!form.designation) return;
 
+    loading.value = true;
     const url = editing.value ? route('regions.update', form.id) : route('regions.store');
     const method = editing.value ? 'put' : 'post';
 
     form.submit(method, url, {
         onSuccess: () => {
             labelDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: `Région ${editing.value ? 'mise à jour' : 'créée'} avec succès`, life: 3000 });
-            form.reset();
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Région enregistrée', life: 3000 });
+            loading.value = false;
         },
-        onError: (errors) => {
-            console.error("Erreur lors de la sauvegarde de la région", errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue.', life: 3000 });
-        }
+        onError: () => { loading.value = false; }
     });
 };
 
 const deleteRegion = (region) => {
     confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer la région "${region.designation}" ?`,
-        header: 'Confirmation de suppression',
-        icon: 'pi pi-info-circle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
+        message: `Voulez-vous vraiment supprimer ${region.designation} ?`,
+        header: 'Attention',
+        icon: 'pi pi-exclamation-triangle',
         acceptClass: 'p-button-danger',
         accept: () => {
             router.delete(route('regions.destroy', region.id), {
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: 'Région supprimée avec succès', life: 3000 });
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression.', life: 3000 });
-                }
+                onSuccess: () => toast.add({ severity: 'info', summary: 'Info', detail: 'Supprimé' })
             });
-        },
+        }
     });
 };
 
-// --- Exportation CSV ---
+// --- OPTIONS DE CONFIGURATION ---
+const typeOptions = [
+    { label: 'Thermique', value: 'thermique', icon: 'pi pi-bolt', color: 'red' },
+    { label: 'Solaire', value: 'solaire', icon: 'pi pi-sun', color: 'orange' },
+    { label: 'Hydraulique', value: 'hydraulique', icon: 'pi pi-cloud', color: 'blue' },
+    { label: 'Eolienne', value: 'eolienne', icon: 'pi pi-directions', color: 'green' }
+];
 
-const exportCSV = () => {
-    // PrimeVue DataTable gère l'exportation CSV du tableau affiché
-    dt.value.exportCSV();
+const getSeverity = (type) => {
+    const map = { solaire: 'warning', thermique: 'danger', hydraulique: 'info', eolienne: 'success' };
+    return map[type] || 'secondary';
 };
-
-// --- Suppression Multiple (NOUVEAU) ---
-
-const confirmDeleteSelected = () => {
-    if (!selectedRegions.value || selectedRegions.value.length === 0) {
-        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner au moins une région.', life: 3000 });
-        return;
-    }
-
-    confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer les ${selectedRegions.value.length} régions sélectionnées ?`,
-        header: 'Confirmation de suppression multiple',
-        icon: 'pi pi-exclamation-triangle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            deleteSelectedRegions();
-        },
-    });
-};
-
-const deleteSelectedRegions = () => {
-    const ids = selectedRegions.value.map(region => region.id);
-
-    // Inertia utilise POST avec une méthode _method DELETE pour la suppression
-    router.post(route('regions.bulkDestroy'), { ids: ids }, { // Assurez-vous d'avoir une route 'regions.bulkDestroy'
-        onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: `${ids.length} régions supprimées avec succès.`, life: 3000 });
-            selectedRegions.value = null; // Désélectionner les régions
-        },
-        onError: () => {
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression multiple.', life: 3000 });
-        },
-        preserveState: false, // Recharger la page pour mettre à jour le tableau
-    });
-};
-
-// --- Importation de Fichier (NOUVEAU) ---
-
-const openImportDialog = () => {
-    fileImportForm.reset();
-    importDialog.value = true;
-};
-
-const uploadFile = () => {
-    if (!fileImportForm.file) {
-        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner un fichier à importer.', life: 3000 });
-        return;
-    }
-
-    // Le fichier est déjà dans fileImportForm.file grâce à l'événement @select (voir template)
-    fileImportForm.post(route('regions.import'), { // Assurez-vous d'avoir une route 'regions.import'
-        onSuccess: () => {
-            importDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Importation lancée. Le tableau se mettra à jour.', life: 3000 });
-            fileImportForm.reset();
-            // Optionnel : Recharger la page si l'import est synchrone, sinon, attendre le résultat (queue)
-            router.reload({ only: ['regions'] });
-        },
-        onError: (errors) => {
-            console.error("Erreur lors de l'importation", errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: fileImportForm.errors.file || 'Erreur lors du traitement du fichier.', life: 5000 });
-        },
-    });
-};
-
-// Gestion de la recherche existante
-let timeoutId = null;
-const performSearch = () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-        router.get(route('regions.index'), { search: search.value }, {
-            preserveState: true,
-            replace: true,
-        });
-    }, 300);
-};
-
-const typeCentraleOptions = ref([
-    { label: 'Thermique', value: 'thermique' },
-    { label: 'Solaire', value: 'solaire' },
-    { label: 'Hydraulique', value: 'hydraulique' },
-    { label: 'Eolienne', value: 'eolienne' },
-]);
-
-const dialogTitle = computed(() => editing.value ? 'Modifier la Région' : 'Créer une nouvelle Région');
-const hasSelectedRegions = computed(() => selectedRegions.value && selectedRegions.value.length > 0);
-
 </script>
 
 <template>
-    <AppLayout title="Gestion des Régions">
-        <Head title="Régions" />
+    <AppLayout>
+        <Head title="Parc Énergétique V11" />
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                    <Toolbar class="mb-4">
-                        <template #start>
-                            <div class="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
-                                <span class="block mt-2 md:mt-0 p-input-icon-left">
-                                    <Button label="Ajouter une région" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
-                                    <Button label="Supprimer la sélection" icon="pi pi-trash" class="p-button-sm p-button-danger mr-2"
-                                        :disabled="!hasSelectedRegions" @click="confirmDeleteSelected" /> <Button label="Importer" icon="pi pi-download" class="p-button-sm p-button-warning"
-                                        @click="openImportDialog" /> </span>
-                            </div>
-                        </template>
-
-                        <template #end>
-                            <IconField class="mr-2">
-                                <InputIcon><i class="pi pi-search" /></InputIcon>
-                                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-                            </IconField>
-                            <Button label="Exporter" icon="pi pi-upload" class="p-button-help" @click="exportCSV($event)" />
-                        </template>
-                    </Toolbar>
-
-                    <DataTable ref="dt" :value="regions" dataKey="id" :paginator="true" :rows="10"
-                        :selection="selectedRegions" @update:selection="selectedRegions = $event" :rowsPerPageOptions="[5, 10, 25]"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} régions"
-                        responsiveLayout="scroll">
-
-                        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-
-                        <Column field="designation" header="Désignation" :sortable="true" headerStyle="width:30%; min-width:10rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.designation }}
-                            </template>
-                        </Column>
-                        <Column field="type_centrale" header="Type de Centrale" headerStyle="width:35%; min-width:8rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.type_centrale }}
-                            </template>
-                        </Column>
-                        <Column field="puissance_centrale" header="Puissance de la Centrale (MW)" headerStyle="width:20%; min-width:8rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.puissance_centrale }}
-                            </template>
-                        </Column>
-                        <Column headerStyle="min-width:10rem;" header="Actions">
-                            <template #body="slotProps">
-                                <Button icon="pi pi-pencil" class="p-button-rounded mr-2" severity="info"
-                                    @click="editRegion(slotProps.data)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded " severity="error"
-                                    @click="deleteRegion(slotProps.data)" />
-                            </template>
-                        </Column>
-                    </DataTable>
-
-                    <Dialog v-model:visible="labelDialog" modal :header="dialogTitle" :style="{ width: '40rem' }">
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="designation" class="font-semibold w-24">Désignation</label>
-                            <InputText id="designation" v-model.trim="form.designation" required="true" autofocus
-                                :class="{ 'p-invalid': submitted && !form.designation }" class="flex-auto" autocomplete="off" />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && !form.designation">La désignation est requise.</small>
-                        <small class="p-error" v-if="form.errors.designation">{{ form.errors.designation }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="type_centrale" class="font-semibold w-24">Type de Centrale</label>
-                            <Dropdown id="type_centrale" v-model="form.type_centrale" :options="typeCentraleOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner un type" class="flex-auto" />
-                        </div>
-                        <small class="p-error" v-if="form.errors.type_centrale">{{ form.errors.type_centrale }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="puissance_centrale" class="font-semibold w-24">Puissance Centrale (MW)</label>
-                            <InputNumber id="puissance_centrale" v-model="form.puissance_centrale" mode="decimal" :min="0" :maxFractionDigits="2" class="flex-auto" />
-                        </div>
-                        <small class="p-error" v-if="form.errors.puissance_centrale">{{ form.errors.puissance_centrale }}</small>
-
-                        <div class="flex justify-end gap-2">
-                            <Button type="button" label="Annuler" severity="secondary" @click="hideDialog"></Button>
-                            <Button type="button" label="Sauvegarder" @click="saveRegion" :loading="form.processing"></Button>
-                        </div>
-                    </Dialog>
-
-                    <Dialog v-model:visible="importDialog" modal header="Importer des Régions" :style="{ width: '30rem' }">
-                        <p class="text-surface-500 dark:text-surface-400 mb-4">
-                            Téléchargez un fichier CSV ou Excel pour importer de nouvelles régions.
-                        </p>
-                        <form @submit.prevent="uploadFile">
-                            <FileUpload
-                                ref="fileUploadRef"
-                                mode="basic"
-                                name="file"
-                                chooseLabel="Choisir un fichier"
-                                accept=".csv, .xlsx"
-                                :maxFileSize="1000000"
-                                @select="event => fileImportForm.file = event.files[0]"
-                                customUpload
-                                :auto="false"
-                                :class="{ 'p-invalid': fileImportForm.errors.file }"
-                            />
-                            <small class="p-error block mt-2" v-if="fileImportForm.errors.file">{{ fileImportForm.errors.file }}</small>
-
-                            <div class="flex justify-end gap-2 mt-4">
-                                <Button type="button" label="Annuler" severity="secondary" @click="importDialog = false"></Button>
-                                <Button type="submit" label="Importer" :loading="fileImportForm.processing"></Button>
-                            </div>
-                        </form>
-                    </Dialog>
+        <div class="min-h-screen bg-slate-50/50 p-4 lg:p-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 tracking-tight">Gestion du Parc</h1>
+                    <p class="text-slate-500 font-medium">Supervision technique des régions énergétiques</p>
+                </div>
+                <div class="flex gap-3">
+                    <Button label="Réinitialiser Filtres" icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" />
+                    <Button label="Nouvelle Région" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
                 </div>
             </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div v-for="(val, key) in stats" :key="key" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div class="flex flex-column gap-2">
+                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ key.replace(/([A-Z])/g, ' $1') }}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="text-3xl font-black text-slate-800">{{ val }}</span>
+                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                <i :class="key === 'totalMW' ? 'pi pi-bolt' : 'pi pi-database'" class="text-slate-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
+                <DataTable
+                    ref="dt"
+                    :value="regions"
+                    v-model:selection="selectedRegions"
+                    v-model:filters="filters"
+                    dataKey="id"
+                    :paginator="true"
+                    :rows="10"
+                    filterDisplay="menu"
+                    :globalFilterFields="['designation', 'type_centrale']"
+                    class="p-datatable-custom"
+                    removableSort
+                >
+                    <template #header>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search" />
+                                <InputText v-model="filters['global'].value" placeholder="Recherche globale..." class="w-full md:w-80 rounded-2xl border-slate-200" />
+                            </IconField>
+                            <div class="flex items-center gap-2">
+                                <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" />
+                                <Button icon="pi pi-cog" text rounded severity="secondary" />
+                            </div>
+                        </div>
+                    </template>
+
+                    <Column selectionMode="multiple" headerStyle="width: 3rem" />
+
+                    <Column field="designation" header="Désignation" sortable filterField="designation">
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-3">
+                                <Avatar :label="data.designation[0]" shape="circle" class="bg-primary-50 text-primary-600 font-bold" />
+                                <span class="font-bold text-slate-700">{{ data.designation }}</span>
+                            </div>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Chercher par nom" />
+                        </template>
+                    </Column>
+
+                    <Column field="type_centrale" header="Source" sortable :showFilterMatchModes="false">
+                        <template #body="{ data }">
+                            <Tag :value="data.type_centrale" :severity="getSeverity(data.type_centrale)" class="rounded-lg px-3 uppercase text-[10px]" />
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <MultiSelect v-model="filterModel.value" :options="typeOptions" optionLabel="label" optionValue="value" placeholder="Tous les types" class="w-full" />
+                        </template>
+                    </Column>
+
+                    <Column field="puissance_centrale" header="Capacité" sortable>
+                        <template #body="{ data }">
+                            <div class="flex flex-col w-40">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-sm font-black text-slate-700">{{ data.puissance_centrale }} <small>MW</small></span>
+                                    <span class="text-[10px] text-slate-400 font-bold">{{ ((data.puissance_centrale/1000)*100).toFixed(0) }}%</span>
+                                </div>
+                                <ProgressBar :value="(data.puissance_centrale/1000)*100" :showValue="false" style="height: 7px" class="rounded-full overflow-hidden" />
+                            </div>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <div class="px-3 pt-2 pb-4">
+                                <Slider v-model="filterModel.value" range :min="0" :max="1000" class="w-full" />
+                                <div class="flex justify-between mt-3 text-xs font-bold text-slate-500">
+                                    <span>{{ filterModel.value[0] }}MW</span>
+                                    <span>{{ filterModel.value[1] }}MW</span>
+                                </div>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" alignFrozen="right" frozen class="min-w-[120px]">
+                        <template #body="{ data }">
+                            <div class="flex justify-end gap-1">
+                                <Button icon="pi pi-pencil" text rounded severity="info" @click="editRegion(data)" />
+                                <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteRegion(data)" />
+                            </div>
+                        </template>
+                    </Column>
+                </DataTable>
+            </div>
         </div>
+
+        <Dialog
+            v-model:visible="labelDialog"
+            modal
+            :header="editing ? 'Mise à jour Technique' : 'Nouvelle Configuration'"
+            :style="{ width: '90vw', maxWidth: '600px' }"
+            :contentStyle="{ maxHeight: '80vh', overflow: 'auto' }"
+            class="ultimate-modal"
+        >
+            <div class="p-2 space-y-8">
+                <div class="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200">
+                        <i class="pi pi-box text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-slate-800 m-0">Paramètres de la région</h4>
+                        <p class="text-xs text-slate-500 m-0">Complétez les informations de production</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2 flex flex-col gap-2">
+                        <label class="text-xs font-black text-slate-500 uppercase">Nom de l'infrastructure</label>
+                        <IconField iconPosition="left">
+                            <InputIcon class="pi pi-map-marker" />
+                            <InputText v-model="form.designation" class="w-full py-3.5 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary-50" placeholder="Ex: Centrale Nord-Est" />
+                        </IconField>
+                        <small v-if="submitted && !form.designation" class="text-red-500 font-bold italic">Le nom est obligatoire.</small>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-black text-slate-500 uppercase">Type d'Énergie</label>
+                        <Dropdown v-model="form.type_centrale" :options="typeOptions" optionLabel="label" optionValue="value" class="rounded-xl border-slate-200 py-1">
+                            <template #option="slotProps">
+                                <div class="flex items-center gap-2">
+                                    <i :class="slotProps.option.icon"></i>
+                                    <span>{{ slotProps.option.label }}</span>
+                                </div>
+                            </template>
+                        </Dropdown>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-black text-slate-500 uppercase">Puissance (MW)</label>
+                        <InputNumber v-model="form.puissance_centrale" mode="decimal" showButtons :min="0" suffix=" MW" class="w-full" inputClass="py-3.5 rounded-xl border-slate-200" />
+                    </div>
+
+                    <div class="md:col-span-2 flex flex-col gap-2">
+                        <label class="text-xs font-black text-slate-500 uppercase">Notes Techniques</label>
+                        <textarea v-model="form.description" rows="3" class="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-primary-50 transition-all text-sm outline-none" placeholder="Détails supplémentaires..."></textarea>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 pt-8 border-t border-slate-100">
+                    <button @click="labelDialog = false" class="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all uppercase text-xs tracking-widest">
+                        Abandonner
+                    </button>
+                    <button
+                        @click="saveRegion"
+                        class="flex-1 px-8 py-4 rounded-2xl font-black text-white bg-primary-600 hover:bg-primary-700 shadow-xl shadow-primary-200 hover:-translate-y-1 active:translate-y-0 transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-3"
+                    >
+                        <i v-if="loading" class="pi pi-spin pi-spinner"></i>
+                        <span>{{ editing ? 'Mettre à jour' : 'Enregistrer la configuration' }}</span>
+                    </button>
+                </div>
+            </div>
+        </Dialog>
+
+        <Toast position="bottom-right" />
+        <ConfirmDialog />
     </AppLayout>
 </template>
-<style scoped>
-.p-datatable .p-datatable-header {
-    border-bottom: 1px solid var(--surface-d);
+
+<style lang="scss">
+/* Personnalisation PrimeVue V11 pour matching Tailwind */
+.p-datatable-custom {
+    .p-datatable-thead > tr > th {
+        background: #f8fafc;
+        color: #475569;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        padding: 1.25rem 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .p-datatable-tbody > tr {
+        background: white;
+        transition: all 0.2s;
+        &:hover {
+            background: #f1f5f9 !important;
+        }
+    }
 }
 
-.p-datatable .p-column-header-content {
-    justify-content: space-between;
+.ultimate-modal {
+    .p-dialog-header {
+        background: white;
+        padding: 2rem 2rem 1rem 2rem;
+        border: none;
+        .p-dialog-title { font-weight: 900; font-size: 1.25rem; color: #0f172a; }
+    }
+    .p-dialog-content {
+        padding: 0 2rem 2rem 2rem;
+    }
 }
 
-.p-button.p-button-warning, .p-button.p-button-warning:hover {
-    background: var(--orange-500);
-    border-color: var(--orange-500);
+/* Fix for Primary Style Toggle */
+.p-button.p-button-primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    &:hover { background: #1d4ed8; border-color: #1d4ed8; }
 }
 
-.p-button.p-button-warning:focus {
-    box-shadow: 0 0 0 2px var(--surface-200), 0 0 0 4px var(--orange-700), 0 1px 2px 0 black;
-}
-
-.p-button.p-button-success, .p-button.p-button-success:hover {
-    background: var(--green-500);
-    border-color: var(--green-500);
-}
-
-.p-button.p-button-success:focus {
-    box-shadow: 0 0 0 2px var(--surface-200), 0 0 0 4px var(--green-700), 0 1px 2px 0 black;
-}
-
-.p-button.p-button-danger, .p-button.p-button-danger:hover {
-    background: var(--red-500);
-    border-color: var(--red-500);
-}
-
-.p-button.p-button-danger:focus {
-    box-shadow: 0 0 0 2px var(--surface-200), 0 0 0 4px var(--red-700), 0 1px 2px 0 black;
+/* Custom MultiSelect and Sliders */
+.p-multiselect, .p-dropdown {
+    border-radius: 12px;
 }
 </style>

@@ -1,40 +1,81 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
-   import AppLayout from "@/sakai/layout/AppLayout.vue";
+import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
+import { useI18n } from 'vue-i18n';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
+// --- IMPORTS COMPOSANTS ---
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Toolbar from 'primevue/toolbar';
+import Dialog from 'primevue/dialog';
+import Dropdown from 'primevue/dropdown';
+import Textarea from 'primevue/textarea';
+import Toast from 'primevue/toast';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Tag from 'primevue/tag';
+import Divider from 'primevue/divider';
+import Checkbox from 'primevue/checkbox';
+import ColorPicker from 'primevue/colorpicker';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import Avatar from 'primevue/avatar';
+
+const { t } = useI18n();
 const props = defineProps({
-    labels: Array,
+    labels: Object, // Inertia pagination object
     filters: Object,
 });
 
-const characteristicTypes = ref([
-    { label: 'Texte', value: 'text' },
-    { label: 'Nombre', value: 'number' },
-    { label: 'Date', value: 'date' },
-    { label: 'Fichier', value: 'file' },
-    { label: 'Boolean', value: 'boolean' },
-    { label: 'Liste déroulante', value: 'select' },
-]);
-
+// --- ÉTATS & RÉFÉRENCES ---
 const toast = useToast();
 const confirm = useConfirm();
-
+const dt = ref();
 const labelDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
 
+// --- TYPES DE CARACTÉRISTIQUES ---
+const characteristicTypes = ref([
+    { label: computed(() => t('labels.types.text')), value: 'text' },
+    { label: computed(() => t('labels.types.number')), value: 'number' },
+    { label: computed(() => t('labels.types.date')), value: 'date' },
+    { label: computed(() => t('labels.types.file')), value: 'file' },
+    { label: computed(() => t('labels.types.boolean')), value: 'boolean' },
+    { label: computed(() => t('labels.types.select')), value: 'select' },
+]);
+
+// --- FORMULAIRE ---
 const form = useForm({
     id: null,
     designation: '',
     description: '',
-    color: 'ff0000',
-    characteristics: [], // Ajouter pour gérer les caractéristiques
+    color: '3B82F6', // Bleu par défaut
+    characteristics: [],
 });
 
+// --- STATISTIQUES (Calculées sur les labels actuels) ---
+const stats = computed(() => {
+    const data = props.labels.data || [];
+    return {
+        total: data.length,
+        withChars: data.filter(l => l.label_characteristics?.length > 0).length,
+    };
+});
+
+// --- CONFIGURATION DES FILTRES ---
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+});
+
+// --- LOGIQUE MÉTIER ---
 const openNew = () => {
     form.reset();
     editing.value = false;
@@ -42,17 +83,11 @@ const openNew = () => {
     labelDialog.value = true;
 };
 
-const hideDialog = () => {
-    labelDialog.value = false;
-    submitted.value = false;
-};
-
 const editLabel = (label) => {
     form.id = label.id;
     form.designation = label.designation;
     form.description = label.description;
     form.color = label.color.replace('#', '');
-    // Cloner les caractéristiques pour éviter la mutation directe du prop
     form.characteristics = label.label_characteristics ? JSON.parse(JSON.stringify(label.label_characteristics)) : [];
     editing.value = true;
     labelDialog.value = true;
@@ -60,23 +95,17 @@ const editLabel = (label) => {
 
 const saveLabel = () => {
     submitted.value = true;
-    if (!form.designation) {
-        return;
-    }
+    if (!form.designation) return;
 
-    const hasChangedCharacteristics = form.isDirty && (
-        JSON.stringify(form.characteristics) !== JSON.stringify(props.labels.data.find(l => l.id === form.id)?.label_characteristics || [])
-    );
+    const hasChangedChars = editing.value && form.isDirty;
 
-    if (editing.value && hasChangedCharacteristics) {
+    if (hasChangedChars) {
         confirm.require({
-            message: 'Vous avez modifié des caractéristiques. La modification ou la suppression de caractéristiques peut affecter les données existantes. Voulez-vous continuer ?',
-            header: 'Confirmation de modification',
+            message: t('labels.messages.confirmChange'),
+            header: t('common.confirmation'),
             icon: 'pi pi-exclamation-triangle',
             acceptClass: 'p-button-warning',
-            accept: () => {
-                submitForm();
-            },
+            accept: () => submitForm(),
         });
     } else {
         submitForm();
@@ -90,275 +119,217 @@ const submitForm = () => {
     form.transform(data => ({
         ...data,
         color: '#' + data.color,
-        characteristics: data.characteristics.filter(c => c.name.trim() !== '') // Filtrer les caractéristiques vides
+        characteristics: data.characteristics.filter(c => c.name.trim() !== '')
     })).submit(method, url, {
         onSuccess: () => {
             labelDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: `Label ${editing.value ? 'mis à jour' : 'créé'} avec succès`, life: 3000 });
+            toast.add({ severity: 'success', summary: 'Succès', detail: t(`labels.messages.${editing.value ? 'updateSuccess' : 'createSuccess'}`), life: 3000 });
             form.reset();
         },
-        onError: (errors) => {
-            console.error("Erreur lors de la sauvegarde du label", errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue.', life: 3000 });
-        }
+        onError: () => toast.add({ severity: 'error', summary: 'Erreur', detail: t('common.errorOccurred'), life: 3000 })
     });
 };
 
 const deleteLabel = (label) => {
     confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer le label "${label.designation}" ?`,
-        header: 'Confirmation de suppression',
-        icon: 'pi pi-info-circle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
+        message: t('labels.messages.confirmDelete', { name: label.designation }),
+        header: t('common.deleteConfirmation'),
+        icon: 'pi pi-exclamation-circle',
         acceptClass: 'p-button-danger',
         accept: () => {
             router.delete(route('labels.destroy', label.id), {
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: 'Label supprimé avec succès', life: 3000 });
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression.', life: 3000 });
-                }
+                onSuccess: () => toast.add({ severity: 'success', summary: 'Supprimé', detail: t('labels.messages.deleteSuccess'), life: 3000 })
             });
-        },
+        }
     });
 };
 
-// Fonctions pour gérer les caractéristiques dans le formulaire
+// --- GESTION CARACTÉRISTIQUES ---
 const addCharacteristic = () => {
     form.characteristics.push({ id: null, name: '', type: 'text', is_required: false });
 };
 
 const removeCharacteristic = (index) => {
-    const characteristic = form.characteristics[index];
-    confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer la caractéristique "${characteristic.name || 'vide'}" ? Cette action est irréversible.`,
-        header: 'Confirmation de suppression',
-        icon: 'pi pi-info-circle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            form.characteristics.splice(index, 1);
-            toast.add({ severity: 'info', summary: 'Information', detail: 'La caractéristique sera supprimée lors de la sauvegarde du label.', life: 4000 });
-        },
-    });
+    form.characteristics.splice(index, 1);
 };
 
-
-const dt = ref();
-const exportCSV = () => {
-    dt.value.exportCSV();
-};
-
+// --- RECHERCHE & EXPORT ---
 let timeoutId = null;
 const performSearch = () => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
-        router.get(route('labels.index'), { search: search.value }, {
-            preserveState: true,
-            replace: true,
-        });
+        router.get(route('labels.index'), { search: search.value }, { preserveState: true, replace: true });
     }, 300);
 };
 
-onMounted(() => {
-    // Pour que l'édition fonctionne, le contrôleur doit retourner les caractéristiques avec chaque label
-    // via la pagination d'Inertia.
-    // Le contrôleur a été mis à jour avec Label::with('labelCharacteristics').
-});
-
-const dialogTitle = computed(() => editing.value ? 'Modifier le Label' : 'Créer un nouveau Label');
-
+const dialogTitle = computed(() => editing.value ? t('labels.dialog.editTitle') : t('labels.dialog.createTitle'));
 </script>
 
 <template>
     <AppLayout title="Gestion des Labels">
         <Head title="Labels" />
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                    <Toolbar class="mb-4">
-                        <template #start>
-                            <div class="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
-
-                                <span class="block mt-2 md:mt-0 p-input-icon-left">
-                                    <Button label="Ajouter un label" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
-
-
-                                </span>
-                            </div>
-                        </template>
-
-                        <template #end>
- <IconField class="mr-2"><InputIcon>
-                    <i class="pi pi-search" />
-                </InputIcon>
-                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-            </IconField>
-                            <Button label="Exporter" icon="pi pi-upload" class="p-button-help" @click="exportCSV($event)" />
-                        </template>
-                    </Toolbar>
-
-                    <DataTable ref="dt" :value="labels.data" dataKey="id" :paginator="true" :rows="10"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        :rowsPerPageOptions="[5, 10, 25]"
-                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} labels"
-                        responsiveLayout="scroll">
-                        <template #header>
-
-                        </template>
-
-                        <Column field="designation" header="Nom" :sortable="true" headerStyle="width:20%; min-width:10rem;">
-                            <template #body="slotProps">
-
-                                {{ slotProps.data.designation }}
-                            </template>
-                        </Column>
-                        <Column header="Couleur" headerStyle="width:15%; min-width:8rem;">
-                            <template #body="slotProps">
-                                <div class="flex align-items-center gap-2">
-                                    <div :style="{ backgroundColor: slotProps.data.color, width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #ccc' }"></div>
-                                    <span>{{ slotProps.data.color }}</span>
-                                </div>
-                            </template>
-                        </Column>
-                        <Column field="description" header="Description" headerStyle="width:30%; min-width:10rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.description }}
-                            </template>
-                        </Column>
-                        <Column header="Caractéristiques" headerStyle="width:25%; min-width:10rem;">
-                            <template #body="slotProps">
-                                <div class="flex flex-wrap gap-1">
-                                    <Tag v-for="char in slotProps.data.label_characteristics" :key="char.id" :value="char.name" severity="success"></Tag>
-                                </div>
-                            </template>
-                        </Column>
-                        <Column headerStyle="min-width:10rem;" header="Actions">
-                            <template #body="slotProps">
-                                <Button icon="pi pi-pencil" class="p-button-rounded mr-2" severity="info"
-                                    @click="editLabel(slotProps.data)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded " severity="error"
-                                    @click="deleteLabel(slotProps.data)" />
-                            </template>
-                        </Column>
-                    </DataTable>
-
-                    <Dialog v-model:visible="labelDialog" modal :header="dialogTitle" :style="{ width: '40rem' }">
-                        <span v-if="editing" class="text-surface-500 dark:text-surface-400 block mb-8">Mettez à jour les informations du label.</span>
-                        <span v-else class="text-surface-500 dark:text-surface-400 block mb-8">Créez un nouveau label.</span>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="designation" class="font-semibold w-24">Désignation</label>
-                            <InputText id="designation" v-model.trim="form.designation" required="true" autofocus
-                                :class="{ 'p-invalid': submitted && !form.designation }" class="flex-auto" autocomplete="off" />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && !form.designation">Le nom est requis.</small>
-                        <small class="p-error" v-if="form.errors.designation">{{ form.errors.designation }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="description" class="font-semibold w-24">Description</label>
-                            <Textarea id="description" v-model="form.description" rows="3" cols="20" class="flex-auto" />
-                        </div>
-                        <small class="p-error" v-if="form.errors.description">{{ form.errors.description }}</small>
-
-                        <div class="flex items-center gap-4 mb-8">
-                            <label for="color" class="font-semibold w-24">Couleur</label>
-                            <div class="p-inputgroup flex-auto">
-                                <ColorPicker v-model="form.color" inputId="color" class="w-full" />
-                                <span class="p-inputgroup-addon">#{{ form.color }}</span>
-                            </div>
-                        </div>
-                        <small class="p-error" v-if="form.errors.color">{{ form.errors.color }}</small>
-
-                        <Divider />
-
-                        <!-- Section pour les caractéristiques -->
-                        <div class="field">
-                            <label class="font-semibold">Caractéristiques</label>
-                            <div v-for="(characteristic, index) in form.characteristics" :key="index" class="flex items-center gap-2 mb-2">
-                                <!--
-                                    Pour implémenter la modification conditionnelle, vous pouvez ajouter la prop :disabled ici.
-                                    Exemple : :disabled="shouldBeDisabled(characteristic)"
-                                    La fonction shouldBeDisabled(characteristic) vérifierait (probablement via un appel API)
-                                    si des valeurs ont déjà été enregistrées pour cette caractéristique.
-                                -->
-                                <InputText v-model="characteristic.name" placeholder="Nom" class="w-1/2" />
-                                <Dropdown v-model="characteristic.type" :options="characteristicTypes" optionLabel="label" optionValue="value" placeholder="Type" class="w-1/3" :disabled="characteristic.id !== null"
-                                 />
-                                <div class="flex items-center w-auto gap-2">
-                                    <Checkbox v-model="characteristic.is_required" :binary="true" :inputId="`required-${index}`" />
-                                    <label :for="`required-${index}`">Requis</label>
-                                </div>
-
-                                <Button icon="pi pi-trash" class="p-button-rounded " severity="error" @click="removeCharacteristic(index)" />
-                            </div>
-                             <small class="p-error" v-if="form.errors.characteristics">{{ form.errors.characteristics }}</small>
-
-                            <Button label="Ajouter une caractéristique" icon="pi pi-plus" class="p-button-text mt-2" @click="addCharacteristic" />
-                        </div>
-
-
-                        <Divider />
-
-
-                        <div class="flex justify-end gap-2">
-                            <Button type="button" label="Annuler" severity="secondary" @click="hideDialog"></Button>
-                            <Button type="button" label="Sauvegarder" @click="saveLabel" :loading="form.processing"></Button>
-                        </div>
-                    </Dialog>
+        <div class="min-h-screen bg-slate-50/50 p-4 lg:p-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 tracking-tight">Configuration des Labels</h1>
+                    <p class="text-slate-500 font-medium">Définissez les étiquettes et caractéristiques techniques</p>
                 </div>
+                <Button :label="t('labels.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
+            </div>
+
+            <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
+                <Toast />
+                <ConfirmDialog />
+
+                <DataTable ref="dt" :value="labels.data" dataKey="id" :paginator="true" :rows="10"
+                    v-model:filters="filters" filterDisplay="menu"
+                    class="p-datatable-custom" responsiveLayout="scroll">
+
+                    <template #header>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search" />
+                                <InputText v-model="search" :placeholder="t('common.search')" @input="performSearch" class="w-full md:w-80 rounded-2xl border-slate-200" />
+                            </IconField>
+                            <Button :label="t('common.export')" icon="pi pi-upload" severity="secondary" text @click="dt.exportCSV()" />
+                        </div>
+                    </template>
+
+                    <Column field="designation" :header="t('labels.fields.name')" sortable>
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-3">
+                                <Avatar :label="data.designation[0]" shape="circle" :style="{ backgroundColor: data.color + '20', color: data.color }" class="font-bold" />
+                                <span class="font-black text-slate-700">{{ data.designation }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Style / Couleur">
+                        <template #body="{ data }">
+                            <Tag :value="data.color" :style="{ backgroundColor: data.color, color: '#fff' }" class="rounded-lg px-3 border-none" />
+                        </template>
+                    </Column>
+
+                    <Column field="description" :header="t('labels.fields.description')" class="text-slate-500 text-sm" />
+
+                    <Column :header="t('labels.fields.characteristics')">
+                        <template #body="{ data }">
+                            <div class="flex flex-wrap gap-1">
+                                <Tag v-for="char in data.label_characteristics" :key="char.id" :value="char.name" severity="secondary" class="bg-slate-100 text-slate-600 border-none px-2"></Tag>
+                                <span v-if="!data.label_characteristics?.length" class="text-xs italic text-slate-400">Aucune</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column :header="t('common.actions')" alignFrozen="right" frozen>
+                        <template #body="{ data }">
+                            <div class="flex gap-1">
+                                <Button icon="pi pi-pencil" text rounded severity="info" @click="editLabel(data)" />
+                                <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteLabel(data)" />
+                            </div>
+                        </template>
+                    </Column>
+                </DataTable>
             </div>
         </div>
+
+        <Dialog v-model:visible="labelDialog" modal :header="dialogTitle"
+            :style="{ width: '90vw', maxWidth: '650px' }"
+            :contentStyle="{ maxHeight: '85vh', overflow: 'auto' }"
+            class="ultimate-modal">
+
+            <div class="p-2 space-y-8 mt-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <div class="md:col-span-2 space-y-2">
+                        <label class="text-xs font-black text-slate-500 uppercase tracking-widest">{{ t('labels.fields.name') }}</label>
+                        <InputText v-model="form.designation" class="w-full py-3.5 rounded-xl border-slate-200 shadow-inner"
+                            :class="{ 'p-invalid': submitted && !form.designation }" />
+                        <small class="text-red-500 font-bold" v-if="submitted && !form.designation">{{ t('labels.validation.nameRequired') }}</small>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-500 uppercase tracking-widest">{{ t('labels.fields.color') }}</label>
+                        <div class="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-200">
+                            <ColorPicker v-model="form.color" />
+                            <span class="font-mono text-xs font-bold text-slate-400">#{{ form.color }}</span>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-3 space-y-2">
+                        <label class="text-xs font-black text-slate-500 uppercase tracking-widest">{{ t('labels.fields.description') }}</label>
+                        <Textarea v-model="form.description" rows="2" class="w-full rounded-xl border-slate-200" />
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-tighter">{{ t('labels.fields.characteristics') }}</h3>
+                        <Button :label="t('labels.actions.addChar')" icon="pi pi-plus" severity="primary" text size="small" @click="addCharacteristic" />
+                    </div>
+
+                    <div v-if="form.characteristics.length" class="space-y-3">
+                        <div v-for="(char, index) in form.characteristics" :key="index"
+                            class="flex flex-col md:flex-row items-start md:items-center gap-3 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+
+                            <InputText v-model="char.name" :placeholder="t('labels.fields.charName')" class="flex-1 rounded-lg border-slate-200 text-sm" />
+
+                            <Dropdown v-model="char.type" :options="characteristicTypes" optionLabel="label" optionValue="value"
+                                class="w-full md:w-32 rounded-lg border-slate-200 text-sm" :disabled="char.id !== null" />
+
+                            <div class="flex items-center gap-2 px-3">
+                                <Checkbox v-model="char.is_required" :binary="true" :inputId="`req-${index}`" />
+                                <label :for="`req-${index}`" class="text-xs font-bold text-slate-500">{{ t('labels.fields.isRequiredShort') }}</label>
+                            </div>
+
+                            <Button icon="pi pi-trash" severity="danger" text rounded @click="removeCharacteristic(index)" />
+                        </div>
+                    </div>
+                    <div v-else class="text-center py-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                        <p class="text-slate-400 text-sm italic">Aucune caractéristique définie pour ce label.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-100">
+                    <Button :label="t('common.cancel')" severity="secondary" text @click="labelDialog = false" class="flex-1 py-4 rounded-2xl font-bold" />
+                    <Button :label="t('common.save')" severity="primary" raised @click="saveLabel" :loading="form.processing"
+                        class="flex-1 py-4 rounded-2xl font-black shadow-xl shadow-primary-200 transition-all uppercase text-xs tracking-widest" />
+                </div>
+            </div>
+        </Dialog>
     </AppLayout>
 </template>
 
-<style scoped>
-/* Styles spécifiques si nécessaire */
-.p-datatable .p-datatable-header {
-    border-bottom: 1px solid var(--surface-d);
+<style lang="scss">
+/* Integration des styles V11 Custom */
+.p-datatable-custom {
+    .p-datatable-thead > tr > th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        padding: 1.25rem 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    .p-datatable-tbody > tr {
+        transition: all 0.2s;
+        &:hover { background: #f8fafc !important; }
+    }
 }
 
-.p-datatable .p-column-header-content {
-    justify-content: space-between;
+.ultimate-modal {
+    .p-dialog-header {
+        padding: 2rem 2rem 1rem 2rem;
+        .p-dialog-title { font-weight: 900; font-size: 1.25rem; }
+    }
+    .p-dialog-content { padding: 0 2rem 2rem 2rem; }
 }
 
-.p-colorpicker-preview {
-    border-radius: 4px;
+/* Style spécifique pour le bouton primaire de validation */
+.p-button.p-button-primary {
+    background: #2563eb !important;
+    border: none;
+    &:hover { background: #1d4ed8 !important; transform: translateY(-1px); }
 }
-
-.p-button.p-button-warning, .p-button.p-button-warning:hover {
-    background: var(--orange-500);
-    border-color: var(--orange-500);
-}
-
-.p-button.p-button-warning:focus {
-    box-shadow: 0 0 0 2px var(--surface-200), 0 0 0 4px var(--orange-700), 0 1px 2px 0 black;
-}
-
-.p-button.p-button-success, .p-button.p-button-success:hover {
-    background: var(--green-500);
-    border-color: var(--green-500);
-}
-
-.p-button.p-button-success:focus {
-    box-shadow: 0 0 0 2px var(--surface-200), 0 0 0 4px var(--green-700), 0 1px 2px 0 black;
-}
-
-.p-button.p-button-danger, .p-button.p-button-danger:hover {
-    background: var(--red-500);
-    border-color: var(--red-500);
-}
-
-.p-button.p-button-danger:focus {
-    box-shadow: 0 0 0 2px var(--surface-200), 0 0 0 4px var(--red-700), 0 1px 2px 0 black;
-}
-
 </style>

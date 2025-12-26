@@ -5,42 +5,41 @@ import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 
-// Import des composants PrimeVue
+// API v4 / V11
+import { FilterMatchMode } from '@primevue/core/api';
+
+// Composants PrimeVue
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
-import Toolbar from 'primevue/toolbar';
 import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import MultiSelect from 'primevue/multiselect';
-import Calendar from 'primevue/calendar';
+import DatePicker from 'primevue/datepicker';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Tag from 'primevue/tag';
 import FileUpload from 'primevue/fileupload';
-import Textarea from 'primevue/textarea'; // Ajout de Textarea pour la raison/notes
+import Textarea from 'primevue/textarea';
 
 const props = defineProps({
-    leaves: Object, // Les congés paginés (Inertia paginated response)
+    leaves: Object,
     filters: Object,
-    users: Array, // Liste de tous les utilisateurs (pour user_id et approved_by)
+    users: Array,
 });
 
 const toast = useToast();
 const confirm = useConfirm();
-
 const leaveDialog = ref(false);
-const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
 const selectedLeaves = ref(null);
 const dt = ref();
-const fileUploadRef = ref(null);
 
-const { user } = usePage().props.auth;
+const { auth } = usePage().props;
 
 const form = useForm({
     id: null,
@@ -50,382 +49,252 @@ const form = useForm({
     end_date: null,
     reason: null,
     status: 'pending',
-    approved_by: null,
-    approval_date: null,
-    // Note : Pour l'upload, on stocke l'objet File ici
-    document_file: null, // Renommé pour plus de clarté dans le formulaire d'upload
-    document_path: null, // Pour stocker le chemin si on est en édition
+    document_file: null,
     notes: null,
 });
 
-// --- LOGIQUE DE SUPPRESSION MULTIPLE (Inchagnée) ---
+// --- CONSTANTES ---
+const leaveTypes = ref([
+    { label: 'Congé Annuel', value: 'annuel', icon: 'pi-sun', color: '#3B82F6' },
+    { label: 'Congé Maladie', value: 'maladie', icon: 'pi-heart', color: '#EF4444' },
+    { label: 'RTT', value: 'rtt', icon: 'pi-clock', color: '#8B5CF6' },
+    { label: 'Exceptionnel', value: 'exceptionnel', icon: 'pi-star', color: '#F59E0B' }
+]);
 
-const hasSelectedLeaves = computed(() => selectedLeaves.value && selectedLeaves.value.length > 0);
-
-const confirmDeleteSelected = () => {
-    if (!hasSelectedLeaves.value) {
-        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner au moins un congé.', life: 3000 });
-        return;
+// --- LOGIQUE ---
+const getStatusSeverity = (status) => {
+    switch (status) {
+        case 'approved': return 'success';
+        case 'pending': return 'warn';
+        case 'rejected': return 'danger';
+        default: return 'secondary';
     }
-
-    confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer les ${selectedLeaves.value.length} congés sélectionnés ?`,
-        header: 'Confirmation de suppression multiple',
-        icon: 'pi pi-exclamation-triangle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            deleteSelectedLeaves();
-        },
-    });
 };
-
-const deleteSelectedLeaves = () => {
-    const ids = selectedLeaves.value.map(leave => leave.id);
-
-    // Utilisation de la méthode DELETE pour la suppression en vrac (méthode Laravel/Inertia recommandée)
-    router.delete(route('leaves.bulkDestroy'), {
-        data: { ids: ids }, // Important : passer les IDs dans data pour une requête DELETE Inertia
-        onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: `${ids.length} congés supprimés avec succès.`, life: 3000 });
-            selectedLeaves.value = null;
-        },
-        onError: () => {
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression multiple.', life: 3000 });
-        },
-        preserveState: false,
-    });
-};
-
-// --- LOGIQUE DE FORMULAIRE DE CONGÉ ---
 
 const openNew = () => {
     form.reset();
     editing.value = false;
-    submitted.value = false;
-    form.user_id = user?.id;
+    form.user_id = auth.user?.id;
     form.start_date = new Date();
     form.end_date = new Date();
-    form.status = 'pending';
-    form.document_file = null; // Réinitialiser le fichier d'upload
-    form.document_path = null;
-    if (fileUploadRef.value) {
-        fileUploadRef.value.clear();
-    }
     leaveDialog.value = true;
 };
 
-const hideLeaveDialog = () => {
-    leaveDialog.value = false;
-    submitted.value = false;
-};
-
 const editLeave = (leave) => {
-    form.reset(); // Réinitialiser pour éviter les restes
-
-    // Remplissage du formulaire à partir des données de congé
-    form.id = leave.id;
-    form.user_id = leave.user_id;
-    form.type = leave.type;
-    form.start_date = leave.start_date ? new Date(leave.start_date) : null;
-    form.end_date = leave.end_date ? new Date(leave.end_date) : null;
-    form.reason = leave.reason;
-    form.status = leave.status;
-    form.approved_by = leave.approved_by;
-    form.approval_date = leave.approval_date ? new Date(leave.approval_date) : null;
-
-    // Conserver le chemin existant, mais réinitialiser le fichier d'upload
-    form.document_path = leave.document_path;
-    form.document_file = null;
-    form.notes = leave.notes;
-
-    // Assurez-vous de vider le composant FileUpload si nécessaire
-    if (fileUploadRef.value) {
-        fileUploadRef.value.clear();
-    }
-
+    form.clearErrors();
+    Object.assign(form, {
+        ...leave,
+        start_date: new Date(leave.start_date),
+        end_date: new Date(leave.end_date),
+    });
     editing.value = true;
     leaveDialog.value = true;
 };
 
 const saveLeave = () => {
-    submitted.value = true;
-
-    if (!form.user_id || !form.type || !form.start_date || !form.end_date || !form.reason) {
-        toast.add({ severity: 'warn', summary: 'Attention', detail: "Veuillez remplir tous les champs obligatoires (Demandeur, Type, Dates, Raison).", life: 3000 });
-        return;
-    }
-
     const url = editing.value ? route('leaves.update', form.id) : route('leaves.store');
-
-    // IMPORTANT : Utiliser post même pour une mise à jour (PUT) si on gère des fichiers
-    // Inertia utilise la méthode `post` avec `_method: 'put'` en coulisse
-    // et `forceFormData: true` pour envoyer les fichiers correctement.
     form.post(url, {
-        forceFormData: true, // S'assure que FormData est utilisé pour l'upload
+        forceFormData: true,
         onSuccess: () => {
             leaveDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: `Congé ${editing.value ? 'mis à jour' : 'créé'} avec succès`, life: 3000 });
-            form.reset();
-            selectedLeaves.value = null;
-            if (fileUploadRef.value) {
-                fileUploadRef.value.clear();
-            }
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Opération réussie', life: 3000 });
         },
-        onError: (errors) => {
-            console.error("Erreur lors de la sauvegarde du congé", errors);
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez vérifier les champs du formulaire.', life: 3000 });
-        },
-        // Surcharge de la méthode si on est en édition (car on utilise form.post)
         ...(editing.value && { _method: 'put' })
     });
 };
 
-const deleteLeave = (leave) => {
-    // La logique de suppression est correcte
-    confirm.require({
-        message: `Êtes-vous sûr de vouloir supprimer le congé de "${leave.user?.name || 'N/A'}" du ${new Date(leave.start_date).toLocaleDateString()} au ${new Date(leave.end_date).toLocaleDateString()} ?`,
-        header: 'Confirmation de suppression',
-        icon: 'pi pi-info-circle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: 'Annuler',
-        acceptLabel: 'Supprimer',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            router.delete(route('leaves.destroy', leave.id), {
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: 'Congé supprimé avec succès', life: 3000 });
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression.', life: 3000 });
-                }
-            });
-        },
-    });
-};
-
-// Modification : on ne fait qu'affecter le fichier à la variable du formulaire
 const onFileUpload = (event) => {
-    // Si l'upload est en mode "basic", event.files contient l'objet File
     form.document_file = event.files[0];
-    toast.add({ severity: 'info', summary: 'Fichier sélectionné', detail: `Prêt à être envoyé : ${event.files[0].name}`, life: 3000 });
 };
 
-// ... (exportCSV inchangé)
-
-let timeoutId = null;
 const performSearch = () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-        router.get(route('leaves.index'), { search: search.value }, {
-            preserveState: true,
-            replace: true,
-        });
-    }, 300);
+    router.get(route('leaves.index'), { search: search.value }, { preserveState: true, replace: true });
 };
-
-// ... (leaveTypes, leaveStatuses, getStatusSeverity inchangés)
-
-const dialogTitle = computed(() => editing.value ? 'Modifier le Congé' : 'Demander un nouveau Congé');
-
-// Colonnes dynamiques pour le DataTable
-const allColumns = ref([
-    { field: 'user.name', header: 'Demandeur', default: true },
-    { field: 'type', header: 'Type de Congé', default: true },
-    { field: 'start_date', header: 'Date de Début', default: true },
-    { field: 'end_date', header: 'Date de Fin', default: true },
-    { field: 'reason', header: 'Raison', default: true },
-    { field: 'status', header: 'Statut', default: true },
-    { field: 'approved_by_user.name', header: 'Approuvé par', default: false },
-    { field: 'approval_date', header: "Date d'Approbation", default: false },
-    { field: 'notes', header: 'Notes', default: false },
-    { field: 'document_path', header: 'Document', default: false },
-]);
-const selectedColumns = ref(allColumns.value.filter(col => col.default));
-const visibleColumns = computed(() => selectedColumns.value);
-
-const getLeaveTypeLabel = (value) => {
-    const type = leaveTypes.value.find(t => t.value === value);
-    return type ? type.label : value;
-};
-
-const getLeaveStatusLabel = (value) => {
-    const status = leaveStatuses.value.find(s => s.value === value);
-    return status ? status.label : value;
-};
-
 </script>
 
 <template>
-    <AppLayout title="Gestion des Congés">
-        <Head title="Congés" />
+    <AppLayout>
+        <Head title="Gestion des Congés" />
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                    <Toolbar class="mb-4">
-                        <template #start>
-                            <Button label="Demander un congé" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
-                            <Button label="Supprimer la sélection" icon="pi pi-trash" class="p-button-sm p-button-danger mr-2"
-                                :disabled="!hasSelectedLeaves" @click="confirmDeleteSelected" />
-                        </template>
-
-                        <template #end>
-                            <MultiSelect v-model="selectedColumns" :options="allColumns" optionLabel="header"
-                                placeholder="Afficher les colonnes" display="chip" class="mr-2" />
-                            <IconField class="mr-2">
-                                <InputIcon><i class="pi pi-search" /></InputIcon>
-                                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-                            </IconField>
-                            <Button label="Exporter" icon="pi pi-upload" class="p-button-help" @click="exportCSV($event)" />
-                        </template>
-                    </Toolbar>
-
-                    <DataTable ref="dt" :value="leaves.data" dataKey="id" :paginator="true" :rows="10"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        :rowsPerPageOptions="[5, 10, 25]" :totalRecords="leaves.total"
-                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} congés"
-                        responsiveLayout="scroll"
-                        v-model:selection="selectedLeaves">
-
-                        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-
-                        <template v-for="col in visibleColumns" :key="col.field">
-                            <Column :field="col.field" :header="col.header" :sortable="true" style="min-width: 10rem;">
-                                <template #body="slotProps">
-                                    <span v-if="col.field === 'user.name'">
-                                        {{ slotProps.data.user ? slotProps.data.user.name : 'N/A' }}
-                                    </span>
-                                    <span v-else-if="col.field === 'type'">
-                                        {{ getLeaveTypeLabel(slotProps.data.type) }}
-                                    </span>
-                                    <span v-else-if="col.field === 'start_date' || col.field === 'end_date' || col.field === 'approval_date'">
-                                        {{ slotProps.data[col.field] ? new Date(slotProps.data[col.field]).toLocaleDateString('fr-FR') : 'N/A' }}
-                                    </span>
-                                    <span v-else-if="col.field === 'status'">
-                                        <Tag :value="getLeaveStatusLabel(slotProps.data.status)" :severity="getStatusSeverity(slotProps.data.status)" />
-                                    </span>
-                                    <span v-else-if="col.field === 'approved_by_user.name'">
-                                        {{ slotProps.data.approved_by_user ? slotProps.data.approved_by_user.name : 'N/A' }}
-                                    </span>
-                                    <span v-else-if="col.field === 'document_path'">
-                                        <a v-if="slotProps.data.document_path" :href="slotProps.data.document_path" target="_blank" class="p-link">Voir</a>
-                                        <span v-else>Aucun</span>
-                                    </span>
-                                    <span v-else>
-                                        {{ slotProps.data[col.field] }}
-                                    </span>
-                                </template>
-                            </Column>
-                        </template>
-
-                        <Column headerStyle="min-width:10rem;" header="Actions" bodyStyle="text-align: right">
-                            <template #body="slotProps">
-                                <Button icon="pi pi-pencil" class="p-button-rounded p-button-info mr-2"
-                                    @click="editLeave(slotProps.data)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded " severity="danger"
-                                    @click="deleteLeave(slotProps.data)" />
-                            </template>
-                        </Column>
-                    </DataTable>
-
-                   <Dialog v-model:visible="leaveDialog" modal :header="dialogTitle" :style="{ width: '50rem' }" class="p-dialog-content">
-
-    <span v-if="editing" class="text-gray-500 block mb-3 text-sm">
-        Mettez à jour les informations du congé. Les champs marqués d'une * sont obligatoires.
-    </span>
-
-    <div class="p-fluid grid grid-cols-2 gap-4">
-
-        <div class="field col-span-1">
-            <label for="user_id" class="font-semibold block mb-2">Demandeur *</label>
-            <Dropdown id="user_id" v-model="form.user_id" :options="users" optionLabel="name" optionValue="id"
-                placeholder="Sélectionner un utilisateur" :class="{ 'p-invalid': form.errors.user_id }" class="w-full" filter showClear />
-            <small class="p-error" v-if="form.errors.user_id">{{ form.errors.user_id }}</small>
-        </div>
-
-        <div class="field col-span-1">
-            <label for="type" class="font-semibold block mb-2">Type de Congé *</label>
-            <Dropdown id="type" v-model="form.type" :options="leaveTypes" optionLabel="label" optionValue="value"
-                placeholder="Sélectionner un type" :class="{ 'p-invalid': form.errors.type }" class="w-full" />
-            <small class="p-error" v-if="form.errors.type">{{ form.errors.type }}</small>
-        </div>
-
-        <div class="field col-span-1">
-            <label for="start_date" class="font-semibold block mb-2">Date de Début *</label>
-            <Calendar id="start_date" v-model="form.start_date" dateFormat="dd/mm/yy" showIcon
-                :class="{ 'p-invalid': form.errors.start_date }" class="w-full" />
-            <small class="p-error" v-if="form.errors.start_date">{{ form.errors.start_date }}</small>
-        </div>
-
-        <div class="field col-span-1">
-            <label for="end_date" class="font-semibold block mb-2">Date de Fin *</label>
-            <Calendar id="end_date" v-model="form.end_date" dateFormat="dd/mm/yy" showIcon
-                :class="{ 'p-invalid': form.errors.end_date }" class="w-full" />
-            <small class="p-error" v-if="form.errors.end_date">{{ form.errors.end_date }}</small>
-        </div>
-
-        <div class="field col-span-2">
-            <label for="reason" class="font-semibold block mb-2">Raison *</label>
-            <Textarea id="reason" v-model.trim="form.reason" rows="3"
-                :class="{ 'p-invalid': form.errors.reason }" class="w-full" />
-            <small class="p-error" v-if="form.errors.reason">{{ form.errors.reason }}</small>
-        </div>
-
-        <div class="field col-span-2">
-            <label for="document_file" class="font-semibold block mb-2">Document Justificatif</label>
-            <FileUpload ref="fileUploadRef" mode="basic" name="document_file" accept="image/*,.pdf" :maxFileSize="1000000"
-                @select="onFileUpload" :auto="false" :customUpload="true" chooseLabel="Choisir un fichier"
-                :disabled="form.processing" class="w-full" />
-
-            <span v-if="form.document_path && !form.document_file" class="text-sm mt-2 block text-gray-500 dark:text-gray-400">
-                Document actuel : <a :href="form.document_path" target="_blank" class="text-primary-500 hover:text-primary-600">Voir le fichier</a>
-            </span>
-            <small class="p-error" v-if="form.errors.document_file">{{ form.errors.document_file }}</small>
-        </div>
-
-        <template v-if="editing">
-            <div class="field col-span-1">
-                <label for="status" class="font-semibold block mb-2">Statut</label>
-                <Dropdown id="status" v-model="form.status" :options="leaveStatuses" optionLabel="label" optionValue="value"
-                    placeholder="Sélectionner un statut" :class="{ 'p-invalid': form.errors.status }" class="w-full" />
-                <small class="p-error" v-if="form.errors.status">{{ form.errors.status }}</small>
-            </div>
-
-            <div class="field col-span-1" v-if="form.status && form.status !== 'pending'">
-                <label for="approved_by" class="font-semibold block mb-2">Approuvé par</label>
-                <Dropdown id="approved_by" v-model="form.approved_by" :options="users" optionLabel="name" optionValue="id"
-                    placeholder="Sélectionner un approbateur" :class="{ 'p-invalid': form.errors.approved_by }" class="w-full" filter showClear />
-                <small class="p-error" v-if="form.errors.approved_by">{{ form.errors.approved_by }}</small>
-            </div>
-        </template>
-
-        <div class="field col-span-1" v-if="editing && form.status && form.status !== 'pending'">
-            <label for="approval_date" class="font-semibold block mb-2">Date d'Approbation</label>
-            <Calendar id="approval_date" v-model="form.approval_date" dateFormat="dd/mm/yy" showIcon class="w-full" />
-            <small class="p-error" v-if="form.errors.approval_date">{{ form.errors.approval_date }}</small>
-        </div>
-
-        <div class="field col-span-2">
-            <label for="notes" class="font-semibold block mb-2">Notes Internes</label>
-            <InputText id="notes" v-model.trim="form.notes" class="w-full" />
-            <small class="p-error" v-if="form.errors.notes">{{ form.errors.notes }}</small>
-        </div>
-
-    </div>
-    <template #footer>
-        <div class="flex justify-content-end gap-2 mt-4">
-            <Button type="button" label="Annuler" severity="secondary" icon="pi pi-times" @click="hideLeaveDialog" />
-            <Button type="button" :label="editing ? 'Mettre à Jour' : 'Sauvegarder'" icon="pi pi-check" @click="saveLeave" :loading="form.processing" />
-        </div>
-    </template>
-</Dialog>
+        <div class="p-4 lg:p-10 bg-[#F8FAFC] min-h-screen">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center shadow-xl shadow-primary-100 rotate-3">
+                        <i class="pi pi-calendar text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-[900] text-slate-900 tracking-tight">Gestion des Congés</h1>
+                        <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">
+                            {{ leaves.data?.length || 0 }} Demandes répertoriées
+                        </p>
+                    </div>
+                </div>
+                <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                    <Button icon="pi pi-download" text severity="secondary" @click="dt.exportCSV()" />
+                    <Button label="Nouvelle Demande" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
                 </div>
             </div>
+
+            <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
+                <DataTable
+                    ref="dt"
+                    :value="leaves.data"
+                    v-model:selection="selectedLeaves"
+                    dataKey="id"
+                    :paginator="true"
+                    :rows="10"
+                    class="ultimate-table"
+                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                    currentPageReportTemplate="{first} à {last} sur {totalRecords}"
+                >
+                    <template #header>
+                        <div class="flex justify-between items-center p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search text-primary-500" />
+                                <InputText v-model="search" placeholder="Recherche rapide..." @input="performSearch"
+                                    class="w-full md:w-96 rounded-2xl border-none bg-slate-100 focus:bg-white transition-all" />
+                            </IconField>
+                        </div>
+                    </template>
+
+                    <Column selectionMode="multiple" style="width: 3rem"></Column>
+
+                    <Column field="user.name" header="Demandeur" sortable>
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                    {{ data.user?.name.charAt(0) }}
+                                </div>
+                                <span class="font-bold text-slate-700">{{ data.user?.name }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column field="type" header="Type">
+                        <template #body="{ data }">
+                            <b class="text-xs uppercase tracking-wider text-slate-500">{{ data.type }}</b>
+                        </template>
+                    </Column>
+
+                    <Column field="start_date" header="Période" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            <div class="flex flex-col text-sm">
+                                <span class="text-slate-700 font-semibold">Du {{ new Date(data.start_date).toLocaleDateString() }}</span>
+                                <span class="text-slate-400 text-xs font-medium">Au {{ new Date(data.end_date).toLocaleDateString() }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column field="status" header="État">
+                        <template #body="{ data }">
+                            <Tag :value="data.status" :severity="getStatusSeverity(data.status)" class="rounded-lg px-3 uppercase text-[10px] font-black" />
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" alignFrozen="right" frozen>
+                        <template #body="{ data }">
+                            <div class="flex gap-2 justify-end">
+                                <Button icon="pi pi-pencil" text rounded severity="info" @click="editLeave(data)" />
+                                <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteLeave(data)" />
+                            </div>
+                        </template>
+                    </Column>
+                </DataTable>
+            </div>
         </div>
+
+        <Dialog v-model:visible="leaveDialog" modal :header="editing ? 'Mise à jour Congé' : 'Nouvelle Demande'"
+            :style="{ width: '550px' }" class="v11-dialog">
+            <div class="grid grid-cols-1 gap-6 py-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Collaborateur</label>
+                    <Select v-model="form.user_id" :options="users" optionLabel="name" optionValue="id"
+                        placeholder="Sélectionner le demandeur" class="v11-input w-full" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date de début</label>
+                        <DatePicker v-model="form.start_date" dateFormat="dd/mm/yy" showIcon iconDisplay="input" class="v11-datepicker" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date de fin</label>
+                        <DatePicker v-model="form.end_date" dateFormat="dd/mm/yy" showIcon iconDisplay="input" class="v11-datepicker" />
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type de congé</label>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                        <div v-for="type in leaveTypes" :key="type.value"
+                            @click="form.type = type.value"
+                            :class="['p-3 border-2 rounded-xl cursor-pointer transition-all flex flex-col items-center gap-2',
+                                    form.type === type.value ? 'border-primary-500 bg-primary-50' : 'border-slate-100 bg-white hover:border-slate-200']">
+                            <i :class="['pi', type.icon]" :style="{ color: type.color }"></i>
+                            <span class="text-[10px] font-bold uppercase">{{ type.label }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Motif de la demande</label>
+                    <Textarea v-model="form.reason" rows="3" class="v11-input w-full" placeholder="Expliquez brièvement le motif..." />
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Justificatif (PDF, Image)</label>
+                    <FileUpload mode="basic" @select="onFileUpload" :auto="true" chooseLabel="Choisir un fichier" class="v11-upload" />
+                </div>
+            </div>
+
+            <template #footer>
+                <div class="flex gap-3 w-full pt-4">
+                    <Button label="Annuler" text severity="secondary" @click="leaveDialog = false" class="flex-1 rounded-xl" />
+                    <Button label="Envoyer la demande" severity="primary" raised @click="saveLeave"
+                        :loading="form.processing" class="flex-1 rounded-xl font-black py-4 shadow-lg shadow-primary-200" />
+                </div>
+            </template>
+        </Dialog>
+
+        <Toast position="bottom-right" />
+        <ConfirmDialog />
     </AppLayout>
 </template>
+
+<style lang="scss">
+/* DESIGN SYSTEM V11 - CSS CUSTOMS */
+
+.ultimate-table {
+    .p-datatable-thead > tr > th {
+        @apply bg-slate-50/50 text-slate-400 font-black text-[10px] uppercase tracking-[0.15em] py-6 px-4 border-b border-slate-100;
+        &.p-highlight { @apply text-primary-600 bg-primary-50/30; }
+    }
+    .p-datatable-tbody > tr {
+        @apply border-b border-slate-50 transition-all duration-300;
+        &:hover { @apply bg-primary-50/5 !important; }
+        td { @apply py-4 px-4; }
+    }
+}
+
+.v11-input, .v11-datepicker {
+    &.p-select, &.p-datepicker, &.p-textarea, &.p-inputtext {
+        @apply rounded-xl border-slate-200 bg-slate-50 p-3 text-sm font-bold;
+        &:focus { @apply bg-white ring-4 ring-primary-50 border-primary-500 outline-none; }
+    }
+}
+
+.v11-dialog {
+    .p-dialog-header { @apply p-8 border-none; .p-dialog-title { @apply font-black text-slate-900; } }
+    .p-dialog-content { @apply px-8 pb-8; }
+}
+
+.p-paginator {
+    @apply border-t border-slate-100 py-4 bg-white rounded-b-[2.5rem];
+    .p-paginator-page { @apply rounded-lg font-bold; &.p-highlight { @apply bg-primary-50 text-primary-600; } }
+}
+
+.v11-upload {
+    .p-fileupload-basic { @apply w-full; }
+    .p-button { @apply w-full rounded-xl border-dashed border-2 bg-slate-50 border-slate-200 text-slate-500 font-bold hover:bg-slate-100; }
+}
+</style>

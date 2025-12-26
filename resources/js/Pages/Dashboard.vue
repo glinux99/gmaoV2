@@ -1,6 +1,7 @@
 <script setup>
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 // Assurez-vous d'importer les composants PrimeVue nécessaires
 import Card from 'primevue/card';
 import Chart from 'primevue/chart';
@@ -34,6 +35,8 @@ const props = defineProps({
     failuresByType: Object,
     interventionsByType: Object,
 });
+
+const { t } = useI18n();
 
 // --- Logique Graphiques ---
 
@@ -71,7 +74,7 @@ const sparklineItems = computed(() => {
 
     return [
         {
-            label: 'Utilisateurs',
+            label: t('dashboard.users'),
             value: props.usersCount ?? 0,
             metric: data?.users?.metric ?? '0%',
             icon: 'pi pi-users',
@@ -79,7 +82,7 @@ const sparklineItems = computed(() => {
             changeColor: (data?.users?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
         },
         {
-            label: 'Tâches Actives',
+            label: t('dashboard.active_tasks'),
             value: props.activeTasksCount ?? 0,
             metric: data?.activeTasks?.metric ?? '0%',
             icon: 'pi pi-check-square',
@@ -87,7 +90,7 @@ const sparklineItems = computed(() => {
             changeColor: (data?.activeTasks?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
         },
         {
-            label: 'Temps Passé (h)',
+            label: t('dashboard.time_spent_h'),
             value: data?.timeSpent?.value ?? '0h',
             metric: data?.timeSpent?.metric ?? '0%',
             icon: 'pi pi-hourglass',
@@ -95,7 +98,7 @@ const sparklineItems = computed(() => {
             changeColor: (data?.timeSpent?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
         },
         {
-            label: 'Tps Moyen Interv.',
+            label: t('dashboard.avg_intervention_time'),
             value: data?.averageInterventionTime?.value ?? '0m',
             metric: data?.averageInterventionTime?.metric ?? '0%',
             icon: 'pi pi-clock',
@@ -109,8 +112,8 @@ const sparklineItems = computed(() => {
 // 3. Préparation des données pour le graphique de répartition des tâches
 const tasksChartType = ref('status');
 const tasksChartFilterOptions = ref([
-    { label: 'Par Statut', value: 'status' },
-    { label: 'Par Priorité', value: 'priority' }
+    { label: t('dashboard.by_status'), value: 'status' },
+    { label: t('dashboard.by_priority'), value: 'priority' }
 ]);
 
 const tasksDistributionChartData = computed(() => {
@@ -132,14 +135,14 @@ const sparePartsChartData = computed(() => ({
     labels: props.sparePartsMovement?.labels ?? [],
     datasets: [
         {
-            label: 'Pièces entrantes',
+            label: t('dashboard.incoming_parts'),
             data: props.sparePartsMovement?.entries ?? [],
             fill: false,
             borderColor: '#42A5F5',
             tension: 0.4
         },
         {
-            label: 'Pièces sortantes',
+            label: t('dashboard.outgoing_parts'),
             data: props.sparePartsMovement?.exits ?? [],
             fill: false,
             borderColor: '#FFA726',
@@ -181,7 +184,7 @@ const interventionsChartData = computed(() => ({
     labels: props.interventionsByType?.labels ?? [],
     datasets: [
         {
-            label: 'Nombre d\'Interventions',
+            label: t('dashboard.interventions_count'),
             data: props.interventionsByType?.data ?? [],
             backgroundColor: 'rgba(59, 130, 246, 0.8)',
             borderColor: 'rgb(59, 130, 246)',
@@ -210,7 +213,7 @@ const monthlyVolumeChartData = computed(() => {
         datasets: [
             {
                 type: 'bar',
-                label: 'Stoppée',
+                label: t('dashboard.stopped'),
                 backgroundColor: '#EF4444',
                 data: dataSet?.stopped || [],
                 stack: 'Stack 0',
@@ -218,7 +221,7 @@ const monthlyVolumeChartData = computed(() => {
             },
             {
                 type: 'bar',
-                label: 'Dégradée',
+                label: t('dashboard.degraded'),
                 backgroundColor: '#FBBF24',
                 data: dataSet?.degraded || [],
                 stack: 'Stack 0',
@@ -226,7 +229,7 @@ const monthlyVolumeChartData = computed(() => {
             },
             {
                 type: 'bar',
-                label: 'Amélioration',
+                label: t('dashboard.improvement'),
                 backgroundColor: '#3B82F6',
                 data: dataSet?.improvement || [],
                 stack: 'Stack 0',
@@ -234,7 +237,7 @@ const monthlyVolumeChartData = computed(() => {
             },
             {
                 type: 'line',
-                label: 'Délai de résolution moyen',
+                label: t('dashboard.avg_resolution_time'),
                 borderColor: '#EF4444',
                 borderWidth: 2,
                 fill: false,
@@ -276,7 +279,7 @@ const comboChartOptions = ref({
             },
             title: {
                 display: true,
-                text: 'Nombre d\'interventions',
+                text: t('dashboard.interventions_count'),
                 color: '#6B7280'
             }
         },
@@ -293,7 +296,7 @@ const comboChartOptions = ref({
             },
             title: {
                 display: true,
-                text: 'Délai (Heures)',
+                text: t('dashboard.delay_hours'),
                 color: '#EF4444'
             }
         }
@@ -304,11 +307,11 @@ const comboChartOptions = ref({
     <app-layout>
         <div class="grid grid-cols-12 gap-6">
 
-            <h3 class="col-span-12 text-xl font-semibold mt-2">💸 Suivi Financier</h3>
+            <h3 class="col-span-12 text-xl font-semibold mt-2">💸 {{ t('dashboard.financial_tracking') }}</h3>
 
             <div v-if="props.budgetTotal !== undefined" class="col-span-12 sm:col-span-4">
                 <Card class="h-full">
-                    <template #title>Budget Total </template>
+                    <template #title>{{ t('dashboard.total_budget') }}</template>
                     <template #content>
                         <div class="text-3xl font-bold text-gray-800">{{ props.budgetTotal?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
                         <i class="pi pi-wrench text-5xl text-orange-500 opacity-20 absolute right-4 bottom-4"></i>
@@ -318,7 +321,7 @@ const comboChartOptions = ref({
 
             <div v-if="props.depensesPrestation !== undefined" class="col-span-12 sm:col-span-4">
                 <Card class="h-full">
-                    <template #title>Dépenses de prestation</template>
+                    <template #title>{{ t('dashboard.service_expenses') }}</template>
                     <template #content>
                         <div class="text-3xl font-bold text-gray-800">{{ props.depensesPrestation?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
                         <i class="pi pi-briefcase text-5xl text-green-500 opacity-20 absolute right-4 bottom-4"></i>
@@ -328,7 +331,7 @@ const comboChartOptions = ref({
 
             <div v-if="props.expensesTotal !== undefined" class="col-span-12 sm:col-span-4">
                 <Card class="h-full">
-                    <template #title>Total Dépense validée</template>
+                    <template #title>{{ t('dashboard.total_validated_expenses') }}</template>
                     <template #content>
                         <div class="text-3xl font-bold text-gray-800">{{ props.expensesTotal?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
                         <i class="pi pi-exclamation-triangle text-5xl text-red-500 opacity-20 absolute right-4 bottom-4"></i>
@@ -338,7 +341,7 @@ const comboChartOptions = ref({
 
             <hr class="col-span-12" />
 
-            <h3 class="col-span-12 text-xl font-semibold mt-2">📊 Key Metrics Overview</h3>
+            <h3 class="col-span-12 text-xl font-semibold mt-2">📊 {{ t('dashboard.key_metrics_overview') }}</h3>
             <div v-for="(item, index) in sparklineItems" :key="index" class="col-span-12 sm:col-span-6 lg:col-span-3">
                 <Card class="p-4 border shadow-sm h-full">
                     <template #title>
@@ -358,7 +361,7 @@ const comboChartOptions = ref({
                         <div class="flex items-center text-sm">
                             <i :class="item.changeColor === 'text-green-500' ? 'pi pi-arrow-up-right text-xs mr-1' : 'pi pi-arrow-down-right text-xs mr-1'"></i>
                             <span :class="item.changeColor" class="font-medium">{{ item.metric.replace('-', '') }}</span>
-                            <span class="text-gray-500 ml-2">from last period</span>
+                            <span class="text-gray-500 ml-2">{{ t('dashboard.from_last_period') }}</span>
                         </div>
                     </template>
                 </Card>
@@ -366,12 +369,12 @@ const comboChartOptions = ref({
 
             <hr class="col-span-12" />
 
-            <h3 class="col-span-12 text-xl font-semibold mt-2">📈 Detailed Visualizations</h3>
+            <h3 class="col-span-12 text-xl font-semibold mt-2">📈 {{ t('dashboard.detailed_visualizations') }}</h3>
 
             <div v-if="monthlyVolumeChartData.labels.length > 0" class="col-span-12">
                 <Card>
-                    <template #title>Volume mensuel des interventions et délai moyen de résolution</template>
-                    <template #subtitle>Statut et temps de résolution sur la période</template>
+                    <template #title>{{ t('dashboard.monthly_intervention_volume_title') }}</template>
+                    <template #subtitle>{{ t('dashboard.monthly_intervention_volume_subtitle') }}</template>
                     <template #content>
                         <div class="h-96">
                             <Chart type="bar" :data="monthlyVolumeChartData" :options="comboChartOptions" class="h-full" :borderRadius="4" />
@@ -383,8 +386,8 @@ const comboChartOptions = ref({
             <div v-if="sparePartsChartData.labels.length > 0" class="col-span-12">
 
                 <Card>
-                    <template #title>Mouvements des Pièces Détachées</template>
-                    <template #subtitle>Entrées et sorties sur la période sélectionnée</template>
+                    <template #title>{{ t('dashboard.spare_parts_movement_title') }}</template>
+                    <template #subtitle>{{ t('dashboard.spare_parts_movement_subtitle') }}</template>
                     <template #content>
                         <div class="h-80">
                             <Chart type="line" :data="sparePartsChartData" :options="lineChartOptions" class="h-full" />
@@ -395,8 +398,8 @@ const comboChartOptions = ref({
 
             <div v-if="failuresChartData.labels.length > 0" class="col-span-12 lg:col-span-6">
                 <Card>
-                    <template #title>Pannes par type de défaut</template>
-                    <template #subtitle>Répartition des causes de défauts</template>
+                    <template #title>{{ t('dashboard.failures_by_type_title') }}</template>
+                    <template #subtitle>{{ t('dashboard.failures_by_type_subtitle') }}</template>
                     <template #content>
                         <div class="flex justify-center h-80">
                             <Chart type="doughnut" :data="failuresChartData" :options="{ maintainAspectRatio: false }" />
@@ -407,8 +410,8 @@ const comboChartOptions = ref({
 
             <div v-if="interventionsChartData.datasets[0]?.data.length > 0" class="col-span-12 lg:col-span-6">
                 <Card>
-                    <template #title>Interventions par type</template>
-                    <template #subtitle>Total des actions menées : {{ interventionsChartData.datasets[0]?.data.reduce((a, b) => a + b, 0) ?? 0 }}</template>
+                    <template #title>{{ t('dashboard.interventions_by_type_title') }}</template>
+                    <template #subtitle>{{ t('dashboard.interventions_by_type_subtitle', { count: interventionsChartData.datasets[0]?.data.reduce((a, b) => a + b, 0) ?? 0 }) }}</template>
                     <template #content>
                         <div class="h-80">
                             <Chart type="bar" :data="interventionsChartData" :options="interventionsChartOptions" class="h-full" />
@@ -421,16 +424,16 @@ const comboChartOptions = ref({
                 <Card>
                     <template #title>
                         <div class="flex justify-between items-center">
-                            <span>Répartition des Tâches</span>
+                            <span>{{ t('dashboard.tasks_distribution_title') }}</span>
                             <Dropdown
                                 v-model="tasksChartType"
                                 :options="tasksChartFilterOptions"
                                 optionLabel="label"
                                 optionValue="value"
-                                placeholder="Filtrer par" class="w-1/2 md:w-auto" />
+                                :placeholder="t('dashboard.filter_by')" class="w-1/2 md:w-auto" />
                         </div>
                     </template>
-                    <template #subtitle>Vue par {{ tasksChartType === 'status' ? 'statut' : 'priorité' }}</template>
+                    <template #subtitle>{{ t('dashboard.view_by', { type: tasksChartType === 'status' ? t('dashboard.status') : t('dashboard.priority') }) }}</template>
                     <template #content>
                         <div class="flex justify-center h-80">
                             <Chart type="doughnut" :data="tasksDistributionChartData" :options="{ maintainAspectRatio: false }" />

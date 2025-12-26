@@ -1,0 +1,226 @@
+{
+    "dashboard": {
+        "users": "Utilisateurs",
+        "active_tasks": "Tâches Actives",
+        "time_spent_h": "Temps Passé (h)",
+        "avg_intervention_time": "Tps Moyen Interv.",
+        "by_status": "Par Statut",
+        "by_priority": "Par Priorité",
+        "incoming_parts": "Pièces entrantes",
+        "outgoing_parts": "Pièces sortantes",
+        "interventions_count": "Nombre d'interventions",
+        "stopped": "Stoppée",
+        "degraded": "Dégradée",
+        "improvement": "Amélioration",
+        "avg_resolution_time": "Délai de résolution moyen",
+        "delay_hours": "Délai (Heures)",
+        "financial_tracking": "Suivi Financier",
+        "total_budget": "Budget Total",
+        "service_expenses": "Dépenses de prestation",
+        "total_validated_expenses": "Total Dépense validée",
+        "key_metrics_overview": "Aperçu des Métriques Clés",
+        "from_last_period": "depuis la dernière période",
+        "detailed_visualizations": "Visualisations Détaillées",
+        "monthly_intervention_volume_title": "Volume mensuel des interventions et délai moyen de résolution",
+        "monthly_intervention_volume_subtitle": "Statut et temps de résolution sur la période",
+        "spare_parts_movement_title": "Mouvements des Pièces Détachées",
+        "spare_parts_movement_subtitle": "Entrées et sorties sur la période sélectionnée",
+        "failures_by_type_title": "Pannes par type de défaut",
+        "failures_by_type_subtitle": "Répartition des causes de défauts",
+        "interventions_by_type_title": "Interventions par type",
+        "interventions_by_type_subtitle": "Total des actions menées : {count}",
+        "tasks_distribution_title": "Répartition des Tâches",
+        "filter_by": "Filtrer par",
+        "view_by": "Vue par {type}",
+        "status": "statut",
+        "priority": "priorité"
+    },
+    "topbar": {
+        "menuModes": {
+            "static": "Statique",
+            "overlay": "Overlay"
+        },
+        "themes": {
+            "light": "Clair",
+            "dark": "Sombre",
+            "accent": "Accent"
+        },
+        "languages": {
+            "french": "Français",
+            "english": "Anglais",
+            "swahili": "Swahili",
+            "german": "Allemand"
+        },
+        "toggle_sidebar": "Basculer le menu latéral",
+        "search_placeholder": "Rechercher un dossier, un agent ou un service...",
+        "status": {
+            "connected": "Connecté"
+        },
+        "userMenu": {
+            "edit_profile": "Éditer Profil",
+            "security": "Sécurité",
+            "logout": "Fermer Session"
+        }
+    },
+    "menu": {
+        "dashboard": {
+            "title": "Tableau de bord",
+            "home": "Accueil",
+            "analytics": "Analytiques"
+        },
+        "assetManagement": {
+            "title": "Gestion des actifs",
+            "inventories": "Inventaires",
+            "spareParts": "Pièces détachées",
+            "equipments": "Équipements"
+        },
+        "taskManagement": {
+            "title": "Gestion des tâches",
+            "agenda": "Agenda",
+            "myActivities": "Mes activités",
+            "workOrder": "Ordre de travail",
+            "interventionRequests": "Demandes d'intervention",
+            "maintenancePlan": "Plan de maintenance",
+            "connections": "Connexions",
+            "expenses": "Dépenses"
+        },
+        "teamManagement": {
+            "title": "Gestion d'équipe",
+            "teams": "Équipes",
+            "technicians": "Techniciens"
+        },
+        "hrManagement": {
+            "title": "Gestion RH",
+            "employees": "Employés",
+            "leaves": "Congés",
+            "attendances": "Présences",
+            "payroll": "Paie"
+        },
+        "systemConfiguration": {
+            "title": "Configuration du système",
+            "userManagement": "Gestion des utilisateurs",
+            "users": "Utilisateurs",
+            "roles": "Rôles",
+            "permissions": "Permissions",
+            "reports": "Rapports",
+            "maps": "Cartes",
+            "regions": "Régions",
+            "rollingStock": "Matériel roulant",
+            "units": "Unités",
+            "labels": "Étiquettes",
+            "systemPriority": "Priorité du système"
+        },
+        "dateFilter": {
+            "thisMonth": "Ce mois-ci",
+            "lastMonth": "Le mois dernier",
+            "lastWeek": "La semaine dernière",
+            "custom": "Personnalisé"
+        }
+    },
+    "equipments": {
+        "title": "Gestion des Équipements",
+        "headTitle": "Équipements",
+        "addNew": "Ajouter un équipement",
+        "searchPlaceholder": "Rechercher...",
+        "export": "Exporter",
+        "deleteSelected": "Supprimer ({count})",
+        "deleteSelectedSingle": "Supprimer",
+        "table": {
+            "report": "Affichage de {first} à {last} sur {totalRecords} équipements",
+            "tag": "Tag",
+            "designation": "Désignation",
+            "type": "Type",
+            "brand": "Marque",
+            "model": "Modèle",
+            "region": "Région",
+            "status": "Statut",
+            "quantity": "Quantité",
+            "actions": "Actions"
+        },
+        "dialog": {
+            "editTitle": "Modifier l'Équipement",
+            "createTitle": "Créer un nouvel Équipement",
+            "parentLabel": "Équipement Parent (pour créer à partir du stock)",
+            "parentPlaceholder": "Optionnel: Sélectionner un parent",
+            "tag": "Tag",
+            "designation": "Désignation",
+            "type": "Type d'équipement",
+            "typePlaceholder": "Sélectionner un type",
+            "addType": "Ajouter un nouveau type",
+            "region": "Région",
+            "regionPlaceholder": "Sélectionner une région",
+            "brand": "Marque",
+            "model": "Modèle",
+            "power": "Puissance (kW)",
+            "serialNumber": "Numéro de série",
+            "price": "Prix",
+            "status": "Statut",
+            "statusPlaceholder": "Sélectionner un statut",
+            "stockQuantity": "Quantité en stock",
+            "purchaseDate": "Date d'achat",
+            "warrantyEnd": "Fin de garantie",
+            "location": "Emplacement",
+            "importCharacteristics": "Importer les caractéristiques préexistantes",
+            "importCharacteristicsPlaceholder": "Optionnel: Sélectionner un label pour ajouter ses caractéristiques",
+            "characteristicNamePlaceholder": "Nom de la caractéristique",
+            "characteristicTypePlaceholder": "Type",
+            "characteristicValueText": "Valeur (Texte)",
+            "characteristicValueNumber": "Valeur (Nombre)",
+            "characteristicValueDate": "Valeur (Date)",
+            "characteristicValue": "Valeur",
+            "existingFile": "Fichier existant",
+            "addCharacteristic": "Ajouter une caractéristique",
+            "cancel": "Annuler",
+            "save": "Sauvegarder"
+        },
+        "typeDialog": {
+            "title": "Nouveau Type d'Équipement",
+            "name": "Nom du type",
+            "description": "Description",
+            "cancel": "Annuler",
+            "create": "Créer"
+        },
+        "toast": {
+            "success": "Succès",
+            "updateSuccess": "Équipement mis à jour avec succès.",
+            "createSuccess": "Équipement créé avec succès.",
+            "deleteSuccess": "Équipement supprimé avec succès.",
+            "bulkDeleteSuccess": "Équipements supprimés avec succès.",
+            "saveError": "Erreur de Sauvegarde",
+            "error": "Erreur",
+            "deleteError": "Une erreur est survenue lors de la suppression.",
+            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse.",
+            "typeCreateSuccess": "Type d'équipement créé avec succès.",
+            "typeSaveError": "Erreur lors de la sauvegarde du type d'équipement"
+        },
+        "confirm": {
+            "deleteHeader": "Confirmation de suppression",
+            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'équipement \"{name}\" ?",
+            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?",
+            "cancel": "Annuler",
+            "delete": "Supprimer"
+        },
+        "statusOptions": {
+            "in_service": "En Service",
+            "down": "En Panne",
+            "in_maintenance": "En Maintenance",
+            "out_of_service": "Hors Service",
+            "in_stock": "En Stock"
+        },
+        "characteristicTypes": {
+            "text": "Texte",
+            "number": "Nombre",
+            "date": "Date",
+            "file": "Fichier",
+            "boolean": "Oui/Non"
+        }
+    },
+    "spareParts": {
+        "title": "Gestion des Pièces de Rechange",
+        "headTitle": "Pièces de Rechange"
+    },
+    "sparePartMovements": {
+        "title": "Gestion des Mouvements de Pièces",
+        "headTitle": "Mouvements de Pièces"
+    }
+}

@@ -1,10 +1,14 @@
 <script setup>
 import { ref, computed, watch, reactive } from 'vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
+import OverlayPanel from 'primevue/overlaypanel';
+import MultiSelect from 'primevue/multiselect';
+import Dialog from 'primevue/dialog';
+import Textarea from 'primevue/textarea';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
-
+const activeStep = ref(1)
 const props = defineProps({ // Changed from maintenances to tasks
     tasks: Object,
     filters: Object,
@@ -23,10 +27,23 @@ const props = defineProps({ // Changed from maintenances to tasks
 const toast = useToast();
 const confirm = useConfirm();
 // Changed from maintenanceDialog to taskDialog
-const maintenanceDialog = ref(false);
+const taskDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
+const dt = ref(); // Référence au DataTable pour l'export
+const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonnes
+
+// Colonnes pour la sélection
+const allColumns = ref([
+    { field: 'title', header: 'Titre' },
+    { field: 'equipments', header: 'Équipement(s)' },
+    { field: 'assignable', header: 'Assigné à' },
+    { field: 'status', header: 'Statut' },
+    { field: 'priority', header: 'Priorité' },
+    { field: 'planned_start_date', header: 'Début Planifié' },
+]);
+const visibleColumns = ref(allColumns.value.map(col => col.field)); // Affiche toutes les colonnes par défaut
 
 // Pour les lignes étendues dans le DataTable
 const expandedRows = ref([]);
@@ -193,7 +210,7 @@ const openNew = () => { // Changed from maintenance to task
     editing.value = false;
     submitted.value = false;
     showAdvancedInstructions.value = false;
-    maintenanceDialog.value = true; // Changed from maintenanceDialog to taskDialog
+    taskDialog.value = true; // Changed from taskDialog to taskDialog
     selectedChildrenForInstructions.value = {};
 
     // Set default planned dates for new maintenance
@@ -204,8 +221,8 @@ const openNew = () => { // Changed from maintenance to task
     form.planned_end_date = defaultEndTime;
 };
 
-const hideDialog = () => { // Changed from maintenanceDialog to taskDialog
-    maintenanceDialog.value = false; // Changed from maintenanceDialog to taskDialog
+const hideDialog = () => { // Changed from taskDialog to taskDialog
+    taskDialog.value = false; // Changed from taskDialog to taskDialog
     submitted.value = false;
 };
 
@@ -260,7 +277,7 @@ const editTask = (maintenance) => { // Changed from maintenance to task
     // Initialiser les enfants sélectionnés si des instructions existent
     showAdvancedInstructions.value = false;
     editing.value = true; // Changed from maintenance to task
-    maintenanceDialog.value = true; // Changed from maintenanceDialog to taskDialog
+    taskDialog.value = true; // Changed from taskDialog to taskDialog
 };
 
 const saveMaintenance = () => { // Changed from maintenance to task
@@ -308,7 +325,7 @@ console.log(data);
     if (editing.value) {
         router.put(route('tasks.update', form.id), data, { // Changed from maintenances.update to tasks.update
             onSuccess: () => {
-                maintenanceDialog.value = false; // Changed from maintenanceDialog to taskDialog
+                taskDialog.value = false; // Changed from taskDialog to taskDialog
                 toast.add({ severity: 'success', summary: 'Succès', detail: 'Ordre de Travail mise à jour avec succès.', life: 3000 });
                 form.reset();
             },
@@ -322,7 +339,7 @@ console.log(data);
     console.log(data);
         router.post(route('tasks.store'), data, { // Changed from maintenances.store to tasks.store
         onSuccess: () => {
-            maintenanceDialog.value = false; // Changed from maintenanceDialog to taskDialog
+            taskDialog.value = false; // Changed from taskDialog to taskDialog
             toast.add({ severity: 'success', summary: 'Succès', detail: 'Ordre de Travail créée avec succès.', life: 3000 });
             form.reset();
         },
@@ -361,6 +378,10 @@ const performSearch = () => {
             replace: true,
         });
     }, 300);
+};
+
+const exportCSV = () => {
+    dt.value.exportCSV();
 };
 
 const getStatusSeverity = (status) => {
@@ -748,521 +769,357 @@ const updateInstructions = (taskId, instructions) => {
 <template>
     <AppLayout title="Gestion des Ordre de Travails">
 
-        <Head title="Ordre de Travails" />
+        <Head title="Ordres de Travail" />
+        <Toast />
+        <ConfirmDialog />
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                    <Toolbar class="mb-4">
-                        <template #start>
-                            <Button label="Nouvelle Ordre de Travail" icon="pi pi-plus" class="mr-2"
-                                @click="openNew"  />
-                        </template>
-                        <template #end>
-                            <IconField>
-                             <InputIcon>
-                    <i class="pi pi-search" />
-                </InputIcon>
-                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-            </IconField>
-                        </template>
-                    </Toolbar>
+        <div class="quantum-v11-container p-4 lg:p-8 bg-[#f8fafc] min-h-screen">
 
-                    <DataTable :value="props.tasks.data" v-model:expandedRows="expandedRows" dataKey="id" :paginator="true" :rows="10"
-                        responsiveLayout="scroll" :row-class="() => 'cursor-pointer'">
-
-                        <Column field="title" header="Titre" :sortable="true" style="min-width: 12rem;"></Column>
-                        <Column header="Équipement(s)" :sortable="true" style="min-width: 12rem;">
-                            <template #body="slotProps">
-                                <div v-if="slotProps.data.equipments && slotProps.data.equipments.length > 0">
-                                    <template v-if="slotProps.data.equipments.length === 1">
-                                        {{ slotProps.data.equipments[0].designation }}
-                                    </template>
-                                    <template v-else>
-                                        <Tag v-for="equipment in slotProps.data.equipments" :key="equipment.id" :value="equipment.designation" class="mr-1 mb-1" />
-                                    </template>
-                                </div>
-                            </template>
-                        </Column>
-                        <Column field="assignable.name" header="Assigné à" :sortable="true" style="min-width: 10rem;">
-                            <template #body="slotProps">
-                                <Tag v-if="slotProps.data.assignable" :value="slotProps.data.assignable.name" />
-                            </template>
-                        </Column>
-                        <Column field="status" header="Statut" :sortable="true" style="min-width: 8rem;">
-                            <template #body="slotProps">
-                                <Tag :value="slotProps.data.status"
-                                    :severity="getStatusSeverity(slotProps.data.status)" />
-                            </template>
-                        </Column>
-                        <Column field="priority" header="Priorité" :sortable="true" style="min-width: 8rem;">
-                            <template #body="slotProps">
-                                <Tag :value="slotProps.data.priority"
-                                    :severity="getPrioritySeverity(slotProps.data.priority)" />
-                            </template>
-                        </Column>
-                        <Column header="Instructions" style="min-width: 16rem;">
-                            <template #body="slotProps">
-                                <ul v-if="slotProps.data.instructions && slotProps.data.instructions.length > 0" class="list-disc pl-5 m-0">
-                                    <li v-for="instruction in slotProps.data.instructions.slice(0, 3)" :key="instruction.id">
-                                        {{ instruction.label }}
-                                    </li>
-                                </ul>
-                                <span v-if="slotProps.data.instructions && slotProps.data.instructions.length > 3" class="text-sm text-gray-500">
-                                    ...et {{ slotProps.data.instructions.length - 3 }} autre(s)
-                                </span>
-                            </template>
-                        </Column>
-                        <Column field="planned_start_date" header="Début Planifié" :sortable="true"
-                        style="min-width: 12rem;">
-                            <template #body="slotProps">
-                            <span class="text-sm">{{ new Date(slotProps.data.planned_start_date).toLocaleString() }}</span>
-                            </template>
-                        </Column>
-                        <Column headerStyle="min-width:8rem;" header="Actions">
-                            <template #body="slotProps">
-                                <Button icon="pi pi-pencil" class="p-button-rounded p-button-info mr-2"
-                                    @click="editTask(slotProps.data)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded p-button-danger" @click="deleteTask(slotProps.data)"/>
-                            </template>
-                        </Column>
-
-                    </DataTable>
-                    <!-- Changed from maintenanceDialog to taskDialog -->
-                    <Dialog v-model:visible="maintenanceDialog" modal :header="dialogTitle" :style="{ width: '50rem' }">
-                        <div class="p-fluid">
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="field">
-                                    <label for="title" class="font-semibold">Titre</label>
-                                    <InputText id="title" class="w-full" v-model.trim="form.title"
-                                        :class="{ 'p-invalid': submitted && !form.title }" />
-                                    <small class="p-error">{{ form.errors.title }}</small>
-                                </div>
-                                <div class="field ">
-
-                                    <label for="related_equipments" class="font-semibold">Équipements Liés</label>
-                                    <TreeSelect v-model="form.related_equipments" :options="transformedEquipmentTree"
-                                        placeholder="Sélectionner des équipements" filter selectionMode="checkbox"
-                                        display="chip" class="w-full" />
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="field">
-                                    <label for="assignable_type" class="font-semibold">Assigner à (Type)</label>
-                                    <Dropdown id="assignable_type" class="w-full" v-model="form.assignable_type"
-                                        :options="assignableTypes" optionLabel="label" optionValue="value"
-                                        placeholder="Type d'assignation" />
-                                    <small class="p-error">{{ form.errors.assignable_type }}</small>
-                                </div>
-                                <div class="field">
-                                    <label for="assignable_id" class="font-semibold">Assigner à (Nom)  </label>
-                                    <Dropdown id="assignable_id" class="w-full" v-model="form.assignable_id"
-                                        :options="assignables" :key="form.assignable_type" optionLabel="name" optionValue="id"
-                                        placeholder="Sélectionner une personne/équipe" :disabled="!form.assignable_type || assignables.length === 0"
-                                        filter />
-                                    <small class="p-error">{{ form.errors.assignable_id }}</small>
-                                </div>
-                            </div>
-
-                            <div class="field">
-                                <label for="description" class="font-semibold">Description</label>
-                                <Textarea id="description" class="w-full" v-model="form.description" rows="3" />
-                                <small class="p-error">{{ form.errors.description }}</small>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="field">
-                                    <label for="type" class="font-semibold">Type de Ordre de Travail</label>
-                                    <Dropdown id="type" class="w-full" v-model="form.maintenance_type" :options="taskTypes"
-                                        placeholder="Sélectionner un type" />
-                                    <small class="p-error">{{ form.errors.type }}</small>
-                                </div>
-                                <div class="field">
-                                    <label for="status" class="font-semibold">Statut</label>
-                                    <Dropdown id="status" class="w-full" v-model="form.status" :options="taskStatuses"
-                                        placeholder="Sélectionner un statut" />
-                                    <small class="p-error">{{ form.errors.status }}</small>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="field">
-                                    <label for="priority" class="font-semibold">Priorité</label>
-                                    <Dropdown id="priority" class="w-full" v-model="form.priority" :options="taskPriorities"
-                                        placeholder="Sélectionner une priorité" />
-                                    <small class="p-error">{{ form.errors.priority }}</small>
-                                </div>
-                                <div class="field">
-                                    <label for="time_spent" class="font-semibold">Durée Estimée
-                                        (minutes)</label>
-                                    <InputNumber id="time_spent" class="w-full"
-                                        v-model="form.time_spent" :min="0" />
-                                    <small class="p-error">{{ form.errors.time_spent }}</small>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="field">
-                                    <label for="planned_start_date" class="font-semibold">
-                                        {{ form.status === 'Planifiée' ? 'Date de début planifiée' : 'Date de début' }}</label>
-                                    <Calendar id="planned_start_date" class="w-full"
-                                        v-model="form.planned_start_date" showTime dateFormat="dd/mm/yy" showIcon />
-                                    <small class="p-error">{{ form.errors.planned_start_date }}</small>
-                                </div>
-                                <div class="field">
-                                    <label for="planned_end_date" class="font-semibold">
-                                        {{ form.status === 'Planifiée'? 'Date de fin planifiée' : 'Date de fin' }}</label>
-                                    <Calendar id="planned_end_date" class="w-full" v-model="form.planned_end_date"
-                                        showTime dateFormat="dd/mm/yy" showIcon />
-                                    <small class="p-error">{{ form.errors.planned_end_date }}</small>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="field">
-                                    <label for="estimated_cost" class="font-semibold">Coût / Budget</label>
-                                    <InputNumber id="estimated_cost" class="w-full" v-model="form.estimated_cost" mode="currency"
-                                        currency="XOF" locale="fr-FR" :min="0" />
-                                    <small class="p-error">{{ form.errors.estimated_cost }}</small>
-                                </div>
-                                <div class="field">
-                                    <label for="region_id" class="font-semibold">Région</label>
-                                    <Dropdown id="region_id" class="w-full" v-model="form.region_id"
-                                        :options="props.regions" optionLabel="designation" optionValue="id"
-                                        placeholder="Sélectionner une région" filter />
-                                    <small class="p-error">{{ form.errors.region_id }}</small>
-                                </div>
-                            </div>
-
-                            <div class="field">
-                                <label for="recurrence_type" class="font-semibold">Type de Récurrence</label>
-                                <Dropdown id="recurrence_type" class="w-full" v-model="form.recurrence_type"
-                                    :options="recurrenceTypes" optionLabel="label" optionValue="value"
-                                    placeholder="Sélectionner un type de récurrence" />
-                                <small class="p-error">{{ form.errors.recurrence_type }}</small>
-                            </div>
-
-                            <div v-if="form.recurrence_type === 'daily'" class="field">
-                                <label for="recurrence_interval" class="font-semibold">Nombre de jours</label>
-                                <InputNumber id="recurrence_interval" class="w-full" v-model="form.recurrence_interval"
-                                    :min="1" :max="365" />
-                                <small class="p-error">{{ form.errors.recurrence_interval }}</small>
-                            </div>
-
-                            <div v-if="form.recurrence_type === 'weekly'" class="field">
-                                <label for="recurrence_days" class="font-semibold">Jours de la semaine</label>
-                                <MultiSelect id="recurrence_days" class="w-full" v-model="form.recurrence_days"
-                                    :options="daysOfWeek" optionLabel="label" optionValue="value"
-                                    placeholder="Sélectionner les jours" display="chip" />
-                                <small class="p-error">{{ form.errors.recurrence_days }}</small>
-                            </div>
-
-                            <div v-if="form.recurrence_type === 'monthly'" class="field">
-                                <label for="recurrence_day_of_month" class="font-semibold">Jour du mois</label>
-                                <InputNumber id="recurrence_day_of_month" class="w-full"
-                                    v-model="form.recurrence_day_of_month" :min="1" :max="31" />
-                                <small class="p-error">{{ form.errors.recurrence_day_of_month }}</small>
-                            </div>
-                            <div v-if="form.recurrence_type === 'monthly'" class="field">
-                                <label for="recurrence_month_interval" class="font-semibold">Nombre de mois</label>
-                                <InputNumber id="recurrence_month_interval" class="w-full"
-                                    v-model="form.recurrence_month_interval" :min="1" :max="12" />
-                                <small class="p-error">{{ form.errors.recurrence_month_interval }}</small>
-                            </div>
-
-                            <div v-if="['quarterly', 'biannual', 'annual'].includes(form.recurrence_type)"
-                                class="field">
-                                <div class="field">
-                                    <label for="planned_start_date_recurrence" class="font-semibold">Date de début de
-                                        récurrence</label>
-                                    <Calendar id="planned_start_date_recurrence" class="w-full"
-                                        v-model="form.planned_start_date" dateFormat="dd/mm/yy" showIcon />
-                                    <small class="p-error">{{ form.errors.planned_start_date }}</small>
-                                </div>
-                            </div>
-
-                            <div v-if="['quarterly', 'biannual', 'annual'].includes(form.recurrence_type)"
-                                class="field">
-                                <label for="recurrence_interval" class="font-semibold">Nombre de {{ form.recurrence_type
-                                    === 'quarterly' ?
-                                    'trimestres' : (form.recurrence_type === 'biannual' ? 'semestres' : 'années')
-                                    }}</label>
-                                <InputNumber id="recurrence_interval" class="w-full" v-model="form.recurrence_interval"
-                                    :min="1" />
-                                <small class="p-error">{{ form.errors.recurrence_interval }}</small>
-                            </div>
-                            <div v-if="['quarterly', 'biannual', 'annual'].includes(form.recurrence_type)"
-                                class="field">
-                                <label for="reminder_days" class="font-semibold">Jours de rappel avant exécution</label>
-                                <InputNumber id="reminder_days" class="w-full" v-model="form.reminder_days" :min="0" />
-                                <small class="p-error">{{ form.errors.reminder_days }}</small>
-                            </div>
-                            <!-- Exemple pour trimestriel/semestriel/annuel avec choix du mois et jour: -->
-                            <!-- Vous devrez définir `months` dans votre script setup si vous utilisez ce bloc -->
-
-                            <div v-if="form.recurrence_type === 'quarterly' || form.recurrence_type === 'biannual' || form.recurrence_type === 'annual'"
-                                class="grid grid-cols-2 gap-4">
-                                <div class="field">
-                                    <label for="recurrence_month" class="font-semibold">Mois de début</label>
-                                    <Dropdown id="recurrence_month" class="w-full" v-model="form.recurrence_month"
-                                        :options="months" optionLabel="label" optionValue="value"
-                                        placeholder="Sélectionner un mois" />
-                                    <small class="p-error">{{ form.errors.recurrence_month }}</small>
-                                </div>
-                                <div class="field">
-                                    <label for="recurrence_day_of_month_complex" class="font-semibold">Jour du
-                                        mois</label>
-                                    <InputNumber id="recurrence_day_of_month_complex" class="w-full"
-                                        v-model="form.recurrence_day_of_month" :min="1" :max="31" />
-                                    <small class="p-error">{{ form.errors.recurrence_day_of_month }}</small>
-                                </div>
-                            </div>
-
-                            <!-- Nouveau champ pour la configuration personnalisée de la récurrence -->
-                            <div v-if="form.recurrence_type === 'custom'" class="field">
-                                <label for="custom_recurrence_config" class="font-semibold">Configuration personnalisée
-                                    de la
-                                    récurrence</label>
-                                <Textarea id="custom_recurrence_config" class="w-full"
-                                    v-model="form.custom_recurrence_config" rows="3"
-                                    placeholder="Ex: 'every 2 weeks on Monday and Friday'" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="field">
-                                <label for="requester_department" class="font-semibold">Département Demandeur</label>
-                                <TreeSelect id="requester_department" v-model="form.requester_department" :options="transformedDepartments"
-                                    placeholder="Sélectionner un département" class="w-full" />
-                                <small class="p-error">{{ form.errors.requester_department }}</small>
-                            </div>
-                            <div class="field">
-                                <label for="requester_department" class="font-semibold">Service Destinateur</label>
-                                <TreeSelect id="requester_department" v-model="form.department" :options="transformedDepartments"
-                                    placeholder="Sélectionner un département" class="w-full" />
-                                <small class="p-error">{{ form.errors.department }}</small>
-                            </div>
-
-                        </div>
-
-                        <div class="field flex items-center mt-3">
-                            <Checkbox
-                                id="requires_shutdown"
-                                v-model="form.requires_shutdown"
-                                :binary="true"
-                                :class="{ 'p-invalid': form.errors.requires_shutdown }"
-                            />
-                            <label for="requires_shutdown" class="ml-2 font-semibold">
-                                L'équipement doit être mis hors tension
-                            </label>
-                            <small class="p-error">{{ form.errors.requires_shutdown }}</small>
-                        </div>
-
-                        <Divider class="my-4" />
-
-                        <!-- Section Pièces Détachées -->
-                        <div class="field">
-                            <h4 class="font-semibold mb-3">Pièces Détachées Requises</h4>
-                            <div v-for="(part, index) in form.spare_parts" :key="index" class="grid grid-cols-12 gap-2 items-center mb-2">
-                                <div class="col-span-8">
-                                    <Dropdown
-                                        v-model="part.id"
-                                        :options="props.spareParts"
-                                        optionLabel="reference"
-                                        optionValue="id"
-                                        placeholder="Sélectionner une pièce"
-                                        class="w-full"
-                                        filter
-                                    />
-                                    <small class="p-error">{{ form.errors[`spare_parts.${index}.id`] }}</small>
-                                </div>
-                                <div class="col-span-3">
-                                    <InputNumber v-model="part.quantity_used" placeholder="Qté" :min="1" class="w-full" />
-                                </div>
-                                <div class="col-span-1">
-                                    <Button
-                                        icon="pi pi-trash"
-                                        class="p-button-danger p-button-text p-button-rounded"
-                                        @click="removeSparePart(index)"
-                                    />
-                                </div>
-                            </div>
-                            <Button
-                                label="Ajouter une pièce"
-                                icon="pi pi-plus"
-                                class="p-button-text mt-2"
-                                @click="addSparePart"
-                            />
-                            <Button
-                                label="Créer une nouvelle pièce"
-                                icon="pi pi-plus"
-                                class="p-button-text mt-2 ml-2" @click="openNewSparePart"
-                            />
-                        </div>
-
-                        <div class="field">
-                            <!-- <label for="images" class="font-semibold">Images</label>
-                            <FileUpload
-                                mode="basic"
-                                name="images[]"
-                                url="/api/upload-task-image"
-                                accept="image/*"
-                                :maxFileSize="1000000"
-                                :auto="true"
-                                chooseLabel="Ajouter des images"
-                                multiple
-                            /> -->
-                        </div>
-
-                        <!-- Section de Configuration Avancée pour les Noeuds -->
-                        <div class="field mt-4">
-                            <Button label="Configurer les instructions avancées" icon="pi pi-cog"
-                                class="p-button-secondary p-button-text"
-                                @click="showAdvancedInstructions = !showAdvancedInstructions" />
-                        </div>
-
-                        <div v-if="showAdvancedInstructions" class="p-4 shadow-lg bg-white rounded-lg mt-4 border border-gray-200">
-
-    <h3 class="text-xl font-bold mb-4 flex items-center text-gray-900 border-b border-gray-200 pb-3">
-        <i class="pi pi-cog mr-2 text-blue-600"></i> Configuration des Instructions
-    </h3>
-
-    <div v-if="!configurableNodes || configurableNodes.length === 0" class="p-3 mb-4 bg-gray-50 rounded border border-gray-300">
-        <p class="text-sm text-gray-700 m-0">
-            <i class="pi pi-info-circle mr-2 text-blue-600"></i> Veuillez **sélectionner des équipements** pour activer la configuration des instructions.
-        </p>
-    </div>
-
-    <div v-else>
-        <div v-for="group in groupedConfigurableNodes" :key="group.parent.key" class="mb-4 border border-gray-300 rounded overflow-hidden">
-
-            <div
-                class="flex justify-between items-center p-3 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer border-b border-gray-300"
-                @click="toggleInstructionGroup(group.parent.key)"
-            >
-                <h4 class="font-bold text-lg m-0 text-gray-900">
-                    <i class="pi pi-folder-open mr-2 text-blue-600"></i> {{ group.parent.label }}
-                </h4>
-                <Button
-                    :icon="isGroupExpanded(group.parent.key) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-                    class="p-button-text p-button-secondary p-button-rounded"
-                />
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
+                        Ordres de Travail <span class="text-indigo-600">GMAO</span>
+                    </h1>
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">Planification & Suivi des Tâches</p>
+                </div>
+                <div class="flex gap-2">
+                    <Button label="Nouvel Ordre de Travail" icon="pi pi-plus"
+                            class="p-button-indigo shadow-lg shadow-indigo-200" @click="openNew" />
+                </div>
             </div>
 
-            <div v-if="isGroupExpanded(group.parent.key)" class="p-4 bg-white">
+            <div class="bg-white/70 backdrop-blur-md border border-white shadow-sm rounded-2xl p-4 mb-6">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex gap-2">
+                        <IconField iconPosition="left">
+                            <InputIcon class="pi pi-search" />
+                            <InputText v-model="search" placeholder="Rechercher une tâche..."
+                                       class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="performSearch" />
+                        </IconField>
+                    </div>
 
-                <div v-for="child in group.children" :key="child.key">
+                    <div class="flex items-center gap-2">
+                        <Button icon="pi pi-download" label="Exporter"
+                                class="p-button-text p-button-secondary p-button-sm font-bold" @click="exportCSV" />
+                        <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
+                    </div>
+                </div>
+            </div>
 
-                    <div class="mb-4 p-3 border border-gray-200 rounded bg-gray-50">
+            <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
+                <DataTable :value="props.tasks.data" ref="dt" dataKey="id" :paginator="true" :rows="10"
+                           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                           currentPageReportTemplate="{first} à {last} sur {totalRecords}"
+                           class="p-datatable-sm quantum-table">
 
-                        <div class="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
-                            <h6 class="font-bold text-lg m-0 text-blue-600">{{ child.label }}</h6>
+                    <Column v-if="visibleColumns.includes('title')" header="Titre de la tâche" minWidth="300px">
+                        <template #body="{ data }">
+                            <div class="font-bold text-slate-800 tracking-tight cursor-pointer" @click="editTask(data)">{{ data.title }}</div>
+                        </template>
+                    </Column>
 
-                            <div class="flex justify-end space-x-2">
-                                <Button
-                                    v-if="form.instructions[child.key] && form.instructions[child.key].length > 0"
-                                    icon="pi pi-copy"
-                                    label="Copier"
-                                    class="p-button-sm p-button-outlined p-button-secondary"
-                                    @click="openCopyDialog(child.key)"
-                                />
-                                <Button
-                                    icon="pi pi-plus"
-                                    label="Ajouter"
-                                    class="p-button-sm p-button-primary"
-                                    @click="addInstruction(child.key)"
-                                />
+                    <Column v-if="visibleColumns.includes('equipments')" header="Équipement(s)" minWidth="250px">
+                        <template #body="slotProps">
+                            <div v-if="slotProps.data.equipments?.length" class="flex flex-wrap gap-1">
+                                <Tag v-for="equipment in slotProps.data.equipments" :key="equipment.id" :value="equipment.designation" class="!bg-slate-200 !text-slate-700 !font-bold" />
                             </div>
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('assignable')" field="assignable.name" header="Assigné à" minWidth="200px">
+                        <template #body="slotProps">
+                            <div v-if="slotProps.data.assignable" class="flex w-fit items-center gap-3 rounded-full bg-slate-50 p-1 pr-4 border border-slate-100">
+                                <Avatar :label="slotProps.data.assignable.name[0]" shape="circle" class="!bg-slate-900 !text-white !font-black" />
+                                <span class="text-sm font-bold text-slate-700">{{ slotProps.data.assignable.name }}</span>
+                            </div>
+                             <span v-else class="text-slate-400 text-xs italic">Non assigné</span>
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('status')" field="status" header="Statut" minWidth="150px">
+                        <template #body="slotProps">
+                            <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" class="uppercase text-[9px] px-2" />
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('priority')" field="priority" header="Priorité" minWidth="150px">
+                         <template #body="{ data }">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: getPrioritySeverity(data.priority) === 'danger' ? '#ef4444' : getPrioritySeverity(data.priority) === 'warning' ? '#f59e0b' : getPrioritySeverity(data.priority) === 'success' ? '#10b981' : '#64748b' }"></div>
+                                <span class="text-xs font-medium">{{ data.priority }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('planned_start_date')" field="planned_start_date" header="Début Planifié" minWidth="200px">
+                        <template #body="slotProps">
+                            <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded-md">{{ new Date(slotProps.data.planned_start_date).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" alignFrozen="right" frozen class="pr-8">
+                        <template #body="{ data }">
+                            <div class="flex justify-end gap-2">
+                                <Button icon="pi pi-pencil" text rounded @click="editTask(data)" class="!text-slate-400 hover:!bg-indigo-50 hover:!text-indigo-600 transition-all" v-tooltip.top="'Modifier'" />
+                                <Button icon="pi pi-trash" text rounded @click="deleteTask(data)" class="!text-slate-400 hover:!bg-red-50 hover:!text-red-500 transition-all" v-tooltip.top="'Supprimer'" />
+                            </div>
+                        </template>
+                    </Column>
+
+                </DataTable>
+            </div>
+        </div>
+
+        <OverlayPanel ref="op" class="quantum-overlay">
+            <div class="p-2 space-y-3">
+                <span class="text-[10px] font-black uppercase text-slate-400 block border-b pb-2">Colonnes actives</span>
+                <MultiSelect v-model="visibleColumns" :options="allColumns" optionLabel="header" optionValue="field"
+                             display="chip" class="w-64 quantum-multiselect" />
+            </div>
+        </OverlayPanel>
+
+<Dialog
+    v-model:visible="taskDialog"
+    modal
+    :header="false"
+    class="quantum-dialog w-full max-w-7xl overflow-hidden"
+    :pt="{
+        root: { class: 'border-none shadow-3xl bg-white rounded-xl' },
+        mask: { style: 'backdrop-filter: blur(15px); background: rgba(15, 23, 42, 0.8)' }
+    }"
+>
+    <div class="flex flex-col h-[90vh]">
+
+        <div class="px-8 py-4 bg-slate-900 text-white flex justify-between items-center shadow-lg relative z-50">
+            <div class="flex items-center gap-4">
+                <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                    <i class="pi pi-shield text-blue-400 text-xl"></i>
+                </div>
+                <div class="flex flex-col">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white leading-none">{{ dialogTitle }}</h2>
+                    <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1 italic">Console d'administration GMAO v2025</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div class="flex flex-col items-end mr-4">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase mb-1">Niveau d'urgence</span>
+                    <SelectButton v-model="form.priority" :options="taskPriorities" class="p-selectbutton-sm custom-dark-priority" />
+                </div>
+                <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="taskDialog = false" class="text-white hover:bg-white/10" />
+            </div>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden bg-slate-50">
+            <div class="w-24 border-r border-slate-200 bg-white flex flex-col items-center py-10 gap-8">
+                <div v-for="i in 3" :key="i"
+                     @click="activeStep = i"
+                     :class="['w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 cursor-pointer hover:scale-110 shadow-sm',
+                              activeStep >= i ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-300 border border-slate-100']">
+                    <i :class="['pi text-lg', i==1 ? 'pi-info-circle' : i==2 ? 'pi-calendar-clock' : 'pi-wrench']"></i>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-12 scroll-smooth bg-white rounded-l-[3rem] shadow-inner relative">
+
+                <div class="flex gap-4 mb-10 bg-slate-100/50 p-2 rounded-2xl w-fit border border-slate-100">
+                    <button v-for="step in [{v:1, l:'IDENTIFICATION'}, {v:2, l:'PLANIFICATION'}, {v:3, l:'PROTOCOLE & PIÈCES'}]"
+                            :key="step.v" @click="activeStep = step.v"
+                            :class="['px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase', activeStep === step.v ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400']">
+                        {{ step.l }}
+                    </button>
+                </div>
+
+                <div v-if="activeStep === 1" class="max-w-4xl mx-auto space-y-10 animate-fade-in">
+                    <header class="border-l-4 border-blue-600 pl-6 space-y-1">
+                        <h1 class="text-3xl font-black text-slate-800 tracking-tight uppercase">Contexte Mission</h1>
+                        <p class="text-slate-400 font-medium">Définissez l'objet, les actifs et la localisation de l'intervention.</p>
+                    </header>
+
+                    <div class="grid grid-cols-12 gap-8">
+                        <div class="col-span-12">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Objet de l'intervention</label>
+                            <InputText v-model="form.title" class="w-full p-4 text-xl font-bold border-none bg-slate-50 rounded-2xl focus:ring-4 focus:ring-blue-50" placeholder="Ex: Remplacement des filtres groupe A..." />
                         </div>
 
-                        <div v-if="form.instructions[child.key] && form.instructions[child.key].length > 0" class="flex flex-col space-y-3">
-                            <div v-for="(instruction, index) in form.instructions[child.key]" :key="`instruction-${child.key}-${index}`" class="p-3 border border-gray-300 rounded bg-white">
+                        <div class="col-span-6">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Nature des travaux</label>
+                            <Dropdown v-model="form.maintenance_type" :options="taskTypes" class="w-full p-2 bg-slate-50 border-none rounded-2xl" />
+                        </div>
 
-                                <div class="grid grid-cols-12 gap-x-2 items-center">
+                        <div class="col-span-6">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Actifs Concernés (Équipements)</label>
+                            <TreeSelect v-model="form.related_equipments" :options="transformedEquipmentTree" selectionMode="checkbox" display="chip" placeholder="Choisir les équipements" class="w-full bg-slate-50 border-none rounded-2xl" />
+                        </div>
 
-                                    <div class="col-span-12 md:col-span-5 field">
-                                        <InputText v-model="instruction.label" placeholder="Libellé de l'instruction" class="w-full" :class="{ 'p-invalid': form.errors[`instructions.${child.key}.${index}.label`] }" />
-                                        <small class="p-error">{{ form.errors[`instructions.${child.key}.${index}.label`] }}</small>
-                                    </div>
-                                    <div class="col-span-12 md:col-span-3">
-                                        <Dropdown
-                                            v-model="instruction.type"
-                                            :options="instructionValueTypes"
-                                            optionLabel="label"
-                                            optionValue="value"
-                                            placeholder="Type de Valeur"
-                                            class="w-full"
-                                        />
-                                    </div>
+                        <div class="col-span-6">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Région Administrative</label>
+                            <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter class="w-full bg-slate-50 border-none rounded-2xl" />
+                        </div>
 
-                                    <div class="col-span-12 md:col-span-2 flex items-center">
-                                        <Checkbox
-                                            v-model="instruction.is_required"
-                                            :binary="true"
-                                            :inputId="`required-${child.key}-${index}`"
-                                            class="mr-2"
-                                        />
-                                        <label :for="`required-${child.key}-${index}`" class="text-sm font-medium text-gray-700">Requis</label>
-                                    </div>
+                        <div class="col-span-6">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Département Bénéficiaire</label>
+                            <TreeSelect v-model="form.department" :options="transformedDepartments" placeholder="Service" class="w-full bg-slate-50 border-none rounded-2xl" />
+                        </div>
 
-                                    <div class="col-span-12 md:col-span-1 flex justify-end">
-                                        <Button
-                                            icon="pi pi-trash"
-                                            class="p-button-danger p-button-text p-button-rounded"
-                                            @click="removeInstruction(child.key, index)"
-                                            v-tooltip.top="'Supprimer cette instruction'"
-                                        />
-                                    </div>
+                        <div class="col-span-12 p-8 bg-slate-900 rounded-[2.5rem] text-white flex items-center gap-8 shadow-2xl">
+                            <div class="flex-1 space-y-4">
+                                <label class="text-[9px] font-black text-blue-400 uppercase tracking-widest block italic">Responsable de l'Exécution (Assignation)</label>
+                                <div class="flex gap-4">
+                                    <Dropdown v-model="form.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value" class="w-1/3 bg-white/10 border-none text-white font-bold" />
+                                    <Dropdown v-model="form.assignable_id" :options="assignables" optionLabel="name" optionValue="id" filter class="flex-1 bg-white/10 border-none text-white" />
                                 </div>
                             </div>
+                            <div class="h-16 w-16 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                <i class="pi pi-users text-3xl text-blue-400"></i>
+                            </div>
                         </div>
-                        <div v-else class="p-3 text-center text-gray-600 text-sm border border-dashed border-gray-300 rounded">
-                            <i class="pi pi-exclamation-triangle mr-2"></i> Aucune instruction n'a été ajoutée. Cliquez sur **Ajouter** pour commencer.
-                        </div>
-
                     </div>
                 </div>
 
+                <div v-if="activeStep === 2" class="max-w-4xl mx-auto space-y-12 animate-fade-in">
+                    <header class="border-l-4 border-purple-600 pl-6 space-y-1">
+                        <h1 class="text-3xl font-black text-slate-800 tracking-tight uppercase">Planification</h1>
+                        <p class="text-slate-400 font-medium">Définissez la fenêtre temporelle et les cycles automatiques.</p>
+                    </header>
+
+                    <div class="grid grid-cols-2 gap-10">
+                        <div class="space-y-8">
+                            <div class="p-6 bg-slate-50 rounded-xl border border-slate-100">
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-4 block tracking-widest">Début Planifié</label>
+                                <DatePicker v-model="form.planned_start_date" showTime hourFormat="24" class="w-full" />
+                            </div>
+                            <div class="p-6 bg-slate-50 rounded-xl border border-slate-100">
+                                <label class="text-[10px] font-black text-slate-400 uppercase mb-4 block tracking-widest">Échéance de fin</label>
+                                <DatePicker v-model="form.planned_end_date" showTime hourFormat="24" class="w-full" />
+                            </div>
+                        </div>
+
+                        <div class="p-8 bg-indigo-50 rounded-[1rem] border border-indigo-100 space-y-6 flex flex-col justify-start shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <i class="pi pi-sync text-indigo-600 text-xl"></i>
+                                <span class="text-xs font-black text-indigo-900 uppercase tracking-widest">Récurrence</span>
+                            </div>
+                            <Dropdown v-model="form.recurrence_type" :options="recurrenceTypes" optionLabel="label" optionValue="value" class="w-full" />
+
+                            <div v-if="form.recurrence_type" class="pt-6 border-t border-indigo-200 mt-4 space-y-4 animate-slide-in">
+                                <span class="text-[10px] font-bold text-indigo-700 uppercase">Intervalle</span>
+                                <InputNumber v-model="form.recurrence_interval" class="w-full" suffix=" cycles" />
+                            </div>
+                        </div>
+
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase mb-3 block tracking-widest">Description détaillée</label>
+                            <Textarea v-model="form.description" rows="5" class="w-full p-6 bg-slate-50 border-none rounded-[1rem] text-slate-700 shadow-inner" placeholder="Notes additionnelles pour l'équipe terrain..." />
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="activeStep === 3" class="max-w-4xl mx-auto space-y-12 animate-fade-in">
+                    <header class="border-l-4 border-emerald-600 pl-6 flex justify-between items-end">
+                        <div class="space-y-1">
+                            <h1 class="text-3xl font-black text-slate-800 tracking-tight uppercase">Ressources & Procédures</h1>
+                            <p class="text-slate-400 font-medium">Inventaire des pièces et liste de contrôle technique.</p>
+                        </div>
+                        <Button label="Ajouter pièce" icon="pi pi-plus" size="small" variant="outlined" rounded @click="addSparePart" />
+                    </header>
+
+                    <div class="bg-white rounded-[1rem] border border-slate-100 shadow-sm overflow-hidden">
+                        <DataTable :value="form.spare_parts" class="p-datatable-sm" responsiveLayout="scroll">
+                            <Column header="Pièce / Référence" class="pl-8 py-4">
+                                <template #body="{ data }">
+                                    <Dropdown v-model="data.id" :options="props.spareParts" optionLabel="name" optionValue="id" filter class="w-full border-none bg-transparent" placeholder="Rechercher une pièce..." />
+                                </template>
+                            </Column>
+                            <Column header="Qté" class="w-32">
+                                <template #body="{ data }">
+                                    <InputNumber v-model="data.quantity_used" :min="1" class="w-full bg-slate-50 rounded-xl" />
+                                </template>
+                            </Column>
+                            <Column class="w-16 text-right pr-6">
+                                <template #body="{ index }">
+                                    <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="removeSparePart(index)" />
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </div>
+
+                    <div class="space-y-8">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+                            <i class="pi pi-check-circle text-emerald-500"></i> Points de contrôle par actif
+                        </h3>
+
+                        <div v-for="node in configurableNodes" :key="node.key" class="rounded-[1rem] border border-slate-100 bg-slate-50/50 overflow-hidden shadow-sm mb-6">
+                            <div class="px-8 py-4 bg-slate-800 text-white flex justify-between items-center">
+                                <span class="text-[10px] font-black tracking-widest uppercase">{{ node.label }}</span>
+                                <Button icon="pi pi-plus" label="Ajouter point" size="small" variant="text" class="text-blue-300 text-[9px] font-black uppercase" @click="addInstruction(node.key)" />
+                            </div>
+
+                            <div class="p-8 space-y-4">
+                                <div v-for="(inst, iIdx) in form.instructions[node.key]" :key="iIdx" class="flex gap-4 items-center animate-fade-in group">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xs font-black shadow-sm border border-slate-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        {{ iIdx + 1 }}
+                                    </div>
+                                    <InputText v-model="inst.label" class="flex-1 bg-white border-none rounded-2xl p-4 shadow-sm" placeholder="Action à réaliser..." />
+                                    <Dropdown v-model="inst.type" :options="instructionValueTypes" optionLabel="label" optionValue="value" class="w-40 bg-white border-none rounded-2xl" />
+                                    <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="removeInstruction(node.key, iIdx)" />
+                                </div>
+                                <div v-if="!form.instructions[node.key]?.length" class="text-center py-4 text-slate-400 italic text-xs">
+                                    Aucune instruction pour cet équipement.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-80 bg-slate-50 p-8 flex flex-col justify-between border-l border-slate-200">
+                <div class="space-y-8">
+                    <div class="space-y-3">
+                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block text-center italic">Cycle Opérationnel</label>
+                        <Dropdown v-model="form.status" :options="taskStatuses" class="w-full border-none shadow-xl bg-white rounded-2xl font-black text-slate-800 p-1" />
+                    </div>
+
+                    <div class="p-8 bg-white rounded-[1rem] shadow-xl shadow-slate-200/50 space-y-8 border border-slate-100">
+                        <div class="field">
+                            <span class="text-[9px] font-black text-slate-400 uppercase block mb-3 uppercase">Budget Estimé</span>
+                            <InputNumber v-model="form.estimated_cost" mode="currency" currency="XOF" locale="fr-FR" class="w-full text-2xl font-black text-slate-900" />
+                        </div>
+                        <Divider class="my-0" />
+                        <div class="field">
+                            <span class="text-[9px] font-black text-slate-400 uppercase block mb-3 text-blue-500">Temps d'exécution (min)</span>
+                            <InputNumber v-model="form.time_spent" suffix=" min" class="w-full font-black text-xl text-blue-600" />
+                        </div>
+                    </div>
+
+                    <div :class="['p-8 rounded-[1rem] border-2 transition-all duration-500 cursor-pointer shadow-lg',
+                                  form.requires_shutdown ? 'bg-red-50 border-red-200 shadow-red-100' : 'bg-slate-100 border-transparent opacity-40']"
+                         @click="form.requires_shutdown = !form.requires_shutdown">
+                        <div class="flex items-center gap-4">
+                            <Checkbox v-model="form.requires_shutdown" :binary="true" />
+                            <span :class="['text-xs font-black uppercase tracking-tight', form.requires_shutdown ? 'text-red-700' : 'text-slate-500']">Consignation (LOTO)</span>
+                        </div>
+                        <p v-if="form.requires_shutdown" class="text-[9px] text-red-600 mt-4 font-black animate-pulse leading-tight uppercase">Arrêt total requis</p>
+                    </div>
+                </div>
+
+                <Button label="Enregistrer l'Ordre" icon="pi pi-check-circle" severity="success" class="w-full h-20 rounded-[1rem] font-black tracking-widest uppercase shadow-2xl mt-8" @click="saveMaintenance" :loading="form.processing" />
             </div>
         </div>
+
+        <div class="px-12 py-6 bg-white border-t border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md relative z-50">
+            <Button v-if="activeStep > 1" label="Précédent" icon="pi pi-arrow-left" severity="secondary" variant="text" @click="activeStep--" class="font-black text-xs uppercase tracking-widest" />
+            <div v-else class="w-[100px]"></div>
+
+            <div class="flex gap-3">
+                <div v-for="i in 3" :key="i" :class="['h-2 rounded-full transition-all duration-500', activeStep == i ? 'bg-blue-600 w-12' : 'bg-slate-200 w-3']"></div>
+            </div>
+
+            <Button v-if="activeStep < 3" label="Continuer" icon="pi pi-arrow-right" iconPos="right" @click="activeStep++" class="px-14 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-300" />
+            <div v-else class="w-[140px]"></div>
+        </div>
     </div>
-</div>
-
-                        <!-- Dialog pour copier les instructions -->
-                        <Dialog v-model:visible="copyInstructionsDialog" modal header="Copier les instructions"
-                            :style="{ width: '35rem' }">
-                            <p v-if="sourceNodeForCopy">
-                                Copier les instructions de <strong>{{ sourceNodeForCopy.label }}</strong> vers les
-                                équipements sélectionnés
-                                ci-dessous.
-                                <br>
-                                <small>Attention : Les instructions existantes sur les équipements cibles seront
-                                    remplacées.</small>
-                            </p>
-
-                            <div class="field mt-4" v-if="copyTargetsTree.length > 0">
-                                <label for="copy-targets" class="font-semibold">Équipements Cibles</label>
-                                <TreeSelect id="copy-targets" v-model="selectedCopyTargets" :options="copyTargetsTree"
-                                    placeholder="Sélectionner les équipements" selectionMode="checkbox" display="chip"
-                                    class="w-full mt-2" >
-                                      <template #empty></template>
-                                    </TreeSelect>
-                            </div>
-                            <template #footer>
-                                <Button label="Annuler" icon="pi pi-times" @click="copyInstructionsDialog = false"
-                                    class="p-button-text" />
-                                <Button label="Appliquer" icon="pi pi-check" @click="applyCopyInstructions"
-                                    :disabled="totalSelectedCopyTargets === 0" />
-                            </template>
-                        </Dialog>
-                        <template #footer>
-                            <Button label="Annuler" icon="pi pi-times" @click="hideDialog" class="p-button-text" />
-                            <Button label="Sauvegarder" icon="pi pi-check" @click="saveMaintenance"
-                                :loading="form.processing" />
-                        </template>
-                    </Dialog>
+</Dialog>
 
                     <!-- Dialog pour créer une nouvelle pièce détachée -->
                     <Dialog v-model:visible="sparePartDialog" modal header="Créer une nouvelle pièce détachée" :style="{ width: '30rem' }">
@@ -1283,7 +1140,7 @@ const updateInstructions = (taskId, instructions) => {
                                     id="spare_part_category"
                                     v-model="sparePartForm.category_id"
                                     :options="props.categories"
-                                    optionLabel="name"
+                                    optionLabel="designation"
                                     optionValue="id"
                                     placeholder="Sélectionner une catégorie"
                                     :class="{ 'p-invalid': sparePartForm.errors.category_id }"
@@ -1306,12 +1163,32 @@ const updateInstructions = (taskId, instructions) => {
                             <Button label="Créer" icon="pi pi-check" @click="createSparePart" :loading="sparePartForm.processing" />
                         </template>
                     </Dialog>
-                </div>
-            </div>
-        </div>
+
+
     </AppLayout>
 </template>
 
 <style scoped>
-/* Vous pouvez ajouter des styles spécifiques ici si nécessaire */
+/* STYLE V11 CUSTOM TOKENS */
+.p-button-indigo {
+    background: #4f46e5;
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 12px;
+}
+
+.card-v11 :deep(.p-datatable-thead > tr > th) {
+    background: #fdfdfd;
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.card-v11 :deep(.p-datatable-tbody > tr) {
+    transition: all 0.2s;
+}
+
+.card-v11 :deep(.p-datatable-tbody > tr:hover) {
+    background: #f8faff !important;
+}
 </style>

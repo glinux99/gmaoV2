@@ -3,6 +3,7 @@ import { useLayout } from '@/sakai/layout/composables/layout';
 import { onBeforeMount, ref, watch } from 'vue';
 import NavLink from "@/Components/NavLink.vue";
 
+import { useI18n } from 'vue-i18n';
 const { layoutState, setActiveMenuItem, onMenuToggle } = useLayout();
 
 const props = defineProps({
@@ -26,6 +27,7 @@ const props = defineProps({
 
 const isActiveMenu = ref(false);
 const itemKey = ref(null);
+const { t } = useI18n();
 
 onBeforeMount(() => {
     itemKey.value = props.parentItemKey ? props.parentItemKey + '-' + props.index : String(props.index);
@@ -67,15 +69,15 @@ const itemClick = (event, item) => {
 
 <template>
     <li :class="{ 'layout-root-menuitem': root, 'active-menuitem': isActiveMenu }">
-        <div v-if="root && item.visible !== false" class="layout-menuitem-root-text">{{ item.label }}</div>
+        <div v-if="root && item.visible !== false" class="layout-menuitem-root-text">{{ t(item.label) }}</div>
         <a v-if="(!item.to || item.items) && item.visible !== false" :href="item.url" @click="itemClick($event, item, index)" :class="item.class" :target="item.target" tabindex="0">
             <i :class="item.icon" class="layout-menuitem-icon"></i>
-            <span class="layout-menuitem-text">{{ item.label }}</span>
+            <span class="layout-menuitem-text">{{ t(item.label) }}</span>
             <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="item.items"></i>
         </a>
         <nav-link v-if="item.to && !item.items && item.visible !== false" @click="itemClick($event, item, index)" :href="item.to"  :class="[item.class, { 'active-route': $page.url === item.to }]">
             <i :class="item.icon" class="layout-menuitem-icon"></i>
-            <span class="layout-menuitem-text">{{ item.label }}</span>
+            <span class="layout-menuitem-text">{{ t(item.label) }}</span>
             <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="item.items"></i>
         </nav-link>
         <Transition v-if="item.items && item.visible !== false" name="layout-submenu">

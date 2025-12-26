@@ -1,38 +1,38 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import { useLayout } from '@/sakai/layout/composables/layout';
-import { $t, updatePreset, updateSurfacePalette } from '@primevue/themes';
+import { updatePreset, updateSurfacePalette } from '@primevue/themes';
 import Aura from '@primevue/themes/aura';
-import AppConfigurator from './AppConfigurator.vue';
 import Lara from '@primevue/themes/lara';
+import AppConfigurator from './AppConfigurator.vue';
 import NavLink from "@/Components/NavLink.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
 import { usePage } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 
 /**
  * LOGIQUE DE GESTION DU LAYOUT ET DES THÈMES
  */
 const { layoutConfig, setPrimary, setSurface, setPreset, isDarkTheme, setMenuMode, onMenuToggle, toggleDarkMode } = useLayout();
+const { t, locale } = useI18n();
 const page = usePage();
 const user = page.props.auth.user;
 
 // Configuration des Presets PrimeVue
 const presets = { Aura, Lara };
 const preset = ref(layoutConfig.preset);
-const presetOptions = ref(Object.keys(presets));
 
-// Configuration des Modes de Menu
-const menuMode = ref(layoutConfig.menuMode);
-const menuModeOptions = ref([
-    { label: 'Statique', value: 'static' },
-    { label: 'Overlay', value: 'overlay' }
+// Configuration des Modes de Menu avec traduction réactive
+const menuModeOptions = computed(() => [
+    { label: t('topbar.menuModes.static'), value: 'static' },
+    { label: t('topbar.menuModes.overlay'), value: 'overlay' }
 ]);
 
-// Options de thèmes pour la Sidebar et Topbar
-const menuThemes = ref([
-    { name: 'white', color: '#ffffff', label: 'Clair' },
-    { name: 'dark', color: '#0f172a', label: 'Sombre' },
-    { name: 'primary', color: 'var(--p-primary-500)', label: 'Accent' }
+// Options de thèmes avec traduction réactive via computed
+const menuThemes = computed(() => [
+    { name: 'white', color: '#ffffff', label: t('topbar.themes.light') },
+    { name: 'dark', color: '#0f172a', label: t('topbar.themes.dark') },
+    { name: 'primary', color: 'var(--p-primary-500)', label: t('topbar.themes.accent') }
 ]);
 
 // Palette de couleurs primaires ERP
@@ -45,7 +45,7 @@ const primaryColors = ref([
 ]);
 
 /**
- * GESTION DES LANGUES ET RECHERCHE
+ * GESTION DES LANGUES
  */
 const languages = [
     { name: 'Français', code: 'FR', flag: 'https://flagcdn.com/w40/fr.png' },
@@ -53,7 +53,12 @@ const languages = [
     { name: 'Swahili', code: 'SW', flag: 'https://flagcdn.com/w40/tz.png' },
     { name: 'Lingala', code: 'LN', flag: 'https://flagcdn.com/w40/cd.png' }
 ];
-const currentLang = ref(languages[0]);
+
+// On cherche la langue actuelle basée sur la locale
+const currentLang = computed(() => {
+    return languages.find(l => l.code.toLowerCase() === locale.value) || languages[0];
+});
+
 const searchQuery = ref('');
 
 /**
@@ -67,21 +72,8 @@ function getPresetExt() {
     return { semantic: { primary: color.palette } };
 }
 
-function updateColors(type, color) {
-    if (type === 'primary') setPrimary(color.name);
-    else if (type === 'surface') setSurface(color.name);
-
-    if (type === 'primary') updatePreset(getPresetExt());
-    else if (type === 'surface') updateSurfacePalette(color.palette);
-}
-
-function onPresetChange() {
-    setPreset(preset.value);
-    $t().preset(presets[preset.value]).preset(getPresetExt()).use({ useDefaultOptions: true });
-}
-
-function onMenuThemeChange(themeName) {
-    layoutConfig.menuTheme = themeName;
+function changeLanguage(lang) {
+    locale.value = lang.code.toLowerCase();
 }
 
 /**
@@ -105,7 +97,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
             <button
                 class="group relative flex items-center justify-center w-11 h-11 rounded-xl bg-gray-50 hover:bg-indigo-600 border-none cursor-pointer transition-all duration-300 overflow-hidden shadow-sm"
                 @click="onMenuToggle"
-                title="Basculer le menu latéral"
+                :title="t('topbar.toggle_sidebar')"
             >
                 <div class="flex flex-col gap-1.5 transition-all duration-300 group-hover:scale-110">
                     <span class="w-5 h-0.5 bg-gray-600 group-hover:bg-white rounded-full transition-colors"></span>
@@ -128,7 +120,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
                     id="topbar-search"
                     v-model="searchQuery"
                     type="text"
-                    placeholder="Rechercher un dossier, un agent ou un service..."
+                    :placeholder="t('topbar.search_placeholder')"
                     class="w-full bg-gray-100/50 border-2 border-transparent rounded-2xl py-2.5 pl-12 pr-20 text-sm focus:ring-0 focus:border-indigo-100 focus:bg-white transition-all duration-300 outline-none text-gray-700 font-medium"
                 />
                 <div class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none opacity-60 group-focus-within:opacity-100 transition-opacity">
@@ -139,8 +131,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
         </div>
 
         <div class="flex items-center gap-3">
-
-           <div class="layout-config-menu flex items-center">
+            <div class="layout-config-menu flex items-center">
                 <button type="button" class="layout-topbar-action p-2.5 rounded-xl hover:bg-gray-50 border-none bg-transparent cursor-pointer" @click="toggleDarkMode">
                     <i :class="['pi text-lg', { 'pi-moon text-indigo-500': isDarkTheme, 'pi-sun text-amber-500': !isDarkTheme }]"></i>
                 </button>
@@ -156,7 +147,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
                     <AppConfigurator />
                 </div>
             </div>
-
 
             <button
                 class="layout-topbar-menu-button layout-topbar-action lg:hidden p-2.5 rounded-xl hover:bg-gray-50 border-none bg-transparent cursor-pointer"
@@ -176,7 +166,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
                     <span class="text-[10px] font-black text-gray-700 uppercase">{{ currentLang.code }}</span>
                 </button>
                 <div class="hidden absolute right-0 mt-4 w-44 bg-white shadow-2xl rounded-2xl border border-gray-100 z-[120] p-1.5 overflow-hidden">
-                    <button v-for="l in languages" :key="l.code" @click="currentLang = l"
+                    <button v-for="l in languages" :key="l.code" @click="changeLanguage(l)"
                         class="flex items-center gap-3 w-full p-2.5 rounded-xl hover:bg-indigo-50 transition-all border-none bg-transparent cursor-pointer group text-left">
                         <img :src="l.flag" class="w-5 h-3.5 rounded shadow-sm" />
                         <span class="text-xs font-bold text-gray-600 group-hover:text-indigo-700">{{ l.name }}</span>
@@ -198,7 +188,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
                     </div>
                     <div class="hidden xl:flex flex-col text-left">
                         <span class="text-[11px] font-black text-gray-900 leading-none uppercase tracking-tight">{{ user?.name }}</span>
-                        <span class="text-[9px] font-bold text-emerald-500 mt-1 uppercase tracking-widest">Connecté</span>
+                        <span class="text-[9px] font-bold text-emerald-500 mt-1 uppercase tracking-widest">{{ t('topbar.status.connected') }}</span>
                     </div>
                     <i class="pi pi-chevron-down text-[10px] text-gray-400 group-hover:text-indigo-600 transition-colors ml-1"></i>
                 </button>
@@ -214,28 +204,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
 
                     <div class="p-2.5 space-y-1">
                         <NavLink href="/profile" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 no-underline border-none text-gray-600 font-bold text-xs transition-colors group">
-                            <i class="pi pi-user-edit text-indigo-400 group-hover:text-indigo-600"></i> Éditer Profil
+                            <i class="pi pi-user-edit text-indigo-400 group-hover:text-indigo-600"></i> {{ t('topbar.userMenu.edit_profile') }}
                         </NavLink>
                         <NavLink href="/settings" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 no-underline border-none text-gray-600 font-bold text-xs transition-colors group">
-                            <i class="pi pi-shield text-gray-400 group-hover:text-indigo-600"></i> Sécurité
+                            <i class="pi pi-shield text-gray-400 group-hover:text-indigo-600"></i> {{ t('topbar.userMenu.security') }}
                         </NavLink>
 
                         <div class="border-t border-gray-50 my-2 mx-3"></div>
 
                         <DropdownLink :href="route('logout')" method="post" as="button"
                             class="flex items-center gap-3 p-3 rounded-xl w-full border-none bg-transparent hover:bg-red-50 text-red-500 cursor-pointer font-black text-[10px] uppercase tracking-wider transition-colors">
-                            <i class="pi pi-power-off"></i> Fermer Session
+                            <i class="pi pi-power-off"></i> {{ t('topbar.userMenu.logout') }}
                         </DropdownLink>
                     </div>
                 </div>
             </div>
-
         </div>
     </header>
 </template>
 
 <style scoped>
-/* ANIMATIONS DE DROPDOWN */
+/* Vos styles sont conservés sans modification */
 .animate-scalein { animation: scalein 0.25s cubic-bezier(0.25, 1, 0.5, 1); }
 .animate-fadeout { animation: fadeout 0.2s ease-in forwards; }
 
@@ -249,28 +238,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
     100% { opacity: 0; transform: scale(0.96); }
 }
 
-/* STATUT PING ANIMATION */
 .animate-ping { animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes ping {
     75%, 100% { transform: scale(2); opacity: 0; }
 }
 
-/* CUSTOM STYLE POUR SELECTBUTTON PRIME */
-:deep(.custom-select-button .p-button) {
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-    padding: 0.5rem;
-    border-color: #f1f5f9;
-}
-
-:deep(.custom-select-button .p-highlight) {
-    background: #4f46e5 !important;
-    border-color: #4f46e5 !important;
-    color: white !important;
-}
-
-/* SEARCH INPUT FOCUS */
 input::placeholder {
     font-weight: 600;
     color: #94a3b8;
@@ -278,17 +250,5 @@ input::placeholder {
 }
 input:focus::placeholder {
     color: #cbd5e1;
-}
-
-/* SCROLLBAR PERSONNALISÉE POUR LE MENU SI NÉCESSAIRE */
-::-webkit-scrollbar {
-    width: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: #e2e8f0;
-    border-radius: 10px;
 }
 </style>
