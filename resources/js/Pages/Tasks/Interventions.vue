@@ -65,12 +65,21 @@ const filterForm = ref({
     priority: props.filters?.priority || null,
 });
 
+const resetFilters = () => {
+    Object.keys(filterForm.value).forEach(key => filterForm.value[key] = null);
+    applyFilters();
+};
+
 const applyFilters = () => {
     router.get(route('interventions.index'), {
         search: search.value,
         ...filterForm.value
     }, { preserveState: true, replace: true });
 };
+
+const activeFiltersCount = computed(() => {
+    return Object.values(filterForm.value).filter(value => value !== null).length;
+});
 
 // --- STYLISATION DES BADGES (V11 Design) ---
 const getStatusSeverity = (status) => {
@@ -133,6 +142,15 @@ const submit = () => {
     form.post(url, { onSuccess: () => isModalOpen.value = false });
 };
 </script>
+<script>
+import { ref } from 'vue';
+
+export default {
+    data() {
+        return { requester_type: ref('client') };
+    }
+};
+</script>
 
 <template>
     <AppLayout>
@@ -162,7 +180,7 @@ const submit = () => {
                             <InputText v-model="search" placeholder="Rechercher une référence..."
                                        class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="applyFilters" />
                         </IconField>
-                        <Button icon="pi pi-filter" :label="activeFiltersCount > 0 ? activeFiltersCount.toString() : 'Filtres'"
+                        <Button icon="pi pi-filter" :label="activeFiltersCount > 0 ? activeFiltersCount.toString() : 'Filtres'" badgeClass="p-badge-danger" :badge="activeFiltersCount > 0 ? activeFiltersCount.toString() : null"
                                 class="p-button-text p-button-secondary p-button-sm font-bold" @click="opFilters.toggle($event)" />
                     </div>
 
@@ -222,6 +240,23 @@ const submit = () => {
         <Dialog v-model:visible="isModalOpen" modal :header="form.id ? 'Détails Intervention' : 'Création de Ticket'"
                 class="quantum-dialog w-full max-w-4xl" :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
 
+            <div class="px-8 py-4 bg-slate-900 text-white flex justify-between items-center shadow-lg relative z-50">
+                <div class="flex items-center gap-4">
+                    <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                        <i class="pi pi-shield text-blue-400 text-xl"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <h2 class="text-sm font-black uppercase tracking-widest text-white leading-none">{{ form.id ? 'Détails Intervention' : 'Création de Ticket' }}</h2>
+                        <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1 italic">Console d'administration GMAO v2025</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+
+                    <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="isModalOpen = false" class="text-white hover:bg-white/10" />
+                </div>
+            </div>
+
             <div class="p-2">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
                     <div class="md:col-span-7 space-y-6">
@@ -267,10 +302,6 @@ const submit = () => {
                             <h4 class="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Assignation & Délai</h4>
                             <div class="space-y-4">
                                 <div class="flex flex-col gap-1">
-                                    <label class="text-[9px] font-bold uppercase">Priorité</label>
-                                    <Dropdown v-model="form.priority" :options="props.priorities" class="w-full bg-white/10 border-none text-white rounded-lg" />
-                                </div>
-                                <div class="flex flex-col gap-1">
                                     <label class="text-[9px] font-bold uppercase">Assigné à</label>
                                     <Dropdown v-model="form.assignable_id" :options="getAssignables(form.assignable_type)"
                                               optionLabel="name" optionValue="id" class="w-full bg-white/10 border-none text-white rounded-lg" />
@@ -310,6 +341,28 @@ const submit = () => {
                 <span class="text-[10px] font-black uppercase text-slate-400 block border-b pb-2">Colonnes actives</span>
                 <MultiSelect v-model="selectedColumnFields" :options="allColumns" optionLabel="header" optionValue="field"
                              display="chip" class="w-64 quantum-multiselect" />
+            </div>
+        </OverlayPanel>
+
+        <OverlayPanel ref="opFilters" class="p-4">
+            <div class="space-y-4">
+                <h4 class="text-xs font-black uppercase text-slate-500">Filtres avancés</h4>
+                <div class="field">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Statut</label>
+                    <Dropdown v-model="filterForm.status" :options="props.statuses" placeholder="Tous" showClear class="w-full" @change="applyFilters" />
+                </div>
+                <div class="field">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Région</label>
+                    <Dropdown v-model="filterForm.region_id" :options="props.regions" optionLabel="designation" optionValue="id" placeholder="Toutes" showClear filter class="w-full" @change="applyFilters" />
+                </div>
+                <div class="field">
+                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Priorité</label>
+                    <Dropdown v-model="filterForm.priority" :options="props.priorities" placeholder="Toutes" showClear class="w-full" @change="applyFilters" />
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <Button label="Réinitialiser" text severity="secondary" @click="resetFilters" />
+                    <Button label="Appliquer" @click="applyFilters" />
+                </div>
             </div>
         </OverlayPanel>
 

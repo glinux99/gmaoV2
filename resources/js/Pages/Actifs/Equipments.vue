@@ -491,13 +491,13 @@ defineExpose({
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
-                        {{ t('equipments.title') }} <span class="text-indigo-600">GMAO</span>
+                        {{ t('equipments.title') }} <span class="text-primary-600">GMAO</span>
                     </h1>
                     <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">{{ t('equipments.subtitle') }}</p>
                 </div>
                 <div class="flex gap-2">
                     <Button :label="t('equipments.addNew')" icon="pi pi-plus"
-                            class="p-button-indigo shadow-lg shadow-indigo-200" @click="openNew" />
+                            class="p-button-primary shadow-lg shadow-primary-200" @click="openNew" />
                 </div>
             </div>
 
@@ -570,7 +570,7 @@ defineExpose({
                     <Column header="Actions" alignFrozen="right" frozen class="pr-8">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
-                                <Button icon="pi pi-pencil" text rounded @click="editEquipment(data)" class="!text-slate-400 hover:!bg-indigo-50 hover:!text-indigo-600 transition-all" v-tooltip.top="'Modifier'" />
+                                <Button icon="pi pi-pencil" text rounded @click="editEquipment(data)" class="!text-slate-400 hover:!bg-primary-50 hover:!text-primary-600 transition-all" v-tooltip.top="'Modifier'" />
                                 <Button icon="pi pi-trash" text rounded @click="deleteEquipment(data)" class="!text-slate-400 hover:!bg-red-50 hover:!text-red-500 transition-all" v-tooltip.top="'Supprimer'" />
                             </div>
                         </template>
@@ -854,7 +854,7 @@ defineExpose({
 
 <style scoped>
 /* STYLE V11 CUSTOM TOKENS */
-.p-button-indigo {
+.p-button-primary {
     background: #4f46e5;
     border: none;
     color: white;

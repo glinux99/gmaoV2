@@ -10,6 +10,7 @@ import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 import Button from 'primevue/button';
+import { useI18n } from 'vue-i18n';
 import InputText from 'primevue/inputtext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
@@ -25,6 +26,7 @@ import Avatar from 'primevue/avatar';
 import AvatarGroup from 'primevue/avatargroup';
 import Tag from 'primevue/tag';
 
+const { t } = useI18n();
 const props = defineProps({
     regions: Array,
     filters: Object,
@@ -89,6 +91,21 @@ const saveTeam = () => {
         }
     });
 };
+
+const deleteTeam = (team) => {
+    confirm.require({
+        message: t('teams.messages.confirmDelete', { name: team.name }),
+        header: t('common.deleteConfirmation'),
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            router.delete(route('teams.destroy', team.id), {
+                onSuccess: () => toast.add({ severity: 'info', summary: 'Supprimé', detail: t('teams.messages.deleteSuccess'), life: 3000 })
+            });
+        }
+    });
+};
+
 </script>
 
 <template>
@@ -104,17 +121,17 @@ const saveTeam = () => {
                         <i class="pi pi-users text-2xl text-white"></i>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-black tracking-tighter text-slate-900 md:text-4xl">Unités de Terrain</h1>
-                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Management des ressources V11</p>
+                        <h1 class="text-3xl font-black tracking-tighter text-slate-900 md:text-4xl">{{ t('teams.title') }}</h1>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ t('teams.subtitle') }}</p>
                     </div>
                 </div>
 
                 <div class="flex w-full items-center gap-3 lg:w-auto">
-                    <button @click="exportCSV" class="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-emerald-600 shadow-sm transition-all hover:bg-emerald-50 active:scale-95 lg:flex-none">
-                        <i class="pi pi-file-excel"></i> Export Excel
+                    <button @click="exportCSV" class="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-emerald-600 shadow-sm transition-all hover:bg-emerald-50 active:scale-95 lg:flex-none" v-tooltip.bottom="t('common.export')">
+                        <i class="pi pi-file-excel"></i>
                     </button>
                     <button @click="openCreate" class="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 lg:flex-none">
-                        <i class="pi pi-plus-circle"></i> Nouvelle Équipe
+                        <i class="pi pi-plus-circle"></i> {{ t('teams.actions.add') }}
                     </button>
                 </div>
             </div>
@@ -122,14 +139,17 @@ const saveTeam = () => {
             <div class="mb-6 flex flex-wrap items-center gap-4 rounded-[2.5rem] border border-white bg-white/50 p-4 shadow-sm backdrop-blur-md">
                 <div class="relative flex-1 min-w-[280px]">
                     <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input v-model="filters.search" type="text" placeholder="Rechercher une unité..." @input="applyFilters"
+                    <input v-model="filters.search" type="text" :placeholder="t('teams.toolbar.searchPlaceholder')" @input="applyFilters"
                            class="w-full rounded-2xl border-none bg-white py-3 pl-12 text-sm font-semibold shadow-inner focus:ring-2 focus:ring-indigo-500/20" />
                 </div>
 
-                <Dropdown v-model="filters.region_id" :options="regions" optionLabel="name" optionValue="id" placeholder="Toutes les régions"
+                <Dropdown v-model="filters.region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('teams.toolbar.filterByRegion')" showClear
                           class="w-full !rounded-2xl !border-none !bg-white !shadow-sm md:w-56" @change="applyFilters" />
 
-                <button @click="resetFilters" class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm hover:text-red-500 transition-colors">
+                <Dropdown v-model="filters.leader_id" :options="technicians" optionLabel="name" optionValue="id" :placeholder="t('teams.toolbar.filterByLeader')" showClear
+                          class="w-full !rounded-2xl !border-none !bg-white !shadow-sm md:w-56" @change="applyFilters" />
+
+                <button @click="resetFilters" class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm hover:text-red-500 transition-colors" v-tooltip.bottom="t('teams.toolbar.resetFilters')">
                     <i class="pi pi-filter-slash"></i>
                 </button>
             </div>
@@ -140,7 +160,7 @@ const saveTeam = () => {
 
                     <Column selectionMode="multiple" headerStyle="width: 4rem" class="pl-8"></Column>
 
-                    <Column header="Désignation de l'Unité" minWidth="300px">
+                    <Column :header="t('teams.fields.name')" minWidth="300px">
                         <template #body="{ data }">
                             <div class="group flex cursor-pointer items-center gap-4 py-2" @click="editTeam(data)">
                                 <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 transition-all group-hover:bg-indigo-600 group-hover:text-white text-slate-500">
@@ -154,7 +174,7 @@ const saveTeam = () => {
                         </template>
                     </Column>
 
-                    <Column header="Commandement" minWidth="200px">
+                    <Column :header="t('teams.fields.leader')" minWidth="200px">
                         <template #body="{ data }">
                             <div v-if="data.team_leader" class="flex w-fit items-center gap-3 rounded-full bg-slate-50 p-1 pr-4 border border-slate-100">
                                 <Avatar :label="data.team_leader.name[0]" shape="circle" class="!bg-slate-900 !text-white !font-black" />
@@ -163,7 +183,7 @@ const saveTeam = () => {
                         </template>
                     </Column>
 
-                    <Column header="Effectifs" minWidth="250px">
+                    <Column :header="t('teams.fields.members')" minWidth="250px">
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">
                                 <AvatarGroup v-if="data.members?.length">
@@ -175,11 +195,11 @@ const saveTeam = () => {
                         </template>
                     </Column>
 
-                    <Column header="Actions" alignFrozen="right" frozen class="pr-8">
+                    <Column :header="t('common.actions')" alignFrozen="right" frozen class="pr-8">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
                                 <Button icon="pi pi-pencil" text rounded @click="editTeam(data)" class="!text-slate-400 hover:!bg-indigo-50 hover:!text-indigo-600 transition-all" />
-                                <Button icon="pi pi-trash" text rounded severity="danger" class="!opacity-50 hover:!opacity-100 transition-all" />
+                                <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteTeam(data)" class="!text-slate-400 hover:!bg-red-50 hover:!text-red-500 transition-all" />
                             </div>
                         </template>
                     </Column>
@@ -195,7 +215,7 @@ const saveTeam = () => {
                     <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
                         <i class="pi pi-file-edit"></i>
                     </div>
-                    <span class="text-xl font-black tracking-tighter text-slate-900">Fiche de l'unité</span>
+                    <span class="text-xl font-black tracking-tighter text-slate-900">{{ form.id ? t('teams.dialog.editTitle') : t('teams.dialog.createTitle') }}</span>
                 </div>
             </template>
 
@@ -203,20 +223,20 @@ const saveTeam = () => {
                 <div class="space-y-6 flex-grow overflow-y-auto px-1">
                     <div class="rounded-[2rem] bg-slate-50 p-6 border border-slate-100 space-y-5">
                         <div class="flex flex-col gap-2">
-                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nom de l'équipe</label>
-                            <InputText v-model="form.name" placeholder="Ex: EQP-DELTA-01" class="w-full !rounded-2xl !border-none !shadow-sm !py-4" />
+                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ t('teams.fields.name') }}</label>
+                            <InputText v-model="form.name" :placeholder="t('teams.placeholders.name')" class="w-full !rounded-2xl !border-none !shadow-sm !py-4" />
                         </div>
 
                         <div class="flex flex-col gap-2">
-                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Chef d'unité</label>
+                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ t('teams.fields.leader') }}</label>
                             <Dropdown v-model="form.team_leader_id" :options="technicians" optionLabel="name" optionValue="id"
-                                      placeholder="Désigner un leader" filter class="!rounded-2xl !border-none !shadow-sm" />
+                                      :placeholder="t('teams.placeholders.leader')" filter class="!rounded-2xl !border-none !shadow-sm" />
                         </div>
 
                         <div class="flex flex-col gap-2">
-                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Membres assignés</label>
+                            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ t('teams.fields.members') }}</label>
                             <MultiSelect v-model="form.members" :options="technicians" optionLabel="name" optionValue="id"
-                                         placeholder="Sélectionner les membres" filter display="chip" class="!rounded-2xl !border-none !shadow-sm" />
+                                         :placeholder="t('teams.placeholders.members')" filter display="chip" class="!rounded-2xl !border-none !shadow-sm" />
                         </div>
                     </div>
                 </div>
@@ -224,7 +244,7 @@ const saveTeam = () => {
                 <div class="mt-auto border-t border-slate-100 pt-6 flex gap-3">
                     <button type="button" @click="isModalOpen = false" class="flex-1 rounded-2xl py-4 text-sm font-bold text-slate-400 hover:bg-slate-50 transition-colors">Annuler</button>
                     <button type="submit" :disabled="form.processing" class="flex-[2] rounded-2xl bg-slate-900 py-4 text-sm font-black text-white shadow-xl transition-all hover:bg-black active:scale-95">
-                        Confirmer les modifications
+                        {{ form.id ? t('common.saveChanges') : t('common.create') }}
                     </button>
                 </div>
             </form>

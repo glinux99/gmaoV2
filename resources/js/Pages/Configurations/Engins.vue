@@ -48,10 +48,20 @@ const loading = ref(false);
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    type: { value: null, matchMode: FilterMatchMode.IN },
+    type: { value: null, matchMode: FilterMatchMode.IN }, // Utilise 'IN' pour MultiSelect
     region_id: { value: null, matchMode: FilterMatchMode.EQUALS },
+    date_mise_en_service: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.DATE_IS }] },
 });
 
+const initFilters = () => {
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        type: { value: null, matchMode: FilterMatchMode.IN },
+        region_id: { value: null, matchMode: FilterMatchMode.EQUALS },
+        date_mise_en_service: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.DATE_IS }] },
+    };
+};
 // --- MAPPING DES ICONES PAR TYPE ---
 const typeMetadata = {
     'camion': { icon: 'pi-truck', color: '#3B82F6', bg: '#EFF6FF' },
@@ -117,18 +127,18 @@ const saveEngin = () => {
     form.transform(data => ({
         ...data,
         date_mise_en_service: data.date_mise_en_service ? data.date_mise_en_service.toISOString().split('T')[0] : null,
-    })).submit(editing.value ? 'put' : 'post', url, {
+    })).submit(editing.value ? 'put' : 'post', url, { // Correction: 'put' pour la mise à jour
         onSuccess: () => {
             labelDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: t('engins.messages.updateSuccess'), life: 3000 });
+            toast.add({ severity: 'success', summary: t('common.success'), detail: editing.value ? t('engins.toast.updateSuccess') : t('engins.toast.createSuccess'), life: 3000 });
         }
     });
 };
 
 const deleteEngin = (engin) => {
     confirm.require({
-        message: t('engins.messages.confirmDelete', { name: engin.designation }),
-        header: 'Confirmation',
+        message: t('engins.confirm.deleteMessage', { name: engin.designation }),
+        header: t('engins.confirm.header'),
         icon: 'pi pi-exclamation-triangle',
         acceptClass: 'p-button-danger',
         accept: () => {
@@ -152,12 +162,13 @@ onMounted(() => loadEnginTypes());
                     </div>
                     <div>
                         <h1 class="text-3xl font-[900] text-slate-900 tracking-tight">{{ t('engins.title') }}</h1>
-                        <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">{{ engins?.length || 0 }} Unités en ligne</p>
+                        <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">{{ t('engins.subtitle', { count: engins?.length || 0 }) }}</p>
                     </div>
                 </div>
                 <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-                    <Button icon="pi pi-download" text severity="secondary" @click="dt.exportCSV()" />
-                    <Button :label="t('engins.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
+                    <Button :label="t('engins.toolbar.resetFilters')" icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" />
+                    <Button icon="pi pi-download" text severity="secondary" @click="dt.exportCSV()" :aria-label="t('engins.toolbar.export')" />
+                    <Button :label="t('engins.toolbar.addEngin')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
                 </div>
             </div>
 
@@ -166,20 +177,20 @@ onMounted(() => loadEnginTypes());
                     ref="dt" :value="engins" v-model:filters="filters"
                     dataKey="id" :paginator="true" :rows="15" filterDisplay="menu"
                     :globalFilterFields="['designation', 'immatriculation', 'type']"
-                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                    currentPageReportTemplate="{first} à {last} sur {totalRecords}"
+                    :paginatorTemplate="t('dataTable.paginatorTemplate', 'FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown')"
+                    :currentPageReportTemplate="t('dataTable.currentPageReportEngins')"
                     class="ultimate-table" scrollable scrollHeight="700px"
                 >
                     <template #header>
                         <div class="flex justify-between items-center p-4">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search text-primary-500" />
-                                <InputText v-model="filters['global'].value" placeholder="Recherche rapide..." class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('engins.toolbar.searchPlaceholder')" class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
                             </IconField>
                         </div>
                     </template>
 
-                    <Column field="designation" header="Engin & ID" sortable frozen class="min-w-[280px]">
+                    <Column field="designation" :header="t('engins.table.designation')" sortable filterField="designation" frozen class="min-w-[280px]">
                         <template #body="{ data }">
                             <div class="flex items-center gap-4">
                                 <div :style="{ backgroundColor: getMeta(data.type).bg }" class="w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-110">
@@ -187,22 +198,25 @@ onMounted(() => loadEnginTypes());
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="font-black text-slate-800 leading-none mb-1">{{ data.designation }}</span>
-                                    <span class="text-[10px] font-mono text-slate-400 tracking-tighter">{{ data.immatriculation || 'SANS PLAQUE' }}</span>
+                                    <span class="text-[10px] font-mono text-slate-400 tracking-tighter">{{ data.immatriculation || t('engins.common.noPlate') }}</span>
                                 </div>
                             </div>
                         </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('engins.toolbar.searchByName')" />
+                        </template>
                     </Column>
 
-                    <Column field="type" header="Catégorie" sortable :showFilterMatchModes="false">
+                    <Column field="type" :header="t('engins.table.category')" sortable filterField="type" :showFilterMatchModes="false">
                         <template #body="{ data }">
                             <Tag :value="data.type" :style="{ backgroundColor: getMeta(data.type).bg, color: getMeta(data.type).color }" class="rounded-lg px-3 font-black text-[10px] uppercase border-none" />
                         </template>
                         <template #filter="{ filterModel }">
-                            <MultiSelect v-model="filterModel.value" :options="enginTypesOptions" optionLabel="name" optionValue="id" placeholder="Tous les types" class="w-full" />
+                            <MultiSelect v-model="filterModel.value" :options="enginTypesOptions" optionLabel="name" optionValue="id" :placeholder="t('engins.form.typePlaceholder')" class="w-full" />
                         </template>
                     </Column>
 
-                    <Column field="region_id" header="Affectation" sortable>
+                    <Column field="region_id" :header="t('engins.table.assignment')" sortable filterField="region_id">
                         <template #body="{ data }">
                             <div class="flex items-center gap-2">
                                 <i class="pi pi-map-marker text-primary-400 text-xs"></i>
@@ -210,19 +224,22 @@ onMounted(() => loadEnginTypes());
                             </div>
                         </template>
                         <template #filter="{ filterModel }">
-                            <Dropdown v-model="filterModel.value" :options="regions" optionLabel="designation" optionValue="id" placeholder="Toutes les régions" class="w-full" />
+                            <Dropdown v-model="filterModel.value" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('engins.form.regionPlaceholder')" class="w-full" />
                         </template>
                     </Column>
 
-                    <Column field="date_mise_en_service" header="Mise en Service" sortable>
+                    <Column field="date_mise_en_service" :header="t('engins.form.dateAcquisition')" sortable filterField="date_mise_en_service" dataType="date">
                         <template #body="{ data }">
                             <span class="text-xs font-medium text-slate-500">
                                 {{ data.date_mise_en_service ? new Date(data.date_mise_en_service).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '--' }}
                             </span>
                         </template>
+                        <template #filter="{ filterModel }">
+                            <Calendar v-model="filterModel.value" dateFormat="dd/mm/yy" :placeholder="t('engins.form.datePlaceholder')" mask="99/99/9999" />
+                        </template>
                     </Column>
 
-                    <Column header="Contrôle" alignFrozen="right" frozen>
+                    <Column :header="t('engins.table.actions')" alignFrozen="right" frozen>
                         <template #body="{ data }">
                             <div class="flex gap-2 justify-end">
                                 <Button icon="pi pi-pencil" text rounded severity="info" @click="editEngin(data)" />
@@ -234,37 +251,108 @@ onMounted(() => loadEnginTypes());
             </div>
         </div>
 
-        <Dialog v-model:visible="labelDialog" modal :header="editing ? 'Mise à jour Engin' : 'Nouvel Engin'" :style="{ width: '600px' }" class="v11-dialog">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type d'engin</label>
-                    <Dropdown v-model="form.type" :options="enginTypesOptions" optionLabel="name" optionValue="id" @change="handleTypeChange" class="v11-input" placeholder="Sélectionner..." />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Désignation</label>
-                    <InputText v-model="form.designation" class="v11-input" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Immatriculation</label>
-                    <InputText v-model="form.immatriculation" class="v11-input" placeholder="Ex: 1234AB/01" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Région d'affectation</label>
-                    <Dropdown v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" class="v11-input" />
-                </div>
-                <div class="flex flex-col gap-2 md:col-span-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date de mise en service</label>
-                    <Calendar v-model="form.date_mise_en_service" dateFormat="dd/mm/yy" showIcon class="v11-calendar" />
-                </div>
-            </div>
+    <Dialog
+    v-model:visible="labelDialog"
+    modal
+    :header="editing ? t('engins.dialog.editTitle') : t('engins.dialog.createTitle')"
+    :style="{ width: '90vw', maxWidth: '600px' }"
+    class="v11-dialog"
+    :breakpoints="{ '960px': '75vw', '641px': '100vw' }"
+>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 py-4">
 
-            <template #footer>
-                <div class="flex gap-3 w-full pt-4">
-                    <Button label="Annuler" text severity="secondary" @click="labelDialog = false" class="flex-1 rounded-xl" />
-                    <Button label="Enregistrer" severity="primary" raised @click="saveEngin" :loading="form.processing" class="flex-1 rounded-xl font-black py-4 shadow-lg shadow-primary-200" />
-                </div>
-            </template>
-        </Dialog>
+        <div class="flex flex-col gap-2">
+            <label for="type" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                {{ t('engins.form.type') }}
+            </label>
+            <Dropdown
+                id="type"
+                v-model="form.type"
+                :options="enginTypesOptions"
+                optionLabel="name"
+                optionValue="id"
+                @change="handleTypeChange"
+                class="v11-input w-full"
+                :placeholder="t('engins.form.typePlaceholder')"
+            />
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <label for="designation" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                {{ t('engins.form.designation') }}
+            </label>
+            <InputText
+                id="designation"
+                v-model="form.designation"
+                class="v11-input w-full"
+                placeholder="Ex: Camion-benne"
+            />
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <label for="immat" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                {{ t('engins.form.immatriculation') }}
+            </label>
+            <InputText
+                id="immat"
+                v-model="form.immatriculation"
+                class="v11-input w-full"
+                placeholder="Ex: 1234AB/01"
+            />
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <label for="region" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                {{ t('engins.form.region') }}
+            </label>
+            <Dropdown
+                id="region"
+                v-model="form.region_id"
+                :options="regions"
+                optionLabel="designation"
+                optionValue="id"
+                class="v11-input w-full"
+                :placeholder="t('engins.form.regionPlaceholder')"
+            />
+        </div>
+
+        <div class="flex flex-col gap-2 md:col-span-2">
+            <label for="date_service" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                {{ t('engins.form.dateAcquisition') }}
+            </label>
+            <Calendar
+                id="date_service"
+                v-model="form.date_mise_en_service"
+                dateFormat="dd/mm/yy"
+                showIcon
+                iconDisplay="input"
+                class="v11-calendar w-full"
+                :placeholder="t('engins.form.datePlaceholder')"
+            />
+        </div>
+    </div>
+
+    <template #footer>
+        <div class="flex items-center justify-end gap-3 w-full pt-4 border-t border-slate-100">
+            <Button
+                :label="t('engins.common.cancel')"
+                icon="pi pi-times"
+                text
+                severity="secondary"
+                @click="labelDialog = false"
+                class="px-6 rounded-xl font-bold"
+            />
+            <Button
+                :label="editing ? t('engins.common.update') : t('engins.common.save')"
+                icon="pi pi-check"
+                severity="primary"
+                @click="saveEngin"
+                :loading="form.processing"
+                class="px-8 rounded-xl font-black shadow-lg shadow-indigo-100"
+            />
+        </div>
+    </template>
+</Dialog>
 
         <Toast position="bottom-right" />
         <ConfirmDialog />

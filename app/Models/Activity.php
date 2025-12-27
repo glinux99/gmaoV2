@@ -33,7 +33,7 @@ class Activity extends Model implements HasMedia
         'status',
         'problem_resolution_description',
         'proposals',
-        'instructions',    'additional_information',
+           'additional_information',
         'equipment_id',
     ];
         protected $casts = [

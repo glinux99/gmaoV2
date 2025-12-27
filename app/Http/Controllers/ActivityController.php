@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\InstructionAnswer;
+use App\Models\ActivityInstruction;
 use App\Models\SparePart;
 use Illuminate\Support\Facades\DB;
 use App\Models\ServiceOrder;
@@ -18,7 +19,7 @@ use App\Models\Expenses;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-
+use Illuminate\Support\Arr;
 class ActivityController extends Controller
 {
     /**
@@ -47,7 +48,7 @@ class ActivityController extends Controller
         $query->with(['task.instructions', 'activityInstructions', 'instructionAnswers', 'task.serviceOrders', 'maintenance']);
 
         return Inertia::render('Tasks/MyActivities', [
-            'activities' => $query->paginate(10),
+            'activities' => $query->paginate(100),
             'filters' => request()->only(['search']),
             'users' => \App\Models\User::all(),
             'tasks' => \App\Models\Task::all(),
@@ -65,151 +66,161 @@ class ActivityController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'task_id' => 'nullable|exists:tasks,id',
+        'user_id' => 'nullable|exists:users,id',
+        'actual_start_time' => 'nullable|date',
+        'actual_end_time' => 'nullable|date|after_or_equal:actual_start_time',
+        'parent_id' => 'nullable|exists:activities,id',
+        'assignable_type' => ['nullable', 'string'], // Rule::in simplifié pour l'exemple
+        'assignable_id' => 'nullable|integer',
+        'jobber' => 'nullable|string',
+        'spare_parts_used' => 'nullable|array',
+        'spare_parts_used.*.id' => 'required_with:spare_parts_used|exists:spare_parts,id',
+        'spare_parts_used.*.quantity' => 'required_with:spare_parts_used|integer|min:1',
+        'spare_parts_returned' => 'nullable|array',
+        'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
+        'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
+        'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources,en cours,terminée,suspendue,annulée,planifiée',
+        'problem_resolution_description' => 'nullable|string|max:65535',
+        'proposals' => 'nullable|string|max:65535',
+        'additional_information' => 'nullable|string|max:65535',
+        'instructions' => 'nullable|array',
+        'instructions.*.id' => 'required',
+        'instructions.*.label' => 'required|string',
+        'instruction_answers' => 'nullable|array',
+        'instruction_answers.*' => 'nullable|string|max:255',
+        'service_order_cost' => 'nullable|numeric|min:0',
+        'service_order_description' => 'nullable|string|required_with:service_order_cost',
+        'maintenance_id' => 'nullable|exists:maintenances,id',
+    ]);
 
-        $validated = $request->validate([
-            'task_id' => 'nullable|exists:tasks,id',
-            'user_id' => 'nullable|exists:users,id',
-            'actual_start_time' => 'nullable|date',
-            'actual_end_time' => 'nullable|date|after_or_equal:actual_start_time',
-            'parent_id' => 'nullable|exists:activities,id',
-            'assignable_type' => ['nullable', 'string', Rule::in(['App\Models\User', 'App\Models\Team'])],
-            'assignable_id' => 'nullable|integer',
-            'jobber' => 'nullable|integer|min:1',
-            'spare_parts_used' => 'nullable|array',
-            'spare_parts_used.*.id' => 'required_with:spare_parts_used|exists:spare_parts,id',
-            'spare_parts_used.*.quantity' => 'required_with:spare_parts_used|integer|min:1',
-            'spare_parts_returned' => 'nullable|array',
-            'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
-            'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
-            // --- HARMONISATION DU STATUT ICI ---
-            'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources',
-            // ------------------------------------
-            'problem_resolution_description' => 'nullable|string|max:65535',
-            'proposals' => 'nullable|string|max:65535',
-            'instructions' => 'nullable|max:65535',
-            'additional_information' => 'nullable|string|max:65535',
-            // Validation pour les réponses aux instructions
-            'instruction_answers' => 'nullable|array',
-            'instruction_answers.*' => 'nullable|string|max:255', // Permet des valeurs nulles, la validation requise se fait au front-end
+    DB::beginTransaction();
+    try {
+        $validated['user_id'] = $validated['user_id'] ?? Auth::id();
 
-            // Champs pour ServiceOrder
-            'service_order_cost' => 'nullable|numeric|min:0',
-            'service_order_description' => 'nullable|string|required_with:service_order_cost',
-            'maintenance_id' => 'nullable|exists:maintenances,id', // Added for maintenance association
+        if (empty($validated['task_id']) && empty($validated['maintenance_id'])) {
+            throw new \Exception('Une activité doit être associée à une tâche ou une maintenance.');
+        }
 
+        // 1. Création de l'activité (on exclut les champs qui ne sont pas dans la table activities)
+        $activityData = Arr::except($validated, [
+            'instructions',
+            'instruction_answers',
+            'service_order_cost',
+            'service_order_description',
+            'spare_parts_used',
+            'spare_parts_returned',
+            'equipment_ids'
         ]);
 
-        DB::beginTransaction();
-        try {
-            $validated['user_id'] = $validated['user_id'] ?? Auth::id();
+      $activity = Activity::create($activityData);
 
-            // Ensure either task_id or maintenance_id is present
-            if (empty($validated['task_id']) && empty($validated['maintenance_id'])) {
-                throw new \Exception('An activity must be associated with either a task or a maintenance.');
-            }
+        // 2. GESTION DU SERVICE ORDER
+        if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
+            $serviceOrder = ServiceOrder::create([
+                'task_id' => $activity->task_id,
+                'maintenance_id' => $activity->maintenance_id,
+                'description' => $validated['service_order_description'] ?? 'Prestation liée à l\'activité #' . $activity->id,
+                'cost' => $validated['service_order_cost'],
+                'status' => 'completed',
+                'order_date' => now(),
+            ]);
 
-            // Convert spare_parts_used and spare_parts_returned arrays to JSON strings for storage
-            $validated['spare_parts_used'] = is_array($validated['spare_parts_used'] ?? null) ? json_encode($validated['spare_parts_used']) : $validated['spare_parts_used'];
-            $validated['spare_parts_returned'] = is_array($validated['spare_parts_returned'] ?? null) ? json_encode($validated['spare_parts_returned']) : $validated['spare_parts_returned'];
-
-            $activity = Activity::create($validated);
-
-            // Créer une ServiceOrder si un coût est fourni
-            if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
-                $serviceOrder = ServiceOrder::create([
-                    'task_id' => $activity->task_id,
-                    'description' => $validated['service_order_description'] ?? 'Prestation liée à l\'activité #' . $activity->id,
-                    'cost' => $validated['service_order_cost'],
-                    'maintenance_id' => $activity->maintenance_id, // Associate with maintenance if present
-                    'status' => 'completed', // On suppose que l'activité étant faite, la prestation l'est aussi
-                    'order_date' => now(),
-                    'actual_completion_date' => now(),
-                ]);
-
-                // Créer une dépense pour la commande de service
-                $activity->expenses()->create([
-                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
-                    'amount' => $serviceOrder->cost,
-                    'expense_date' => now(),
-                    'category' => 'external_service', // Ou une autre catégorie appropriée
-                    'user_id' => Auth::id(), // L'utilisateur qui a enregistré l'activité
-                    'notes' => 'Dépense générée automatiquement pour la prestation de service.',
-                    'status' => 'pending', // Ou 'approved' si l'approbation est automatique
-                ]);
-            }
-
-            // Logic for updating spare part quantities based on 'used' and 'returned'
-            // This would involve iterating through the spare_parts_used and spare_parts_returned arrays
-            // and updating the quantities in the SparePart model.
-            // Example (simplified): Ensure it's an array before iterating
-            $sparePartsUsed = json_decode($validated['spare_parts_used'] ?? '[]', true);
-            if (is_array($sparePartsUsed)) {
-                foreach ($validated['spare_parts_used'] as $sparePartData) {
-                    // Créer une dépense pour chaque pièce utilisée
-                    $activity->expenses()->create([
-                        'description' => 'Pièce détachée utilisée: ' . (\App\Models\SparePart::find($sparePartData['id'])->reference ?? 'N/A'),
-                        'amount' => (\App\Models\SparePart::find($sparePartData['id'])->price ?? 0) * $sparePartData['quantity'],
-                        'expense_date' => now(),
-                        'category' => 'parts',
-                        'user_id' => Auth::id(),
-                        'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
-                        'status' => 'pending',
-                    ]);
-                    $sparePart = \App\Models\SparePart::find($sparePartData['id']);
-                    if ($sparePart) {
-                        SparePartActivity::create([
-                            'activity_id' => $activity->id,
-                            'spare_part_id' => $sparePart->id,
-                            'type' => 'used',
-                            'quantity_used' => $sparePartData['quantity'],
-                        ]);
-                        $sparePart->quantity -= $sparePartData['quantity'];
-                        $sparePart->save();
-                    }
-                }
-            }
-
-            $sparePartsReturned = json_decode($validated['spare_parts_returned'] ?? '[]', true);
-            if (is_array($sparePartsReturned)) {
-                foreach ($sparePartsReturned as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']); // Assuming 'id' is the spare part ID
-                    if ($sparePart) {
-                        // Enregistrer le mouvement dans la table pivot
-                        SparePartActivity::create([
-                            'activity_id' => $activity->id,
-                            'spare_part_id' => $sparePart->id,
-                            'type' => 'returned',
-                            'quantity_used' => $part['quantity'], // quantity_used peut être utilisé pour les retours aussi
-                        ]);
-                        $sparePart->quantity += $part['quantity']; // Ajouter au stock
-                        $sparePart->save();
-                    }
-                }
-            }
-
-            // Mettre à jour ou créer les réponses aux instructions
-            if (isset($validated['instruction_answers'])) {
-                foreach ($validated['instruction_answers'] as $instructionId => $value) {
-                    InstructionAnswer::updateOrCreate(
-                        [
-                            'activity_id' => $activity->id,
-                            'task_instruction_id' => $activity->task_id ? $instructionId : null,
-                            'activity_instruction_id'=> $activity->maintenace_id? $instructionId:null
-                        ],
-                        ['value' => $value, 'user_id' => Auth::id()]
-                    );
-                }
-            }
-            DB::commit();
-            return redirect()->route('activities.index')->with('success', 'Activité créée avec succès.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la création de l\'activité: ' . $e->getMessage());
+            $activity->expenses()->create([
+                'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                'amount' => $serviceOrder->cost,
+                'expense_date' => now(),
+                'category' => 'external_service',
+                'user_id' => Auth::id(),
+                'status' => 'pending',
+            ]);
         }
+
+        // 3. GESTION DES PIÈCES UTILISÉES
+        $sparePartsUsed = $request->input('spare_parts_used', []);
+        foreach ($sparePartsUsed as $sparePartData) {
+            $sparePart = \App\Models\SparePart::find($sparePartData['id']);
+            if ($sparePart) {
+                $activity->expenses()->create([
+                    'description' => 'Pièce utilisée: ' . $sparePart->reference,
+                    'amount' => ($sparePart->price ?? 0) * $sparePartData['quantity'],
+                    'expense_date' => now(),
+                    'category' => 'parts',
+                    'user_id' => Auth::id(),
+                    'status' => 'pending',
+                ]);
+
+                SparePartActivity::create([
+                    'activity_id' => $activity->id,
+                    'spare_part_id' => $sparePart->id,
+                    'type' => 'used',
+                    'quantity_used' => $sparePartData['quantity'],
+                ]);
+
+                $sparePart->decrement('quantity', $sparePartData['quantity']);
+            }
+        }
+
+        // 4. GESTION DES PIÈCES RETOURNÉES
+        $sparePartsReturned = $request->input('spare_parts_returned', []);
+        foreach ($sparePartsReturned as $part) {
+            $sparePart = \App\Models\SparePart::find($part['id']);
+            if ($sparePart) {
+                SparePartActivity::create([
+                    'activity_id' => $activity->id,
+                    'spare_part_id' => $sparePart->id,
+                    'type' => 'returned',
+                    'quantity_used' => $part['quantity'],
+                ]);
+                $sparePart->increment('quantity', $part['quantity']);
+            }
+        }
+
+        // 5. GESTION DES INSTRUCTIONS (Questions + Réponses)
+        if ($request->has('instructions')) {
+            $instructionIdMap = [];
+
+            foreach ($request->instructions as $instrData) {
+                $tempId = $instrData['id'];
+
+                if (is_string($tempId) && str_starts_with($tempId, 'new_')) {
+                    $newInstruction = $activity->activityInstructions()->create([
+                        'label' => $instrData['label'],
+                        'type' => $instrData['type'] ?? 'text',
+                        'is_required' => $instrData['is_required'] ?? false,
+                    ]);
+                    $instructionIdMap[$tempId] = $newInstruction->id;
+                } else {
+                    $instructionIdMap[$tempId] = $tempId;
+                }
+            }
+
+            if ($request->has('instruction_answers')) {
+                foreach ($request->instruction_answers as $tempId => $value) {
+                    $realId = $instructionIdMap[$tempId] ?? null;
+                    if ($realId) {
+                        InstructionAnswer::create([
+                            'activity_id' => $activity->id,
+                            'activity_instruction_id' => $realId,
+                            'value' => $value,
+                            'user_id' => Auth::id()
+                        ]);
+                    }
+                }
+            }
+        }
+
+        DB::commit();
+        return redirect()->route('activities.index')->with('success', 'Activité créée avec succès.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Erreur : ' . $e->getMessage());
     }
+}
 
     /**
      * Store multiple new activities.
@@ -458,171 +469,158 @@ public function bulkStore(Request $request)
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Activity $activity)
-    {
 
-        // Determine if the activity is associated with a task or a maintenance
-        $isTaskActivity = !is_null($activity->task_id);
-        $validated = $request->validate([
-            'user_id' => 'nullable|exists:users,id',
-            'actual_start_time' => 'nullable|date',
-            'actual_end_time' => 'nullable|date|after_or_equal:actual_start_time',
-            'jobber' => 'nullable|string',
-            'spare_parts_used' => 'nullable|array',
-            'spare_parts_used.*.id' => 'required_with:spare_parts_used|exists:spare_parts,id',
-            'spare_parts_used.*.quantity' => 'required_with:spare_parts_used|integer|min:1',
-            'spare_parts_returned' => 'nullable|array',
-            'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
-            'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
-            // --- HARMONISATION DU STATUT ICI (remplace les termes français) ---
-            'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources',
-            // -------------------------------------------------------------------
-            'problem_resolution_description' => 'nullable|string|max:65535',
-            'proposals' => 'nullable|string|max:65535',
-            'instructions' => 'nullable|max:65535',
-            'additional_information' => 'nullable|string|max:65535',
-            'instruction_answers' => 'nullable|array',
-            'instruction_answers.*' => 'nullable|string|max:255',
-            // Champs pour ServiceOrder
-            'service_order_cost' => 'nullable|numeric|min:0',
-            'maintenance_id' => 'nullable|exists:maintenances,id', // Added for maintenance association
-            'service_order_description' => 'nullable|string|required_with:service_order_cost',
 
-        ]);
+public function update(Request $request, Activity $activity)
+{
+    $validated = $request->validate([
+        'user_id' => 'nullable|exists:users,id',
+        'actual_start_time' => 'nullable|date',
+        'actual_end_time' => 'nullable|date|after_or_equal:actual_start_time',
+        'jobber' => 'nullable|string',
+        'spare_parts_used' => 'nullable|array',
+        'spare_parts_used.*.id' => 'required_with:spare_parts_used|exists:spare_parts,id',
+        'spare_parts_used.*.quantity' => 'required_with:spare_parts_used|integer|min:1',
+        'spare_parts_returned' => 'nullable|array',
+        'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
+        'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
+        'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources,en cours,terminée,suspendue,annulée,planifiée',
+        'problem_resolution_description' => 'nullable|string|max:65535',
+        'proposals' => 'nullable|string|max:65535',
+        'additional_information' => 'nullable|string|max:65535',
+        'instructions' => 'nullable|array',
+        'instruction_answers' => 'nullable|array',
+        'service_order_cost' => 'nullable|numeric|min:0',
+        'service_order_description' => 'nullable|string|required_with:service_order_cost',
+        'maintenance_id' => 'nullable|exists:maintenances,id',
+    ]);
 
-        DB::beginTransaction();
-        try {
-            // Revert previous spare part movements
-            foreach ($activity->sparePartActivities()->get() as $sparePartActivity) {
-                $sparePart = \App\Models\SparePart::find($sparePartActivity->spare_part_id);
+    DB::beginTransaction();
+    try {
+        // --- 1. ANNULATION DES ANCIENS MOUVEMENTS DE STOCKS ---
+        foreach ($activity->sparePartActivities as $spa) {
+            $sparePart = \App\Models\SparePart::find($spa->spare_part_id);
+            if ($sparePart) {
+                if ($spa->type === 'used') {
+                    $sparePart->increment('quantity', $spa->quantity_used);
+                } elseif ($spa->type === 'returned') {
+                    $sparePart->decrement('quantity', $spa->quantity_used);
+                }
+            }
+        }
+
+        // Nettoyage complet pour repartir sur du propre
+        $activity->sparePartActivities()->delete();
+        $activity->expenses()->delete(); // On recréera les dépenses propres après
+
+        // Suppression/Remplacement des ServiceOrders (Logique simplifiée)
+        ServiceOrder::where('task_id', $activity->task_id)
+                    ->orWhere('maintenance_id', $activity->maintenance_id)
+                    ->delete();
+
+        // --- 2. MISE À JOUR DE L'ACTIVITÉ ---
+        $activity->update(Arr::except($validated, ['instructions', 'instruction_answers', 'spare_parts_used', 'spare_parts_returned', 'service_order_cost', 'service_order_description']));
+
+        // --- 3. GESTION DU SERVICE ORDER & DEPENSE ---
+        if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
+            $serviceOrder = ServiceOrder::create([
+                'task_id' => $activity->task_id,
+                'maintenance_id' => $activity->maintenance_id,
+                'description' => $validated['service_order_description'] ?? 'Prestation liée à l\'activité #' . $activity->id,
+                'cost' => $validated['service_order_cost'],
+                'status' => 'completed',
+                'order_date' => now(),
+            ]);
+
+            $activity->expenses()->create([
+                'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                'amount' => $serviceOrder->cost,
+                'category' => 'external_service',
+                'user_id' => Auth::id(),
+                'expense_date' => now(),
+                'status' => 'pending',
+            ]);
+        }
+
+        // --- 4. NOUVEAUX MOUVEMENTS DE PIÈCES (USED) ---
+        if ($request->has('spare_parts_used')) {
+            foreach ($request->spare_parts_used as $data) {
+                $sparePart = \App\Models\SparePart::find($data['id']);
                 if ($sparePart) {
-                    if ($sparePartActivity->type === 'used') {
-                        $sparePart->quantity += $sparePartActivity->quantity_used; // Add back to stock
-                        $sparePart->save();
-                    }
-                    if ($sparePartActivity->type === 'returned') {
-                        $sparePart->quantity -= $sparePartActivity->quantity_used; // Remove from stock
-                        $sparePart->save();
-                    }
+                    // Mouvement Pivot
+                    $activity->sparePartActivities()->create([
+                        'spare_part_id' => $sparePart->id,
+                        'type' => 'used',
+                        'quantity_used' => $data['quantity'],
+                    ]);
+
+                    // Dépense
+                    $activity->expenses()->create([
+                        'description' => 'Pièce utilisée: ' . $sparePart->reference,
+                        'amount' => ($sparePart->price ?? 0) * $data['quantity'],
+                        'category' => 'parts',
+                        'user_id' => Auth::id(),
+                        'expense_date' => now(),
+                        'status' => 'pending',
+                    ]);
+
+                    $sparePart->decrement('quantity', $data['quantity']);
                 }
             }
-            // Supprimer tous les enregistrements de la table pivot pour cette activité
-            $activity->sparePartActivities()->delete();
+        }
 
-            // Supprimer les dépenses associées aux pièces détachées pour cette activité
-            $activity->expenses()->where('category', 'parts')->delete(); // Delete only 'parts' category expenses
-
-            // Delete existing ServiceOrders associated with this activity's task or maintenance
-            if ($isTaskActivity) {
-                ServiceOrder::where('task_id', $activity->task_id)->delete();
-            } else {
-                ServiceOrder::where('maintenance_id', $activity->maintenance_id)->delete();
+        // --- 5. NOUVEAUX MOUVEMENTS DE PIÈCES (RETURNED) ---
+        if ($request->has('spare_parts_returned')) {
+            foreach ($request->spare_parts_returned as $data) {
+                $sparePart = \App\Models\SparePart::find($data['id']);
+                if ($sparePart) {
+                    $activity->sparePartActivities()->create([
+                        'spare_part_id' => $sparePart->id,
+                        'type' => 'returned',
+                        'quantity_used' => $data['quantity'],
+                    ]);
+                    $sparePart->increment('quantity', $data['quantity']);
+                }
             }
+        }
 
-            // Delete all expenses related to this activity (excluding parts, which were handled above)
-            $activity->expenses()->where('category', '!=', 'parts')->delete();
-
-            // Update or create ServiceOrder
-            $serviceOrder = new ServiceOrder(); // Initialize a new ServiceOrder object
-            if ($isTaskActivity) {
-                $serviceOrder->task_id = $activity->task_id;
-            } else {
-                $serviceOrder->maintenance_id = $activity->maintenance_id;
-            }
-
-            if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
-                $serviceOrderData = [
-                    'description' => $validated['service_order_description'] ?? 'Prestation liée à l\'activité #' . $activity->id,
-                    'cost' => $validated['service_order_cost'],
-                    'status' => 'completed',
-                ];
-                $serviceOrder->fill($serviceOrderData);
-                $serviceOrder->save();
-
-                // Créer la dépense associée
-                $activity->expenses()->create([
-                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
-                    'amount' => $serviceOrder->cost,
-                    'category' => 'external_service',
-                    'user_id' => Auth::id(),
-                    'notes' => 'Dépense générée automatiquement pour la prestation de service.',
-                    'status' => 'pending',
-                    'expense_date' => now(),
-                ]);
-            }
-
-            // Apply new spare part movements
-            // Decode JSON strings back to arrays for processing
-            $sparePartsUsed = $validated['spare_parts_used'] ?? [];
-            $sparePartsReturned = $validated['spare_parts_returned'] ?? [];
-            // The model's casts will handle JSON encoding/decoding for storage
-            if (isset($validated['spare_parts_used']) && is_array($validated['spare_parts_used'])) {
-                foreach ($validated['spare_parts_used'] as $sparePartData) {
-                    $sparePart = \App\Models\SparePart::find($sparePartData['id']);
-                    if ($sparePart) {
-                        // Créer une dépense pour chaque pièce utilisée
-                        $activity->expenses()->create([
-                            'description' => 'Pièce détachée utilisée: ' . $sparePart->reference,
-                            'amount' => ($sparePart->price ?? 0) * $sparePartData['quantity'],
-                            'expense_date' => now(),
-                            'category' => 'parts',
-                            'user_id' => Auth::id(),
-                            'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
-                            'status' => 'pending',
-                        ]);
-                        // Enregistrer le mouvement dans la table pivot
-                        SparePartActivity::create([
-                            'activity_id' => $activity->id,
-                            'spare_part_id' => $sparePart->id,
-                            'type' => 'used',
-                            'quantity_used' => $sparePartData['quantity'],
-                        ]);
-                        $sparePart->quantity -= $sparePartData['quantity'];
-                        $sparePart->save();
-                    }
+        // --- 6. GESTION DES INSTRUCTIONS ---
+        if ($request->has('instructions')) {
+            $instructionIdMap = [];
+            foreach ($request->instructions as $instr) {
+                $tempId = $instr['id'];
+                if (is_string($tempId) && str_starts_with($tempId, 'new_')) {
+                    $newInstr = $activity->activityInstructions()->create([
+                        'label' => $instr['label'],
+                        'type' => $instr['type'] ?? 'text',
+                        'is_required' => $instr['is_required'] ?? false,
+                    ]);
+                    $instructionIdMap[$tempId] = $newInstr->id;
+                } else {
+                    $activity->activityInstructions()->where('id', $tempId)->update(['label' => $instr['label']]);
+                    $instructionIdMap[$tempId] = $tempId;
                 }
             }
 
-            if (is_array($sparePartsReturned)) {
-                foreach ($sparePartsReturned as $part) {
-                    $sparePart = \App\Models\SparePart::find($part['id']); // Assuming 'id' is the spare part ID
-                    if ($sparePart) {
-                        // Enregistrer le mouvement dans la table pivot
-                        SparePartActivity::create([
-                            'activity_id' => $activity->id,
-                            'spare_part_id' => $sparePart->id,
-                            'type' => 'returned',
-                            'quantity_used' => $part['quantity'], // quantity_used peut être utilisé pour les retours aussi
-                        ]);
-                        $sparePart->quantity += $part['quantity']; // Ajouter au stock
-                        $sparePart->save();
-                    }
-                }
-            }
-
-            $activity->update($validated);
-
-            // Mettre à jour ou créer les réponses aux instructions
-            if (isset($validated['instruction_answers'])) {
-                foreach ($validated['instruction_answers'] as $instructionId => $value) {
+            if ($request->has('instruction_answers')) {
+                foreach ($request->instruction_answers as $tempId => $value) {
+                    $realId = $instructionIdMap[$tempId] ?? $tempId;
                     InstructionAnswer::updateOrCreate(
-                        [
-                            'activity_id' => $activity->id, // Always associate with the current activity
-                            'task_instruction_id' => $isTaskActivity ? $instructionId : null,
-                            'activity_instruction_id' => !$isTaskActivity ? $instructionId : null,
-                        ],
+                        ['activity_id' => $activity->id, 'activity_instruction_id' => $realId],
                         ['value' => $value, 'user_id' => Auth::id()]
                     );
                 }
             }
-            DB::commit();
-            return redirect()->route('activities.index')->with('success', 'Activité mise à jour avec succès.');
-        } catch (\Exception $e) {
-            return $e;
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de l\'activité: ' . $e->getMessage());
         }
+
+        DB::commit();
+        return redirect()->route('activities.index')->with('success', 'Activité mise à jour.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Erreur : ' . $e->getMessage());
     }
+}
     /**
      * Remove the specified resource from storage.
      */

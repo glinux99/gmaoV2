@@ -2,35 +2,24 @@
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-// Assurez-vous d'importer les composants PrimeVue nécessaires
+// Imports PrimeVue indispensables
 import Card from 'primevue/card';
 import Chart from 'primevue/chart';
+import Dropdown from 'primevue/dropdown';
+import Tag from 'primevue/tag';
 
 const props = defineProps({
-    // Métriques des Sparklines (Renommées pour correspondre au contrôleur)
     usersCount: Number,
     activeTasksCount: Number,
     timeSpent: String,
     averageInterventionTime: String,
-    rolesCount: Number,
-    permissionsCount: Number,
-    sparklineData: Object, // Contient les données 'metric', 'chartData', etc.
-
-    // Filtres
-    filters: Object,
-
-    // Données graphiques
+    sparklineData: Object,
     sparePartsMovement: Object,
     tasksByStatus: Object,
     tasksByPriority: Object,
-
-    // Données Financières
-    depensesPiecesDetachees: Number,
     budgetTotal: Number,
     depensesPrestation: Number,
     expensesTotal: Number,
-
-    // Données des visualisations détaillées
     monthlyVolumeData: Object,
     failuresByType: Object,
     interventionsByType: Object,
@@ -38,414 +27,220 @@ const props = defineProps({
 
 const { t } = useI18n();
 
-// --- Logique Graphiques ---
-
-// Options pour un graphique Sparkline
-const sparklineOptions = {
-    plugins: { legend: { display: false } },
-    maintainAspectRatio: false,
-    elements: {
-        point: { radius: 0 }
-    },
-    scales: {
-        x: { display: false },
-        y: { display: false }
-    }
+// --- Utilitaires de Formatage ---
+const formatCurrency = (val) => {
+    return new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        maximumFractionDigits: 0
+    }).format(val || 0);
 };
 
-// Préparation des données pour les quatre cartes principales (Sparklines)
+// --- Configuration des Graphiques ---
+
+const pieOptions = {
+    plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } }
+    },
+    maintainAspectRatio: false,
+    cutout: '70%'
+};
+
+const sparklineOptions = {
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    maintainAspectRatio: false,
+    elements: { point: { radius: 0 }, line: { borderWidth: 2.5 } },
+    scales: { x: { display: false }, y: { display: false } }
+};
+
 const sparklineItems = computed(() => {
     const data = props.sparklineData;
-
-    const formatSparklineData = (chartData) => {
-        if (!chartData || !chartData.datasets || chartData.datasets.length === 0) return chartData;
-
-        const formattedData = JSON.parse(JSON.stringify(chartData));
-        formattedData.datasets[0] = {
-            ...formattedData.datasets[0],
-            borderColor: '#3B82F6',
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            fill: true,
-            tension: 0.4,
-            type: 'line'
-        };
-        return formattedData;
-    };
-
-    return [
-        {
-            label: t('dashboard.users'),
-            value: props.usersCount ?? 0,
-            metric: data?.users?.metric ?? '0%',
-            icon: 'pi pi-users',
-            chartData: formatSparklineData(data?.users?.chartData),
-            changeColor: (data?.users?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-        },
-        {
-            label: t('dashboard.active_tasks'),
-            value: props.activeTasksCount ?? 0,
-            metric: data?.activeTasks?.metric ?? '0%',
-            icon: 'pi pi-check-square',
-            chartData: formatSparklineData(data?.activeTasks?.chartData),
-            changeColor: (data?.activeTasks?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-        },
-        {
-            label: t('dashboard.time_spent_h'),
-            value: data?.timeSpent?.value ?? '0h',
-            metric: data?.timeSpent?.metric ?? '0%',
-            icon: 'pi pi-hourglass',
-            chartData: formatSparklineData(data?.timeSpent?.chartData),
-            changeColor: (data?.timeSpent?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-        },
-        {
-            label: t('dashboard.avg_intervention_time'),
-            value: data?.averageInterventionTime?.value ?? '0m',
-            metric: data?.averageInterventionTime?.metric ?? '0%',
-            icon: 'pi pi-clock',
-            chartData: formatSparklineData(data?.averageInterventionTime?.chartData),
-            changeColor: (data?.averageInterventionTime?.metric?.startsWith('-') ? 'text-red-500' : 'text-green-500'),
-        },
+    const items = [
+        { key: 'users', label: t('dashboard.users'), value: props.usersCount || 0, icon: 'pi pi-users', color: '#3B82F6' },
+        { key: 'activeTasks', label: t('dashboard.active_tasks'), value: props.activeTasksCount || 0, icon: 'pi pi-check-circle', color: '#10B981' },
+        { key: 'timeSpent', label: 'Heures Totales', value: data?.timeSpent?.value || '0h', icon: 'pi pi-stopwatch', color: '#F59E0B' },
+        { key: 'averageInterventionTime', label: 'Délai Moyen', value: data?.averageInterventionTime?.value || '0m', icon: 'pi pi-bolt', color: '#8B5CF6' }
     ];
+
+    return items.map(item => {
+        const chartSource = data?.[item.key]?.chartData;
+        return {
+            ...item,
+            metric: data?.[item.key]?.metric || '0%',
+            chartData: {
+                labels: chartSource?.labels || ['', '', '', '', ''],
+                datasets: [{
+                    data: chartSource?.datasets?.[0]?.data || [0, 0, 0, 0, 0],
+                    borderColor: item.color,
+                    backgroundColor: item.color + '15',
+                    fill: true,
+                    tension: 0.5
+                }]
+            }
+        };
+    });
 });
 
-
-// 3. Préparation des données pour le graphique de répartition des tâches
-const tasksChartType = ref('status');
-const tasksChartFilterOptions = ref([
-    { label: t('dashboard.by_status'), value: 'status' },
-    { label: t('dashboard.by_priority'), value: 'priority' }
-]);
-
-const tasksDistributionChartData = computed(() => {
-    const dataSet = tasksChartType.value === 'status' ? props.tasksByStatus : props.tasksByPriority;
-    const defaultData = { labels: [], datasets: [{ data: [], backgroundColor: ['#42A5F5', '#FFA726', '#66BB6A', '#EF5350', '#AB47BC'], hoverBackgroundColor: ['#64B5F6', '#FFB74D', '#81C784', '#E57373', '#BA68C8'] }] };
-
-    if (!dataSet || !dataSet.labels || !dataSet.data) {
-        return defaultData;
-    }
-
-    return {
-        labels: dataSet.labels,
-        datasets: [{ ...defaultData.datasets[0], data: dataSet.data }]
-    };
-});
-
-// 4. Préparation des données pour le graphique des mouvements de pièces détachées
-const sparePartsChartData = computed(() => ({
-    labels: props.sparePartsMovement?.labels ?? [],
+const comboChartData = computed(() => ({
+    labels: props.monthlyVolumeData?.labels || [],
     datasets: [
-        {
-            label: t('dashboard.incoming_parts'),
-            data: props.sparePartsMovement?.entries ?? [],
-            fill: false,
-            borderColor: '#42A5F5',
-            tension: 0.4
-        },
-        {
-            label: t('dashboard.outgoing_parts'),
-            data: props.sparePartsMovement?.exits ?? [],
-            fill: false,
-            borderColor: '#FFA726',
-            tension: 0.4
-        }
+        { type: 'bar', label: 'Panne Totale', backgroundColor: '#EF4444', data: props.monthlyVolumeData?.stopped || [], borderRadius: 6 },
+        { type: 'bar', label: 'Dégradé', backgroundColor: '#F59E0B', data: props.monthlyVolumeData?.degraded || [], borderRadius: 6 },
+        { type: 'line', label: 'Tps Résolution (h)', borderColor: '#6366F1', data: props.monthlyVolumeData?.resolutionTime || [], yAxisID: 'y1', tension: 0.4, borderDash: [5, 5] }
     ]
 }));
 
-const lineChartOptions = ref({
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            labels: { color: '#495057' }
-        }
-    },
-});
+const failuresChartData = computed(() => ({
+    labels: props.failuresByType?.labels || [],
+    datasets: [{
+        data: props.failuresByType?.data || [],
+        backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
+    }]
+}));
 
-
-// --- Logique pour les graphiques détaillés ---
-
-const failuresChartData = computed(() => {
-    const dataSet = props.failuresByType;
-    const defaultColors = ['#4F46E5', '#EF4444', '#F97316', '#10B981', '#6366F1'];
-
-    if (!dataSet || !dataSet.labels || !dataSet.data) {
-        return { labels: [], datasets: [{ data: [], backgroundColor: defaultColors }] };
-    }
-
+const tasksChartType = ref('status');
+const tasksDistributionData = computed(() => {
+    const source = tasksChartType.value === 'status' ? props.tasksByStatus : props.tasksByPriority;
     return {
-        labels: dataSet.labels,
+        labels: source?.labels || [],
         datasets: [{
-            data: dataSet.data,
-            backgroundColor: defaultColors.slice(0, dataSet.labels.length),
+            data: source?.data || [],
+            backgroundColor: ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E']
         }]
     };
 });
-
-const interventionsChartData = computed(() => ({
-    labels: props.interventionsByType?.labels ?? [],
-    datasets: [
-        {
-            label: t('dashboard.interventions_count'),
-            data: props.interventionsByType?.data ?? [],
-            backgroundColor: 'rgba(59, 130, 246, 0.8)',
-            borderColor: 'rgb(59, 130, 246)',
-            borderWidth: 1,
-            borderRadius: 4
-        }
-    ]
-}));
-
-const interventionsChartOptions = ref({
-    plugins: {
-        legend: { display: false }
-    },
-    scales: {
-        y: {
-            beginAtZero: true
-        }
-    }
-});
-
-const monthlyVolumeChartData = computed(() => {
-    const dataSet = props.monthlyVolumeData;
-
-    return {
-        labels: dataSet?.labels ?? [],
-        datasets: [
-            {
-                type: 'bar',
-                label: t('dashboard.stopped'),
-                backgroundColor: '#EF4444',
-                data: dataSet?.stopped || [],
-                stack: 'Stack 0',
-                yAxisID: 'y'
-            },
-            {
-                type: 'bar',
-                label: t('dashboard.degraded'),
-                backgroundColor: '#FBBF24',
-                data: dataSet?.degraded || [],
-                stack: 'Stack 0',
-                yAxisID: 'y'
-            },
-            {
-                type: 'bar',
-                label: t('dashboard.improvement'),
-                backgroundColor: '#3B82F6',
-                data: dataSet?.improvement || [],
-                stack: 'Stack 0',
-                yAxisID: 'y'
-            },
-            {
-                type: 'line',
-                label: t('dashboard.avg_resolution_time'),
-                borderColor: '#EF4444',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.4,
-                data: dataSet?.resolutionTime || [],
-                yAxisID: 'y1'
-            }
-        ]}
-});
-
-const comboChartOptions = ref({
-    maintainAspectRatio: false,
-    elements: {
-        bar: {
-            borderWidth: 1,
-            borderColor: '#e9ecf2',
-            borderRadius: 7
-        }
-    },
-    plugins: {
-        legend: {
-            labels: { color: '#495057' }
-        }
-    },
-    scales: {
-        x: {
-            stacked: true,
-            ticks: { color: '#6B7280' },
-            grid: { display: false }
-        },
-        y: {
-            type: 'linear',
-            display: true,
-            position: 'left',
-            stacked: true,
-            ticks: {
-                color: '#6B7280',
-                beginAtZero: true,
-            },
-            title: {
-                display: true,
-                text: t('dashboard.interventions_count'),
-                color: '#6B7280'
-            }
-        },
-        y1: {
-            type: 'linear',
-            display: true,
-            position: 'right',
-            grid: { drawOnChartArea: false },
-            ticks: {
-                color: '#EF4444',
-                callback: function(value) {
-                    return value + 'h';
-                },
-            },
-            title: {
-                display: true,
-                text: t('dashboard.delay_hours'),
-                color: '#EF4444'
-            }
-        }
-    }
-});
 </script>
+
 <template>
-    <app-layout>
-        <div class="grid grid-cols-12 gap-6">
+    <AppLayout>
+        <div class="p-6 bg-slate-50 min-h-screen space-y-8">
 
-            <h3 class="col-span-12 text-xl font-semibold mt-2">💸 {{ t('dashboard.financial_tracking') }}</h3>
+            <section>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-primary-600 p-3 rounded-2xl shadow-primary-200 shadow-lg">
+                            <i class="pi pi-chart-bar text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Tableau de Bord</h1>
+                            <p class="text-slate-500 font-medium">Analyse temps réel de la maintenance</p>
+                        </div>
+                    </div>
 
-            <div v-if="props.budgetTotal !== undefined" class="col-span-12 sm:col-span-4">
-                <Card class="h-full">
-                    <template #title>{{ t('dashboard.total_budget') }}</template>
-                    <template #content>
-                        <div class="text-3xl font-bold text-gray-800">{{ props.budgetTotal?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
-                        <i class="pi pi-wrench text-5xl text-orange-500 opacity-20 absolute right-4 bottom-4"></i>
-                        </template>
-                </Card>
-            </div>
+                    <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="px-4 py-2 border-r border-slate-100">
+                            <p class="text-[10px] uppercase font-bold text-slate-400 leading-tight">Budget Total</p>
+                            <p class="text-lg font-black text-slate-800">{{ formatCurrency(budgetTotal) }}</p>
+                        </div>
+                        <div class="px-4 py-2">
+                            <p class="text-[10px] uppercase font-bold text-slate-400 leading-tight">Dépenses Validées</p>
+                            <p class="text-lg font-black text-emerald-600">{{ formatCurrency(expensesTotal) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            <div v-if="props.depensesPrestation !== undefined" class="col-span-12 sm:col-span-4">
-                <Card class="h-full">
-                    <template #title>{{ t('dashboard.service_expenses') }}</template>
-                    <template #content>
-                        <div class="text-3xl font-bold text-gray-800">{{ props.depensesPrestation?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
-                        <i class="pi pi-briefcase text-5xl text-green-500 opacity-20 absolute right-4 bottom-4"></i>
-                        </template>
-                </Card>
-            </div>
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div v-for="item in sparklineItems" :key="item.label"
+                     class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div :style="{ backgroundColor: item.color + '15', color: item.color }" class="p-3 rounded-2xl group-hover:scale-110 transition-transform">
+                            <i :class="item.icon" class="text-xl"></i>
+                        </div>
+                        <Tag :value="item.metric" :severity="item.metric.toString().startsWith('-') ? 'danger' : 'success'" rounded />
+                    </div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{ item.label }}</p>
+                            <h2 class="text-3xl font-black text-slate-800 mt-1">{{ item.value }}</h2>
+                        </div>
+                        <div class="w-24 h-12">
+                            <Chart type="line" :data="item.chartData" :options="sparklineOptions" class="w-full h-full" />
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            <div v-if="props.expensesTotal !== undefined" class="col-span-12 sm:col-span-4">
-                <Card class="h-full">
-                    <template #title>{{ t('dashboard.total_validated_expenses') }}</template>
-                    <template #content>
-                        <div class="text-3xl font-bold text-gray-800">{{ props.expensesTotal?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) ?? '0 €' }}</div>
-                        <i class="pi pi-exclamation-triangle text-5xl text-red-500 opacity-20 absolute right-4 bottom-4"></i>
-                        </template>
-                </Card>
-            </div>
-
-            <hr class="col-span-12" />
-
-            <h3 class="col-span-12 text-xl font-semibold mt-2">📊 {{ t('dashboard.key_metrics_overview') }}</h3>
-            <div v-for="(item, index) in sparklineItems" :key="index" class="col-span-12 sm:col-span-6 lg:col-span-3">
-                <Card class="p-4 border shadow-sm h-full">
+            <section class="grid grid-cols-12 gap-6">
+                <Card class="col-span-12 lg:col-span-8 border-none shadow-sm rounded-3xl overflow-hidden">
                     <template #title>
-                        <div class="flex justify-between items-start">
-                            <span class="text-gray-500 font-medium text-sm">{{ item.label }}</span>
-                            <i :class="[item.icon]" class="text-xl text-gray-400"></i>
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-6 bg-primary-500 rounded-full"></div>
+                            <span class="text-xl font-black text-slate-800">Volume & Performance Mensuelle</span>
                         </div>
                     </template>
                     <template #content>
-                        <div class="flex justify-between items-center mb-4">
-                            <div class="text-3xl font-bold text-gray-800">{{ item.value }}</div>
-                            <div class="w-24 h-8">
-                                <Chart v-if="item.chartData" type="line" :data="item.chartData" :options="sparklineOptions" class="h-full w-full" />
-                            </div>
-                        </div>
-
-                        <div class="flex items-center text-sm">
-                            <i :class="item.changeColor === 'text-green-500' ? 'pi pi-arrow-up-right text-xs mr-1' : 'pi pi-arrow-down-right text-xs mr-1'"></i>
-                            <span :class="item.changeColor" class="font-medium">{{ item.metric.replace('-', '') }}</span>
-                            <span class="text-gray-500 ml-2">{{ t('dashboard.from_last_period') }}</span>
-                        </div>
-                    </template>
-                </Card>
-            </div>
-
-            <hr class="col-span-12" />
-
-            <h3 class="col-span-12 text-xl font-semibold mt-2">📈 {{ t('dashboard.detailed_visualizations') }}</h3>
-
-            <div v-if="monthlyVolumeChartData.labels.length > 0" class="col-span-12">
-                <Card>
-                    <template #title>{{ t('dashboard.monthly_intervention_volume_title') }}</template>
-                    <template #subtitle>{{ t('dashboard.monthly_intervention_volume_subtitle') }}</template>
-                    <template #content>
-                        <div class="h-96">
-                            <Chart type="bar" :data="monthlyVolumeChartData" :options="comboChartOptions" class="h-full" :borderRadius="4" />
+                        <div class="h-[400px] mt-4">
+                            <Chart type="bar" :data="comboChartData" :options="{
+                                ...pieOptions,
+                                cutout: '0%',
+                                plugins: { legend: { position: 'top', align: 'end' } },
+                                scales: {
+                                    y: { stacked: true, grid: { borderDash: [5, 5] } },
+                                    y1: { position: 'right', grid: { display: false } }
+                                }
+                            }" class="h-full" />
                         </div>
                     </template>
                 </Card>
-            </div>
 
-            <div v-if="sparePartsChartData.labels.length > 0" class="col-span-12">
-
-                <Card>
-                    <template #title>{{ t('dashboard.spare_parts_movement_title') }}</template>
-                    <template #subtitle>{{ t('dashboard.spare_parts_movement_subtitle') }}</template>
-                    <template #content>
-                        <div class="h-80">
-                            <Chart type="line" :data="sparePartsChartData" :options="lineChartOptions" class="h-full" />
-                        </div>
-                    </template>
-                </Card>
-            </div>
-
-            <div v-if="failuresChartData.labels.length > 0" class="col-span-12 lg:col-span-6">
-                <Card>
-                    <template #title>{{ t('dashboard.failures_by_type_title') }}</template>
-                    <template #subtitle>{{ t('dashboard.failures_by_type_subtitle') }}</template>
-                    <template #content>
-                        <div class="flex justify-center h-80">
-                            <Chart type="doughnut" :data="failuresChartData" :options="{ maintainAspectRatio: false }" />
-                        </div>
-                    </template>
-                </Card>
-            </div>
-
-            <div v-if="interventionsChartData.datasets[0]?.data.length > 0" class="col-span-12 lg:col-span-6">
-                <Card>
-                    <template #title>{{ t('dashboard.interventions_by_type_title') }}</template>
-                    <template #subtitle>{{ t('dashboard.interventions_by_type_subtitle', { count: interventionsChartData.datasets[0]?.data.reduce((a, b) => a + b, 0) ?? 0 }) }}</template>
-                    <template #content>
-                        <div class="h-80">
-                            <Chart type="bar" :data="interventionsChartData" :options="interventionsChartOptions" class="h-full" />
-                        </div>
-                    </template>
-                </Card>
-            </div>
-
-            <div v-if="tasksDistributionChartData.labels.length > 0" class="col-span-12 lg:col-span-6">
-                <Card>
+                <Card class="col-span-12 lg:col-span-4 border-none shadow-sm rounded-3xl">
                     <template #title>
                         <div class="flex justify-between items-center">
-                            <span>{{ t('dashboard.tasks_distribution_title') }}</span>
-                            <Dropdown
-                                v-model="tasksChartType"
-                                :options="tasksChartFilterOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                :placeholder="t('dashboard.filter_by')" class="w-1/2 md:w-auto" />
+                            <span class="text-xl font-black text-slate-800">Tâches</span>
+                            <Dropdown v-model="tasksChartType" :options="[{label:'Statut', value:'status'}, {label:'Priorité', value:'priority'}]"
+                                     optionLabel="label" optionValue="value" class="!rounded-xl !text-sm" />
                         </div>
                     </template>
-                    <template #subtitle>{{ t('dashboard.view_by', { type: tasksChartType === 'status' ? t('dashboard.status') : t('dashboard.priority') }) }}</template>
                     <template #content>
-                        <div class="flex justify-center h-80">
-                            <Chart type="doughnut" :data="tasksDistributionChartData" :options="{ maintainAspectRatio: false }" />
+                        <div class="h-[320px] relative flex items-center justify-center">
+                            <Chart type="doughnut" :data="tasksDistributionData" :options="pieOptions" class="h-full w-full" />
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span class="text-4xl font-black text-slate-800">{{ activeTasksCount || 0 }}</span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Total Actif</span>
+                            </div>
                         </div>
                     </template>
                 </Card>
-            </div>
 
+                <Card class="col-span-12 md:col-span-6 border-none shadow-sm rounded-3xl">
+                    <template #title><span class="text-lg font-black text-slate-800">Types de Défaillances</span></template>
+                    <template #content>
+                        <div class="h-[300px]">
+                            <Chart type="pie" :data="failuresChartData" :options="pieOptions" class="h-full" />
+                        </div>
+                    </template>
+                </Card>
+
+                <Card class="col-span-12 md:col-span-6 border-none shadow-sm rounded-3xl">
+                    <template #title><span class="text-lg font-black text-slate-800">Flux Pièces Détachées</span></template>
+                    <template #content>
+                        <div class="h-[300px]">
+                            <Chart type="line" :data="{
+                                labels: props.sparePartsMovement?.labels || [],
+                                datasets: [
+                                    { label: 'Entrées', borderColor: '#10B981', data: props.sparePartsMovement?.entries || [], tension: 0.4, fill: true, backgroundColor: 'rgba(16,185,129,0.05)' },
+                                    { label: 'Sorties', borderColor: '#EF4444', data: props.sparePartsMovement?.exits || [], tension: 0.4 }
+                                ]
+                            }" :options="{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }" class="h-full" />
+                        </div>
+                    </template>
+                </Card>
+            </section>
         </div>
-    </app-layout>
+    </AppLayout>
 </template>
 
 <style scoped>
-/* Les styles spécifiques pour la mise en page vont ici si nécessaire */
+:deep(.p-card) {
+    background: #ffffff;
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+}
+:deep(.p-card-body) {
+    padding: 1.5rem;
+}
+:deep(.p-card-title) {
+    margin-bottom: 0;
+}
 </style>

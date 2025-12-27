@@ -297,6 +297,7 @@
  "sparePartMovements": {
         "title": "Mouvements des Pièces de Rechange",
         "headTitle": "Gestion des Stocks - Mouvements",
+        "subtitle": "Suivi des entrées et sorties de stock",
         "stockLabel": "Stock actuel",
         "toolbar": {
             "addMovement": "Nouveau Mouvement",
@@ -310,6 +311,7 @@
             "quantity": "Quantité",
             "location": "Emplacement",
             "notes": "Notes",
+            "date": "Date",
             "actions": "Actions"
         },
         "dialog": {
@@ -344,7 +346,8 @@
             "createSuccess": "Le mouvement a été enregistré avec succès.",
             "updateSuccess": "Le mouvement a été mis à jour avec succès.",
             "deleteSuccess": "Le mouvement a été supprimé.",
-            "saveError": "Une erreur est survenue lors de l'enregistrement.",
+            "saveError": "Erreur lors de l'enregistrement du mouvement.",
+            "error": "Erreur",
             "deleteError": "Impossible de supprimer ce mouvement."
         }
     },
@@ -368,10 +371,13 @@
     "engins": {
         "title": "Gestion des Engins",
         "headTitle": "Liste des Engins",
+        "subtitle": "{count} Unités en ligne",
         "toolbar": {
             "addEngin": "Ajouter un engin",
             "searchPlaceholder": "Rechercher...",
-            "export": "Exporter"
+            "export": "Exporter",
+            "resetFilters": "Réinitialiser les filtres",
+            "searchByName": "Rechercher par nom"
         },
         "table": {
             "designation": "Nom / Désignation",
@@ -380,7 +386,9 @@
             "region": "Région",
             "dateAcquisition": "Date d'Acquisition",
             "hourMeter": "Compteur Horaire",
-            "actions": "Actions"
+            "actions": "Actions",
+            "category": "Catégorie",
+            "assignment": "Affectation"
         },
         "form": {
             "type": "Type d'Engin",
@@ -389,7 +397,8 @@
             "immatriculation": "Immatriculation",
             "region": "Région",
             "regionPlaceholder": "Sélectionner une région",
-            "dateAcquisition": "Date d'Acquisition",
+            "dateAcquisition": "Date de mise en service",
+            "datePlaceholder": "Sélectionner la date",
             "hourMeter": "Compteur Horaire"
         },
         "dialog": {
@@ -399,7 +408,8 @@
             "editSubtitle": "Mettez à jour les informations de l'engin sélectionné."
         },
         "confirm": {
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'engin \"{name}\" ?"
+            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'engin \"{name}\" ?",
+            "header": "Confirmation"
         },
         "toast": {
             "createSuccess": "Engin créé avec succès.",
@@ -407,6 +417,12 @@
             "deleteSuccess": "Engin supprimé avec succès.",
             "saveError": "Une erreur est survenue lors de l'enregistrement.",
             "deleteError": "Erreur lors de la suppression."
+        },
+        "common": {
+            "update": "Mettre à jour",
+            "save": "Enregistrer",
+            "cancel": "Annuler",
+            "noPlate": "SANS PLAQUE"
         }
     },
     "dataTable": {
@@ -424,6 +440,7 @@
     "deleteConfirmation": "Confirmation de suppression",
     "actions": "Actions",
     "search": "Rechercher...",
+    "searchByName": "Rechercher par nom",
     "export": "Exporter",
     "errorOccurred": "Une erreur est survenue.",
     "paginationReport": "Affichage de {first} à {last} sur {total} éléments"
@@ -434,7 +451,8 @@
       "name": "Nom",
       "description": "Description",
       "color": "Couleur",
-      "characteristics": "Caractéristiques",
+      "style": "Style / Couleur",
+      "characteristics": "Attributs Techniques",
       "charName": "Nom de la caractéristique",
       "charType": "Type",
       "isRequiredShort": "Requis"
@@ -442,7 +460,8 @@
     "actions": {
       "add": "Ajouter un label",
       "addChar": "Ajouter une caractéristique"
-    },
+    },    "toolbar": {
+      "resetFilters": "Réinitialiser"    },
     "types": {
       "text": "Texte",
       "number": "Nombre",
@@ -471,6 +490,348 @@
       "deleteError": "Erreur lors de la suppression."
     }
   },
+  "common": {
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "import": "Importer",
+    "export": "Exporter",
+    "search": "Rechercher...",
+    "success": "Succès",
+    "error": "Erreur",
+    "attention": "Attention",
+    "confirmation": "Confirmation",
+    "deleteConfirmation": "Confirmation de suppression",
+    "actions": "Actions",
+    "chooseFile": "Choisir un fichier",
+    "paginationReport": "Affichage de {first} à {last} sur {total} régions",
+    "errorOccurred": "Une erreur est survenue.",
+    "saveChanges": "Valider les modifications",
+    "create": "Créer le profil"
+  },
+  "regions": {
+    "title": "Gestion des Régions",
+    "fields": {
+      "designation": "Désignation",
+      "type": "Type de Centrale",
+      "power": "Puissance (MW)"
+    },
+    "actions": {
+      "add": "Ajouter une région",
+      "deleteSelected": "Supprimer la sélection"
+    },
+    "types": {
+      "thermique": "Thermique",
+      "solaire": "Solaire",
+      "hydraulique": "Hydraulique",
+      "eolienne": "Éolienne"
+    },
+    "dialog": {
+      "createTitle": "Créer une nouvelle Région",
+      "editTitle": "Modifier la Région",
+      "importTitle": "Importer des Régions",
+      "importSubtitle": "Téléchargez un fichier CSV ou Excel pour importer de nouvelles régions."
+    },
+    "validation": {
+      "nameRequired": "La désignation est requise."
+    },
+    "messages": {
+      "createSuccess": "Région créée avec succès",
+      "updateSuccess": "Région mise à jour avec succès",
+      "deleteSuccess": "Région supprimée avec succès",
+      "bulkDeleteSuccess": "Les régions sélectionnées ont été supprimées.",
+      "confirmDelete": "Voulez-vous supprimer la région \"{name}\" ?",
+      "confirmBulkDelete": "Voulez-vous supprimer les {count} régions sélectionnées ?",
+      "selectFile": "Veuillez sélectionner un fichier à importer.",
+      "importStarted": "Importation lancée."
+    }
+  },
+  "unities": {
+        "title": "Gestion des Unités",
+        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
+        "fields": {
+            "name": "Désignation",
+            "symbol": "Symbole / Abréviation"
+        },
+        "actions": {
+            "add": "Ajouter une unité"
+        },
+        "dialog": {
+            "createTitle": "Créer une unité",
+            "editTitle": "Modifier l'unité",
+            "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
+            "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
+        },
+        "validation": {
+            "nameRequired": "Le nom de l'unité est obligatoire."
+        },
+        "messages": {
+            "createSuccess": "Unité créée avec succès.",
+            "updateSuccess": "Unité mise à jour avec succès.",
+            "deleteSuccess": "Unité supprimée avec succès.",
+            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
+        }
+    },
+    "employees": {
+        "title": "Gestion des Employés",
+        "count_label": "Employés enregistrés",
+        "actions": {
+            "add": "Ajouter un employé"
+        },
+        "fields": {
+            "first_name": "Prénom",
+            "last_name": "Nom",
+            "email": "Email",
+            "phone": "Téléphone",
+            "status": "Statut d'emploi",
+            "salary": "Salaire",
+            "hire_date": "Date d'embauche",
+            "job_title": "Poste / Fonction",
+            "notes": "Observations"
+        },
+        "status": {
+            "active": "Actif",
+            "on_leave": "En congé",
+            "terminated": "Contrat terminé"
+        },
+        "dialog": {
+            "new": "Nouvel Employé",
+            "edit": "Modifier l'Employé"
+        },
+        "messages": {
+            "saved": "L'employé a été enregistré avec succès.",
+            "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
+            "deleteSuccess": "Employé supprimé."
+        }
+    },
+    "technicians": {
+        "title": "Gestion des Techniciens",
+        "subtitle": "Base de données Master",
+        "actions": {
+            "add": "Enrôler Technicien",
+            "exportExcel": "Export Excel",
+            "exportPDF": "Export PDF",
+            "deleteSelected": "Supprimer la sélection"
+        },
+        "toolbar": {
+            "searchPlaceholder": "Rechercher par nom, email...",
+            "advancedFilters": "Filtres Avancés",
+            "resetFilters": "Réinitialiser",
+            "showColumns": "Afficher les colonnes"
+        }
+    },
+    "teams": {
+        "title": "Unités de Terrain",
+        "subtitle": "Management des ressources",
+        "actions": {
+            "add": "Nouvelle Équipe"
+        },
+        "toolbar": {
+            "searchPlaceholder": "Rechercher une unité...",
+            "filterByRegion": "Toutes les régions",
+            "filterByLeader": "Tous les leaders",
+            "resetFilters": "Réinitialiser les filtres"
+        },
+        "fields": {
+            "name": "Désignation de l'Unité",
+            "leader": "Commandement",
+            "members": "Effectifs"
+        },
+        "dialog": {
+            "createTitle": "Créer une nouvelle Unité",
+            "editTitle": "Fiche de l'Unité"
+        },
+        "placeholders": {
+            "name": "Ex: EQP-DELTA-01",
+            "leader": "Désigner un leader",
+            "members": "Sélectionner les membres"
+        },
+        "messages": {
+            "createSuccess": "Équipe créée avec succès.",
+            "updateSuccess": "Équipe mise à jour avec succès.",
+            "deleteSuccess": "Équipe supprimée avec succès.",
+            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'équipe \"{name}\" ?"
+        }
+    },
+    "spareParts": {
+        "title": "Inventory Control",
+        "headTitle": "Gestion des Pièces de Rechange",
+        "toolbar": {
+            "searchPlaceholder": "Rechercher une référence ou un composant...",
+            "add": "Nouvel Actif",
+            "export": "Exporter la base"
+        },
+        "table": {
+            "ref": "REF",
+            "component": "Composant",
+            "stockAlerte": "Stock / Alerte",
+            "price": "Prix HT",
+            "actions": "Actions"
+        },
+        "form": {
+            "partType": "Type de Composant",
+            "partTypePlaceholder": "Sélectionner la catégorie",
+            "reference": "Référence Constructeur",
+            "quantity": "Quantité en Stock",
+            "min_quantity": "Seuil d'Alerte",
+            "price": "Prix Unitaire HT",
+            "location": "Localisation Physique",
+            "region": "Entité / Région",
+            "regionPlaceholder": "Affecter une zone",
+            "responsible": "Superviseur Responsable",
+            "responsiblePlaceholder": "Choisir un gestionnaire",
+            "characteristicValues": "Spécifications Techniques"
+        },
+        "dialog": {
+            "createTitle": "Nouvelle Entrée Stock",
+            "editTitle": "Configuration Technique",
+            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
+            "editSubtitle": "Modification des paramètres et des seuils logistiques"
+        }
+    },
+    "validation": {
+        "required": "Le champ {field} est strictement obligatoire",
+        "invalid": "Format de donnée incorrect pour {field}"
+    },
+    "dialog": {
+        "cancel": "Abandonner",
+        "save": "Valider l'entrée",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
+        "editTitle": "Modifier le Raccordement",
+        "createTitle": "Nouveau Raccordement"
+    },
+    "connections": {
+        "title": "Gestion des Raccordements",
+        "headTitle": "Raccordements",
+        "subtitle": "Clients & Points de connexion",
+        "addNew": "Nouveau Raccordement",
+        "import": "Importer",
+        "delete": "Supprimer",
+        "closest": "Plus proches",
+        "exportCSV": "Exporter en CSV",
+        "selectColumns": "Choisir les colonnes",
+        "searchPlaceholder": "Rechercher...",
+        "actions": "Actions",
+        "importDialog": {
+            "title": "Importer depuis Excel/CSV",
+            "chooseFile": "Choisir un fichier",
+            "startImport": "Lancer l'import"
+        },
+        "dialog": {
+            "editTitle": "Modifier le Raccordement",
+            "createTitle": "Nouveau Raccordement",
+            "customerCode": "Code Client",
+            "firstName": "Prénom",
+            "lastName": "Nom",
+            "phone": "Téléphone",
+            "region": "Région",
+            "zone": "Zone",
+            "status": "Statut",
+            "gpsLatitude": "Latitude GPS",
+            "gpsLongitude": "Longitude GPS",
+            "cancel": "Annuler",
+            "save": "Enregistrer"
+        }
+    },
+    "expenses": {
+        "title": "Gestion des Dépenses",
+        "headTitle": "Dépenses",
+        "subtitle": "Suivi des coûts et validation",
+        "addNew": "Nouvelle Dépense",
+        "approveSelected": "Approuver Sélection",
+        "rejectSelected": "Rejeter Sélection",
+        "export": "Exporter en CSV",
+        "searchPlaceholder": "Rechercher...",
+        "selectColumns": "Choisir les colonnes",
+        "table": {
+            "description": "Description",
+            "amount": "Montant",
+            "date": "Date",
+            "category": "Catégorie",
+            "status": "Statut",
+            "createdBy": "Créé par",
+            "linkedTo": "Lié à",
+            "approvedBy": "Approuvé par",
+            "notes": "Notes",
+            "selectedTotal": "Total sélectionné"
+        },
+        "dialog": {
+            "createTitle": "Créer une nouvelle Dépense",
+            "editTitle": "Modifier la Dépense",
+            "description": "Description",
+            "amount": "Montant",
+            "date": "Date de la dépense",
+            "category": "Catégorie",
+            "linkedToType": "Type d'élément lié",
+            "linkedToItem": "Élément lié",
+            "notes": "Notes / Justificatif"
+        },
+        "confirm": {
+            "header": "Confirmation de {action}",
+            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
+            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
+        },
+        "toast": {
+            "success": "Succès",
+            "error": "Erreur",
+            "updateSuccess": "Dépense mise à jour avec succès.",
+            "createSuccess": "Dépense créée avec succès.",
+            "deleteSuccess": "Dépense supprimée avec succès.",
+            "statusUpdateSuccess": "Dépense {action} avec succès.",
+            "statusUpdateError": "La mise à jour du statut a échoué.",
+            "bulkStatusUpdateSuccess": "{count} dépenses {action} avec succès.",
+            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
+        },
+        "filter": {
+            "status": "Filtrer par statut",
+            "category": "Filtrer par catégorie",
+            "dateRange": "Filtrer par date"
+        }
+    },
+    "title": "Gestion des Labels",
+    "fields": {
+      "name": "Nom",
+      "description": "Description",
+      "color": "Couleur",
+      "style": "Style / Couleur",
+      "characteristics": "Attributs Techniques",
+      "charName": "Nom de la caractéristique",
+      "charType": "Type",
+      "isRequiredShort": "Requis"
+    },
+    "actions": {
+      "add": "Ajouter un label",
+      "addChar": "Ajouter une caractéristique"
+    },    "toolbar": {
+      "resetFilters": "Réinitialiser"    },
+    "types": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Date",
+      "file": "Fichier",
+      "boolean": "Boolean",
+      "select": "Liste déroulante"
+    },
+    "dialog": {
+      "createTitle": "Créer un nouveau Label",
+      "editTitle": "Modifier le Label",
+      "createSubtitle": "Créez un nouveau label.",
+      "editSubtitle": "Mettez à jour les informations du label."
+    },
+    "validation": {
+      "nameRequired": "Le nom est requis."
+    },
+    "messages": {
+      "createSuccess": "Label créé avec succès",
+      "updateSuccess": "Label mis à jour avec succès",
+      "deleteSuccess": "Label supprimé avec succès",
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer le label \"{name}\" ?",
+      "confirmChange": "Vous avez modifié des caractéristiques. Cela peut affecter les données existantes. Continuer ?",
+      "confirmCharDelete": "Supprimer la caractéristique \"{name}\" ? Cette action est irréversible.",
+      "charRemovedInfo": "La caractéristique sera supprimée lors de la sauvegarde.",
+      "deleteError": "Erreur lors de la suppression."
+    }
+  ,
   "common": {
     "save": "Sauvegarder",
     "cancel": "Annuler",
@@ -582,5 +943,206 @@
             "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
             "deleteSuccess": "Employé supprimé."
         }
+    },
+    "technicians": {
+        "title": "Gestion des Techniciens",
+        "subtitle": "Base de données Master",
+        "actions": {
+            "add": "Enrôler Technicien",
+            "exportExcel": "Export Excel",
+            "exportPDF": "Export PDF",
+            "deleteSelected": "Supprimer la sélection"
+        },
+        "toolbar": {
+            "searchPlaceholder": "Rechercher par nom, email...",
+            "advancedFilters": "Filtres Avancés",
+            "resetFilters": "Réinitialiser",
+            "showColumns": "Afficher les colonnes"
+        }
+    },
+    "spareParts": {
+        "title": "Inventory Control",
+        "headTitle": "Gestion des Pièces de Rechange",
+        "toolbar": {
+            "searchPlaceholder": "Rechercher une référence ou un composant...",
+            "add": "Nouvel Actif",
+            "export": "Exporter la base"
+        },
+        "table": {
+            "ref": "REF",
+            "component": "Composant",
+            "stockAlerte": "Stock / Alerte",
+            "price": "Prix HT",
+            "actions": "Actions"
+        },
+        "form": {
+            "partType": "Type de Composant",
+            "partTypePlaceholder": "Sélectionner la catégorie",
+            "reference": "Référence Constructeur",
+            "quantity": "Quantité en Stock",
+            "min_quantity": "Seuil d'Alerte",
+            "price": "Prix Unitaire HT",
+            "location": "Localisation Physique",
+            "region": "Entité / Région",
+            "regionPlaceholder": "Affecter une zone",
+            "responsible": "Superviseur Responsable",
+            "responsiblePlaceholder": "Choisir un gestionnaire",
+            "characteristicValues": "Spécifications Techniques"
+        },
+        "dialog": {
+            "createTitle": "Nouvelle Entrée Stock",
+            "editTitle": "Configuration Technique",
+            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
+            "editSubtitle": "Modification des paramètres et des seuils logistiques"
+        }
+    },
+    "validation": {
+        "required": "Le champ {field} est strictement obligatoire",
+        "invalid": "Format de donnée incorrect pour {field}"
+    },
+    "dialog": {
+        "cancel": "Abandonner",
+        "save": "Valider l'entrée",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
+        "editTitle": "Modifier le Raccordement",
+        "createTitle": "Nouveau Raccordement"
+    },
+    "connections": {
+        "title": "Gestion des Raccordements",
+        "headTitle": "Raccordements",
+        "subtitle": "Clients & Points de connexion",
+        "addNew": "Nouveau Raccordement",
+        "import": "Importer",
+        "delete": "Supprimer",
+        "closest": "Plus proches",
+        "exportCSV": "Exporter en CSV",
+        "selectColumns": "Choisir les colonnes",
+        "searchPlaceholder": "Rechercher...",
+        "actions": "Actions",
+        "importDialog": {
+            "title": "Importer depuis Excel/CSV",
+            "chooseFile": "Choisir un fichier",
+            "startImport": "Lancer l'import"
+        },
+        "dialog": {
+            "editTitle": "Modifier le Raccordement",
+            "createTitle": "Nouveau Raccordement",
+            "customerCode": "Code Client",
+            "firstName": "Prénom",
+            "lastName": "Nom",
+            "phone": "Téléphone",
+            "region": "Région",
+            "zone": "Zone",
+            "status": "Statut",
+            "gpsLatitude": "Latitude GPS",
+            "gpsLongitude": "Longitude GPS",
+            "cancel": "Annuler",
+            "save": "Enregistrer"
+        }
+    },
+    "expenses": {
+        "title": "Gestion des Dépenses",
+        "headTitle": "Dépenses",
+        "subtitle": "Suivi des coûts et validation",
+        "addNew": "Nouvelle Dépense",
+        "approveSelected": "Approuver Sélection",
+        "rejectSelected": "Rejeter Sélection",
+        "export": "Exporter en CSV",
+        "toolbar": {
+            "advancedFilters": "Filtres Avancés",
+            "resetFilters": "Réinitialiser"
+        },
+        "searchPlaceholder": "Rechercher...",
+        "selectColumns": "Choisir les colonnes",
+        "table": {
+            "description": "Description",
+            "amount": "Montant",
+            "date": "Date",
+            "category": "Catégorie",
+            "status": "Statut",
+            "createdBy": "Créé par",
+            "linkedTo": "Lié à",
+            "approvedBy": "Approuvé par",
+            "notes": "Notes",
+            "selectedTotal": "Total sélectionné"
+        },
+        "dialog": {
+            "createTitle": "Créer une nouvelle Dépense",
+            "editTitle": "Modifier la Dépense",
+            "description": "Description",
+            "amount": "Montant",
+            "date": "Date de la dépense",
+            "category": "Catégorie",
+            "linkedToType": "Type d'élément lié",
+            "linkedToItem": "Élément lié",
+            "notes": "Notes / Justificatif"
+        },
+        "confirm": {
+            "header": "Confirmation de {action}",
+            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
+            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
+        },
+        "toast": {
+            "statusUpdateSuccess": "Dépense {action} avec succès.",
+            "statusUpdateError": "La mise à jour du statut a échoué.",
+            "bulkStatusUpdateSuccess": "{count} dépenses {status} avec succès.",
+            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
+        }
+    },
+    "interventions": {
+        "title": "Interventions Field Service",
+        "subtitle": "Opérations & Maintenance Réseau",
+        "addNew": "Nouvelle Intervention",
+        "searchPlaceholder": "Rechercher une référence...",
+        "filters": "Filtres",
+        "deleteSelected": "Supprimer",
+        "selectColumns": "Colonnes actives",
+        "table": {
+            "reference": "Référence",
+            "status": "Statut",
+            "customerCode": "Code Client",
+            "clientName": "Nom Client",
+            "region": "Région",
+            "priority": "Priorité",
+            "deadline": "Échéance",
+            "assignedTo": "Assigné à",
+            "actions": "Actions"
+        },
+        "dialog": {
+            "editTitle": "Détails Intervention",
+            "createTitle": "Création de Ticket",
+            "origin": "Origine de la demande",
+            "externalClient": "Client Externe",
+            "internalAgent": "Agent Interne",
+            "searchPlaceholder": "Rechercher...",
+            "subjectDescription": "Sujet / Description",
+            "autoReference": "Référence auto",
+            "problemPlaceholder": "Expliquez le problème technique ici...",
+            "assignmentDeadline": "Assignation & Délai",
+            "priority": "Priorité",
+            "assignedTo": "Assigné à",
+            "deadline": "Échéance",
+            "region": "Région",
+            "zone": "Zone",
+            "notApplicable": "N/A",
+            "cancel": "Annuler",
+            "save": "Enregistrer l'Intervention"
+        },
+        "filtersPanel": {
+            "title": "Filtres avancés",
+            "status": "Statut",
+            "statusPlaceholder": "Tous",
+            "region": "Région",
+            "regionPlaceholder": "Toutes",
+            "priority": "Priorité",
+            "priorityPlaceholder": "Toutes",
+            "reset": "Réinitialiser",
+            "apply": "Appliquer"
+        },
+        "tooltips": {
+            "manage": "Gérer"
+        }
     }
+
+
 }

@@ -75,6 +75,13 @@ const filters = ref({
     designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
 });
 
+const initFilters = () => {
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    };
+};
+
 // --- LOGIQUE MÉTIER ---
 const openNew = () => {
     form.reset();
@@ -183,16 +190,19 @@ const dialogTitle = computed(() => editing.value ? t('labels.dialog.editTitle') 
                 <ConfirmDialog />
 
                 <DataTable ref="dt" :value="labels.data" dataKey="id" :paginator="true" :rows="10"
-                    v-model:filters="filters" filterDisplay="menu"
+                    v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['designation', 'description']"
                     class="p-datatable-custom" responsiveLayout="scroll">
 
                     <template #header>
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search" />
-                                <InputText v-model="search" :placeholder="t('common.search')" @input="performSearch" class="w-full md:w-80 rounded-2xl border-slate-200" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('common.search')" class="w-full md:w-80 rounded-2xl border-slate-200" />
                             </IconField>
-                            <Button :label="t('common.export')" icon="pi pi-upload" severity="secondary" text @click="dt.exportCSV()" />
+                            <div class="flex gap-2">
+                                <Button :label="t('labels.toolbar.resetFilters')" icon="pi pi-filter-slash" severity="secondary" outlined @click="initFilters" class="rounded-xl" />
+                                <Button :label="t('common.export')" icon="pi pi-upload" severity="secondary" text @click="dt.exportCSV()" />
+                            </div>
                         </div>
                     </template>
 
@@ -203,9 +213,12 @@ const dialogTitle = computed(() => editing.value ? t('labels.dialog.editTitle') 
                                 <span class="font-black text-slate-700">{{ data.designation }}</span>
                             </div>
                         </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('common.searchByName')" />
+                        </template>
                     </Column>
 
-                    <Column header="Style / Couleur">
+                    <Column :header="t('labels.fields.style')">
                         <template #body="{ data }">
                             <Tag :value="data.color" :style="{ backgroundColor: data.color, color: '#fff' }" class="rounded-lg px-3 border-none" />
                         </template>

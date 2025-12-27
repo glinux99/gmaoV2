@@ -176,203 +176,220 @@ onMounted(() => {
     // Logic for spare parts loading
 });
 
+const formatCurrency = (value) => {
+ return value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+};
+
 const dialogTitle = computed(() => editing.value ? t('spareParts.dialog.editTitle') : t('spareParts.dialog.createTitle'));
 
 </script>
-
 <template>
     <AppLayout :title="t('spareParts.title')">
         <Head :title="t('spareParts.headTitle')" />
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                    <Toolbar class="mb-4">
-                        <template #start>
-                            <div class="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
+        <div class="p-6 max-w-[1600px] mx-auto">
+            <Toast />
+            <ConfirmDialog />
 
-                                <span class="block mt-2 md:mt-0 p-input-icon-left flex align-items-center gap-2">
-                                    <Button :label="t('spareParts.toolbar.add')" icon="pi pi-plus" class="p-button-sm mr-2" @click="openNew" />
+            <div class="flex flex-wrap items-center justify-between bg-white/80 backdrop-blur-md p-5 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8 gap-4">
+                <div class="flex items-center gap-5">
+                    <div class="w-14 h-14 bg-primary-500 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-200">
+                        <i class="pi pi-box text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-black text-slate-800 tracking-tighter leading-none">{{ t('spareParts.title') }}</h1>
+                        <p class="text-[10px] uppercase font-bold text-slate-400 mt-2 tracking-[0.2em]">Asset Stock Management v16</p>
+                    </div>
+                </div>
 
-                                     <IconField><InputIcon>
-                    <i class="pi pi-search" />
-                </InputIcon>
-                <InputText v-model="search" :placeholder="t('spareParts.toolbar.searchPlaceholder')" @input="performSearch" />
-            </IconField>
-                                </span>
-                            </div>
-                        </template>
-
-                        <template #end>
-                            <Button :label="t('spareParts.toolbar.export')" icon="pi pi-upload" class="p-button-help" @click="exportCSV($event)" />
-                        </template>
-                    </Toolbar>
-
-                    <DataTable ref="dt" :value="spareParts.data" dataKey="id" :paginator="true" :rows="10"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        :rowsPerPageOptions="[5, 10, 25]"
-                        :currentPageReportTemplate="t('dataTable.currentPageReport', { first: '{first}', last: '{last}', totalRecords: '{totalRecords}' })"
-                        responsiveLayout="scroll">
-                        <template #header>
-
-                        </template>
-
-                        <Column field="reference" header="Référence" :sortable="true" headerStyle="width:15%; min-width:8rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.reference }}
-                            </template>
-                        </Column>
-                        <Column field="quantity" :header="t('spareParts.table.quantity')" :sortable="true" headerStyle="width:10%; min-width:6rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.quantity }}
-                            </template>
-                        </Column>
-                        <Column field="min_quantity" :header="t('spareParts.table.min_quantity')" :sortable="true" headerStyle="width:10%; min-width:6rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.min_quantity }}
-                            </template>
-                        </Column>
-
-                        <Column field="price" :header="t('spareParts.table.price')" :sortable="true" headerStyle="width:10%; min-width:8rem;">
-                            <template #body="slotProps">
-                                {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(slotProps.data.price) }}
-                            </template>
-                        </Column>
-                        <Column field="location" :header="t('spareParts.table.location')" :sortable="true" headerStyle="width:15%; min-width:10rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.location }} / {{ slotProps.data.region?.designation }}
-                            </template>
-                        </Column>
-                        <Column field="label.designation" :header="t('spareParts.table.partType')" :sortable="true" headerStyle="width:15%; min-width:10rem;">
-                            <template #body="slotProps">
-                                <Tag :value="slotProps.data.label?.designation" :style="{ backgroundColor: slotProps.data.label?.color }" />
-                            </template>
-                        </Column>
-                        <Column field="user.name" :header="t('spareParts.table.responsible')" :sortable="true" headerStyle="width:15%; min-width:10rem;">
-                            <template #body="slotProps">
-                                {{ slotProps.data.user?.name }}
-                            </template>
-                        </Column>
-                        <Column :header="t('spareParts.table.characteristics')" headerStyle="width:20%; min-width:12rem;">
-                            <template #body="slotProps">
-                                <div class="flex flex-wrap gap-1">
-                                    <Tag v-for="char_val in slotProps.data.spare_part_characteristics" :key="char_val.id"
-                                        :value="`${char_val.label_characteristic.name}: ${char_val.value}`" severity="info"></Tag>
-                                </div>
-                            </template>
-                        </Column>
-                        <Column headerStyle="min-width:10rem;" :header="t('spareParts.table.actions')">
-                            <template #body="slotProps">
-                                <Button icon="pi pi-pencil" class="p-button-rounded mr-2" severity="info"
-                                    @click="editSparePart(slotProps.data)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded " severity="error"
-                                    @click="deleteSparePart(slotProps.data)" />
-                            </template>
-                        </Column>
-                    </DataTable>
-
-                    <Dialog v-model:visible="sparePartDialog" modal :header="dialogTitle" :style="{ width: '50rem' }">
-                        <span v-if="editing" class="text-surface-500 dark:text-surface-400 block mb-8">{{ t('spareParts.dialog.editSubtitle') }}</span>
-                        <span v-else class="text-surface-500 dark:text-surface-400 block mb-8">{{ t('spareParts.dialog.createSubtitle') }}</span>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="label_id" class="font-semibold w-24">{{ t('spareParts.form.partType') }}</label>
-                            <Dropdown id="label_id" v-model="form.label_id" :options="labels" optionLabel="designation" optionValue="id" :placeholder="t('spareParts.form.partTypePlaceholder')" class="flex-auto"
-                                />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && !form.label_id">{{ t('validation.required', { field: t('spareParts.form.partType') }) }}</small>
-                        <small class="p-error" v-if="form.errors.label_id">{{ form.errors.label_id }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="reference" class="font-semibold w-24">{{ t('spareParts.form.reference') }}</label>
-                            <InputText id="reference" v-model.trim="form.reference" required="true"
-                                :class="{ 'p-invalid': submitted && !form.reference }" class="flex-auto" autocomplete="off" />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && !form.reference">{{ t('validation.required', { field: t('spareParts.form.reference') }) }}</small>
-                        <small class="p-error" v-if="form.errors.reference">{{ form.errors.reference }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="quantity" class="font-semibold w-24">{{ t('spareParts.form.quantity') }}</label>
-                            <InputNumber id="quantity" v-model="form.quantity" required="true" :min="0"
-                                :class="{ 'p-invalid': submitted && form.quantity === null }" class="flex-auto" />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && form.quantity === null">{{ t('validation.required', { field: t('spareParts.form.quantity') }) }}</small>
-                        <small class="p-error" v-if="form.errors.quantity">{{ form.errors.quantity }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="min_quantity" class="font-semibold w-24">{{ t('spareParts.form.min_quantity') }}</label>
-                            <InputNumber id="min_quantity" v-model="form.min_quantity" required="true" :min="0"
-                                :class="{ 'p-invalid': submitted && form.min_quantity === null }" class="flex-auto" />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && form.min_quantity === null">{{ t('validation.required', { field: t('spareParts.form.min_quantity') }) }}</small>
-                        <small class="p-error" v-if="form.errors.min_quantity">{{ form.errors.min_quantity }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="price" class="font-semibold w-24">{{ t('spareParts.form.price') }}</label>
-                            <InputNumber id="price" v-model="form.price" required="true" :min="0" :maxFractionDigits="2"
-                                :class="{ 'p-invalid': submitted && form.price === null }"
-                                class="flex-auto" mode="currency" currency="EUR" locale="fr-FR" />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && form.price === null">{{ t('validation.required', { field: t('spareParts.form.price') }) }}</small>
-                        <small class="p-error" v-if="form.errors.price">{{ form.errors.price }}</small>
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="location" class="font-semibold w-24">{{ t('spareParts.form.location') }}</label>
-                            <InputText id="location" v-model.trim="form.location" class="flex-auto" autocomplete="off" />
-                        </div>
-                        <small class="p-error" v-if="form.errors.location">{{ form.errors.location }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="region_id" class="font-semibold w-24">{{ t('spareParts.form.region') }}</label>
-                            <Dropdown id="region_id" v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('spareParts.form.regionPlaceholder')" class="flex-auto"
-                                />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && !form.region_id">{{ t('validation.required', { field: t('spareParts.form.region') }) }}</small>
-                        <small class="p-error" v-if="form.errors.region_id">{{ form.errors.region_id }}</small>
-
-                        <div class="flex items-center gap-4 mb-4">
-                            <label for="user_id" class="font-semibold w-24">{{ t('spareParts.form.responsible') }}</label>
-                            <Dropdown id="user_id" v-model="form.user_id" :options="users" optionLabel="name" optionValue="id" :placeholder="t('spareParts.form.responsiblePlaceholder')" class="flex-auto"
-                                :class="{ 'p-invalid': submitted && !form.user_id }" />
-                        </div>
-                        <small class="p-invalid" v-if="submitted && !form.user_id">{{ t('validation.required', { field: t('spareParts.form.responsible') }) }}</small>
-                        <small class="p-error" v-if="form.errors.user_id">{{ form.errors.user_id }}</small>
-
-                        <Divider />
-
-                        <div v-if="selectedLabelCharacteristics.length > 0" class="field">
-                            <label class="font-semibold">{{ t('spareParts.form.characteristicValues') }}</label>
-                            <div v-for="characteristic in selectedLabelCharacteristics" :key="characteristic.id" class="flex items-center gap-4 mb-2">
-                                <label :for="`char-${characteristic.id}`" class="w-48">{{ characteristic.name }} <span v-if="characteristic.is_required" class="text-red-500">*</span></label>
-                                <div class="flex-auto">
-                                    <InputText v-if="characteristic.type === 'text' || characteristic.type === 'image'"
-                                        :id="`char-${characteristic.id}`" v-model="form.characteristic_values[characteristic.id]"
-                                        :class="{ 'p-invalid': submitted && characteristic.is_required && !form.characteristic_values[characteristic.id] }" />
-                                    <InputNumber v-else-if="characteristic.type === 'number'"
-                                        :id="`char-${characteristic.id}`" v-model="form.characteristic_values[characteristic.id]"
-                                        :class="{ 'p-invalid': submitted && characteristic.is_required && form.characteristic_values[characteristic.id] === null }" />
-                                    <Calendar v-else-if="characteristic.type === 'date'"
-                                        :id="`char-${characteristic.id}`" v-model="form.characteristic_values[characteristic.id]" dateFormat="dd/mm/yy"
-                                        :class="{ 'p-invalid': submitted && characteristic.is_required && !form.characteristic_values[characteristic.id] }" />
-                                    <Checkbox v-else-if="characteristic.type === 'boolean'" :binary="true"
-                                        :id="`char-${characteristic.id}`" v-model="form.characteristic_values[characteristic.id]" />
-                                    <small class="p-invalid" v-if="submitted && characteristic.is_required && !form.characteristic_values[characteristic.id] || form.characteristic_values[characteristic.id] === null">
-                                        {{ t('validation.required', { field: characteristic.name }) }}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Divider />
-
-                        <div class="flex justify-end gap-2">
-                            <Button type="button" :label="t('dialog.cancel')" severity="secondary" @click="hideDialog"></Button>
-                            <Button type="button" :label="t('dialog.save')" @click="saveSparePart" :loading="form.processing"></Button>
-                        </div>
-                    </Dialog>
+                <div class="flex items-center gap-3">
+                    <IconField class="hidden md:block">
+                        <InputIcon><i class="pi pi-search" /></InputIcon>
+                        <InputText v-model="search" :placeholder="t('spareParts.toolbar.searchPlaceholder')"
+                            @input="performSearch" class="!rounded-2xl border-none bg-slate-100/50 w-64 focus:w-80 transition-all font-medium" />
+                    </IconField>
+                    <Button :label="t('spareParts.toolbar.add')" icon="pi pi-plus"
+                        class="!rounded-2xl !bg-slate-900 !border-none !px-6 !py-3 shadow-xl hover:scale-105 transition-transform" @click="openNew" />
+                    <Button icon="pi pi-upload" severity="secondary" text class="!rounded-2xl" @click="exportCSV" />
                 </div>
             </div>
+
+            <div class="bg-white rounded-[3rem] shadow-xl border border-slate-50 overflow-hidden p-2">
+                <DataTable :value="spareParts.data" dataKey="id" :paginator="true" :rows="10"
+                    class="p-datatable-sm" responsiveLayout="scroll" :rowHover="true">
+
+                    <Column field="reference" header="REF" class="font-mono font-bold text-slate-600"></Column>
+
+                    <Column header="Composant">
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-3">
+                                <div class="w-2 h-8 rounded-full" :style="{ background: data.label?.color }"></div>
+                                <div>
+                                    <div class="text-sm font-black text-slate-700 uppercase">{{ data.label?.designation }}</div>
+                                    <div class="text-[10px] text-slate-400 font-bold italic">{{ data.location }}</div>
+                                </div>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Stock / Alerte">
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-4">
+                                <span :class="['text-base font-black', data.quantity <= data.min_quantity ? 'text-rose-500' : 'text-primary-600']">
+                                    {{ data.quantity }}
+                                </span>
+                                <div class="h-1 w-12 bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-slate-300" :style="{ width: (data.min_quantity/data.quantity*100) + '%' }"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column header="Prix">
+                        <template #body="{ data }">
+                            <span class="font-bold text-slate-500">{{ formatCurrency(data.price) }}</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" alignFrozen="right" frozen>
+                        <template #body="{ data }">
+                            <div class="flex gap-1">
+                                <Button icon="pi pi-pencil" text rounded severity="info" @click="editSparePart(data)" />
+                                <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteSparePart(data)" />
+                            </div>
+                        </template>
+                    </Column>
+                </DataTable>
+            </div>
+
+        <Dialog
+    v-model:visible="sparePartDialog"
+    modal
+    :header="false"
+    :style="{ width: '65rem' }"
+    class="p-0 overflow-hidden shadow-2xl"
+    :pt="{
+        root: { class: 'border-none rounded-3xl bg-slate-50' },
+        mask: { style: 'backdrop-filter: blur(8px)' }
+    }"
+>
+    <div class="bg-slate-900 p-6 flex justify-between items-center text-white">
+        <div class="flex items-center gap-4">
+            <div class="p-3 bg-primary-500 rounded-2xl shadow-lg shadow-primary-500/20">
+                <i class="pi pi-box text-2xl"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-black uppercase tracking-tight m-0">{{ dialogTitle }}</h2>
+                <p class="text-xs text-slate-400 m-0">{{ editing ? t('spareParts.dialog.editSubtitle') : t('spareParts.dialog.createSubtitle') }}</p>
+            </div>
+        </div>
+        <Button icon="pi pi-times" @click="hideDialog" text rounded class="text-white hover:bg-white/10" />
+    </div>
+
+    <div class="p-6">
+        <div class="grid grid-cols-12 gap-6">
+
+            <div class="col-span-12 lg:col-span-7 space-y-6">
+
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200/60">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-primary-500 rounded-full"></span>
+                        Informations Générales
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label class="font-bold text-sm text-slate-600 ml-1">{{ t('spareParts.form.partType') }}</label>
+                            <Dropdown v-model="form.label_id" :options="labels" optionLabel="designation" optionValue="id"
+                                class="w-full !rounded-xl !border-slate-200 !bg-slate-50/50" />
+                            <small class="p-error" v-if="form.errors.label_id">{{ form.errors.label_id }}</small>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="font-bold text-sm text-slate-600 ml-1">{{ t('spareParts.form.reference') }}</label>
+                            <InputText v-model.trim="form.reference" class="!rounded-xl !border-slate-200 font-mono font-bold" />
+                            <small class="p-error" v-if="form.errors.reference">{{ form.errors.reference }}</small>
+                        </div>
+
+                        <div class="flex flex-col gap-2 col-span-2 mt-2">
+                            <label class="font-bold text-sm text-slate-600 ml-1">{{ t('spareParts.form.responsible') }}</label>
+                            <Dropdown v-model="form.user_id" :options="users" optionLabel="name" optionValue="id"
+                                class="w-full !rounded-xl !border-slate-200" />
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="selectedLabelCharacteristics.length > 0" class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200/60">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
+                        <i class="pi pi-sliders-h text-primary-500"></i>
+                        Spécifications Techniques
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div v-for="char in selectedLabelCharacteristics" :key="char.id" class="flex flex-col gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                            <label class="text-[11px] font-black text-slate-500 uppercase">{{ char.name }} <span v-if="char.is_required" class="text-red-500">*</span></label>
+
+                            <InputText v-if="['text', 'image'].includes(char.type)" v-model="form.characteristic_values[char.id]" class="!p-inputtext-sm !border-none !bg-white !rounded-lg shadow-sm" />
+                            <InputNumber v-else-if="char.type === 'number'" v-model="form.characteristic_values[char.id]" class="!border-none !bg-white !rounded-lg shadow-sm" />
+                            <Calendar v-else-if="char.type === 'date'" v-model="form.characteristic_values[char.id]" dateFormat="dd/mm/yy" class="!border-none !bg-white !rounded-lg shadow-sm" />
+                            <InputSwitch v-else-if="char.type === 'boolean'" v-model="form.characteristic_values[char.id]" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-span-12 lg:col-span-5 space-y-6">
+
+                <div class="bg-primary-600 p-8 rounded-[2.5rem] shadow-xl shadow-primary-500/20 text-white relative overflow-hidden">
+                    <i class="pi pi-chart-line absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12"></i>
+
+                    <div class="relative z-10">
+                        <label class="text-[10px] font-black uppercase opacity-70 mb-2 block">{{ t('spareParts.form.price') }} (EUR)</label>
+                        <InputNumber v-model="form.price" mode="currency" currency="EUR" locale="fr-FR"
+                            class="v11-price-input w-full"
+                            :pt="{ input: { class: 'bg-transparent border-none text-white text-4xl font-black p-0 focus:ring-0 shadow-none' } }" />
+
+                        <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/20">
+                            <div class="flex flex-col gap-1 text-center border-r border-white/20">
+                                <span class="text-[10px] font-bold opacity-70 uppercase tracking-widest">Actuel</span>
+                                <InputNumber v-model="form.quantity" class="v11-compact-num" :pt="{ input: { class: 'bg-transparent border-none text-white text-xl font-bold p-0 text-center shadow-none' } }" />
+                            </div>
+                            <div class="flex flex-col gap-1 text-center">
+                                <span class="text-[10px] font-bold opacity-70 uppercase tracking-widest">Alerte Min</span>
+                                <InputNumber v-model="form.min_quantity" class="v11-compact-num" :pt="{ input: { class: 'bg-transparent border-none text-white text-xl font-bold p-0 text-center shadow-none' } }" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200/60">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Emplacement</h3>
+                    <div class="space-y-4">
+                        <div class="flex flex-col gap-2">
+                            <label class="font-bold text-sm text-slate-600">{{ t('spareParts.form.region') }}</label>
+                            <Dropdown v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" class="!rounded-xl !bg-slate-50/50" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="font-bold text-sm text-slate-600">{{ t('spareParts.form.location') }}</label>
+                            <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-inner">
+                                <i class="pi pi-map-marker text-primary-500 ml-2"></i>
+                                <InputText v-model.trim="form.location" class="!border-none !bg-transparent w-full font-bold text-sm" placeholder="Rayon / Étagère" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <template #footer>
+        <div class="flex justify-end items-center gap-3 p-4 bg-white border-t border-slate-100">
+            <Button :label="t('dialog.cancel')" icon="pi pi-times" @click="hideDialog" text severity="secondary" class="!rounded-xl font-bold" />
+            <Button :label="t('dialog.save')" icon="pi pi-check-circle" @click="saveSparePart" :loading="form.processing"
+                class="!rounded-xl !bg-slate-900 !border-none !px-8 shadow-lg shadow-slate-200 font-bold" />
+        </div>
+    </template>
+</Dialog>
         </div>
     </AppLayout>
 </template>

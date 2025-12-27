@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
-// Importations des composants PrimeVue
+import debounce from 'lodash/debounce';
+import { useI18n } from 'vue-i18n';
+
+// Importations PrimeVue
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
@@ -15,348 +18,383 @@ import Dropdown from 'primevue/dropdown';
 import InputNumber from 'primevue/inputnumber';
 import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
-import Toolbar from 'primevue/toolbar';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
-import MultiSelect from 'primevue/multiselect'; // Nouveau pour les colonnes
+import MultiSelect from 'primevue/multiselect';
+import OverlayPanel from 'primevue/overlaypanel';
 
 const props = defineProps({
-    expenses: Object, // Contient l'array de groupes renvoyé par le contrôleur
+    expenses: { type: Array, default: () => [] },
     filters: Object,
     users: Array,
+    categories: Array, // Ajouté
+    projects: Array,   // Ajouté
+    vehicles: Array,   // Ajouté
     expensables: {
         type: Array,
-        default: () => [
-            { id: 5, type: 'App\\Models\\Activity', title: 'Activité: gffggfggf' },
-            // ... autres
-        ]
+        default: () => []
     }
 });
 
 const toast = useToast();
 const confirm = useConfirm();
+const { t } = useI18n();
 
 const expenseDialog = ref(false);
-const submitted = ref(false);
 const editing = ref(false);
-const search = ref(props.filters?.search || '');
 const dt = ref();
-const selectedExpenses = ref([]); // Nouveau : pour la validation groupée
-
-// --- Colonnes Dynamiques ---
-const allColumns = ref([
-    { field: 'description', header: 'Description', default: true },
-    { field: 'amount', header: 'Montant', default: true },
-    { field: 'expense_date', header: 'Date', default: true },
-    { field: 'category', header: 'Catégorie', default: true },
-    { field: 'status', header: 'Statut', default: true },
-    { field: 'user.name', header: 'Créé par', default: true },
-    // Colonnes additionnelles, désactivées par défaut ou optionnelles
-    { field: 'expensable_title', header: 'Lié à', default: true }, // Titre du groupe
-    { field: 'approved_by', header: 'Approuvé par', default: false },
-    { field: 'notes', header: 'Notes', default: false },
-    // Ajoutez toute autre colonne de détail ici
-]);
-const selectedColumns = ref(allColumns.value.filter(col => col.default));
-
-// Propriété calculée pour les colonnes visibles
-const visibleColumns = computed(() => {
-    return selectedColumns.value;
+const selectedExpenses = ref([]);
+const filters = ref({
+    search: props.filters?.search || '',
+    status: props.filters?.status || null,
+    category_id: props.filters?.category_id || null,
+    date: props.filters?.date || null,
 });
+const op = ref();
+const filtersOp = ref();
 
-// État du formulaire... (inchangé)
-const selectedExpensableType = ref(null);
-const selectedExpensable = ref(null);
+// --- Configuration des Colonnes ---
+const allColumns = ref([
+    { field: 'description', header: computed(() => t('expenses.table.description')), default: true },
+    { field: 'amount', header: computed(() => t('expenses.table.amount')), default: true },
+    { field: 'expense_date', header: computed(() => t('expenses.table.date')), default: true },
+    { field: 'category', header: computed(() => t('expenses.table.category')), default: true },
+    { field: 'status', header: computed(() => t('expenses.table.status')), default: true },
+    { field: 'user.name', header: computed(() => t('expenses.table.createdBy')), default: true },
+    { field: 'expensable_title', header: computed(() => t('expenses.table.linkedTo')), default: true },
+    { field: 'provider', header: "Fournisseur", default: false },
+    { field: 'invoice_number', header: "N° Facture", default: false },
+]);
 
+const selectedColumns = ref(allColumns.value.filter(col => col.default).map(c => c.field));
+
+// --- Formulaire Pro ---
 const form = useForm({
     id: null,
+    label: '', // Libellé
     description: '',
     amount: null,
+    tax_rate: 20,
     expense_date: new Date(),
-    category: 'other',
-    user_id: null,
-    expensable_type: null,
-    expensable_id: null,
+    category_id: null,
+    provider: '',
+    invoice_number: '',
+    payment_method: 'Carte Bancaire',
+    project_id: null,
+    vehicle_id: null,
     notes: '',
-    receipt_path: null,
     status: 'pending',
 });
 
-// Options de listes déroulantes... (inchangées)
-const expensableTypes = ref([
-    { label: 'Activité', value: 'App\\Models\\Activity' },
-    { label: 'Tâche', value: 'App\\Models\\Task' },
-]);
-const expenseCategories = ref([
-    { label: 'Pièces', value: 'parts' },
-    { label: 'Main d\'œuvre', value: 'labor' },
-    { label: 'Déplacement', value: 'travel' },
-    { label: 'Service externe', value: 'external_service' },
-    { label: 'Autre', value: 'other' },
-]);
-
-// --- NOUVEAU : Flattening des données pour le DataTable unique ---
+// --- Logique de données ---
 const flatExpenses = computed(() => {
-    const flat = [];
-    props.expenses.forEach(group => {
-        // Ajouter les propriétés du groupe à chaque détail
-        group.details.forEach(detail => {
-            flat.push({
-                ...detail,
-                expensable_title: group.expensable_title, // Ajout du titre du groupe pour l'affichage
-                group_category: group.category,
-                // ... d'autres propriétés de groupe si nécessaires
-            });
-        });
-    });
-    return flat;
+    if (!props.expenses) return [];
+    return props.expenses.flatMap(group =>
+        group.details.map(detail => ({
+            ...detail,
+            expensable_title: group.expensable_title
+        }))
+    );
 });
-// -----------------------------------------------------------------
 
-// Fonctions openNew, hideDialog, editExpense... (inchangées ou très peu)
+const formatCurrency = (value) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(value);
+};
+
+// --- Actions ---
+const openNew = () => {
+    form.reset();
+    editing.value = false;
+    expenseDialog.value = true;
+};
+
+const hideDialog = () => {
+    expenseDialog.value = false;
+};
 
 const editExpense = (expense) => {
     form.id = expense.id;
+    form.label = expense.description; // Mapping
     form.description = expense.description;
     form.amount = parseFloat(expense.amount);
-    form.expense_date = expense.expense_date ? new Date(expense.expense_date) : null;
-    form.category = expense.category;
-    form.user_id = expense.user_id;
-    form.expensable_type = expense.expensable_type;
-    form.expensable_id = expense.expensable_id;
-    form.notes = expense.notes;
+    form.expense_date = new Date(expense.expense_date);
+    form.category_id = expense.category_id;
+    form.provider = expense.provider;
+    form.invoice_number = expense.invoice_number;
     form.status = expense.status;
-
-    selectedExpensableType.value = expense.expensable_type;
-    selectedExpensable.value = props.expensables.find(e => e.id === expense.expensable_id && e.type === expense.expensable_type) || null;
 
     editing.value = true;
     expenseDialog.value = true;
 };
 
+const saveExpense = () => {
+    const action = editing.value
+        ? route('expenses.update', form.id)
+        : route('expenses.store');
+
+    const method = editing.value ? 'put' : 'post';
+
+    form[method](action, {
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Opération réussie', life: 3000 });
+            hideDialog();
+        }
+    });
+};
+
 const updateExpenseStatus = (expense, newStatus) => {
-    const action = newStatus === 'approved' ? 'approuver' : 'rejeter';
     confirm.require({
-        message: `Êtes-vous sûr de vouloir ${action} cette dépense ?`,
-        header: `Confirmation de ${action}`,
-        icon: 'pi pi-info-circle',
+        message: `Voulez-vous vraiment passer cette dépense en statut : ${newStatus} ?`,
+        header: 'Confirmation de statut',
+        icon: 'pi pi-exclamation-triangle',
         acceptClass: newStatus === 'approved' ? 'p-button-success' : 'p-button-danger',
         accept: () => {
             router.put(route('expenses.updateStatus', expense.id), { status: newStatus }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: `Dépense ${action}e.`, life: 3000 });
-                },
-                onError: (errors) => {
-                    console.error("Erreur lors de la mise à jour du statut:", errors);
-                    toast.add({ severity: 'error', summary: 'Erreur', detail: `La mise à jour du statut a échoué.`, life: 3000 });
-                }
+                onSuccess: () => toast.add({ severity: 'success', summary: 'Mis à jour', life: 3000 })
             });
         }
     });
 };
 
 const updateMultipleExpenseStatus = (expenses, newStatus) => {
-    const action = newStatus === 'approved' ? 'approuver' : 'rejeter';
     const ids = expenses.map(e => e.id);
-
     confirm.require({
-        message: `Êtes-vous sûr de vouloir ${action} les ${ids.length} dépenses sélectionnées ?`,
-        header: `Confirmation de ${action}`,
-        icon: 'pi pi-info-circle',
-        acceptClass: newStatus === 'approved' ? 'p-button-success' : 'p-button-danger',
+        message: `Confirmer le changement de statut pour ${ids.length} éléments ?`,
         accept: () => {
-            router.put(route('expenses.updateGroupStatus'), { ids: ids, status: newStatus }, {
-                preserveScroll: true,
+            router.put(route('expenses.updateGroupStatus'), { ids, status: newStatus }, {
                 onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: `${ids.length} dépenses ${newStatus === 'approved' ? 'approuvées' : 'rejetées'}.`, life: 3000 });
-                    selectedExpenses.value = []; // Désélectionner
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: 'Erreur', detail: `La mise à jour groupée a échoué.`, life: 3000 });
+                    selectedExpenses.value = [];
+                    toast.add({ severity: 'success', summary: 'Traitement groupé terminé' });
                 }
             });
         }
     });
 };
 
+const resetFilters = () => {
+    Object.keys(filters.value).forEach(key => filters.value[key] = null);
+};
 
 
+// --- Helpers UI ---
+const getStatusSeverity = (status) => {
+    const map = { pending: 'warning', approved: 'success', rejected: 'danger', paid: 'info' };
+    return map[status] || 'secondary';
+};
 
-// Fonctions saveExpense, deleteExpense, updateExpenseStatus... (inchangées)
-// ...
-
-const updateGroupStatus = (newStatus) => {
-    if (!selectedExpenses.value || selectedExpenses.value.length === 0) {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez sélectionner au moins une dépense.', life: 3000 });
-        return;
+const performSearch = debounce(() => {
+    const params = {
+        search: filters.value.search,
+        status: filters.value.status,
+        category_id: filters.value.category_id,
+    };
+    if (filters.value.date && filters.value.date.length === 2) {
+        params.start_date = filters.value.date[0].toISOString().split('T')[0];
+        params.end_date = filters.value.date[1].toISOString().split('T')[0];
     }
 
-    const action = newStatus === 'approved' ? 'approuver' : 'rejeter';
-    const ids = selectedExpenses.value.map(e => e.id);
+    router.get(route('expenses.index'), params, { preserveState: true, replace: true });
+}, 300);
 
-    confirm.require({
-        message: `Êtes-vous sûr de vouloir ${action} les ${ids.length} dépenses sélectionnées ?`,
-        header: `Confirmation de ${action}`,
-        icon: 'pi pi-info-circle',
-        acceptClass: newStatus === 'approved' ? 'p-button-success' : 'p-button-danger',
-        accept: () => {
-            router.put(route('expenses.updateGroupStatus'), { ids: ids, status: newStatus }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Succès', detail: `${ids.length} dépenses ${newStatus === 'approved' ? 'approuvées' : 'rejetées'}.`, life: 3000 });
-                    selectedExpenses.value = []; // Désélectionner
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: 'Erreur', detail: `La mise à jour groupée a échoué.`, life: 3000 });
-                }
-            });
-        }
-    });
-};
-
-// Autres fonctions (getStatusSeverity, getCategoryLabel, filteredExpensables, dialogTitle) inchangées...
-
-const getStatusSeverity = (status) => ({
-    pending: 'warning',
-    approved: 'success',
-    rejected: 'danger',
-    paid: 'info',
-}[status] || 'secondary');
-
-const getCategoryLabel = (category) => {
-    const cat = expenseCategories.value.find(c => c.value === category);
-    return cat ? cat.label : category;
-};
-// ...
-
-const exportCSV = () => {
-    dt.value.exportCSV();
-};
+const toggleColumnSelection = (event) => op.value.toggle(event);
+const exportCSV = () => dt.value.exportCSV();
 </script>
+
 <template>
-    <AppLayout title="Gestion des Dépenses">
+    <AppLayout :title="t('expenses.headTitle')">
+        <Head :title="t('expenses.headTitle')" />
+        <Toast />
+        <ConfirmDialog />
 
-        <Head title="Dépenses" />
+        <div class="min-h-screen bg-slate-50 p-4 md:p-10">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-[2rem] bg-amber-500 shadow-xl shadow-amber-200">
+                        <i class="pi pi-wallet text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tighter text-slate-900 md:text-4xl">{{ t('expenses.title') }}</h1>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ t('expenses.subtitle') }}</p>
+                    </div>
+                </div>
+                <Button :label="t('expenses.addNew')" icon="pi pi-plus-circle" class="!rounded-2xl !font-black" @click="openNew" />
+            </div>
 
-        <div class="grid">
-            <div class="col-12">
-                <div class="card">
-                    <Toast />
-                    <ConfirmDialog></ConfirmDialog>
-                    <Toolbar class="mb-4">
-                        <template #start>
-                            <Button label="Nouvelle Dépense" icon="pi pi-plus" class="mr-2"
-                                @click="openNew" />
-
-                            <Button
-                                label="Approuver Sélection"
-                                icon="pi pi-check-circle"
-                                class="p-button-success mr-2"
-                                :disabled="!selectedExpenses.length"
-                                @click="updateGroupStatus('approved')"
-                                v-tooltip.top="'Approuver les dépenses sélectionnées'"
-                            />
-                            <Button
-                                label="Rejeter Sélection"
-                                icon="pi pi-times-circle"
-                                class="p-button-danger"
-                                :disabled="!selectedExpenses.length"
-                                @click="updateGroupStatus('rejected')"
-                                v-tooltip.top="'Rejeter les dépenses sélectionnées'"
-                            />
-                        </template>
-                        <template #end>
-                            <div class="flex items-center gap-2">
-                                <MultiSelect
-                                    v-model="selectedColumns"
-                                    :options="allColumns"
-                                    optionLabel="header"
-                                    placeholder="Afficher les colonnes"
-                                    display="chip"
-                                />
-
-                                <IconField>
-                                    <InputIcon>
-                                        <i class="pi pi-search" />
-                                    </InputIcon>
-                                    <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-                                </IconField>
-                                <Button
-                                    label="Exporter"
-                                    icon="pi pi-download"
-                                    class="p-button-help"
-                                    @click="exportCSV($event)"
-                                />
-                            </div>
-                        </template>
-                    </Toolbar>
-
-                    <DataTable :value="flatExpenses" ref="dt" dataKey="id" :paginator="true" :rows="10"
-                        responsiveLayout="scroll" :globalFilterFields="['description', 'user.name', 'expensable_title', 'category']"
-                        v-model:selection="selectedExpenses">
-
-                        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-                        <template #footer>
-                            <div class="flex justify-end font-semibold">
-                                Total des dépenses sélectionnées: {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0)) }}
-                            </div>
-                        </template>
-
-                        <template v-for="col in visibleColumns" :key="col.field">
-                            <Column :field="col.field" :header="col.header" :sortable="true" style="min-width: 10rem;">
-                                <template #body="slotProps">
-                                    <span v-if="col.field === 'amount'">
-                                        {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slotProps.data.amount) }}
-                                    </span>
-                                    <span v-else-if="col.field === 'expense_date'">
-                                        {{ new Date(slotProps.data.expense_date).toLocaleDateString('fr-FR') }}
-                                    </span>
-                                    <span v-else-if="col.field === 'category'">
-                                        <Tag :value="getCategoryLabel(slotProps.data.category)" />
-                                    </span>
-                                    <span v-else-if="col.field === 'user.name'">
-                                        {{ slotProps.data.user ? slotProps.data.user.name : 'N/A' }}
-                                    </span>
-                                    <span v-else-if="col.field === 'status'">
-                                        <Tag :value="slotProps.data.status"
-                                            :severity="getStatusSeverity(slotProps.data.status)" />
-                                    </span>
-                                    <span v-else-if="col.field === 'approved_by'">
-                                        {{ slotProps.data.approved_by ? slotProps.data.approved_by.name : 'N/A' }}
-                                    </span>
-                                    <span v-else>
-                                        {{ slotProps.data[col.field] }}
-                                    </span>
-                                </template>
-                            </Column>
-                        </template>
-
-                        <Column headerStyle="min-width:12rem;" header="Actions">
-                            <template #body="slotProps">
-                                <div class="flex gap-2">
-                                    <Button icon="pi pi-pencil" class="p-button-rounded p-button-info"
-                                        @click="editExpense(slotProps.data)" />
-                                    <Button icon="pi pi-trash" class="p-button-rounded p-button-danger"
-                                        @click="deleteExpense(slotProps.data)" />
-
-                                    <template v-if="slotProps.data.status === 'pending'">
-                                        <Button icon="pi pi-check" class="p-button-rounded p-button-success"
-                                            @click="updateExpenseStatus(slotProps.data, 'approved')" v-tooltip.top="'Approuver (Individuel)'" />
-                                        <Button icon="pi pi-times" class="p-button-rounded p-button-danger"
-                                            @click="updateExpenseStatus(slotProps.data, 'rejected')" v-tooltip.top="'Rejeter (Individuel)'" />
-                                    </template>
-                                </div>
-                            </template>
-                        </Column>
-                    </DataTable>
-
-                    <Dialog v-model:visible="expenseDialog" modal :header="dialogTitle" :style="{ width: '45rem' }">
-                        </Dialog>
+            <!-- Toolbar -->
+            <div class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <Button icon="pi pi-check" severity="success" :disabled="!selectedExpenses.length" @click="updateMultipleExpenseStatus(selectedExpenses, 'approved')" v-tooltip.top="'Approuver la sélection'"/>
+                    <Button icon="pi pi-times" severity="danger" :disabled="!selectedExpenses.length" @click="updateMultipleExpenseStatus(selectedExpenses, 'rejected')" v-tooltip.top="'Rejeter la sélection'"/>
+                </div>
+                <div class="flex items-center gap-2">
+                     <Button icon="pi pi-file-excel" severity="success" text @click="exportCSV" v-tooltip.top="'Exporter en CSV'" />
+                     <Button icon="pi pi-columns" text @click="toggleColumnSelection" v-tooltip.top="'Choisir les colonnes'" />
                 </div>
             </div>
+
+            <div class="overflow-hidden rounded-[2.5rem] border border-white bg-white shadow-xl">
+                <DataTable :value="flatExpenses" ref="dt" dataKey="id" :paginator="true" :rows="10"
+                    v-model:selection="selectedExpenses" class="v11-table" responsiveLayout="scroll">
+
+                    <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+
+                    <template v-for="col in allColumns" :key="col.field">
+                        <Column v-if="selectedColumns.includes(col.field)" :field="col.field" :header="col.header" sortable>
+                            <template #body="{ data, field }">
+                                <template v-if="field === 'amount'">
+                                    <span class="font-bold text-slate-900">{{ formatCurrency(data.amount) }}</span>
+                                </template>
+                                <template v-else-if="field === 'status'">
+                                    <Tag :value="data.status" :severity="getStatusSeverity(data.status)" class="!rounded-full !px-3" />
+                                </template>
+                                <template v-else-if="field === 'expense_date'">
+                                    {{ new Date(data.expense_date).toLocaleDateString() }}
+                                </template>
+                                <template v-else>
+                                    {{ data[field] }}
+                                </template>
+                            </template>
+                        </Column>
+                    </template>
+
+                    <Column header="Actions" alignFrozen="right" frozen>
+                        <template #body="{ data }">
+                            <div class="flex gap-2">
+                                <Button icon="pi pi-pencil" text rounded severity="info" @click="editExpense(data)" />
+                                <template v-if="data.status === 'pending'">
+                                    <Button icon="pi pi-check" text rounded severity="success" @click="updateExpenseStatus(data, 'approved')" />
+                                    <Button icon="pi pi-times" text rounded severity="danger" @click="updateExpenseStatus(data, 'rejected')" />
+                                </template>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <template #footer>
+                        <div class="text-right p-2 text-slate-500 font-bold">
+                            Total sélection : {{ formatCurrency(selectedExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)) }}
+                        </div>
+                    </template>
+                </DataTable>
+            </div>
         </div>
+
+        <Dialog v-model:visible="expenseDialog" modal :header="false" :closable="false" class="quantum-dialog" :style="{ width: '55rem' }"
+            :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
+
+            <div class="bg-slate-900 p-8 flex justify-between items-center text-white">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center">
+                        <i class="pi pi-receipt text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-black m-0 uppercase tracking-tighter">{{ editing ? 'Modifier Dépense' : 'Nouveau Justificatif' }}</h2>
+                        <span class="text-[9px] opacity-50 uppercase tracking-widest">Enregistrement comptable</span>
+                    </div>
+                </div>
+                <Button icon="pi pi-times" @click="hideDialog" text rounded class="text-white/50" />
+            </div>
+
+            <div class="p-8 bg-slate-50">
+                <div class="grid grid-cols-12 gap-6">
+                    <div class="col-span-12 bg-white p-6 rounded-[2rem] shadow-sm flex flex-wrap gap-8 items-center border border-slate-200">
+                        <div class="flex-1 min-w-[200px]">
+                            <label class="text-[10px] font-black uppercase text-slate-400 block mb-2">Montant HT (XOF)</label>
+                            <InputNumber v-model="form.amount" mode="decimal" class="w-full" :pt="{ input: { class: 'text-3xl font-black border-none bg-slate-50 rounded-xl p-3 w-full' } }" />
+                        </div>
+                        <div class="w-px h-12 bg-slate-100 hidden md:block"></div>
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="text-[10px] font-black uppercase text-slate-400 block mb-2">TVA (%)</label>
+                            <Dropdown v-model="form.tax_rate" :options="[0, 5, 10, 18, 20]" class="w-full !rounded-xl !bg-slate-50 !border-none font-bold" />
+                        </div>
+                        <div class="flex-1 min-w-[180px]">
+                            <label class="text-[10px] font-black uppercase text-slate-400 block mb-2">Date d'opération</label>
+                            <Calendar v-model="form.expense_date" dateFormat="dd/mm/yy" class="w-full" :pt="{ input: { class: 'font-bold border-none bg-slate-50 rounded-xl p-3 w-full' } }" />
+                        </div>
+                    </div>
+
+                    <div class="col-span-12 lg:col-span-7 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black uppercase text-slate-500">Fournisseur</label>
+                                <InputText v-model="form.provider" class="w-full !rounded-xl !border-slate-100" />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black uppercase text-slate-500">N° Facture</label>
+                                <InputText v-model="form.invoice_number" class="w-full !rounded-xl !border-slate-100" />
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase text-slate-500">Libellé court</label>
+                            <InputText v-model="form.label" class="w-full !rounded-xl !border-slate-100" />
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black uppercase text-slate-500">Catégorie</label>
+                                <Dropdown v-model="form.category_id" :options="categories" optionLabel="name" optionValue="id" class="w-full !rounded-xl" />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black uppercase text-slate-500">Paiement</label>
+                                <Dropdown v-model="form.payment_method" :options="['Carte', 'Espèces', 'Virement']" class="w-full !rounded-xl" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-12 lg:col-span-5 flex flex-col gap-4">
+                        <div class="bg-slate-800 p-6 rounded-[2rem] text-white">
+                            <h4 class="text-[10px] font-black uppercase text-amber-400 mb-4">Affectation</h4>
+                            <div class="space-y-4">
+                                <div class="space-y-1">
+                                    <label class="text-[9px] opacity-60 uppercase">Projet</label>
+                                    <Dropdown v-model="form.project_id" :options="projects" optionLabel="name" optionValue="id" class="w-full !bg-white/10 !border-none !text-white" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[9px] opacity-60 uppercase">Véhicule</label>
+                                    <Dropdown v-model="form.vehicle_id" :options="vehicles" optionLabel="license_plate" optionValue="id" class="w-full !bg-white/10 !border-none !text-white" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-white border-t flex justify-between items-center">
+                <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest italic items-center flex gap-2">
+                   <i class="pi pi-lock text-[8px]"></i> Session Sécurisée
+                </span>
+                <div class="flex gap-3">
+                    <Button label="Annuler" text @click="hideDialog" class="!rounded-xl" />
+                    <Button label="Enregistrer" icon="pi pi-save" @click="saveExpense" :loading="form.processing" class="!rounded-xl !bg-slate-900 !px-8" />
+                </div>
+            </div>
+        </Dialog>
+
+        <OverlayPanel ref="op" class="p-3">
+            <h4 class="text-xs font-black uppercase mb-3">Colonnes visibles</h4>
+            <MultiSelect v-model="selectedColumns" :options="allColumns" optionLabel="header" optionValue="field" display="chip" class="w-64" />
+        </OverlayPanel>
     </AppLayout>
 </template>
+
+<style scoped>
+.v11-table :deep(.p-datatable-thead > tr > th) {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.v11-table :deep(.p-datatable-tbody > tr) {
+    background: white;
+    transition: background 0.2s;
+}
+
+.v11-table :deep(.p-datatable-tbody > tr:hover) {
+    background: #f8fafc;
+}
+</style>

@@ -46,6 +46,16 @@ const sparePartData = ref({
     index: -1,
     type: 'used'
 });
+const statusOptions = [
+    { label: '📅 Planifié', value: 'scheduled' },
+    { label: '⚡ En cours', value: 'in_progress' },
+    { label: '✅ Terminé', value: 'completed' },
+    { label: '⚠️ Terminé avec réserves', value: 'completed_with_issues' },
+    { label: '⏸️ Suspendu', value: 'suspended' },
+    { label: '🚫 Annulé', value: 'canceled' },
+    { label: '⏳ Attente ressources', value: 'awaiting_resources' }
+];
+
 
 // --- FORMULAIRE INERTIA ---
 const form = useForm({
@@ -65,7 +75,7 @@ const form = useForm({
     service_order_cost: 0,
     service_order_description: 'Paiement des pièces détachées et autres',
     instruction_answers: {},
-    parent_activity_id: null,
+    parent_id: null,
     task_id: null,
     maintenance_id: null,
 });
@@ -154,15 +164,7 @@ const getStatusLabel = (status) => {
         default: return status;
     }
 };
-const formatDay = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
-const formatTime = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-};
 
 // --- PRÉPARATION DES DONNÉES D'INSTRUCTIONS (sécurisée) ---
 // Note: Cette fonction ne doit pas appeler parseJson si les données sont déjà parsées
@@ -288,7 +290,7 @@ const hideDialog = () => {
     form.reset();
     selectedActivity.value = null;
     isCreatingSubActivity.value = false;
-    form.parent_activity_id = null;
+    form.parent_id = null;
 };
 
 // Fonction pour l'édition d'une activité existante
@@ -327,7 +329,7 @@ const editActivity = (activity) => {
     form.jobber = activity.jobber || '';
     form.user_id = activity.user_id;
     form.status = activity.status;
-    form.parent_activity_id = activity.parent_activity_id;
+    form.parent_id = activity.parent_id;
     form.task_id = activity.task_id;
     form.maintenance_id = activity.maintenance_id;
     form.service_order_cost = activity.service_order_cost || 0;
@@ -365,7 +367,8 @@ const createSubActivity = (parentActivity) => {
     form.reset(); // 1. Réinitialiser tout
 
     // Champs de contexte hérités
-    form.parent_activity_id = parentActivity.id;
+
+    form.parent_id = parentActivity.id;
     form.task_id = parentActivity.task_id;
     form.maintenance_id = parentActivity.maintenance_id;
 
@@ -441,8 +444,10 @@ const saveActivity = () => {
     const routeName = isCreatingSubActivity.value ? 'activities.store' : 'activities.update';
     const routeParams = isCreatingSubActivity.value ? {} : form.id;
     const successMessage = isCreatingSubActivity.value ? 'Sous-activité créée avec succès.' : 'Activité mise à jour avec succès.';
+    form.instructions =(getAvailableInstructions.value);
     console.log("XXXXXXXXXXXXXXXXXXXX2545");
-    console.log(form);
+    console.log({...form, instructions: getAvailableInstructions.value});
+    console.log(getAvailableInstructions.value);
     const handler = {
         onSuccess: () => {
             hideDialog();
@@ -478,33 +483,7 @@ const openSparePartDialog = (type, part = null, index = -1) => {
     };
     sparePartDialogVisible.value = true;
 };
-const saveSparePart = () => {
-    const { ids, quantity, index, type } = sparePartData.value;
-    const selectedIds = index > -1 ? (ids.length > 0 ? [ids[0]] : []) : ids;
 
-    if (!selectedIds || selectedIds.length === 0 || quantity < 1) {
-        toast.add({ severity: 'warn', summary: 'Données invalides', detail: 'Veuillez sélectionner une ou plusieurs pièces et une quantité valide.', life: 3000 });
-        return;
-    }
-
-    const targetArray = type === 'used' ? form.spare_parts_used : form.spare_parts_returned;
-
-    if (index > -1) {
-        // Mode édition
-        targetArray[index] = { id: selectedIds[0], quantity };
-    } else {
-        // Mode ajout
-        selectedIds.forEach(partId => {
-            const exists = targetArray.some(p => p.id === partId);
-            if (!exists) {
-                targetArray.push({ id: partId, quantity });
-            } else {
-                toast.add({ severity: 'info', summary: 'Avertissement', detail: `La pièce (ID: ${partId}) est déjà dans la liste.`, life: 3000 });
-            }
-        });
-    }
-    sparePartDialogVisible.value = false;
-};
 
 const sparePartOptions = computed(() => {
     return props.spareParts.map(part => ({
@@ -520,6 +499,109 @@ const removeSparePartUsed = (index) => {
 
 const removeSparePartReturned = (index) => {
    form.spare_parts_returned = form.spare_parts_returned.filter((_, i) => i !== index);
+};
+// --- LOGIQUE D'AJOUT D'INSTRUCTIONS DYNAMIQUES ---
+const newInstruction = ref({
+    label: '',
+    type: 'text',
+    is_required: false
+});
+
+const instructionTypes = [
+    { label: 'Texte court', value: 'text' },
+    { label: 'Zone de texte', value: 'textarea' },
+    { label: 'Nombre', value: 'number' },
+    { label: 'Date', value: 'date' },
+    { label: 'Oui/Non (Binaire)', value: 'boolean' }
+];
+
+const addNewInstructionToForm = () => {
+    if (!newInstruction.value.label) {
+        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Le libellé est obligatoire', life: 3000 });
+        return;
+    }
+
+    // Créer un ID temporaire unique
+    const tempId = 'new_' + Date.now();
+
+    // 1. On l'ajoute à la liste des instructions affichées (pour le rendu immédiat)
+    const currentInstructions = parseJson(form.instructions) || [];
+    const updatedInstructions = [...currentInstructions, { ...newInstruction.value, id: tempId }];
+
+    // 2. On met à jour le champ caché du formulaire qui sera envoyé au serveur
+    form.instructions = JSON.stringify(updatedInstructions);
+
+    // Réinitialiser le petit formulaire d'ajout
+    newInstruction.value = { label: '', type: 'text', is_required: false };
+
+    toast.add({ severity: 'success', summary: 'Ajouté', detail: 'Instruction ajoutée à la liste', life: 2000 });
+};
+// --- CONFIGURATION DES INSTRUCTIONS DYNAMIQUES ---
+
+
+
+
+const getAvailableInstructions = computed(() => {
+    try {
+        return typeof form.instructions === 'string'
+            ? JSON.parse(form.instructions)
+            : (form.instructions || []);
+    } catch (e) {
+        return [];
+    }
+});
+
+// --- GESTION DES PIÈCES RETOURNÉES ---
+
+
+// Modification de saveSparePart pour inclure le retour
+const saveSparePart = () => {
+    if (sparePartData.value.ids.length === 0) return;
+
+    const target = sparePartData.value.type === 'used'
+        ? form.spare_parts_used
+        : form.spare_parts_returned;
+
+    sparePartData.value.ids.forEach(id => {
+        const exists = target.find(p => p.id === id);
+        if (exists) {
+            exists.quantity += sparePartData.value.quantity;
+        } else {
+            target.push({ id: id, quantity: sparePartData.value.quantity });
+        }
+    });
+
+    sparePartDialogVisible.value = false;
+    sparePartData.value = { type: 'used', ids: [], quantity: 1, index: -1 };
+};
+const removeInstruction = (index, instructionId) => {
+    // 1. Récupérer les instructions actuelles
+    let currentInstructions = [];
+    try {
+        currentInstructions = typeof form.instructions === 'string'
+            ? JSON.parse(form.instructions)
+            : (form.instructions || []);
+    } catch (e) {
+        currentInstructions = [];
+    }
+
+    // 2. Supprimer l'élément à l'index donné
+    currentInstructions.splice(index, 1);
+
+    // 3. Mettre à jour le formulaire
+    form.instructions = JSON.stringify(currentInstructions);
+
+    // 4. Nettoyer la réponse associée dans instruction_answers pour ne pas envoyer de données inutiles
+    if (form.instruction_answers && form.instruction_answers[instructionId]) {
+        delete form.instruction_answers[instructionId];
+    }
+
+    toast.add({
+        severity: 'info',
+        summary: 'Instruction retirée',
+        detail: 'La liste a été mise à jour.',
+        life: 2000
+    });
 };
 </script>
 
@@ -664,6 +746,7 @@ const removeSparePartReturned = (index) => {
                                                 </div>
 
                                                 <div class="flex justify-content-end mt-4">
+
                                                     <Button
                                                         icon="pi pi-plus-circle"
                                                         label="Créer sous-activité"
@@ -778,221 +861,214 @@ const removeSparePartReturned = (index) => {
                             <p class="text-xl text-700">Aucune activité à afficher pour le moment.</p>
                             <p class="text-600">Revenez plus tard ou ajoutez une nouvelle tâche.</p>
                         </div>
-<Dialog
-    v-model:visible="equipmentDialog"
-    modal
-    :header="dialogTitle"
-    class="p-fluid"
-    :style="{ width: '50rem' }"
-    :breakpoints="{ '960px': '75vw', '641px': '90vw' }"
->
-    <div class="grid">
-        <div class="col-12 field">
-            <label for="parent_id" class="font-bold text-900">{{ t('equipments.dialog.parentLabel') }}</label>
-            <Dropdown
-                id="parent_id"
-                v-model="form.parent_id"
-                :options="parentEquipments"
-                optionLabel="designation"
-                optionValue="id"
-                :placeholder="t('equipments.dialog.parentPlaceholder')"
-                showClear
-                filter
-            />
-            <small class="p-error">{{ form.errors.parent_id }}</small>
-        </div>
-
-        <div v-if="!isChild" class="col-12 md:col-6 field">
-            <label for="tag" class="font-bold text-900">{{ t('equipments.dialog.tag') }}</label>
-            <InputText id="tag" v-model.trim="form.tag" :class="{ 'p-invalid': form.errors.tag }" />
-            <small class="p-error">{{ form.errors.tag }}</small>
-        </div>
-
-        <div :class="isChild ? 'col-12' : 'col-12 md:col-6'" class="field">
-            <label for="designation" class="font-bold text-900">{{ t('equipments.dialog.designation') }}</label>
-            <InputText id="designation" v-model.trim="form.designation" :class="{ 'p-invalid': form.errors.designation }" />
-            <small class="p-error">{{ form.errors.designation }}</small>
-        </div>
-
-        <div class="col-12 md:col-6 field">
-            <label for="equipment_type_id" class="font-bold text-900">{{ t('equipments.dialog.type') }}</label>
-            <div class="flex gap-2">
-                <Dropdown
-                    id="equipment_type_id"
-                    v-model="form.equipment_type_id"
-                    :options="equipmentTypes"
-                    optionLabel="name"
-                    optionValue="id"
-                    class="flex-grow-1"
-                    :placeholder="t('equipments.dialog.typePlaceholder')"
-                    :class="{ 'p-invalid': form.errors.equipment_type_id }"
-                />
-                <Button icon="pi pi-plus" severity="secondary" @click="openNewEquipmentType" :title="t('equipments.dialog.addType')" />
-            </div>
-            <small class="p-error">{{ form.errors.equipment_type_id }}</small>
-        </div>
-
-        <div class="col-12 md:col-6 field">
-            <label for="region_id" class="font-bold text-900">{{ t('equipments.dialog.region') }}</label>
-            <Dropdown id="region_id" v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('equipments.dialog.regionPlaceholder')" />
-            <small class="p-error">{{ form.errors.region_id }}</small>
-        </div>
-
-        <div class="col-12 md:col-4 field">
-            <label for="brand" class="font-bold text-900">{{ t('equipments.dialog.brand') }}</label>
-            <InputText id="brand" v-model.trim="form.brand" :class="{ 'p-invalid': form.errors.brand }" />
-            <small class="p-error">{{ form.errors.brand }}</small>
-        </div>
-
-        <div class="col-12 md:col-4 field">
-            <label for="model" class="font-bold text-900">{{ t('equipments.dialog.model') }}</label>
-            <InputText id="model" v-model.trim="form.model" :class="{ 'p-invalid': form.errors.model }" />
-            <small class="p-error">{{ form.errors.model }}</small>
-        </div>
-
-        <div v-if="showPuissance" class="col-12 md:col-4 field">
-            <label for="puissance" class="font-bold text-900">{{ t('equipments.dialog.power') }}</label>
-            <InputNumber id="puissance" v-model="form.puissance" suffix=" kW" :min="0" :class="{ 'p-invalid': form.errors.puissance }" />
-            <small class="p-error">{{ form.errors.puissance }}</small>
-        </div>
-
-        <div class="col-12 md:col-4 field">
-            <label for="serial_number" class="font-bold text-900">{{ t('equipments.dialog.serialNumber') }}</label>
-            <InputText id="serial_number" v-model.trim="form.serial_number" :class="{ 'p-invalid': form.errors.serial_number }" />
-            <small class="p-error">{{ form.errors.serial_number }}</small>
-        </div>
-
-        <div class="col-12 md:col-4 field">
-            <label for="price" class="font-bold text-900">{{ t('equipments.dialog.price') }}</label>
-            <InputNumber id="price" v-model="form.price" mode="currency" currency="EUR" locale="fr-FR" :class="{ 'p-invalid': form.errors.price }" />
-            <small class="p-error">{{ form.errors.price }}</small>
-        </div>
-
-        <div class="col-12 md:col-4 field">
-            <label for="status" class="font-bold text-900">{{ t('equipments.dialog.status') }}</label>
-            <Dropdown id="status" v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" :class="{ 'p-invalid': form.errors.status }" />
-            <small class="p-error">{{ form.errors.status }}</small>
-        </div>
-
-        <div v-if="isStockStatus" class="col-12 field">
-            <label for="quantity" class="font-bold text-900">{{ t('equipments.dialog.stockQuantity') }}</label>
-            <InputNumber id="quantity" v-model="form.quantity" :min="0" :class="{ 'p-invalid': form.errors.quantity }" />
-            <small class="p-error">{{ form.errors.quantity }}</small>
-        </div>
-
-        <div class="col-12 md:col-6 field">
-            <label for="purchase_date" class="font-bold text-900">{{ t('equipments.dialog.purchaseDate') }}</label>
-            <Calendar id="purchase_date" v-model="form.purchase_date" dateFormat="dd/mm/yy" showIcon :class="{ 'p-invalid': form.errors.purchase_date }" />
-            <small class="p-error">{{ form.errors.purchase_date }}</small>
-        </div>
-
-        <div class="col-12 md:col-6 field">
-            <label for="warranty_end_date" class="font-bold text-900">{{ t('equipments.dialog.warrantyEnd') }}</label>
-            <Calendar id="warranty_end_date" v-model="form.warranty_end_date" dateFormat="dd/mm/yy" showIcon :class="{ 'p-invalid': form.errors.warranty_end_date }" />
-            <small class="p-error">{{ form.errors.warranty_end_date }}</small>
-        </div>
-
-        <div class="col-12 field">
-            <label for="location" class="font-bold text-900">{{ t('equipments.dialog.location') }}</label>
-            <InputText id="location" v-model.trim="form.location" :class="{ 'p-invalid': form.errors.location }" />
-            <small class="p-error">{{ form.errors.location }}</small>
-        </div>
-
-        <div class="col-12">
-            <Divider align="left" type="solid">
-                <span class="font-bold">{{ t('equipments.dialog.characteristics') }}</span>
-            </Divider>
-
-            <div class="field mb-4">
-                <label for="label_id" class="font-bold text-900">{{ t('equipments.dialog.importCharacteristics') }}</label>
-                <Dropdown id="label_id" v-model="form.label_id" :options="labels" optionLabel="designation" optionValue="id" showClear filter />
-            </div>
-
-            <div v-for="(char, index) in form.characteristics" :key="index" class="flex flex-column md:flex-row gap-2 mb-3 align-items-start border-bottom-1 surface-border pb-3">
-                <div class="flex-grow-1">
-                    <InputText v-model="char.name" :placeholder="t('equipments.dialog.characteristicNamePlaceholder')" class="w-full" :class="{ 'p-invalid': form.errors[`characteristics.${index}.name`] }" />
-                    <small class="p-error" v-if="form.errors[`characteristics.${index}.name`]">{{ form.errors[`characteristics.${index}.name`] }}</small>
+<template>
+    <Dialog
+        v-model:visible="activityDialogVisible"
+        modal
+        class="quantum-dialog w-full max-w-7xl overflow-hidden"
+        :closable="false"
+        :pt="{
+            mask: { style: 'backdrop-filter: blur(6px)' },
+            content: { class: 'p-0 rounded-3xl border-none shadow-2xl' }
+        }"
+    >
+        <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+            <div class="flex items-center gap-4">
+                <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                    <i :class="[isCreatingSubActivity ? 'pi pi-plus-circle' : 'pi pi-shield', 'text-blue-400 text-xl']"></i>
                 </div>
-
-                <div class="w-full md:w-12rem">
-                    <Dropdown v-model="char.type" :options="characteristicTypes" optionLabel="label" optionValue="value" class="w-full" />
+                <div class="flex flex-col">
+                    <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">
+                        {{ isCreatingSubActivity ? 'Initialisation Sous-Activité' : 'Rapport Technique d\'Intervention' }}
+                    </h2>
+                    <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">
+                        Console d'administration GMAO v2025 • High-Performance System
+                    </span>
                 </div>
+            </div>
+            <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
+        </div>
 
-                <div class="flex-grow-2 w-full">
-                    <InputText v-if="char.type === 'text'" v-model="char.value" class="w-full" />
-                    <InputNumber v-else-if="char.type === 'number'" v-model="char.value" class="w-full" />
-                    <Calendar v-else-if="char.type === 'date'" v-model="char.value" dateFormat="dd/mm/yy" class="w-full" />
-                    <InputSwitch v-else-if="char.type === 'boolean'" v-model="char.value" />
+        <div class="p-6 bg-white max-h-[80vh] overflow-y-auto scroll-smooth">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
 
-                    <div v-else-if="char.type === 'file'" class="flex flex-column gap-2">
-                        <input type="file" @change="char.value = $event.target.files[0]" class="p-inputtext p-2 border-1 surface-border border-round" />
-                        <a v-if="typeof char.value === 'string'" :href="`/storage/${char.value}`" target="_blank" class="text-primary font-medium">
-                            <i class="pi pi-download mr-1"></i> {{ char.value.split('/').pop() }}
-                        </a>
+                <div class="md:col-span-7 space-y-8">
+
+                    <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                        <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-4 italic">Resolution & Technical Actions</label>
+                        <Textarea v-model="form.problem_resolution_description" rows="6"
+                            class="w-full p-4 rounded-2xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 text-sm shadow-inner"
+                            placeholder="Décrivez précisément les interventions effectuées..." />
+
+                        <div class="grid grid-cols-2 gap-4 mt-4">
+                            <div class="field">
+                                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Recommandations</label>
+                                <Textarea v-model="form.proposals" rows="3" class="w-full text-xs rounded-xl border-slate-200" />
+                            </div>
+                            <div class="field">
+                                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Notes Internes</label>
+                                <Textarea v-model="form.additional_information" rows="3" class="w-full text-xs rounded-xl border-slate-200" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 border-2 border-dashed border-slate-200 rounded-[2rem]">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xs font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
+                                <i class="pi pi-list-check"></i> Checklist de Conformité
+                            </h3>
+                            <Tag :value="`${getAvailableInstructions.length} points`" severity="info" rounded />
+                        </div>
+
+                        <div class="flex gap-2 mb-6 p-2 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                            <InputText v-model="newInstruction.label" placeholder="Nouvelle consigne..." class="flex-grow p-inputtext-sm border-none bg-transparent" />
+                            <Dropdown v-model="newInstruction.type" :options="instructionTypes" optionLabel="label" optionValue="value" class="w-36 p-inputtext-sm" />
+                            <Button icon="pi pi-plus" severity="indigo" class="p-button-sm rounded-lg" @click="addNewInstructionToForm" />
+                        </div>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-for="(instruction, index) in getAvailableInstructions" :key="instruction.id"
+         class="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-red-200 transition-all group relative">
+
+        <button
+            @click="removeInstruction(index, instruction.id)"
+            class="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg flex items-center justify-center z-10"
+            title="Supprimer cette consigne"
+        >
+            <i class="pi pi-times text-[10px]"></i>
+        </button>
+
+        <span class="text-[9px] font-black text-slate-400 uppercase block mb-2 tracking-tighter">
+            {{ instruction.label }}
+            <Tag v-if="instruction.is_custom" value="Custom" severity="warning" class="scale-75 origin-left ml-2" />
+        </span>
+
+        <div class="instruction-input">
+            <InputText v-if="instruction.type === 'text'" v-model="form.instruction_answers[instruction.id]" class="w-full p-inputtext-sm border-none bg-slate-50 rounded-lg" />
+            <InputNumber v-else-if="instruction.type === 'number'" v-model="form.instruction_answers[instruction.id]" class="w-full p-inputtext-sm border-none bg-slate-50 rounded-lg" />
+            <SelectButton v-else-if="instruction.type === 'boolean'" v-model="form.instruction_answers[instruction.id]"
+                         :options="[{label:'OUI', value:'1'}, {label:'NON', value:'0'}]" optionLabel="label" optionValue="value" class="v11-select-sm" />
+            <Calendar v-else-if="instruction.type === 'date'" v-model="form.instruction_answers[instruction.id]" class="w-full" />
+            <Textarea v-else-if="instruction.type === 'textarea'" v-model="form.instruction_answers[instruction.id]" rows="2" class="w-full text-xs border-none bg-slate-50 rounded-lg" />
+        </div>
+    </div>
+</div>
                     </div>
                 </div>
 
-                <Button icon="pi pi-trash" severity="danger" text rounded @click="removeCharacteristic(index)" :disabled="form.characteristics.length === 1" />
+                <div class="md:col-span-5 space-y-6">
+
+                    <div class="p-6 bg-slate-900 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
+                        <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mb-6 text-blue-300 italic">Configuration Mission</h4>
+
+                        <div class="space-y-4">
+                            <div class="field">
+                                <label class="text-[8px] font-bold uppercase opacity-50 mb-1 block">Status</label>
+                                <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value"
+                                          class="w-full bg-white/5 border-white/10 text-white rounded-xl text-sm" />
+                            </div>
+                            <div class="field">
+                                <label class="text-[8px] font-bold uppercase opacity-50 mb-1 block">Technicien Assigné</label>
+                                <Dropdown v-model="form.user_id" :options="props.users" optionLabel="name" optionValue="id"
+                                          filter class="w-full bg-white/5 border-white/10 text-white rounded-xl text-sm" />
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 pt-2">
+                                <div class="field">
+                                    <label class="text-[8px] font-bold uppercase text-blue-400">Début Réel</label>
+                                    <Calendar v-model="form.actual_start_time" showTime hourFormat="24" class="quantum-calendar-dark" />
+                                </div>
+                                <div class="field">
+                                    <label class="text-[8px] font-bold uppercase text-orange-400">Fin Réelle</label>
+                                    <Calendar v-model="form.actual_end_time" showTime hourFormat="24" class="quantum-calendar-dark" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="p-6 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-[10px] font-black uppercase text-slate-500 tracking-widest">📦 Sorties Stock</h4>
+                                <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('used')" />
+                            </div>
+                            <div class="space-y-2 max-h-40 overflow-y-auto">
+                                <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl text-[11px] font-bold group">
+                                    <span class="bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black text-[9px]">x{{ part.quantity }}</span>
+                                    <span class="flex-grow truncate">{{ getSparePartReference(part.id) }}</span>
+                                    <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePartUsed(idx)"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-6 bg-emerald-50/50 border border-emerald-100 rounded-[2.5rem] shadow-sm">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest">🔄 Retours Magasin</h4>
+                                <Button icon="pi pi-plus" rounded severity="success" size="small" @click="openSparePartDialog('returned')" />
+                            </div>
+                            <div class="space-y-2 max-h-40 overflow-y-auto">
+                                <div v-for="(part, idx) in form.spare_parts_returned" :key="idx" class="flex items-center gap-3 p-3 bg-white rounded-2xl text-[11px] font-bold group border border-emerald-100">
+                                    <span class="bg-emerald-500 text-white px-2 py-0.5 rounded-lg font-black text-[9px]">x{{ part.quantity }}</span>
+                                    <span class="flex-grow truncate">{{ getSparePartReference(part.id) }}</span>
+                                    <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePartReturned(idx)"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 bg-slate-100 rounded-[2.5rem] border border-slate-200">
+                        <label class="text-[9px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Impact Financier Estimé</label>
+                        <div class="text-4xl font-black text-slate-900 tracking-tighter">
+                            {{ serviceOrderCost.toLocaleString() }} <small class="text-xs font-bold opacity-40">XOF</small>
+                        </div>
+                        <InputText v-model="form.service_order_description" placeholder="Libellé facturation..." class="mt-4 p-inputtext-sm w-full bg-white/50 border-none" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+                <Button label="Annuler" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
+                <Button :label="isCreatingSubActivity ? 'Créer Sous-Activité' : 'Publier le Rapport'"
+                        icon="pi pi-check-circle" severity="indigo"
+                        class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs"
+                        @click="saveActivity" :loading="form.processing" />
+            </div>
+        </template>
+    </Dialog>
+
+    <Dialog v-model:visible="sparePartDialogVisible" modal :closable="false"
+            class="quantum-dialog w-full max-w-md shadow-2xl"
+            :pt="{ mask: { style: 'backdrop-filter: blur(8px)' }, content: { class: 'p-0 rounded-[2rem] overflow-hidden' } }">
+
+        <div class="p-6 bg-slate-900 text-white flex items-center gap-4">
+            <i class="pi pi-box text-blue-400 text-xl"></i>
+            <h2 class="text-xs font-black uppercase tracking-widest">
+                {{ sparePartData.type === 'used' ? 'Sortie Matériel' : 'Réintégration Stock' }}
+            </h2>
+        </div>
+
+        <div class="p-8 space-y-6 bg-white">
+            <div class="field">
+                <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">Référence(s)</label>
+                <MultiSelect v-if="sparePartData.index === -1" v-model="sparePartData.ids" :options="sparePartOptions" optionLabel="label" optionValue="value" filter display="chip" placeholder="Rechercher une pièce..." class="w-full" />
+                <Dropdown v-else v-model="sparePartData.ids[0]" :options="sparePartOptions" optionLabel="label" optionValue="value" filter class="w-full" />
+
             </div>
 
-            <Button :label="t('equipments.dialog.addCharacteristic')" icon="pi pi-plus" text @click="addCharacteristic" :disabled="isChild" class="mt-2" />
-        </div>
-    </div>
-
-    <template #footer>
-        <Button :label="t('equipments.dialog.cancel')" icon="pi pi-times" text @click="hideDialog" />
-        <Button :label="t('equipments.dialog.save')" icon="pi pi-check" @click="saveEquipment" :loading="form.processing" />
-    </template>
-</Dialog>
-                      <Dialog v-model:visible="sparePartDialogVisible" modal
-        :header="sparePartData.index === -1 ? 'Ajouter des Ressources' : 'Modifier la Ressource'"
-        class="quantum-dialog w-full max-w-lg"
-        :pt="{
-            mask: { style: 'backdrop-filter: blur(4px)' },
-            header: { class: 'p-6 bg-slate-50 border-b border-slate-100' }
-        }">
-
-    <div class="p-6 space-y-6">
-        <div class="p-4 bg-indigo-50 border-2 border-indigo-100 rounded-2xl flex items-center gap-4">
-            <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-200">
-                <i class="pi pi-search text-white"></i>
-            </div>
-            <div class="flex-1">
-                <label class="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-1">Catalogue Pièces</label>
-
-                <MultiSelect v-if="sparePartData.index === -1" v-model="sparePartData.ids" :options="sparePartOptions"
-                             optionLabel="label" optionValue="value" placeholder="Rechercher une référence..."
-                             filter display="chip" class="w-full border-none bg-transparent shadow-none" />
-
-                <Dropdown v-else v-model="sparePartData.ids[0]" :options="sparePartOptions"
-                          optionLabel="label" optionValue="value" filter
-                          class="w-full border-none bg-transparent shadow-none" />
+            <div class="field">
+                <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">Quantité Unitaire</label>
+                <InputNumber v-model="sparePartData.quantity" showButtons :min="1" buttonLayout="horizontal" class="w-full" />
             </div>
         </div>
 
-        <div class="space-y-2">
-            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1 text-center">Quantité Requis</label>
-            <div class="flex items-center justify-center gap-4">
-                <Button icon="pi pi-minus" class="p-button-rounded p-button-outlined p-button-secondary border-slate-200"
-                        @click="sparePartData.quantity > 1 ? sparePartData.quantity-- : null" />
-
-                <InputNumber v-model="sparePartData.quantity" class="text-center w-32" :min="1"
-                             inputClass="text-center text-2xl font-black text-slate-800 border-none shadow-none" />
-
-                <Button icon="pi pi-plus" class="p-button-rounded p-button-outlined p-button-secondary border-slate-200"
-                        @click="sparePartData.quantity++" />
-            </div>
+        <div class="p-4 bg-slate-50 flex gap-3 border-t">
+            <Button label="Fermer" text severity="secondary" class="flex-1 font-bold text-xs" @click="sparePartDialogVisible = false" />
+            <Button label="Valider" severity="indigo" class="flex-1 font-bold text-xs rounded-xl shadow-lg shadow-indigo-100" @click="saveSparePart" />
         </div>
-    </div>
-
-    <template #footer>
-        <div class="flex gap-2 p-2">
-            <Button label="Annuler" class="p-button-text p-button-secondary flex-1" @click="sparePartDialogVisible = false" />
-            <Button label="Valider l'Ajout" icon="pi pi-check" class="p-button-indigo flex-1 h-12 rounded-xl shadow-lg shadow-indigo-100" @click="saveSparePart" />
-        </div>
-    </template>
-</Dialog>
-
+    </Dialog>
+</template>
                     </template>
                 </Card>
             </div>
@@ -1000,6 +1076,24 @@ const removeSparePartReturned = (index) => {
     </AppLayout>
 </template>
 <style scoped>
+    .quantum-calendar-dark :deep(.p-inputtext) {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: none;
+    color: white;
+    font-size: 0.8rem;
+    padding: 0.5rem;
+}
+.quantum-selectbutton :deep(.p-button) {
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+.p-button-indigo {
+    background: #4f46e5;
+    border: none;
+}
+.p-button-indigo:hover {
+    background: #4338ca;
+}
 /* Styles personnalisés pour la Timeline si nécessaire */
 .timeline-left :deep(.p-timeline-event-opposite) {
     flex: 0;

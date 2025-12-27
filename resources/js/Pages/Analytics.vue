@@ -181,7 +181,7 @@ const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { 
             <header class="flex justify-between items-end mb-8">
                 <div>
                     <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
-                        Quantum <span class="text-indigo-600">Architect</span>
+                        Repporting <span class="text-primary-600">Data</span>
                     </h1>
                     <p class="text-slate-500 text-xs font-medium">Reporting Haute Fidélité v11.5</p>
                 </div>
@@ -253,10 +253,10 @@ const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { 
 
 <style scoped>
 .card-v11 { @apply bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-all duration-300 relative; }
-.card-v11:hover { @apply border-indigo-300 -translate-y-1 shadow-lg; }
-.card-v11.active { @apply border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/10; }
+.card-v11:hover { @apply border-primary-300 -translate-y-1 shadow-lg; }
+.card-v11.active { @apply border-primary-600 bg-primary-50/50 ring-2 ring-primary-500/10; }
 .icon-box { @apply w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400; }
-.active .icon-box { @apply bg-indigo-600 text-white shadow-lg; }
+.active .icon-box { @apply bg-primary-600 text-white shadow-lg; }
 .content .title { @apply block text-sm font-bold text-slate-800 truncate w-32; }
 .content .subtitle { @apply block text-[10px] text-slate-400 font-medium uppercase mt-0.5; }
 .viewport-container { @apply bg-slate-200/50 rounded-[2rem] p-10 min-h-[800px] border border-slate-200/60 flex justify-center; }
