@@ -5,6 +5,7 @@ import { Head, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
+import { useI18n } from 'vue-i18n';
 
 // Importations ajoutées pour la sélection de colonnes et l'export
 import OverlayPanel from 'primevue/overlaypanel';
@@ -20,6 +21,7 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Tag from 'primevue/tag';
 import TreeSelect from 'primevue/treeselect';
+import Checkbox from 'primevue/checkbox';
 
 const props = defineProps({
     maintenances: Object,
@@ -37,6 +39,7 @@ const props = defineProps({
 });
 const toast = useToast();
 const confirm = useConfirm();
+const { t } = useI18n();
 
 const maintenanceDialog = ref(false);
 const submitted = ref(false);
@@ -47,22 +50,22 @@ const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonne
 
 // Colonnes pour la sélection
 const allColumns = ref([
-    { field: 'title', header: 'Titre' },
-    { field: 'equipments', header: 'Équipement(s)' },
-    { field: 'assignable', header: 'Assigné à' },
-    { field: 'status', header: 'Statut' },
-    { field: 'priority', header: 'Priorité' },
-    { field: 'scheduled_start_date', header: 'Début Planifié' },
-    { field: 'description', header: 'Description' },
-    { field: 'estimated_duration', header: 'Durée Estimée' },
-    { field: 'cost', header: 'Coût' },
-    { field: 'region.designation', header: 'Région' },
-    { field: 'recurrence_type', header: 'Récurrence' },
-    { field: 'recurrence_interval', header: 'Intervalle Récurrence' },
-    { field: 'recurrence_month_interval', header: 'Intervalle Mois' },
-    { field: 'recurrence_days', header: 'Jours Récurrence' },
-    { field: 'recurrence_day_of_month', header: 'Jour du Mois' },
-    { field: 'recurrence_month', header: 'Mois Récurrence' },
+    { field: 'title', header: t('maintenances.columns.title') },
+    { field: 'equipments', header: t('maintenances.columns.equipments') },
+    { field: 'assignable', header: t('maintenances.columns.assignable') },
+    { field: 'status', header: t('maintenances.columns.status') },
+    { field: 'priority', header: t('maintenances.columns.priority') },
+    { field: 'scheduled_start_date', header: t('maintenances.columns.scheduled_start_date') },
+    { field: 'description', header: t('maintenances.columns.description') },
+    { field: 'estimated_duration', header: t('maintenances.columns.estimated_duration') },
+    { field: 'cost', header: t('maintenances.columns.cost') },
+    { field: 'region.designation', header: t('maintenances.columns.region') },
+    { field: 'recurrence_type', header: t('maintenances.columns.recurrence_type') },
+    { field: 'recurrence_interval', header: t('maintenances.columns.recurrence_interval') },
+    { field: 'recurrence_month_interval', header: t('maintenances.columns.recurrence_month_interval') },
+    { field: 'recurrence_days', header: t('maintenances.columns.recurrence_days') },
+    { field: 'recurrence_day_of_month', header: t('maintenances.columns.recurrence_day_of_month') },
+    { field: 'recurrence_month', header: t('maintenances.columns.recurrence_month') },
 ]);
 const visibleColumns = ref(allColumns.value.slice(0, 5).map(col => col.field)); // Affiche les 5 premières par défaut
 
@@ -89,14 +92,14 @@ const selectedMaintenanceForActivity = ref(null);
 
 // --- HARMONISATION DU STATUT ICI ---
 const activityStatusOptions = ref([
-    { label: 'Planifiée', value: 'scheduled' },
-    { label: 'En cours', value: 'in_progress' },
-    { label: 'Terminée', value: 'completed' },
-    { label: 'Terminée avec problèmes', value: 'completed_with_issues' },
-    { label: 'Suspendue', value: 'suspended' },
-    { label: 'Annulée', value: 'canceled' },
-    { label: 'En attente de ressources', value: 'awaiting_resources' },
-    { label: 'À revoir plus tard', value: 'to_be_reviewed_later' },
+    { label: t('maintenances.status.scheduled'), value: 'scheduled' },
+    { label: t('maintenances.status.in_progress'), value: 'in_progress' },
+    { label: t('maintenances.status.completed'), value: 'completed' },
+    { label: t('maintenances.status.completed_with_issues'), value: 'completed_with_issues' },
+    { label: t('maintenances.status.suspended'), value: 'suspended' },
+    { label: t('maintenances.status.canceled'), value: 'canceled' },
+    { label: t('maintenances.status.awaiting_resources'), value: 'awaiting_resources' },
+    { label: t('maintenances.status.to_be_reviewed_later'), value: 'to_be_reviewed_later' },
 ]);
 
 const activityCreationForm = useForm({
@@ -108,7 +111,7 @@ const activityCreationForm = useForm({
 const addActivityToForm = () => {
     activityCreationForm.activities.push({
         // --- NOUVEAUX CHAMPS ---
-        title: `Activité pour: ${selectedMaintenanceForActivity.value?.title || ''}`,
+        title: `${t('maintenances.activityDialog.newActivity')} ${selectedMaintenanceForActivity.value?.title || ''}`,
         status: 'scheduled', // --- HARMONISATION DU STATUT ICI ---
         assignable_type: null, // Pour choisir entre Technicien/Équipe
         assignable_id: null,
@@ -149,22 +152,22 @@ const form = useForm({
 // Options pour les listes déroulantes
 const maintenanceTypes = ref(['Préventive', 'Corrective', 'Améliorative', 'Périodique']);
 // --- HARMONISATION DU STATUT ICI ---
-const maintenanceStatuses = ref([
-    { label: 'Planifiée', value: 'scheduled' },
-    { label: 'En cours', value: 'in_progress' },
-    { label: 'Terminée', value: 'completed' },
-    { label: 'Terminée avec problèmes', value: 'completed_with_issues' },
-    { label: 'Suspendue', value: 'suspended' },
-    { label: 'Annulée', value: 'canceled' },
-    { label: 'En attente de ressources', value: 'awaiting_resources' },
-    { label: 'À revoir plus tard', value: 'to_be_reviewed_later' },
+const maintenanceStatuses = computed(() => [
+    { label: t('maintenances.status.scheduled'), value: 'scheduled' },
+    { label: t('maintenances.status.in_progress'), value: 'in_progress' },
+    { label: t('maintenances.status.completed'), value: 'completed' },
+    { label: t('maintenances.status.completed_with_issues'), value: 'completed_with_issues' },
+    { label: t('maintenances.status.suspended'), value: 'suspended' },
+    { label: t('maintenances.status.canceled'), value: 'canceled' },
+    { label: t('maintenances.status.awaiting_resources'), value: 'awaiting_resources' },
+    { label: t('maintenances.status.to_be_reviewed_later'), value: 'to_be_reviewed_later' },
 ]);
 
-const maintenancePriorities = ref(['Basse', 'Moyenne', 'Haute', 'Urgente']);
+const maintenancePriorities = computed(() => [t('maintenances.priority.low'), t('maintenances.priority.medium'), t('maintenances.priority.high'), t('maintenances.priority.urgent')]);
 const assignableTypes = ref([
-    { label: 'Aucun', value: null },
-    { label: 'Technicien', value: 'App\\Models\\User' },
-    { label: 'Équipe', value: 'App\\Models\\Team' },
+    { label: t('maintenances.assignableTypes.none'), value: null },
+    { label: t('maintenances.assignableTypes.user'), value: 'App\\Models\\User' },
+    { label: t('maintenances.assignableTypes.team'), value: 'App\\Models\\Team' },
     // { label: 'Sous-traitant', value: 'App\\Models\\Subcontractor' },
 ]);
 
@@ -184,14 +187,14 @@ const assignables = computed(() => {
 
 // Options pour la récurrence
 const recurrenceTypes = ref([
-    { label: 'Aucune', value: null },
-    { label: 'Quotidienne', value: 'daily' },
-    { label: 'Hebdomadaire', value: 'weekly' },
-    { label: 'Mensuelle', value: 'monthly' },
-    { label: 'Trimestrielle', value: 'quarterly' },
-    { label: 'Semestrielle', value: 'biannual' },
-    { label: 'Annuelle', value: 'annual' },
-    { label: 'Personnalisée', value: 'custom' },
+    { label: t('maintenances.recurrence.none'), value: null },
+    { label: t('maintenances.recurrence.daily'), value: 'daily' },
+    { label: t('maintenances.recurrence.weekly'), value: 'weekly' },
+    { label: t('maintenances.recurrence.monthly'), value: 'monthly' },
+    { label: t('maintenances.recurrence.quarterly'), value: 'quarterly' },
+    { label: t('maintenances.recurrence.biannual'), value: 'biannual' },
+    { label: t('maintenances.recurrence.annual'), value: 'annual' },
+    { label: t('maintenances.recurrence.custom'), value: 'custom' },
 ]);
 const daysOfWeek = ref([
     { label: 'Lundi', value: 1 }, { label: 'Mardi', value: 2 }, { label: 'Mercredi', value: 3 },
@@ -332,7 +335,7 @@ const editMaintenance = (maintenance) => {
 
 const saveMaintenance = () => {
     submitted.value = true;
-    if (!form.title || !form.related_equipments || !form.type) {
+    if (!form.title || Object.keys(form.related_equipments).length === 0 || !form.type) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez remplir les champs obligatoires.', life: 3000 });
         return;
     }
@@ -513,7 +516,7 @@ const getPrioritySeverity = (priority) => {
     return severities[priority] || null;
 };
 
-const dialogTitle = computed(() => editing.value ? 'Modifier la Maintenance' : 'Créer une nouvelle Maintenance');
+const dialogTitle = computed(() => editing.value ? t('maintenances.formDialog.editTitle') : t('maintenances.formDialog.createTitle'));
 
 // Récupère les nœuds pour lesquels on peut configurer des instructions.
 // Si un parent est sélectionné, on prend ses enfants.
@@ -581,7 +584,7 @@ const groupedConfigurableNodes = computed(() => {
     configurableNodes.value.forEach(node => {
         const parent = findParent(transformedEquipmentTree.value, node.key);
         const parentKey = parent ? parent.key : 'root'; // 'root' pour les orphelins
-        const parentLabel = parent ? parent.label : 'Équipements de premier niveau';
+        const parentLabel = parent ? parent.label : t('maintenances.formDialog.parentGroupLabel');
 
         if (!groups.has(parentKey)) {
             groups.set(parentKey, { parent: { key: parentKey, label: parentLabel }, children: [] });
@@ -794,7 +797,7 @@ const transformedEquipmentTree = computed(() => {
 </script>
 
 <template>
-    <AppLayout title="Gestion des Maintenances">
+    <AppLayout :title="t('maintenances.title')">
 
         <Head title="Maintenances" />
 
@@ -809,17 +812,17 @@ const transformedEquipmentTree = computed(() => {
                         <i class="pi pi-wrench text-2xl text-white"></i>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-black tracking-tighter text-slate-900 md:text-4xl">Plan de Maintenance</h1>
-                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Opérations préventives & correctives</p>
+                        <h1 class="text-3xl font-black tracking-tighter text-slate-900 md:text-4xl">{{ t('maintenances.headTitle') }}</h1>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ t('maintenances.subtitle') }}</p>
                     </div>
                 </div>
 
                 <div class="flex w-full items-center gap-3 lg:w-auto">
                     <button @click="exportCSV" class="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-emerald-600 shadow-sm transition-all hover:bg-emerald-50 active:scale-95 lg:flex-none">
-                        <i class="pi pi-file-excel"></i> Export Excel
+                        <i class="pi pi-file-excel"></i> {{ t('maintenances.exportExcel') }}
                     </button>
                     <button @click="openNew" class="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 lg:flex-none">
-                        <i class="pi pi-plus-circle"></i> Nouvelle Maintenance
+                        <i class="pi pi-plus-circle"></i> {{ t('maintenances.new') }}
                     </button>
                 </div>
             </div>
@@ -827,13 +830,13 @@ const transformedEquipmentTree = computed(() => {
             <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[2.5rem] border border-white bg-white/50 p-4 shadow-sm backdrop-blur-md">
                 <div class="relative flex-1 min-w-[280px]">
                     <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input v-model="searchFilter" type="text" placeholder="Rechercher une maintenance..." @input="applyFilters"
+                    <input v-model="searchFilter" type="text" :placeholder="t('maintenances.searchPlaceholder')" @input="applyFilters"
                            class="w-full rounded-2xl border-none bg-white py-3 pl-12 text-sm font-semibold shadow-inner focus:ring-2 focus:ring-indigo-500/20" />
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <Button icon="pi pi-filter-slash" text @click="applyFilters" class="h-12 w-12 !text-slate-400 hover:!text-red-500" v-tooltip.bottom="'Réinitialiser'" />
-                    <Button icon="pi pi-columns" text @click="toggleColumnSelection" class="h-12 w-12 !text-slate-400 hover:!text-indigo-500" v-tooltip.bottom="'Choisir les colonnes'" />
+                    <Button icon="pi pi-filter-slash" text @click="applyFilters" class="h-12 w-12 !text-slate-400 hover:!text-red-500" v-tooltip.bottom="t('maintenances.resetTooltip')" />
+                    <Button icon="pi pi-columns" text @click="toggleColumnSelection" class="h-12 w-12 !text-slate-400 hover:!text-indigo-500" v-tooltip.bottom="t('maintenances.columnsTooltip')" />
                 </div>
             </div>
 
@@ -843,7 +846,7 @@ const transformedEquipmentTree = computed(() => {
 
                     <Column selectionMode="multiple" headerStyle="width: 4rem" class="pl-8"></Column>
 
-                    <Column v-if="visibleColumns.includes('title')" header="Titre de la maintenance" minWidth="300px">
+                    <Column v-if="visibleColumns.includes('title')" :header="t('maintenances.columns.title')" minWidth="300px">
                         <template #body="{ data }">
                             <div class="group flex cursor-pointer items-center gap-4 py-2" @click="editMaintenance(data)">
                                 <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 transition-all group-hover:bg-blue-100 text-blue-500">
@@ -857,7 +860,7 @@ const transformedEquipmentTree = computed(() => {
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('equipments')" header="Équipement(s)" minWidth="250px">
+                    <Column v-if="visibleColumns.includes('equipments')" :header="t('maintenances.columns.equipments')" minWidth="250px">
                         <template #body="slotProps">
                             <div v-if="slotProps.data.equipments?.length" class="flex flex-wrap gap-1">
                                 <Tag v-for="equipment in slotProps.data.equipments" :key="equipment.id" :value="equipment.designation" class="!bg-slate-200 !text-slate-700 !font-bold" />
@@ -865,7 +868,7 @@ const transformedEquipmentTree = computed(() => {
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('assignable')" field="assignable.name" header="Assigné à" minWidth="200px">
+                    <Column v-if="visibleColumns.includes('assignable')" field="assignable.name" :header="t('maintenances.columns.assignable')" minWidth="200px">
                         <template #body="slotProps">
                             <div v-if="slotProps.data.assignable" class="flex w-fit items-center gap-3 rounded-full bg-slate-50 p-1 pr-4 border border-slate-100">
                                 <Avatar :label="slotProps.data.assignable.name[0]" shape="circle" class="!bg-slate-900 !text-white !font-black" />
@@ -874,49 +877,48 @@ const transformedEquipmentTree = computed(() => {
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('status')" field="status" header="Statut" minWidth="150px">
+                    <Column v-if="visibleColumns.includes('status')" field="status" :header="t('maintenances.columns.status')" minWidth="150px">
                         <template #body="slotProps">
                             <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" />
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('priority')" field="priority" header="Priorité" minWidth="150px">
+                    <Column v-if="visibleColumns.includes('priority')" field="priority" :header="t('maintenances.columns.priority')" minWidth="150px">
                         <template #body="slotProps">
                             <Tag :value="slotProps.data.priority" :severity="getPrioritySeverity(slotProps.data.priority)" />
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('scheduled_start_date')" field="scheduled_start_date" header="Début Planifié" minWidth="200px">
+                    <Column v-if="visibleColumns.includes('scheduled_start_date')" field="scheduled_start_date" :header="t('maintenances.columns.scheduled_start_date')" minWidth="200px">
                         <template #body="slotProps">
                             <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded-md">{{ new Date(slotProps.data.scheduled_start_date).toLocaleString() }}</span>
                         </template>
                     </Column>
 
                     <!-- Colonnes additionnelles cachées par défaut -->
-                    <Column v-if="visibleColumns.includes('type')" field="type" header="Type" :sortable="true" style="min-width: 10rem;"></Column>
-                    <Column v-if="visibleColumns.includes('description')" field="description" header="Description" :sortable="true" style="min-width: 15rem;"></Column>
-                    <Column v-if="visibleColumns.includes('estimated_duration')" field="estimated_duration" header="Durée Estimée" :sortable="true" style="min-width: 10rem;">
+                    <Column v-if="visibleColumns.includes('type')" field="type" :header="t('maintenances.columns.type')" :sortable="true" style="min-width: 10rem;"></Column>
+                    <Column v-if="visibleColumns.includes('description')" field="description" :header="t('maintenances.columns.description')" :sortable="true" style="min-width: 15rem;"></Column>
+                    <Column v-if="visibleColumns.includes('estimated_duration')" field="estimated_duration" :header="t('maintenances.columns.estimated_duration')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
                             {{ slotProps.data.estimated_duration }} min
                         </template>
                     </Column>
-                    <Column v-if="visibleColumns.includes('cost')" field="cost" header="Coût" :sortable="true" style="min-width: 10rem;">
+                    <Column v-if="visibleColumns.includes('cost')" field="cost" :header="t('maintenances.columns.cost')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
                             {{ slotProps.data.cost }} XOF
                         </template>
                     </Column>
-                    <Column v-if="visibleColumns.includes('region.designation')" field="region.designation" header="Région" :sortable="true" style="min-width: 10rem;">
+                    <Column v-if="visibleColumns.includes('region.designation')" field="region.designation" :header="t('maintenances.columns.region')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
                             {{ slotProps.data.region ? slotProps.data.region.designation : 'N/A' }}
                         </template>
                     </Column>
-                    <Column v-if="visibleColumns.includes('recurrence_type')" field="recurrence_type" header="Récurrence" :sortable="true" style="min-width: 10rem;">
+                    <Column v-if="visibleColumns.includes('recurrence_type')" field="recurrence_type" :header="t('maintenances.columns.recurrence_type')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
                             {{ slotProps.data.recurrence_type || 'Aucune' }}
                         </template>
                     </Column>
-
-                    <Column header="Actions" alignFrozen="right" frozen class="pr-8">
+                    <Column :header="t('maintenances.columns.actions')" alignFrozen="right" frozen class="pr-8">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
                                 <Button icon="pi pi-pencil" text rounded @click="editMaintenance(data)" class="!text-slate-400 hover:!bg-indigo-50 hover:!text-indigo-600 transition-all" />
@@ -928,14 +930,14 @@ const transformedEquipmentTree = computed(() => {
                 </DataTable>
 
                 <OverlayPanel ref="op" appendTo="body" id="column_op" class="p-4">
-                    <div class="font-semibold mb-3">Sélectionner les colonnes :</div>
+                    <div class="font-semibold mb-3">{{ t('maintenances.columnSelector.title') }}</div>
                     <MultiSelect
                         v-model="visibleColumns"
                         :options="allColumns"
                         optionLabel="header"
                         optionValue="field"
                         display="chip"
-                        placeholder="Choisir les colonnes"
+                        :placeholder="t('maintenances.columnSelector.placeholder')"
                         class="w-full max-w-xs"  />
                 </OverlayPanel>
             </div>
@@ -946,7 +948,7 @@ const transformedEquipmentTree = computed(() => {
 
         <!-- NOUVEAU : Dialogue de création d'activités -->
         <Dialog v-model:visible="activityCreationDialog" modal
-        header="Système de Planification d'Activités"
+        :header="t('maintenances.activityDialog.title')"
         class="v12-enterprise-dialog w-full max-w-7xl"
         :pt="{
             root: { class: 'border-none shadow-2xl' },
@@ -960,8 +962,8 @@ const transformedEquipmentTree = computed(() => {
                 <i class="pi pi-layers text-white text-xs"></i>
             </div>
             <div>
-                <h2 class="text-sm font-bold text-slate-900 leading-none">Batch Activity Manager</h2>
-                <p class="text-[10px] text-slate-500 font-medium mt-1 uppercase tracking-wider">Version 12.0 • Enterprise Asset Management</p>
+                <h2 class="text-sm font-bold text-slate-900 leading-none">{{ t('maintenances.activityDialog.batchManagerTitle') }}</h2>
+                <p class="text-[10px] text-slate-500 font-medium mt-1 uppercase tracking-wider">{{ t('maintenances.activityDialog.batchManagerSubtitle') }}</p>
             </div>
         </div>
     </template>
@@ -971,7 +973,7 @@ const transformedEquipmentTree = computed(() => {
         <div class="bg-slate-900 px-6 py-4 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-6">
                 <div class="space-y-1">
-                    <span class="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Maintenance Parente</span>
+                    <span class="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">{{ t('maintenances.activityDialog.parentMaintenance') }}</span>
                     <h3 class="text-white text-sm font-bold flex items-center gap-2">
                         {{ selectedMaintenanceForActivity.title }}
                         <i class="pi pi-external-link text-[10px] text-slate-500"></i>
@@ -979,12 +981,12 @@ const transformedEquipmentTree = computed(() => {
                 </div>
                 <div class="h-8 w-px bg-slate-800"></div>
                 <div class="space-y-1">
-                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Volume d'activités</span>
+                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{{ t('maintenances.activityDialog.activityVolume') }}</span>
                     <p class="text-white text-sm font-bold">{{ activityCreationForm.activities.length }} Item(s)</p>
                 </div>
             </div>
             <div class="flex gap-2">
-                <Button label="Nouvelle Activité" icon="pi pi-plus"
+                <Button :label="t('maintenances.activityDialog.newActivity')" icon="pi pi-plus"
                         class="p-button-sm p-button-raised bg-indigo-600 border-none text-[11px] font-bold"
                         @click="addActivityToForm" />
             </div>
@@ -999,13 +1001,13 @@ const transformedEquipmentTree = computed(() => {
                     <span class="text-[10px] font-black text-slate-400 mr-4">#0{{ index + 1 }}</span>
                     <InputText v-model="activity.title"
                               class="flex-1 !bg-transparent !border-none !shadow-none font-bold text-slate-800 focus:ring-0 py-1"
-                              placeholder="Nommer l'activité..." />
+                              :placeholder="t('maintenances.activityDialog.activityNamePlaceholder')" />
 
                     <div class="flex items-center gap-4">
                         <div class="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded text-[10px] font-bold text-slate-600 uppercase">
-                            Statut: <Dropdown v-model="activity.status" :options="activityStatusOptions" optionLabel="label" optionValue="value" class="v12-minimal-dropdown" />
+                            {{ t('maintenances.activityDialog.statusLabel') }} <Dropdown v-model="activity.status" :options="activityStatusOptions" optionLabel="label" optionValue="value" class="v12-minimal-dropdown" />
                         </div>
-                        <Button icon="pi pi-clone" class="p-button-text p-button-secondary p-button-sm" v-tooltip.top="'Dupliquer'" />
+                        <Button icon="pi pi-clone" class="p-button-text p-button-secondary p-button-sm" v-tooltip.top="t('maintenances.activityDialog.duplicateTooltip')" />
                         <Button icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" @click="removeActivityFromForm(index)" />
                     </div>
                 </div>
@@ -1016,17 +1018,17 @@ const transformedEquipmentTree = computed(() => {
                              <div class="col-span-12 lg:col-span-6 space-y-4">
                         <div class="p-4 border border-slate-100 rounded-md bg-slate-50/30">
                             <h5 class="text-[10px] font-black text-slate-900 uppercase mb-3 flex items-center gap-2">
-                                <i class="pi pi-user text-indigo-500"></i> Attribution
+                                <i class="pi pi-user text-indigo-500"></i> {{ t('maintenances.activityDialog.attribution') }}
                             </h5>
                             <div class="space-y-3">
                                 <div class="field">
                                     <Dropdown v-model="activity.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value"
-                                              placeholder="Type d'entité" class="w-full v12-input" />
+                                              :placeholder="t('maintenances.activityDialog.entityTypePlaceholder')" class="w-full v12-input" />
                                 </div>
                                 <div class="field">
                                     <Dropdown v-model="activity.assignable_id" :options="getAssignablesForActivity(activity)"
                                               optionLabel="name" optionValue="id" filter :disabled="!activity.assignable_type"
-                                              placeholder="Sélectionner le responsable" class="w-full v12-input" />
+                                              :placeholder="t('maintenances.activityDialog.responsiblePlaceholder')" class="w-full v12-input" />
                                 </div>
                             </div>
                         </div>
@@ -1037,14 +1039,14 @@ const transformedEquipmentTree = computed(() => {
                     <div class="col-span-12 lg:col-span-6 space-y-4">
                         <div class="p-4 border border-slate-100 rounded-md flex flex-col">
                             <h5 class="text-[10px] font-black text-slate-900 uppercase mb-3 flex items-center gap-2">
-                                <i class="pi pi-box text-indigo-500"></i> Assets Concernés
+                                <i class="pi pi-box text-indigo-500"></i> {{ t('maintenances.activityDialog.concernedAssets') }}
                             </h5>
                             <MultiSelect v-model="activity.equipment_ids" :options="availableEquipmentsForActivity(index)"
                                          optionLabel="designation" optionValue="id" display="chip"
-                                         class="w-full v12-input flex-1" filter placeholder="Rechercher des équipements..." />
+                                         class="w-full v12-input flex-1" filter :placeholder="t('maintenances.activityDialog.searchEquipmentsPlaceholder')" />
                             <div class="mt-3 p-3 bg-indigo-50 rounded border border-indigo-100">
                                 <div class="flex items-center justify-between text-[10px]">
-                                    <span class="font-bold text-indigo-700">Coût estimé</span>
+                                    <span class="font-bold text-indigo-700">{{ t('maintenances.activityDialog.estimatedCost') }}</span>
                                     <InputNumber v-model="activity.cost" mode="currency" currency="XOF" class="quantum-input-transparent text-right font-black" />
                                 </div>
                             </div>
@@ -1053,21 +1055,21 @@ const transformedEquipmentTree = computed(() => {
                         </div>
                          <div class="p-4 border border-slate-100 rounded-md bg-slate-50/30">
                             <h5 class="text-[10px] font-black text-slate-900 uppercase mb-3 flex items-center gap-2">
-                                <i class="pi pi-calendar text-indigo-500"></i> Planification
+                                <i class="pi pi-calendar text-indigo-500"></i> {{ t('maintenances.activityDialog.planning') }}
                             </h5>
                             <div class="grid grid-cols-2 gap-2">
                                 <div class="field">
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase">Priorité</label>
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase">{{ t('maintenances.activityDialog.priority') }}</label>
                                     <Dropdown v-model="activity.priority" :options="maintenancePriorities" class="w-full v12-input" />
                                 </div>
                                 <div class="field">
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase">Durée (m)</label>
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase">{{ t('maintenances.activityDialog.durationInMinutes') }}</label>
                                     <InputNumber v-model="activity.estimated_duration" class="w-full v12-input" />
                                 </div>
                                 <div class="field col-span-2">
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase">Période d'exécution</label>
-                                    <Calendar v-model="activity.actual_start_time" showTime hourFormat="24" placeholder="Début" class="w-full v12-input mb-1" />
-                                    <Calendar v-model="activity.actual_end_time" showTime hourFormat="24" placeholder="Fin" class="w-full v12-input" />
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase">{{ t('maintenances.activityDialog.executionPeriod') }}</label>
+                                    <Calendar v-model="activity.actual_start_time" showTime hourFormat="24" :placeholder="t('maintenances.activityDialog.start')" class="w-full v12-input mb-1" />
+                                    <Calendar v-model="activity.actual_end_time" showTime hourFormat="24" :placeholder="t('maintenances.activityDialog.end')" class="w-full v12-input" />
                                 </div>
                             </div>
                         </div>
@@ -1076,28 +1078,28 @@ const transformedEquipmentTree = computed(() => {
                     <div class="col-span-12 lg:col-span-5 space-y-4">
                         <div class="p-4 border border-slate-100 rounded-md bg-white shadow-inner flex flex-col h-[180px]">
                             <div class="flex justify-between items-center mb-2">
-                                <h5 class="text-[10px] font-black text-slate-900 uppercase">Checklist</h5>
+                                <h5 class="text-[10px] font-black text-slate-900 uppercase">{{ t('maintenances.activityDialog.checklist') }}</h5>
                                 <Button icon="pi pi-plus" class="p-button-text p-button-sm !p-0 h-4 w-4" @click="addInstructionToActivity(index)" />
                             </div>
                             <div class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 <div v-for="(instr, iIdx) in activity.instructions" :key="iIdx" class="flex items-center gap-2 bg-slate-50 p-1.5 rounded border border-slate-100">
                                     <Checkbox v-model="instr.is_required" binary class="scale-75" />
-                                    <InputText v-model="instr.label" placeholder="Instruction..." class="flex-1 text-[10px] border-none !bg-transparent p-0" />
+                                    <InputText v-model="instr.label" :placeholder="t('maintenances.activityDialog.instructionPlaceholder')" class="flex-1 text-[10px] border-none !bg-transparent p-0" />
                                        <Dropdown v-model="instr.type"
                           :options="instructionValueTypes"
                           optionLabel="label"
                           optionValue="value"
-                          placeholder="Sélectionner le type"
+                          :placeholder="t('maintenances.activityDialog.selectType')"
                           class="v12-instruction-type-dropdown flex-1 text-[9px]" />
                                     <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-sm !p-0" @click="removeInstructionFromActivity(index, iIdx)" />
                                 </div>
-                                <div v-if="!activity.instructions?.length" class="text-center py-4 text-[10px] text-slate-400 italic font-medium">Zéro instruction.</div>
+                                <div v-if="!activity.instructions?.length" class="text-center py-4 text-[10px] text-slate-400 italic font-medium">{{ t('maintenances.activityDialog.zeroInstructions') }}</div>
                             </div>
                         </div>
 
                         <div class="p-4 border border-slate-100 rounded-md bg-white shadow-inner flex flex-col h-[180px]">
                             <div class="flex justify-between items-center mb-2">
-                                <h5 class="text-[10px] font-black text-slate-900 uppercase">Pièces Détachées</h5>
+                                <h5 class="text-[10px] font-black text-slate-900 uppercase">{{ t('maintenances.activityDialog.spareParts') }}</h5>
                                 <Button icon="pi pi-plus" class="p-button-text p-button-sm !p-0 h-4 w-4" @click="addSparePartToActivity(index)" />
                             </div>
                             <div class="flex-1 overflow-hidden space-y-1">
@@ -1123,11 +1125,11 @@ const transformedEquipmentTree = computed(() => {
         </div>
 
         <div class="px-6 py-4 border-t border-slate-200 bg-white flex justify-between items-center shrink-0">
-            <Button label="Réinitialiser le formulaire" icon="pi pi-refresh" class="p-button-text p-button-secondary text-xs font-bold" />
+            <Button :label="t('maintenances.activityDialog.resetForm')" icon="pi pi-refresh" class="p-button-text p-button-secondary text-xs font-bold" />
 
             <div class="flex items-center gap-3">
-                <Button label="Annuler" class="p-button-text p-button-secondary font-bold text-xs" @click="activityCreationDialog = false" />
-                <Button label="Valider et Déployer" icon="pi pi-send"
+                <Button :label="t('maintenances.activityDialog.cancel')" class="p-button-text p-button-secondary font-bold text-xs" @click="activityCreationDialog = false" />
+                <Button :label="t('maintenances.activityDialog.validateAndDeploy')" icon="pi pi-send"
                         class="bg-slate-900 border-none px-6 py-2.5 rounded text-xs font-black tracking-widest shadow-lg hover:bg-slate-800"
                         @click="submitActivities" :loading="activityCreationForm.processing" />
             </div>
@@ -1140,6 +1142,22 @@ const transformedEquipmentTree = computed(() => {
         class="quantum-dialog w-full max-w-7xl"
         :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
 
+ <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+ <div class="flex items-center gap-4">
+ <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
+ <i :class="[isCreatingSubActivity ? 'pi pi-plus-circle' : 'pi pi-shield', 'text-blue-400 text-xl']"></i>
+ </div>
+ <div class="flex flex-col">
+ <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">
+ {{ isCreatingSubActivity ? 'Initialisation Sous-Activité' : t('maintenances.formDialog.technicalReportTitle') }}
+ </h2>
+ <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">
+ {{ t('maintenances.formDialog.gmaoConsole') }}
+ </span>
+ </div>
+ </div>
+ <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
+ </div>
     <div class="p-2">
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
 
@@ -1147,33 +1165,33 @@ const transformedEquipmentTree = computed(() => {
 
                 <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
                     <h3 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-2 flex items-center gap-2">
-                        <i class="pi pi-tag"></i> Identification de la mission
+                        <i class="pi pi-tag"></i> {{ t('maintenances.formDialog.missionId') }}
                     </h3>
 
                     <div class="field">
-                        <label for="title" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Titre de l'intervention</label>
+                        <label for="title" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.interventionTitle') }}</label>
                         <InputText id="title" v-model.trim="form.title"
                                   class="w-full quantum-input !bg-white"
                                   :class="{ 'p-invalid': submitted && !form.title }"
-                                  placeholder="Ex: Maintenance préventive Trimestre 1" />
+                                  :placeholder="t('maintenances.formDialog.interventionTitlePlaceholder')" />
                         <small class="p-error block mt-1" v-if="form.errors.title">{{ form.errors.title }}</small>
                     </div>
 
                     <div class="field">
-                        <label for="related_equipments" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Équipements concernés</label>
+                        <label for="related_equipments" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.concernedEquipments') }}</label>
                         <TreeSelect id="related_equipments" v-model="form.related_equipments"
                                     :options="transformedEquipmentTree"
-                                    placeholder="Sélectionner les actifs..."
+                                    :placeholder="t('maintenances.formDialog.selectAssets')"
                                     filter selectionMode="checkbox" display="chip"
                                     class="w-full quantum-input !bg-white" />
                         <small class="p-error block mt-1" v-if="form.errors.related_equipments">{{ form.errors.related_equipments }}</small>
                     </div>
 
                     <div class="field">
-                        <label for="description" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Description détaillée</label>
+                        <label for="description" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.detailedDescription') }}</label>
                         <Textarea id="description" v-model="form.description" rows="4"
                                   class="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
-                                  placeholder="Instructions générales pour l'équipe..." />
+                                  :placeholder="t('maintenances.formDialog.generalInstructions')" />
                         <small class="p-error block mt-1" v-if="form.errors.description">{{ form.errors.description }}</small>
                     </div>
                 </div>
@@ -1181,9 +1199,9 @@ const transformedEquipmentTree = computed(() => {
                 <div class="space-y-4">
                     <div class="flex items-center justify-between px-2">
                         <h3 class="text-xs font-black uppercase tracking-widest text-slate-700 flex items-center gap-2">
-                            <i class="pi pi-sitemap text-indigo-500"></i> Configuration par équipement
+                            <i class="pi pi-sitemap text-indigo-500"></i> {{ t('maintenances.formDialog.configPerEquipment') }}
                         </h3>
-                        <Button :label="showAdvancedInstructions ? 'Masquer' : 'Configurer les points de contrôle'"
+                        <Button :label="showAdvancedInstructions ? t('maintenances.formDialog.hideControlPoints') : t('maintenances.formDialog.showControlPoints')"
                                 :icon="showAdvancedInstructions ? 'pi pi-chevron-up' : 'pi pi-cog'"
                                 class="p-button-text p-button-sm font-bold text-indigo-600"
                                 @click="showAdvancedInstructions = !showAdvancedInstructions" />
@@ -1193,7 +1211,7 @@ const transformedEquipmentTree = computed(() => {
                         <div v-if="!configurableNodes || configurableNodes.length === 0"
                              class="p-8 border-2 border-dashed border-slate-200 rounded-3xl text-center bg-slate-50/50">
                             <i class="pi pi-exclamation-circle text-slate-300 text-3xl mb-3 block"></i>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-tight">Aucun équipement sélectionné</p>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-tight">{{ t('maintenances.formDialog.noEquipmentSelected') }}</p>
                         </div>
 
                         <div v-else v-for="group in groupedConfigurableNodes" :key="group.parent.key"
@@ -1215,10 +1233,10 @@ const transformedEquipmentTree = computed(() => {
                                         <span class="text-xs font-black text-indigo-600 uppercase">{{ child.label }}</span>
                                         <div class="flex gap-2">
                                             <Button v-if="form.node_instructions[child.key]?.length"
-                                                    icon="pi pi-copy" label="Cloner"
+                                                    icon="pi pi-copy" :label="t('maintenances.formDialog.clone')"
                                                     class="p-button-text p-button-sm text-[10px] font-bold"
                                                     @click="openCopyDialog(child.key)" />
-                                            <Button icon="pi pi-plus" label="Ajouter une instruction"
+                                            <Button icon="pi pi-plus" :label="t('maintenances.formDialog.addInstruction')"
                                                     class="p-button-indigo p-button-sm text-[10px] font-bold shadow-sm"
                                                     @click="addInstruction(child.key)" />
                                         </div>
@@ -1229,7 +1247,7 @@ const transformedEquipmentTree = computed(() => {
                                              class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative group">
 
                                             <div class="md:col-span-6">
-                                                <InputText v-model="instruction.label" placeholder="Libellé (ex: Vérification niveau d'huile)" class="w-full p-inputtext-sm border-none shadow-none font-medium" />
+                                                <InputText v-model="instruction.label" :placeholder="t('maintenances.formDialog.instructionLabelPlaceholder')" class="w-full p-inputtext-sm border-none shadow-none font-medium" />
                                             </div>
                                             <div class="md:col-span-3">
                                                 <Dropdown v-model="instruction.type" :options="instructionValueTypes"
@@ -1237,7 +1255,7 @@ const transformedEquipmentTree = computed(() => {
                                             </div>
                                             <div class="md:col-span-2 flex items-center justify-center gap-2">
                                                 <Checkbox v-model="instruction.is_required" binary :inputId="`req-${child.key}-${index}`" />
-                                                <label :for="`req-${child.key}-${index}`" class="text-[9px] font-black uppercase text-slate-400 cursor-pointer">Requis</label>
+                                                <label :for="`req-${child.key}-${index}`" class="text-[9px] font-black uppercase text-slate-400 cursor-pointer">{{ t('maintenances.formDialog.required') }}</label>
                                             </div>
                                             <div class="md:col-span-1 flex justify-end">
                                                 <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-sm opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1245,7 +1263,7 @@ const transformedEquipmentTree = computed(() => {
                                             </div>
                                         </div>
                                         <div v-if="!form.node_instructions[child.key]?.length" class="text-center py-4 text-[10px] font-bold text-slate-400 uppercase tracking-tighter italic">
-                                            Aucune instruction spécifique définie
+                                            {{ t('maintenances.formDialog.noSpecificInstruction') }}
                                         </div>
                                     </div>
                                 </div>
@@ -1264,30 +1282,30 @@ const transformedEquipmentTree = computed(() => {
 
                     <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mb-8 text-indigo-400 flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                        Logistique & Timing
+                        {{ t('maintenances.formDialog.logisticsAndTiming') }}
                     </h4>
 
                     <div class="space-y-6">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ form.status === 'Planifiée' ? 'Début planifié' : 'Date de début' }}</label>
+                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ form.status === 'Planifiée' ? t('maintenances.formDialog.plannedStart') : t('maintenances.formDialog.actualStart') }}</label>
                                 <Calendar v-model="form.scheduled_start_date" showTime dateFormat="dd/mm/yy" showIcon class="quantum-calendar-dark w-full" />
                                 <small class="p-error block mt-1 text-red-400" v-if="form.errors.scheduled_start_date">{{ form.errors.scheduled_start_date }}</small>
                             </div>
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ form.status === 'Planifiée'? 'Fin planifiée' : 'Date de fin' }}</label>
+                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ form.status === 'Planifiée'? t('maintenances.formDialog.plannedEnd') : t('maintenances.formDialog.actualEnd') }}</label>
                                 <Calendar v-model="form.scheduled_end_date" showTime dateFormat="dd/mm/yy" showIcon class="quantum-calendar-dark w-full" />
                                 <small class="p-error block mt-1 text-red-400" v-if="form.errors.scheduled_end_date">{{ form.errors.scheduled_end_date }}</small>
                             </div>
                         </div>
 
                         <div class="field bg-white/5 p-4 rounded-2xl border border-white/10">
-                            <label class="text-[9px] font-bold uppercase text-slate-400 mb-3 block">Responsable de l'intervention</label>
+                            <label class="text-[9px] font-bold uppercase text-slate-400 mb-3 block">{{ t('maintenances.formDialog.interventionResponsible') }}</label>
                             <div class="flex gap-2">
                                 <Dropdown v-model="form.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value"
-                                          placeholder="Type" class="w-1/3 bg-transparent border-white/20 text-white" />
+                                          :placeholder="t('maintenances.formDialog.assignableTypePlaceholder')" class="w-1/3 bg-transparent border-white/20 text-white" />
                                 <Dropdown v-model="form.assignable_id" :options="assignables" optionLabel="name" optionValue="id"
-                                          placeholder="Sélectionner..." :disabled="!form.assignable_type" filter
+                                          :placeholder="t('maintenances.formDialog.assignableSelectPlaceholder')" :disabled="!form.assignable_type" filter
                                           class="flex-1 bg-transparent border-white/20 text-white" />
                             </div>
                             <small class="p-error block mt-1 text-red-400" v-if="form.errors.assignable_id">{{ form.errors.assignable_id }}</small>
@@ -1295,11 +1313,11 @@ const transformedEquipmentTree = computed(() => {
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">Type de maintenance</label>
+                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ t('maintenances.formDialog.maintenanceType') }}</label>
                                 <Dropdown v-model="form.type" :options="maintenanceTypes" class="w-full bg-white/5 border-white/10 text-white rounded-xl" />
                             </div>
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">Statut actuel</label>
+                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ t('maintenances.formDialog.currentStatus') }}</label>
                                 <Dropdown v-model="form.status" :options="maintenanceStatuses" optionLabel="label" optionValue="value"
                                           class="w-full bg-white/5 border-white/10 text-white rounded-xl" />
                             </div>
@@ -1307,11 +1325,11 @@ const transformedEquipmentTree = computed(() => {
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">Niveau de Priorité</label>
+                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ t('maintenances.formDialog.priorityLevel') }}</label>
                                 <Dropdown v-model="form.priority" :options="maintenancePriorities" class="w-full bg-white/5 border-white/10 text-white rounded-xl" />
                             </div>
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">Région d'intervention</label>
+                                <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ t('maintenances.formDialog.interventionRegion') }}</label>
                                 <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter
                                           class="w-full bg-white/5 border-white/10 text-white rounded-xl" />
                             </div>
@@ -1321,34 +1339,34 @@ const transformedEquipmentTree = computed(() => {
 
                 <div class="p-8 bg-indigo-50 rounded-[3rem] border border-indigo-100 shadow-sm space-y-6">
                     <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-700 flex items-center gap-2">
-                        <i class="pi pi-sync"></i> Cycle de Récurrence
+                        <i class="pi pi-sync"></i> {{ t('maintenances.formDialog.recurrenceCycle') }}
                     </h4>
 
                     <div class="space-y-5">
                         <div class="field">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">Fréquence</label>
+                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.frequency') }}</label>
                             <Dropdown v-model="form.recurrence_type" :options="recurrenceTypes" optionLabel="label" optionValue="value"
                                       class="w-full quantum-input !bg-white shadow-none" />
                         </div>
 
                         <div v-if="form.recurrence_type === 'daily'" class="field animate-fade-in">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">Intervalle journalier</label>
+                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">{{ t('maintenances.formDialog.dailyInterval') }}</label>
                             <InputNumber v-model="form.recurrence_interval" :min="1" :max="365" suffix=" jours" class="w-full" />
                         </div>
 
                         <div v-if="form.recurrence_type === 'weekly'" class="field animate-fade-in p-4 bg-white rounded-2xl border border-indigo-100">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">Sélection des jours</label>
+                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">{{ t('maintenances.formDialog.daysSelection') }}</label>
                             <MultiSelect v-model="form.recurrence_days" :options="daysOfWeek" optionLabel="label" optionValue="value"
                                          display="chip" class="w-full border-none p-0" />
                         </div>
 
                         <div v-if="form.recurrence_type === 'monthly'" class="grid grid-cols-2 gap-4 animate-fade-in">
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">Le (Jour)</label>
+                                <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
                                 <InputNumber v-model="form.recurrence_day_of_month" :min="1" :max="31" class="w-full" />
                             </div>
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">Tous les (Mois)</label>
+                                <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.everyNMonths') }}</label>
                                 <InputNumber v-model="form.recurrence_month_interval" :min="1" :max="12" suffix=" mois" class="w-full" />
                             </div>
                         </div>
@@ -1356,16 +1374,16 @@ const transformedEquipmentTree = computed(() => {
                         <div v-if="['quarterly', 'biannual', 'annual'].includes(form.recurrence_type)" class="space-y-4 animate-fade-in">
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">Mois de début</label>
+                                    <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.startMonth') }}</label>
                                     <Dropdown v-model="form.recurrence_month" :options="months" optionLabel="label" optionValue="value" class="w-full bg-white" />
                                 </div>
                                 <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">Jour du mois</label>
+                                    <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
                                     <InputNumber v-model="form.recurrence_day_of_month" :min="1" :max="31" class="w-full" />
                                 </div>
                             </div>
                             <div class="field p-4 bg-indigo-600 rounded-2xl text-white">
-                                <label class="text-[9px] font-bold uppercase opacity-70 mb-2 block">Rappel anticipé (Push/Email)</label>
+                                <label class="text-[9px] font-bold uppercase opacity-70 mb-2 block">{{ t('maintenances.formDialog.earlyReminder') }}</label>
                                 <div class="flex items-center gap-3">
                                     <InputNumber v-model="form.reminder_days" :min="0" suffix=" jours" class="flex-1 quantum-input-dark" />
                                     <i class="pi pi-bell animate-bounce text-indigo-200"></i>
@@ -1374,8 +1392,8 @@ const transformedEquipmentTree = computed(() => {
                         </div>
 
                         <div v-if="form.recurrence_type === 'custom'" class="field animate-fade-in">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">Règle personnalisée (Cron/Text)</label>
-                            <Textarea v-model="form.custom_recurrence_config" rows="2" class="w-full quantum-input !bg-white" placeholder="Ex: Every 2nd Monday of the month" />
+                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">{{ t('maintenances.formDialog.customRule') }}</label>
+                            <Textarea v-model="form.custom_recurrence_config" rows="2" class="w-full quantum-input !bg-white" :placeholder="t('maintenances.formDialog.customRulePlaceholder')" />
                         </div>
                     </div>
                 </div>
@@ -1385,7 +1403,7 @@ const transformedEquipmentTree = computed(() => {
                         <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-3 group-hover:bg-indigo-50">
                             <i class="pi pi-clock text-slate-400 group-hover:text-indigo-500"></i>
                         </div>
-                        <label for="estimated_duration" class="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1 block">Durée estimée</label>
+                        <label for="estimated_duration" class="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1 block">{{ t('maintenances.formDialog.estimatedDuration') }}</label>
                         <InputNumber id="estimated_duration" v-model="form.estimated_duration" suffix=" min" class="quantum-input-transparent" :min="0" />
                     </div>
 
@@ -1393,7 +1411,7 @@ const transformedEquipmentTree = computed(() => {
                         <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-3 group-hover:bg-emerald-50">
                             <i class="pi pi-wallet text-slate-400 group-hover:text-emerald-500"></i>
                         </div>
-                        <label for="cost" class="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1 block">Budget Estimé</label>
+                        <label for="cost" class="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1 block">{{ t('maintenances.formDialog.estimatedBudget') }}</label>
                         <InputNumber id="cost" v-model="form.cost" mode="currency" currency="XOF" locale="fr-FR" class="quantum-input-transparent text-emerald-600 font-bold" :min="0" />
                     </div>
                 </div>
@@ -1403,9 +1421,9 @@ const transformedEquipmentTree = computed(() => {
 
     <template #footer>
         <div class="flex justify-between items-center w-full px-4 py-2">
-            <Button label="Annuler les modifications" icon="pi pi-times" class="p-button-text p-button-secondary font-bold" @click="hideDialog" />
+            <Button :label="t('maintenances.formDialog.cancelChanges')" icon="pi pi-times" class="p-button-text p-button-secondary font-bold" @click="hideDialog" />
             <div class="flex gap-3">
-                 <Button label="Sauvegarder le Plan de Maintenance" icon="pi pi-check-circle"
+                 <Button :label="t('maintenances.formDialog.savePlan')" icon="pi pi-check-circle"
                         class="p-button-indigo px-8 py-4 !rounded-2xl shadow-xl shadow-indigo-100 font-black tracking-tight transition-all hover:scale-[1.02] active:scale-95"
                         @click="saveMaintenance" :loading="form.processing" />
             </div>

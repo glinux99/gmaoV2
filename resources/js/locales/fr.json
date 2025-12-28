@@ -365,7 +365,8 @@
     "confirm": {
         "deleteHeader": "Confirmation de suppression",
         "cancel": "Annuler",
-        "delete": "Supprimer"
+    "delete": "Supprimer",
+    "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer cet élément ?"
     }
     ,
     "engins": {
@@ -373,6 +374,10 @@
         "headTitle": "Liste des Engins",
         "subtitle": "{count} Unités en ligne",
         "toolbar": {
+      "advancedFilters": "Filtres Avancés",
+      "showColumns": "Afficher les colonnes",
+      "deleteSelected": "Supprimer la sélection",
+
             "addEngin": "Ajouter un engin",
             "searchPlaceholder": "Rechercher...",
             "export": "Exporter",
@@ -428,26 +433,14 @@
     "dataTable": {
         "currentPageReportEngins": "Affichage de {first} à {last} sur {totalRecords} engins"
     },
-    "common": {
-    "save": "Sauvegarder",
-    "cancel": "Annuler",
-    "yes": "Oui",
-    "no": "Non",
-    "success": "Succès",
-    "error": "Erreur",
-    "info": "Information",
-    "confirmation": "Confirmation",
-    "deleteConfirmation": "Confirmation de suppression",
-    "actions": "Actions",
-    "search": "Rechercher...",
-    "searchByName": "Rechercher par nom",
-    "export": "Exporter",
-    "errorOccurred": "Une erreur est survenue.",
-    "paginationReport": "Affichage de {first} à {last} sur {total} éléments"
-  },
+
   "labels": {
     "title": "Gestion des Labels",
     "fields": {
+      "labelParameters": "Paramètres du Label",
+      "labelParametersSubtitle": "Configurez le nom, la couleur et la description.",
+      "technicalAttributes": "Attributs Techniques",
+      "technicalAttributesSubtitle": "Définissez les points de contrôle pour ce type d'actif.",
       "name": "Nom",
       "description": "Description",
       "color": "Couleur",
@@ -461,7 +454,10 @@
       "add": "Ajouter un label",
       "addChar": "Ajouter une caractéristique"
     },    "toolbar": {
-      "resetFilters": "Réinitialiser"    },
+      "resetFilters": "Réinitialiser",
+      "searchPlaceholder": "Rechercher un label..."
+
+    },
     "types": {
       "text": "Texte",
       "number": "Nombre",
@@ -473,8 +469,13 @@
     "dialog": {
       "createTitle": "Créer un nouveau Label",
       "editTitle": "Modifier le Label",
+      "labelParameters": "Paramètres du Label",
+      "labelParametersSubtitle": "Configurez le nom, la couleur et la description.",
       "createSubtitle": "Créez un nouveau label.",
       "editSubtitle": "Mettez à jour les informations du label."
+    },
+    "stats": {
+      "total": "Total Labels",      "withChars": "Avec Attributs"
     },
     "validation": {
       "nameRequired": "Le nom est requis."
@@ -491,6 +492,120 @@
     }
   },
   "common": {
+        "save": "Sauvegarder",
+        "update": "Mettre à jour",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "import": "Importer",
+    "export": "Exporter",
+    "search": "Rechercher...",
+    "success": "Succès",
+    "error": "Erreur",
+    "attention": "Attention",
+    "confirmation": "Confirmation",
+    "deleteConfirmation": "Confirmation de suppression",
+    "actions": "Actions",
+    "chooseFile": "Choisir un fichier",
+    "paginationReport": "Affichage de {first} à {last} sur {total} régions",
+    "errorOccurred": "Une erreur est survenue.",
+     "types": {
+            "annual": "Annuel",
+            "sick": "Maladie",
+            "rtt": "RTT",
+            "exceptional": "Exceptionnel"
+        },
+        "status": {
+            "approved": "Approuvé",
+            "pending": "En attente",
+            "rejected": "Rejeté"
+        },
+         "notApplicable": "N/A",
+            "unspecifiedDate": "Date non définie",
+            "resetFilters": "Réinitialiser les filtres",
+            "unnamedActivity": "Activité Sans Titre",
+            "workOrderId": "#WorkOrderID: {id}",
+            "problemResolution": "Problème/Résolution:",
+            "proposals": "Propositions:",
+            "additionalInfo": "Informations Additionnelles:",
+            "technician": "Intervenant:",
+            "instructionAnswers": "Réponses aux Instructions :",
+            "usedParts": "Pièces utilisées:",
+            "returnedParts": "Pièces retournées:",
+            "actualEndTime": "Heure de fin réelle:",
+            "associatedTaskDetails": "Détails de la Tâche Associée",
+            "priority": "Priorité:",
+            "description": "Description:",
+            "createSubActivity": "Créer sous-activité",
+            "complete": "Compléter",
+            "taskTitle": "Titre de la Tâche",
+            "status": "Statut",
+            "actualStart": "Début Réel",
+            "usedPartsCount": "{count} Pièce(s)",
+            "returnedPartsCount": "{count} Pièce(s)",
+            "answersCount": "{count} Réponse(s)",
+            "instructionsAndActions": "Instructions/Actions",
+            "completeActivityTooltip": "Compléter/Modifier l'Activité",
+            "invalidDate": "Date invalide",
+            "notSet": "Non renseigné",
+            "instructionNotFound": "Instruction ID {id} (Introuvable)"
+  },
+  "payments": {
+    "title": "Gestion des Paiements",
+    "subtitle": "Suivi des flux financiers et transactions",
+    "newTransaction": "Nouvelle Transaction",
+    "stats": {
+      "totalFlux": "Flux Total",
+      "transactions": "Transactions",
+      "pending": "En attente",
+      "average": "Moyenne"
+    },
+    "table": {
+      "amount": "Montant",
+      "beneficiary": "Bénéficiaire",
+      "status": "Statut",
+      "date": "Date de Valeur",
+      "actions": "Actions"
+    },
+    "payableTypes": {
+      "employee": "Employé",
+      "supplier": "Fournisseur",
+      "user": "Utilisateur interne"
+    },
+    "statusTypes": {
+      "pending": "En attente",
+      "completed": "Terminé",
+      "failed": "Échoué"
+    },
+    "dialog": {
+      "financeSettings": "Paramètres financiers",
+      "financeSubtitle": "Veuillez renseigner les détails du mouvement de fonds",
+      "amountLabel": "Montant (XOF)",
+      "valueDate": "Date de valeur",
+      "beneficiaryType": "Type Bénéficiaire",
+      "specificBeneficiary": "Bénéficiaire Spécifique",
+      "notes": "Notes & Références",
+      "required": "Requis"
+    },
+    "toast": {
+      "saved": "La transaction a été enregistrée avec succès.",
+      "deleted": "Transaction supprimée.",
+      "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer le paiement de {amount} pour {beneficiary} ?"
+    }
+  },
+    "columnSelector": {
+      "title": "Sélectionner les colonnes",
+      "placeholder": "Choisir les colonnes"
+,
+    "yes": "Oui",
+    "no": "Non",
+
+    "info": "Information",
+    "actions": "Actions",
+    "search": "Rechercher...",
+    "searchByName": "Rechercher par nom",
+    "export": "Exporter",
+    "errorOccurred": "Une erreur est survenue.",
+    "paginationReport": "Affichage de {first} à {last} sur {total} éléments",
     "save": "Sauvegarder",
     "cancel": "Annuler",
     "delete": "Supprimer",
@@ -507,45 +622,10 @@
     "paginationReport": "Affichage de {first} à {last} sur {total} régions",
     "errorOccurred": "Une erreur est survenue.",
     "saveChanges": "Valider les modifications",
-    "create": "Créer le profil"
+    "create": "Créer le profil",
+    "total": "Total {item}"
   },
-  "regions": {
-    "title": "Gestion des Régions",
-    "fields": {
-      "designation": "Désignation",
-      "type": "Type de Centrale",
-      "power": "Puissance (MW)"
-    },
-    "actions": {
-      "add": "Ajouter une région",
-      "deleteSelected": "Supprimer la sélection"
-    },
-    "types": {
-      "thermique": "Thermique",
-      "solaire": "Solaire",
-      "hydraulique": "Hydraulique",
-      "eolienne": "Éolienne"
-    },
-    "dialog": {
-      "createTitle": "Créer une nouvelle Région",
-      "editTitle": "Modifier la Région",
-      "importTitle": "Importer des Régions",
-      "importSubtitle": "Téléchargez un fichier CSV ou Excel pour importer de nouvelles régions."
-    },
-    "validation": {
-      "nameRequired": "La désignation est requise."
-    },
-    "messages": {
-      "createSuccess": "Région créée avec succès",
-      "updateSuccess": "Région mise à jour avec succès",
-      "deleteSuccess": "Région supprimée avec succès",
-      "bulkDeleteSuccess": "Les régions sélectionnées ont été supprimées.",
-      "confirmDelete": "Voulez-vous supprimer la région \"{name}\" ?",
-      "confirmBulkDelete": "Voulez-vous supprimer les {count} régions sélectionnées ?",
-      "selectFile": "Veuillez sélectionner un fichier à importer.",
-      "importStarted": "Importation lancée."
-    }
-  },
+
   "unities": {
         "title": "Gestion des Unités",
         "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
@@ -734,6 +814,54 @@
         }
     },
     "expenses": {
+            "title": "Gestion des Dépenses",
+        "headTitle": "Dépenses",
+        "subtitle": "Suivi des coûts et validation",
+        "addNew": "Nouvelle Dépense",
+        "approveSelected": "Approuver Sélection",
+        "rejectSelected": "Rejeter Sélection",
+        "export": "Exporter en CSV",
+        "toolbar": {
+            "advancedFilters": "Filtres Avancés",
+            "resetFilters": "Réinitialiser"
+        },
+        "searchPlaceholder": "Rechercher...",
+        "selectColumns": "Choisir les colonnes",
+        "table": {
+            "description": "Description",
+            "amount": "Montant",
+            "date": "Date",
+            "category": "Catégorie",
+            "status": "Statut",
+            "createdBy": "Créé par",
+            "linkedTo": "Lié à",
+            "approvedBy": "Approuvé par",
+            "notes": "Notes",
+            "selectedTotal": "Total sélectionné"
+        },
+        "dialog": {
+            "createTitle": "Créer une nouvelle Dépense",
+            "editTitle": "Modifier la Dépense",
+            "description": "Description",
+            "amount": "Montant",
+            "date": "Date de la dépense",
+            "category": "Catégorie",
+            "linkedToType": "Type d'élément lié",
+            "linkedToItem": "Élément lié",
+            "notes": "Notes / Justificatif"
+        },
+        "confirm": {
+            "header": "Confirmation de {action}",
+            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
+            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
+        },
+        "toast": {
+            "statusUpdateSuccess": "Dépense {action} avec succès.",
+            "statusUpdateError": "La mise à jour du statut a échoué.",
+            "bulkStatusUpdateSuccess": "{count} dépenses {status} avec succès.",
+            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
+        },
+
         "title": "Gestion des Dépenses",
         "headTitle": "Dépenses",
         "subtitle": "Suivi des coûts et validation",
@@ -785,7 +913,17 @@
         "filter": {
             "status": "Filtrer par statut",
             "category": "Filtrer par catégorie",
-            "dateRange": "Filtrer par date"
+            "dateRange": "Filtrer par date",
+            "paymentMethod": "Filtrer par mode de paiement",
+            "project": "Filtrer par projet",
+            "vehicle": "Filtrer par véhicule",
+            "provider": "Filtrer par fournisseur",
+            "apply": "Appliquer les filtres"
+        },
+        "stats": {
+            "totalAmount": "Montant Total",
+            "pending": "Dépenses en attente",
+            "average": "Coût Moyen"
         }
     },
     "title": "Gestion des Labels",
@@ -832,60 +970,8 @@
       "deleteError": "Erreur lors de la suppression."
     }
   ,
-  "common": {
-    "save": "Sauvegarder",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "import": "Importer",
-    "export": "Exporter",
-    "search": "Rechercher...",
-    "success": "Succès",
-    "error": "Erreur",
-    "attention": "Attention",
-    "confirmation": "Confirmation",
-    "deleteConfirmation": "Confirmation de suppression",
-    "actions": "Actions",
-    "chooseFile": "Choisir un fichier",
-    "paginationReport": "Affichage de {first} à {last} sur {total} régions",
-    "errorOccurred": "Une erreur est survenue."
-  },
-  "regions": {
-    "title": "Gestion des Régions",
-    "fields": {
-      "designation": "Désignation",
-      "type": "Type de Centrale",
-      "power": "Puissance (MW)"
-    },
-    "actions": {
-      "add": "Ajouter une région",
-      "deleteSelected": "Supprimer la sélection"
-    },
-    "types": {
-      "thermique": "Thermique",
-      "solaire": "Solaire",
-      "hydraulique": "Hydraulique",
-      "eolienne": "Éolienne"
-    },
-    "dialog": {
-      "createTitle": "Créer une nouvelle Région",
-      "editTitle": "Modifier la Région",
-      "importTitle": "Importer des Régions",
-      "importSubtitle": "Téléchargez un fichier CSV ou Excel pour importer de nouvelles régions."
-    },
-    "validation": {
-      "nameRequired": "La désignation est requise."
-    },
-    "messages": {
-      "createSuccess": "Région créée avec succès",
-      "updateSuccess": "Région mise à jour avec succès",
-      "deleteSuccess": "Région supprimée avec succès",
-      "bulkDeleteSuccess": "Les régions sélectionnées ont été supprimées.",
-      "confirmDelete": "Voulez-vous supprimer la région \"{name}\" ?",
-      "confirmBulkDelete": "Voulez-vous supprimer les {count} régions sélectionnées ?",
-      "selectFile": "Veuillez sélectionner un fichier à importer.",
-      "importStarted": "Importation lancée."
-    }
-  },
+
+
   "unities": {
         "title": "Gestion des Unités",
         "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
@@ -1040,55 +1126,7 @@
             "save": "Enregistrer"
         }
     },
-    "expenses": {
-        "title": "Gestion des Dépenses",
-        "headTitle": "Dépenses",
-        "subtitle": "Suivi des coûts et validation",
-        "addNew": "Nouvelle Dépense",
-        "approveSelected": "Approuver Sélection",
-        "rejectSelected": "Rejeter Sélection",
-        "export": "Exporter en CSV",
-        "toolbar": {
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser"
-        },
-        "searchPlaceholder": "Rechercher...",
-        "selectColumns": "Choisir les colonnes",
-        "table": {
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date",
-            "category": "Catégorie",
-            "status": "Statut",
-            "createdBy": "Créé par",
-            "linkedTo": "Lié à",
-            "approvedBy": "Approuvé par",
-            "notes": "Notes",
-            "selectedTotal": "Total sélectionné"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Dépense",
-            "editTitle": "Modifier la Dépense",
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date de la dépense",
-            "category": "Catégorie",
-            "linkedToType": "Type d'élément lié",
-            "linkedToItem": "Élément lié",
-            "notes": "Notes / Justificatif"
-        },
-        "confirm": {
-            "header": "Confirmation de {action}",
-            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
-            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
-        },
-        "toast": {
-            "statusUpdateSuccess": "Dépense {action} avec succès.",
-            "statusUpdateError": "La mise à jour du statut a échoué.",
-            "bulkStatusUpdateSuccess": "{count} dépenses {status} avec succès.",
-            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
-        }
-    },
+
     "interventions": {
         "title": "Interventions Field Service",
         "subtitle": "Opérations & Maintenance Réseau",
@@ -1142,7 +1180,351 @@
         "tooltips": {
             "manage": "Gérer"
         }
+  },
+  "regions": {
+    "title": "Gestion du Parc Énergétique",
+    "headTitle": "Gestion du ",
+    "headTitle2": "Parc",
+    "subtitle": "Supervision technique des régions énergétiques",
+    "actions": {
+      "add": "Nouvelle Région",
+      "resetFilters": "Réinitialiser Filtres"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Recherche globale...",
+      "searchByName": "Chercher par nom",
+      "allTypes": "Tous les types"
+    },
+    "stats": {
+      "total": "Total Régions",
+      "totalMW": "Puissance Totale",
+      "avgPower": "Puissance Moyenne",
+      "highPerf": "Haute Performance"
+    },
+    "types": {
+      "thermique": "Thermique",
+      "solaire": "Solaire",
+      "hydraulique": "Hydraulique",
+      "eolienne": "Éolienne"
+    },
+    "fields": {
+      "designation": "Désignation",
+      "type": "Source",
+      "power": "Capacité (MW)",
+      "notes": "Notes Techniques",
+      "status": "Statut"
+    },
+    "dialog": {
+      "createTitle": "Nouvelle Configuration de Région",
+      "editTitle": "Mise à jour Technique de la Région",
+      "regionSettings": "Paramètres de la région",
+      "productionInfo": "Complétez les informations de production"
+    },
+    "placeholders": {
+      "designation": "Ex: Centrale Nord-Est",
+      "notes": "Détails supplémentaires, consignes de sécurité..."
+    },
+    "status": {
+        "active": "Actif",
+        "inactive": "Inactif"
     }
+    },
+    "maintenances": {
+        "title": "Gestion des Maintenances",
+        "headTitle": "Maintenances",
+        "subtitle": "Opérations préventives & correctives",
+        "exportExcel": "Export Excel",
+        "new": "Nouvelle Maintenance",
+        "searchPlaceholder": "Rechercher une maintenance...",
+        "resetTooltip": "Réinitialiser",
+        "columnsTooltip": "Choisir les colonnes",
+        "deleteSelected": "Supprimer la sélection",
+        "columns": {
+            "title": "Titre de la maintenance",
+            "equipments": "Équipement(s)",
+            "assignable": "Assigné à",
+            "status": "Statut",
+            "priority": "Priorité",
+            "scheduled_start_date": "Début Planifié",
+            "description": "Description",
+            "estimated_duration": "Durée Estimée",
+            "cost": "Coût",
+            "region": "Région",
+            "recurrence_type": "Récurrence",
+            "recurrence_interval": "Intervalle Récurrence",
+            "recurrence_month_interval": "Intervalle Mois",
+            "recurrence_days": "Jours Récurrence",
+            "recurrence_day_of_month": "Jour du Mois",
+            "recurrence_month": "Mois Récurrence",
+            "actions": "Actions"
+        },
+        "columnSelector": {
+            "title": "Sélectionner les colonnes :",
+            "placeholder": "Choisir les colonnes"
+        },
+        "activityDialog": {
+            "title": "Système de Planification d'Activités",
+            "batchManagerTitle": "Batch Activity Manager",
+            "batchManagerSubtitle": "Version 12.0 • Enterprise Asset Management",
+            "parentMaintenance": "Maintenance Parente",
+            "activityVolume": "Volume d'activités",
+            "newActivity": "Nouvelle Activité",
+            "activityNamePlaceholder": "Nommer l'activité...",
+            "statusLabel": "Statut:",
+            "duplicateTooltip": "Dupliquer",
+            "attribution": "Attribution",
+            "entityTypePlaceholder": "Type d'entité",
+            "responsiblePlaceholder": "Sélectionner le responsable",
+            "concernedAssets": "Assets Concernés",
+            "searchEquipmentsPlaceholder": "Rechercher des équipements...",
+            "estimatedCost": "Coût estimé",
+            "planning": "Planification",
+            "priority": "Priorité",
+            "durationInMinutes": "Durée (m)",
+            "executionPeriod": "Période d'exécution",
+            "start": "Début",
+            "end": "Fin",
+            "checklist": "Checklist",
+            "addInstruction": "Ajouter une instruction",
+            "instructionPlaceholder": "Instruction...",
+            "selectType": "Sélectionner le type",
+            "zeroInstructions": "Zéro instruction.",
+            "spareParts": "Pièces Détachées",
+            "resetForm": "Réinitialiser le formulaire",
+            "cancel": "Annuler",
+            "validateAndDeploy": "Valider et Déployer"
+        },
+        "formDialog": {
+            "editTitle": "Modifier la Maintenance",
+            "createTitle": "Créer une nouvelle Maintenance",
+            "technicalReportTitle": "Rapport Technique d'Intervention",
+            "gmaoConsole": "Console d'administration GMAO v2025 • High-Performance System",
+            "missionId": "Identification de la mission",
+            "interventionTitle": "Titre de l'intervention",
+            "interventionTitlePlaceholder": "Ex: Maintenance préventive Trimestre 1",
+            "concernedEquipments": "Équipements concernés",
+            "selectAssets": "Sélectionner les actifs...",
+            "detailedDescription": "Description détaillée",
+            "generalInstructions": "Instructions générales pour l'équipe...",
+            "configPerEquipment": "Configuration par équipement",
+            "showControlPoints": "Configurer les points de contrôle",
+            "hideControlPoints": "Masquer",
+            "noEquipmentSelected": "Aucun équipement sélectionné",
+            "parentGroupLabel": "Équipements de premier niveau",
+            "clone": "Cloner",
+            "addInstruction": "Ajouter une instruction",
+            "instructionLabelPlaceholder": "Libellé (ex: Vérification niveau d'huile)",
+            "required": "Requis",
+            "noSpecificInstruction": "Aucune instruction spécifique définie",
+            "logisticsAndTiming": "Logistique & Timing",
+            "plannedStart": "Début planifié",
+            "actualStart": "Date de début",
+            "plannedEnd": "Fin planifiée",
+            "actualEnd": "Date de fin",
+            "interventionResponsible": "Responsable de l'intervention",
+            "assignableTypePlaceholder": "Type",
+            "assignableSelectPlaceholder": "Sélectionner...",
+            "maintenanceType": "Type de maintenance",
+            "currentStatus": "Statut actuel",
+            "priorityLevel": "Niveau de Priorité",
+            "interventionRegion": "Région d'intervention",
+            "recurrenceCycle": "Cycle de Récurrence",
+            "frequency": "Fréquence",
+            "dailyInterval": "Intervalle journalier",
+            "daysSelection": "Sélection des jours",
+            "dayOfMonth": "Le (Jour)",
+            "everyNMonths": "Tous les (Mois)",
+            "startMonth": "Mois de début",
+            "earlyReminder": "Rappel anticipé (Push/Email)",
+            "customRule": "Règle personnalisée (Cron/Text)",
+            "customRulePlaceholder": "Ex: Every 2nd Monday of the month",
+            "estimatedDuration": "Durée estimée",
+            "estimatedBudget": "Budget Estimé",
+            "cancelChanges": "Annuler les modifications",
+            "savePlan": "Sauvegarder le Plan de Maintenance"
+        },
+        "copyDialog": {
+            "title": "Copier les Instructions",
+            "subtitle": "Sélectionnez les équipements cibles",
+            "apply": "Appliquer la copie",
+            "cancel": "Annuler"
+        },
+        "status": {
+            "scheduled": "Planifiée",
+            "in_progress": "En cours",
+            "completed": "Terminée",
+            "completed_with_issues": "Terminée avec problèmes",
+            "suspended": "Suspendue",
+            "canceled": "Annulée",
+            "awaiting_resources": "En attente de ressources",
+            "to_be_reviewed_later": "À revoir plus tard"
+        },
+        "priority": {
+            "low": "Basse",
+            "medium": "Moyenne",
+            "high": "Haute",
+            "urgent": "Urgente"
+        },
+        "assignableTypes": {
+            "none": "Aucun",
+            "user": "Technicien",
+            "team": "Équipe"
+        },
+        "recurrence": {
+            "none": "Aucune",
+            "daily": "Quotidienne",
+            "weekly": "Hebdomadaire",
+            "monthly": "Mensuelle",
+            "quarterly": "Trimestrielle",
+            "biannual": "Semestrielle",
+            "annual": "Annuelle",
+            "custom": "Personnalisée"
+        }
+    },
+    "myActivities": {
+        "title": "Mes Activités",
+        "timelineTitle": "Chronologie de mes activités",
+        "timelineSubtitle": "Aperçu de l'évolution de vos tâches et interventions.",
+        "columnsPlaceholder": "Colonnes à afficher dans le tableau",
+        "noActivitiesTitle": "Aucune activité à afficher pour le moment.",
+        "noActivitiesSubtitle": "Revenez plus tard ou ajoutez une nouvelle tâche.",
+        "unknownReference": "Inconnu",
+        "subActivityFor": "Sous-activité pour {title} : ",
+        "unnamedActivity": "Activité",
+        "dialog": {
+            "subActivityInitialization": "Initialisation Sous-Activité",
+            "technicalInterventionReport": "Rapport Technique d'Intervention",
+            "gmaoAdminConsole": "Console d'administration GMAO v2025 • High-Performance System",
+            "resolutionTitle": "Resolution & Technical Actions",
+            "resolutionPlaceholder": "Décrivez précisément les interventions effectuées...",
+            "recommendationsLabel": "Recommandations",
+            "internalNotesLabel": "Notes Internes",
+            "checklistTitle": "Checklist de Conformité",
+            "checklistPoints": "{count} points",
+            "newInstructionPlaceholder": "Nouvelle consigne...",
+            "missionConfigTitle": "Configuration Mission",
+            "statusLabel": "Status",
+            "assignedTechnicianLabel": "Technicien Assigné",
+            "actualStartLabel": "Début Réel",
+            "actualEndLabel": "Fin Réelle",
+            "stockOutflowsTitle": "Sorties Stock",
+            "storeReturnsTitle": "Retours Magasin",
+            "financialImpactLabel": "Impact Financier Estimé",
+            "billingLabelPlaceholder": "Libellé facturation...",
+            "cancelButton": "Annuler",
+            "createSubActivityButton": "Créer Sous-Activité",
+            "publishReportButton": "Publier le Rapport",
+            "sparePartModalUsedTitle": "Sortie Matériel",
+            "sparePartModalReturnedTitle": "Réintégration Stock",
+            "referencesLabel": "Référence(s)",
+            "searchPartPlaceholder": "Rechercher une pièce...",
+            "unitQuantityLabel": "Quantité Unitaire",
+            "closeButton": "Fermer",
+            "validateButton": "Valider",
+            "instructionLabel": "Libellé (ex: Vérification niveau d'huile)",
+            "instructionRequired": "Requis",
+            "removeInstructionTitle": "Supprimer cette consigne"
+        },
+        "status": {
+            "scheduled": "Planifiée",
+            "in_progress": "En cours",
+            "completed": "Terminée",
+            "completed_with_issues": "Terminée avec problèmes",
+            "suspended": "Suspendue",
+            "canceled": "Annulée",
+            "awaiting_resources": "En attente de ressources",
+            "to_be_reviewed_later": "À revoir plus tard",
+            "pending": "En attente"
+        },
+        "statusOptions": {
+            "scheduled": "📅 Planifié",
+            "in_progress": "⚡ En cours",
+            "completed": "✅ Terminé",
+            "completed_with_issues": "⚠️ Terminé avec réserves",
+            "suspended": "⏸️ Suspendu",
+            "canceled": "🚫 Annulé",
+            "awaiting_resources": "⏳ Attente ressources"
+        },
+        "priority": {
+            "high": "Haute",
+            "medium": "Moyenne",
+            "low": "Basse",
+            "urgent": "Urgente"
+        },
+        "displayOptions": {
+            "actual_end_time": "Heure de fin réelle",
+            "proposals": "Propositions/Recommandations",
+            "jobber": "Intervenant",
+            "additional_information": "Informations Additionnelles",
+            "spare_parts_used": "Pièces Utilisées",
+            "spare_parts_returned": "Pièces Retournées"
+        },
+        "instructionTypes": {
+            "text": "Texte court",
+            "textarea": "Zone de texte",
+            "number": "Nombre",
+            "date": "Date",
+            "boolean": "Oui/Non (Binaire)"
+        },
+        "boolean": {
+            "yes": "Oui",
+            "no": "Non"
+        },
 
+        "toast": {
+            "subActivityCreated": "Sous-activité créée avec succès.",
+            "activityUpdated": "Activité mise à jour avec succès.",
+            "success": "Succès",
+            "error": "Erreur",
+            "saveError": "Une erreur est survenue lors de l'enregistrement. Voir la console pour plus de détails.",
+            "instructionLabelRequired": "Le libellé est obligatoire",
+            "warning": "Attention",
+            "instructionAdded": "Instruction ajoutée à la liste",
+            "added": "Ajouté",
+            "instructionRemoved": "Instruction retirée",
+            "info": "Info",
+            "listUpdated": "La liste a été mise à jour."
+        },
+        "defaults": {
+            "sparePartPayment": "Paiement des pièces détachées et autres"
+        }
+    },
+    "leaves": {
+        "title": "Gestion des Congés",
+        "subtitle": "{count} Demandes répertoriées",
+        "newRequest": "Nouvelle Demande",
+        "stats": {
+            "total": "Total Demandes",
+            "pending": "En Attente",
+            "approved": "Approuvées",
+            "rejected": "Rejetées"
+        },
+        "table": {
+            "applicant": "Demandeur",
+            "type": "Type",
+            "period": "Période",
+            "status": "État",
+            "actions": "Actions"
+        },
+        "dialog": {
+            "editTitle": "Mise à jour Congé",
+            "createTitle": "Nouvelle Demande de Congé",
+            "headerTitle": "Planification d'Absence",
+            "headerSubtitle": "Veuillez renseigner les détails de votre demande",
+            "applicant": "Collaborateur",
+            "applicantPlaceholder": "Sélectionner le demandeur",
+            "startDate": "Date de début",
+            "endDate": "Date de fin",
+            "leaveType": "Type de congé",
+            "reason": "Motif de la demande",
+            "reasonPlaceholder": "Expliquez brièvement le motif...",
+            "attachment": "Justificatif (PDF, Image)",
+            "attachmentChoose": "Choisir un fichier",
+            "sendRequest": "Envoyer la demande"
+        },
+        "toast": {
+            "success": "Opération réussie"
+        }
+    }
 
 }

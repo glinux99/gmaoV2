@@ -29,7 +29,7 @@ class LabelController extends Controller
 
 
         return Inertia::render('Configurations/Labels', [
-            'labels' => $query->paginate(10),
+            'labels' => $query->paginate(100),
             'filters' => $request->only(['search']),
         ]);
     }

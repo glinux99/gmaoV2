@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
@@ -14,7 +14,6 @@ import InputIcon from 'primevue/inputicon';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
 import MultiSelect from 'primevue/multiselect';
 import Calendar from 'primevue/calendar';
 import Toast from 'primevue/toast';
@@ -22,6 +21,8 @@ import ConfirmDialog from 'primevue/confirmdialog';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Tag from 'primevue/tag';
+import Dropdown from 'primevue/dropdown';
+import { FilterMatchMode } from '@primevue/core/api';
 
 const { t } = useI18n();
 const props = defineProps({
@@ -38,7 +39,6 @@ const dt = ref();
 const employeeDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
-const search = ref(props.filters?.search || '');
 const selectedEmployees = ref(null);
 
 const { auth } = usePage().props;
@@ -57,6 +57,12 @@ const form = useForm({
     salary: 0,
     employment_status: 'active',
     notes: '',
+});
+
+// --- FILTRES ---
+const filters = ref({
+    global: { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
+    employment_status: { value: null, matchMode: FilterMatchMode.IN },
 });
 
 // --- CONFIGURATION DES COLONNES ---
@@ -82,6 +88,17 @@ const employmentStatuses = computed(() => [
 const getStatusSeverity = (status) => {
     return employmentStatuses.value.find(s => s.value === status)?.severity || 'secondary';
 };
+
+// --- STATISTIQUES ---
+const stats = computed(() => {
+    const data = props.employees.data || [];
+    return {
+        total: props.employees.total,
+        active: data.filter(e => e.employment_status === 'active').length,
+        on_leave: data.filter(e => e.employment_status === 'on_leave').length,
+        terminated: data.filter(e => e.employment_status === 'terminated').length,
+    };
+});
 
 // --- ACTIONS ---
 const openNew = () => {
@@ -128,12 +145,12 @@ const deleteEmployee = (emp) => {
 
 // --- RECHERCHE ---
 let timeoutId = null;
-const performSearch = () => {
+watch(() => filters.value.global.value, (newValue) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
-        router.get(route('employees.index'), { search: search.value }, { preserveState: true, replace: true });
+        router.get(route('employees.index'), { search: newValue }, { preserveState: true, replace: true });
     }, 400);
-};
+});
 </script>
 
 <template>
@@ -142,33 +159,50 @@ const performSearch = () => {
 
         <div class="p-4 lg:p-8 bg-[#F8FAFC] min-h-screen">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-100 rotate-3">
-                        <i class="pi pi-users text-white text-lg"></i>
+                 <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 bg-primary-600 rounded-[2rem] flex items-center justify-center shadow-xl shadow-primary-200">
+                        <i class="pi pi-users text-white text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-black text-slate-900 tracking-tight">{{ t('employees.title') }}</h1>
-                        <p class="text-slate-500 font-bold text-[10px] uppercase tracking-widest">{{ props.employees.total }} {{ t('employees.count_label') }}</p>
+                        <h1 class="text-3xl font-[900] text-slate-900 tracking-tight">{{ t('employees.title') }}</h1>
+                        <p class="text-slate-500 font-medium">
+                            {{ t('employees.count_label', { count: props.employees.total }) }}
+                        </p>
                     </div>
                 </div>
-                <div class="flex gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
                     <Button icon="pi pi-upload" text severity="secondary" @click="dt.exportCSV()" />
                     <Button :label="t('employees.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-lg font-bold" />
                 </div>
             </div>
 
-            <div class="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div v-for="(val, key) in stats" :key="key" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <div class="flex flex-col gap-2">
+                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t(`employees.status.${key}`) || key }}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="text-3xl font-black text-slate-800">{{ val }}</span>
+                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                <i class="pi pi-user text-slate-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
                 <DataTable
                     ref="dt" :value="props.employees.data" dataKey="id"
                     v-model:selection="selectedEmployees"
-                    :paginator="true" :rows="10"
-                    class="v11-table" responsiveLayout="scroll"
+                    v-model:filters="filters"
+                    :paginator="true" :rows="10" filterDisplay="menu"
+                    class="p-datatable-custom" removableSort
                 >
                     <template #header>
                         <div class="flex flex-wrap justify-between items-center gap-4 p-2">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="search" :placeholder="t('common.search')" @input="performSearch" class="w-full md:w-80 border-none bg-slate-50 rounded-xl" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('common.search')" class="w-full md:w-80 border-none bg-slate-50 rounded-xl" />
                             </IconField>
                             <MultiSelect v-model="selectedColumns" :options="allColumns" optionLabel="header"
                                 :placeholder="t('common.columns')" display="chip" class="w-full md:w-64 border-none bg-slate-50 rounded-xl" />
@@ -177,7 +211,7 @@ const performSearch = () => {
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
-                    <Column v-for="col in selectedColumns" :key="col.field" :field="col.field" :header="col.header" sortable>
+                    <Column v-for="col in selectedColumns" :key="col.field" :field="col.field" :header="col.header" sortable :filterField="col.field" :showFilterMatchModes="col.field === 'employment_status'">
                         <template #body="{ data, field }">
                             <template v-if="field === 'employment_status'">
                                 <Tag :value="t(`employees.status.${data[field]}`)" :severity="getStatusSeverity(data[field])" class="rounded-md font-bold text-[10px]" />
@@ -194,6 +228,9 @@ const performSearch = () => {
                                 <span class="font-semibold text-slate-700">{{ data[field] }}</span>
                             </template>
                         </template>
+                         <template #filter="{ filterModel }" v-if="col.field === 'employment_status'">
+                            <Dropdown v-model="filterModel.value" :options="employmentStatuses" optionLabel="label" optionValue="value" :placeholder="t('common.total', {item: ''})" class="w-full" />
+                        </template>
                     </Column>
 
                     <Column header="Actions" alignFrozen="right" frozen class="text-right">
@@ -206,44 +243,60 @@ const performSearch = () => {
             </div>
         </div>
 
-        <Dialog v-model:visible="employeeDialog" modal :header="editing ? t('employees.dialog.edit') : t('employees.dialog.new')" :style="{ width: '600px' }" class="v11-dialog">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4">
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.first_name') }}</label>
-                    <InputText v-model="form.first_name" :class="{'p-invalid': form.errors.first_name}" class="v11-input" />
+        <Dialog v-model:visible="employeeDialog" modal :header="false" :closable="false"
+            :style="{ width: '90vw', maxWidth: '600px' }"
+            :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
+            <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200">
+                        <i class="pi pi-user-plus text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-slate-100 m-0">{{ editing ? t('employees.dialog.edit') : t('employees.dialog.new') }}</h4>
+                    </div>
                 </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.last_name') }}</label>
-                    <InputText v-model="form.last_name" :class="{'p-invalid': form.errors.last_name}" class="v11-input" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.email') }}</label>
-                    <InputText v-model="form.email" class="v11-input" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.status') }}</label>
-                    <Dropdown v-model="form.employment_status" :options="employmentStatuses" optionLabel="label" optionValue="value" class="v11-input" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.salary') }}</label>
-                    <InputNumber v-model="form.salary" mode="currency" currency="XOF" locale="fr-FR" class="v11-input" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.hire_date') }}</label>
-                    <Calendar v-model="form.hire_date" dateFormat="dd/mm/yy" showIcon class="v11-calendar" />
-                </div>
-                <div class="flex flex-col gap-2 md:col-span-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.notes') }}</label>
-                    <Textarea v-model="form.notes" rows="3" class="v11-input" />
+                <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="employeeDialog = false" class="text-white hover:bg-white/10" />
+            </div>
+
+            <div class="p-6 bg-white max-h-[80vh] overflow-y-auto scroll-smooth">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.first_name') }}</label>
+                        <InputText v-model="form.first_name" :class="{'p-invalid': form.errors.first_name}" class="v11-input" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.last_name') }}</label>
+                        <InputText v-model="form.last_name" :class="{'p-invalid': form.errors.last_name}" class="v11-input" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.email') }}</label>
+                        <InputText v-model="form.email" class="v11-input" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.status') }}</label>
+                        <Dropdown v-model="form.employment_status" :options="employmentStatuses" optionLabel="label" optionValue="value" class="v11-input" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.salary') }}</label>
+                        <InputNumber v-model="form.salary" mode="currency" currency="XOF" locale="fr-FR" class="v11-input" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.hire_date') }}</label>
+                        <Calendar v-model="form.hire_date" dateFormat="dd/mm/yy" showIcon class="v11-calendar" />
+                    </div>
+                    <div class="flex flex-col gap-2 md:col-span-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.notes') }}</label>
+                        <Textarea v-model="form.notes" rows="3" class="v11-input" />
+                    </div>
                 </div>
             </div>
 
-            <template #footer>
-                <div class="flex gap-3 w-full pt-6 border-t border-slate-100 mt-4">
-                    <Button :label="t('common.cancel')" text severity="secondary" @click="employeeDialog = false" class="flex-1 rounded-xl" />
-                    <Button :label="t('common.save')" severity="primary" raised @click="saveEmployee" :loading="form.processing" class="flex-1 rounded-xl font-bold" />
-                </div>
-            </template>
+             <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+                <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="employeeDialog = false" class="font-bold uppercase text-[10px] tracking-widest" />
+                <Button :label="t('common.save')" icon="pi pi-check-circle" severity="primary"
+                        class="px-10 h-14 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
+                        @click="saveEmployee" :loading="form.processing" />
+            </div>
         </Dialog>
 
         <Toast position="bottom-right" />
@@ -252,25 +305,20 @@ const performSearch = () => {
 </template>
 
 <style lang="scss">
-.v11-table {
+.p-datatable-custom {
     .p-datatable-thead > tr > th {
-        @apply bg-slate-50/50 text-slate-400 font-bold text-[10px] uppercase tracking-widest py-4 px-4 border-b border-slate-100;
+        @apply bg-slate-50/50 text-slate-400 font-black text-[10px] uppercase tracking-[0.15em] py-6 px-4 border-b border-slate-100;
     }
     .p-datatable-tbody > tr {
-        @apply hover:bg-indigo-50/30 transition-colors;
-        td { @apply py-4 px-4 border-b border-slate-50; }
+        @apply border-b border-slate-50;
+        &:hover { @apply bg-slate-50/50; }
     }
 }
 
-.v11-input, .v11-calendar {
-    .p-inputtext, .p-dropdown, .p-inputnumber-input {
-        @apply rounded-xl border-slate-200 bg-slate-50/50 p-3 text-sm font-semibold;
-        &:focus { @apply bg-white ring-4 ring-indigo-50 border-indigo-500; }
+.v11-input, .v11-calendar .p-inputtext, .v11-input .p-inputtext {
+    @apply rounded-xl border-slate-200 bg-slate-50 p-3 text-sm font-bold w-full;
+    &:focus-within, &:focus {
+        @apply bg-white ring-2 ring-primary-200 border-primary-300;
     }
-}
-
-.v11-dialog {
-    .p-dialog-header { @apply p-6 border-b border-slate-50; .p-dialog-title { @apply font-black text-slate-900; } }
-    .p-dialog-content { @apply p-6; }
 }
 </style>

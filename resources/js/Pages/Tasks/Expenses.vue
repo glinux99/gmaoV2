@@ -99,6 +99,16 @@ const flatExpenses = computed(() => {
     );
 });
 
+const stats = computed(() => {
+    const allExpenses = flatExpenses.value;
+    const totalAmount = allExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    return {
+        totalAmount: totalAmount,
+        pending: allExpenses.filter(e => e.status === 'pending').length,
+        average: allExpenses.length > 0 ? totalAmount / allExpenses.length : 0,
+    };
+});
+
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(value);
 };
@@ -175,6 +185,7 @@ const updateMultipleExpenseStatus = (expenses, newStatus) => {
 
 const resetFilters = () => {
     Object.keys(filters.value).forEach(key => filters.value[key] = null);
+    performSearch();
 };
 
 
@@ -209,35 +220,64 @@ const exportCSV = () => dt.value.exportCSV();
         <ConfirmDialog />
 
         <div class="min-h-screen bg-slate-50 p-4 md:p-10">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div class="flex items-center gap-4">
-                    <div class="flex h-16 w-16 items-center justify-center rounded-[2rem] bg-amber-500 shadow-xl shadow-amber-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-[2rem] bg-primary-600 shadow-xl shadow-primary-200">
                         <i class="pi pi-wallet text-2xl text-white"></i>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-black tracking-tighter text-slate-900 md:text-4xl">{{ t('expenses.title') }}</h1>
-                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ t('expenses.subtitle') }}</p>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Gestion des <span class="text-primary-600">Dépenses</span></h1>
+                        <p class="text-slate-500 font-medium">{{ t('expenses.subtitle') }}</p>
                     </div>
                 </div>
-                <Button :label="t('expenses.addNew')" icon="pi pi-plus-circle" class="!rounded-2xl !font-black" @click="openNew" />
+                <div class="flex gap-3">
+                    <Button :label="t('expenses.addNew')" icon="pi pi-plus" raised @click="openNew" class="rounded-xl px-6" />
+                </div>
             </div>
 
-            <!-- Toolbar -->
-            <div class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="flex items-center gap-2">
-                    <Button icon="pi pi-check" severity="success" :disabled="!selectedExpenses.length" @click="updateMultipleExpenseStatus(selectedExpenses, 'approved')" v-tooltip.top="'Approuver la sélection'"/>
-                    <Button icon="pi pi-times" severity="danger" :disabled="!selectedExpenses.length" @click="updateMultipleExpenseStatus(selectedExpenses, 'rejected')" v-tooltip.top="'Rejeter la sélection'"/>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t('expenses.stats.totalAmount') }}</span>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-3xl font-black text-slate-800">{{ formatCurrency(stats.totalAmount) }}</span>
+                        <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center"><i class="pi pi-dollar text-slate-400"></i></div>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                     <Button icon="pi pi-file-excel" severity="success" text @click="exportCSV" v-tooltip.top="'Exporter en CSV'" />
-                     <Button icon="pi pi-columns" text @click="toggleColumnSelection" v-tooltip.top="'Choisir les colonnes'" />
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t('expenses.stats.pending') }}</span>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-3xl font-black text-slate-800">{{ stats.pending }}</span>
+                        <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center"><i class="pi pi-clock text-slate-400"></i></div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t('expenses.stats.average') }}</span>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-3xl font-black text-slate-800">{{ formatCurrency(stats.average) }}</span>
+                        <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center"><i class="pi pi-chart-line text-slate-400"></i></div>
+                    </div>
                 </div>
             </div>
 
             <div class="overflow-hidden rounded-[2.5rem] border border-white bg-white shadow-xl">
                 <DataTable :value="flatExpenses" ref="dt" dataKey="id" :paginator="true" :rows="10"
                     v-model:selection="selectedExpenses" class="v11-table" responsiveLayout="scroll">
-
+                    <template #header>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters.search" @input="performSearch" :placeholder="t('expenses.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                            </IconField>
+                            <div class="flex items-center gap-2">
+                                <Button v-if="selectedExpenses.length" icon="pi pi-check" severity="success" @click="updateMultipleExpenseStatus(selectedExpenses, 'approved')" v-tooltip.top="'Approuver la sélection'"/>
+                                <Button v-if="selectedExpenses.length" icon="pi pi-times" severity="danger" @click="updateMultipleExpenseStatus(selectedExpenses, 'rejected')" v-tooltip.top="'Rejeter la sélection'"/>
+                                <div v-if="selectedExpenses.length" class="w-px h-6 bg-slate-200"></div>
+                                <Button icon="pi pi-filter" text rounded severity="secondary" @click="(event) => filtersOp.toggle(event)" />
+                                <Button icon="pi pi-file-excel" text rounded severity="secondary" @click="exportCSV" v-tooltip.top="'Exporter en CSV'" />
+                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="toggleColumnSelection" v-tooltip.top="'Choisir les colonnes'" />
+                            </div>
+                        </div>
+                    </template>
                     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
                     <template v-for="col in allColumns" :key="col.field">
@@ -280,99 +320,116 @@ const exportCSV = () => dt.value.exportCSV();
             </div>
         </div>
 
-        <Dialog v-model:visible="expenseDialog" modal :header="false" :closable="false" class="quantum-dialog" :style="{ width: '55rem' }"
+        <Dialog v-model:visible="expenseDialog" modal :header="false" :closable="false" :style="{ width: '55rem' }"
             :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
 
-            <div class="bg-slate-900 p-8 flex justify-between items-center text-white">
+            <div class="px-8 py-5 bg-slate-900 text-white rounded-xl flex justify-between items-center relative z-50">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center">
+                    <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200">
                         <i class="pi pi-receipt text-xl"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl font-black m-0 uppercase tracking-tighter">{{ editing ? 'Modifier Dépense' : 'Nouveau Justificatif' }}</h2>
-                        <span class="text-[9px] opacity-50 uppercase tracking-widest">Enregistrement comptable</span>
+                        <h4 class="font-black text-slate-100 m-0">{{ editing ? t('expenses.dialog.editTitle') : t('expenses.dialog.createTitle') }}</h4>
+                        <p class="text-xs text-slate-400 m-0">{{ t('expenses.subtitle') }}</p>
                     </div>
                 </div>
-                <Button icon="pi pi-times" @click="hideDialog" text rounded class="text-white/50" />
+                <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
             </div>
 
-            <div class="p-8 bg-slate-50">
-                <div class="grid grid-cols-12 gap-6">
-                    <div class="col-span-12 bg-white p-6 rounded-[2rem] shadow-sm flex flex-wrap gap-8 items-center border border-slate-200">
-                        <div class="flex-1 min-w-[200px]">
-                            <label class="text-[10px] font-black uppercase text-slate-400 block mb-2">Montant HT (XOF)</label>
-                            <InputNumber v-model="form.amount" mode="decimal" class="w-full" :pt="{ input: { class: 'text-3xl font-black border-none bg-slate-50 rounded-xl p-3 w-full' } }" />
-                        </div>
-                        <div class="w-px h-12 bg-slate-100 hidden md:block"></div>
-                        <div class="flex-1 min-w-[150px]">
-                            <label class="text-[10px] font-black uppercase text-slate-400 block mb-2">TVA (%)</label>
-                            <Dropdown v-model="form.tax_rate" :options="[0, 5, 10, 18, 20]" class="w-full !rounded-xl !bg-slate-50 !border-none font-bold" />
-                        </div>
-                        <div class="flex-1 min-w-[180px]">
-                            <label class="text-[10px] font-black uppercase text-slate-400 block mb-2">Date d'opération</label>
-                            <Calendar v-model="form.expense_date" dateFormat="dd/mm/yy" class="w-full" :pt="{ input: { class: 'font-bold border-none bg-slate-50 rounded-xl p-3 w-full' } }" />
-                        </div>
-                    </div>
+            <div class="p-6 bg-white max-h-[80vh] overflow-y-auto scroll-smooth">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+                    <div class="md:col-span-12 space-y-8">
 
-                    <div class="col-span-12 lg:col-span-7 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-black uppercase text-slate-500">Fournisseur</label>
-                                <InputText v-model="form.provider" class="w-full !rounded-xl !border-slate-100" />
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Montant HT (XOF)</label>
+                                <InputNumber v-model="form.amount" mode="decimal" class="w-full" inputClass="py-3.5 rounded-xl border-slate-200" />
                             </div>
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-black uppercase text-slate-500">N° Facture</label>
-                                <InputText v-model="form.invoice_number" class="w-full !rounded-xl !border-slate-100" />
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-black uppercase text-slate-500">Libellé court</label>
-                            <InputText v-model="form.label" class="w-full !rounded-xl !border-slate-100" />
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-black uppercase text-slate-500">Catégorie</label>
-                                <Dropdown v-model="form.category_id" :options="categories" optionLabel="name" optionValue="id" class="w-full !rounded-xl" />
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-black uppercase text-slate-500">Paiement</label>
-                                <Dropdown v-model="form.payment_method" :options="['Carte', 'Espèces', 'Virement']" class="w-full !rounded-xl" />
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="col-span-12 lg:col-span-5 flex flex-col gap-4">
-                        <div class="bg-slate-800 p-6 rounded-[2rem] text-white">
-                            <h4 class="text-[10px] font-black uppercase text-amber-400 mb-4">Affectation</h4>
-                            <div class="space-y-4">
-                                <div class="space-y-1">
-                                    <label class="text-[9px] opacity-60 uppercase">Projet</label>
-                                    <Dropdown v-model="form.project_id" :options="projects" optionLabel="name" optionValue="id" class="w-full !bg-white/10 !border-none !text-white" />
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-[9px] opacity-60 uppercase">Véhicule</label>
-                                    <Dropdown v-model="form.vehicle_id" :options="vehicles" optionLabel="license_plate" optionValue="id" class="w-full !bg-white/10 !border-none !text-white" />
-                                </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">TVA (%)</label>
+                                <Dropdown v-model="form.tax_rate" :options="[0, 5, 10, 18, 20]" class="w-full rounded-xl border-slate-200 py-1" />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Date d'opération</label>
+                                <Calendar v-model="form.expense_date" dateFormat="dd/mm/yy" class="w-full" inputClass="py-3.5 rounded-xl border-slate-200" />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Fournisseur</label>
+                                <InputText v-model="form.provider" class="w-full py-3.5 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary-50" placeholder="Nom du fournisseur" />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">N° Facture</label>
+                                <InputText v-model="form.invoice_number" class="w-full py-3.5 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary-50" placeholder="Numéro de facture" />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Libellé court</label>
+                                <InputText v-model="form.label" class="w-full py-3.5 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary-50" placeholder="Libellé de la dépense" />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Catégorie</label>
+                                <Dropdown v-model="form.category_id" :options="categories" optionLabel="name" optionValue="id" class="w-full rounded-xl border-slate-200 py-1" />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Paiement</label>
+                                <Dropdown v-model="form.payment_method" :options="['Carte', 'Espèces', 'Virement']" class="w-full rounded-xl border-slate-200 py-1" />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Projet</label>
+                                <Dropdown v-model="form.project_id" :options="projects" optionLabel="name" optionValue="id" class="w-full rounded-xl border-slate-200 py-1" showClear />
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Véhicule</label>
+                                <Dropdown v-model="form.vehicle_id" :options="vehicles" optionLabel="license_plate" optionValue="id" class="w-full rounded-xl border-slate-200 py-1" showClear />
+                            </div>
+
+                            <div class="md:col-span-2 flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Description</label>
+                                <Textarea v-model="form.description" rows="3" class="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-primary-50 transition-all text-sm outline-none" placeholder="Description détaillée de la dépense"></Textarea>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="p-6 bg-white border-t flex justify-between items-center">
-                <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest italic items-center flex gap-2">
-                   <i class="pi pi-lock text-[8px]"></i> Session Sécurisée
-                </span>
+            <template #footer>
+                <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+                <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
                 <div class="flex gap-3">
-                    <Button label="Annuler" text @click="hideDialog" class="!rounded-xl" />
-                    <Button label="Enregistrer" icon="pi pi-save" @click="saveExpense" :loading="form.processing" class="!rounded-xl !bg-slate-900 !px-8" />
+                    <Button :label="editing ? t('common.update') : t('common.save')" icon="pi pi-check-circle" severity="indigo"
+                            class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs"
+                            @click="saveExpense" :loading="form.processing" />
                 </div>
             </div>
+            </template>
         </Dialog>
 
         <OverlayPanel ref="op" class="p-3">
-            <h4 class="text-xs font-black uppercase mb-3">Colonnes visibles</h4>
+            <h4 class="text-xs font-black uppercase mb-3">{{ t('common.columnSelector.title') }}</h4>
             <MultiSelect v-model="selectedColumns" :options="allColumns" optionLabel="header" optionValue="field" display="chip" class="w-64" />
+        </OverlayPanel>
+
+        <OverlayPanel ref="filtersOp" class="p-4">
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-semibold">{{ t('expenses.filter.status') }}</label>
+                    <Dropdown v-model="filters.status" :options="['pending', 'approved', 'rejected', 'paid']" showClear class="w-full mt-1" />
+                </div>
+                <div>
+                    <label class="text-xs font-semibold">{{ t('expenses.filter.category') }}</label>
+                    <Dropdown v-model="filters.category_id" :options="categories" optionLabel="name" optionValue="id" showClear class="w-full mt-1" />
+                </div>
+                <Button :label="t('expenses.filter.apply')" icon="pi pi-check" @click="performSearch" class="w-full" />
+                <Button :label="t('toolbar.resetFilters')" icon="pi pi-filter-slash" text @click="resetFilters" class="w-full" />
+            </div>
         </OverlayPanel>
     </AppLayout>
 </template>

@@ -854,7 +854,8 @@
     "fields": {
       "designation": "Désignation",
       "type": "Type de Centrale",
-      "power": "Puissance (MW)"
+      "power": "Puissance (MW)",
+      "status": "Hali"
     },
     "actions": {
       "add": "Ajouter une région",
@@ -884,6 +885,10 @@
       "confirmBulkDelete": "Voulez-vous supprimer les {count} régions sélectionnées ?",
       "selectFile": "Veuillez sélectionner un fichier à importer.",
       "importStarted": "Importation lancée."
+    },
+    "status": {
+        "active": "Inayotumika",
+        "inactive": "Haitumiki"
     }
   },
   "unities": {

@@ -254,101 +254,120 @@ onMounted(() => loadEnginTypes());
     <Dialog
     v-model:visible="labelDialog"
     modal
-    :header="editing ? t('engins.dialog.editTitle') : t('engins.dialog.createTitle')"
+    :header="false" :closable="false"
     :style="{ width: '90vw', maxWidth: '600px' }"
-    class="v11-dialog"
-    :breakpoints="{ '960px': '75vw', '641px': '100vw' }"
+    :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }"
 >
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 py-4">
-
-        <div class="flex flex-col gap-2">
-            <label for="type" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                {{ t('engins.form.type') }}
-            </label>
-            <Dropdown
-                id="type"
-                v-model="form.type"
-                :options="enginTypesOptions"
-                optionLabel="name"
-                optionValue="id"
-                @change="handleTypeChange"
-                class="v11-input w-full"
-                :placeholder="t('engins.form.typePlaceholder')"
-            />
+    <div>
+        <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+            <div class="flex items-center gap-4">
+                <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                    <i class="pi pi-truck text-blue-400 text-xl"></i>
+                </div>
+                <div class="flex flex-col">
+                    <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">
+                        {{ editing ? t('engins.dialog.editTitle') : t('engins.dialog.createTitle') }}
+                    </h2>
+                    <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">
+                        Gestion de la flotte
+                    </span>
+                </div>
+            </div>
+            <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="labelDialog = false" class="text-white hover:bg-white/10" />
         </div>
 
-        <div class="flex flex-col gap-2">
-            <label for="designation" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                {{ t('engins.form.designation') }}
-            </label>
-            <InputText
-                id="designation"
-                v-model="form.designation"
-                class="v11-input w-full"
-                placeholder="Ex: Camion-benne"
-            />
-        </div>
+        <div class="p-6 bg-white max-h-[80vh] overflow-y-auto scroll-smooth">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 py-4">
+                <div class="flex flex-col gap-2">
+                    <label for="type" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                        {{ t('engins.form.type') }}
+                    </label>
+                    <Dropdown
+                        id="type"
+                        v-model="form.type"
+                        :options="enginTypesOptions"
+                        optionLabel="name"
+                        optionValue="id"
+                        @change="handleTypeChange"
+                        class="v11-input w-full"
+                        :placeholder="t('engins.form.typePlaceholder')"
+                    />
+                </div>
 
-        <div class="flex flex-col gap-2">
-            <label for="immat" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                {{ t('engins.form.immatriculation') }}
-            </label>
-            <InputText
-                id="immat"
-                v-model="form.immatriculation"
-                class="v11-input w-full"
-                placeholder="Ex: 1234AB/01"
-            />
-        </div>
+                <div class="flex flex-col gap-2">
+                    <label for="designation" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                        {{ t('engins.form.designation') }}
+                    </label>
+                    <InputText
+                        id="designation"
+                        v-model="form.designation"
+                        class="v11-input w-full"
+                        placeholder="Ex: Camion-benne"
+                    />
+                </div>
 
-        <div class="flex flex-col gap-2">
-            <label for="region" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                {{ t('engins.form.region') }}
-            </label>
-            <Dropdown
-                id="region"
-                v-model="form.region_id"
-                :options="regions"
-                optionLabel="designation"
-                optionValue="id"
-                class="v11-input w-full"
-                :placeholder="t('engins.form.regionPlaceholder')"
-            />
-        </div>
+                <div class="flex flex-col gap-2">
+                    <label for="immat" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                        {{ t('engins.form.immatriculation') }}
+                    </label>
+                    <InputText
+                        id="immat"
+                        v-model="form.immatriculation"
+                        class="v11-input w-full"
+                        placeholder="Ex: 1234AB/01"
+                    />
+                </div>
 
-        <div class="flex flex-col gap-2 md:col-span-2">
-            <label for="date_service" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                {{ t('engins.form.dateAcquisition') }}
-            </label>
-            <Calendar
-                id="date_service"
-                v-model="form.date_mise_en_service"
-                dateFormat="dd/mm/yy"
-                showIcon
-                iconDisplay="input"
-                class="v11-calendar w-full"
-                :placeholder="t('engins.form.datePlaceholder')"
-            />
+                <div class="flex flex-col gap-2">
+                    <label for="region" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                        {{ t('engins.form.region') }}
+                    </label>
+                    <Dropdown
+                        id="region"
+                        v-model="form.region_id"
+                        :options="regions"
+                        optionLabel="designation"
+                        optionValue="id"
+                        class="v11-input w-full"
+                        :placeholder="t('engins.form.regionPlaceholder')"
+                    />
+                </div>
+
+                <div class="flex flex-col gap-2 md:col-span-2">
+                    <label for="date_service" class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                        {{ t('engins.form.dateAcquisition') }}
+                    </label>
+                    <Calendar
+                        id="date_service"
+                        v-model="form.date_mise_en_service"
+                        dateFormat="dd/mm/yy"
+                        showIcon
+                        iconDisplay="input"
+                        class="v11-calendar w-full"
+                        :placeholder="t('engins.form.datePlaceholder')"
+                    />
+                </div>
+            </div>
         </div>
     </div>
 
     <template #footer>
-        <div class="flex items-center justify-end gap-3 w-full pt-4 border-t border-slate-100">
+        <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
             <Button
                 :label="t('engins.common.cancel')"
                 icon="pi pi-times"
                 text
                 severity="secondary"
                 @click="labelDialog = false"
-                class="px-6 rounded-xl font-bold"
+                class="font-bold uppercase text-[10px] tracking-widest"
             />
             <Button
                 :label="editing ? t('engins.common.update') : t('engins.common.save')"
-                icon="pi pi-check"
-                severity="primary"
+                icon="pi pi-check-circle"
+                severity="indigo"
                 @click="saveEngin"
                 :loading="form.processing"
-                class="px-8 rounded-xl font-black shadow-lg shadow-indigo-100"
+                class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs"
             />
         </div>
     </template>

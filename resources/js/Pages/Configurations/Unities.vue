@@ -7,6 +7,7 @@ import { useConfirm } from "primevue/useconfirm";
 import { useI18n } from 'vue-i18n';
 
 // --- IMPORTS COMPOSANTS ---
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import DataTable from 'primevue/datatable';
@@ -32,12 +33,24 @@ const labelDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
+const dt = ref();
 
 // --- FORMULAIRE ---
 const form = useForm({
     id: null,
     designation: '',
     abreviation: '',
+});
+
+// --- FILTRES ---
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+});
+
+// --- STATS ---
+const stats = computed(() => {
+    return { total: props.unities.length };
 });
 
 // --- ACTIONS ---
@@ -105,16 +118,11 @@ const deleteUnit = (unit) => {
 };
 
 // --- RECHERCHE & EXPORT ---
-const dt = ref();
-let timeoutId = null;
 const performSearch = () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
         router.get(route('unities.index'), { search: search.value }, {
             preserveState: true,
             replace: true,
         });
-    }, 400);
 };
 
 const dialogTitle = computed(() => editing.value ? t('unities.dialog.editTitle') : t('unities.dialog.createTitle'));
@@ -124,31 +132,53 @@ const dialogTitle = computed(() => editing.value ? t('unities.dialog.editTitle')
     <AppLayout :title="t('unities.title')">
         <Head :title="t('unities.title')" />
 
-        <div class="min-h-screen bg-slate-50/50 p-4 lg:p-8">
-            <div class="flex flex-col md:flex-row justify-between items-end gap-4 mb-8">
-                <div>
-                    <h1 class="text-3xl font-black text-slate-900 tracking-tight">{{ t('unities.title') }}</h1>
+        <div class="min-h-screen bg-slate-50/50 p-4 lg:p-8 font-sans">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                 <div class="flex items-center gap-4">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-[2rem] bg-primary-600 shadow-xl shadow-primary-200">
+                        <i class="pi pi-box text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">{{ t('unities.title') }}</h1>
                     <p class="text-slate-500 font-medium">{{ t('unities.subtitle') }}</p>
+                    </div>
                 </div>
-                <Button :label="t('unities.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6 h-12" />
+                <Button :label="t('unities.actions.add')" icon="pi pi-plus"  raised @click="openNew" class="rounded-xl px-6 h-14 font-black" />
             </div>
 
-            <div class="bg-white rounded-[2rem] shadow-sm border border-slate-200/60 overflow-hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                    <div class="flex flex-col gap-2">
+                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t('common.total', { item: 'Unités' }) }}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="text-3xl font-black text-slate-800">{{ stats.total }}</span>
+                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                <i class="pi pi-database text-slate-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
                 <Toast />
                 <ConfirmDialog />
 
-                <DataTable ref="dt" :value="unities" dataKey="id" :paginator="true" :rows="10"
-                    class="p-datatable-minimal" responsiveLayout="scroll"
+                <DataTable ref="dt" :value="unities" dataKey="id"
+                    v-model:filters="filters"
+                    :globalFilterFields="['designation', 'abreviation']"
+                    :paginator="true" :rows="10"
+                    class="p-datatable-custom" responsiveLayout="scroll"
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
-                    :currentPageReportTemplate="t('common.paginationReport', { first: '{first}', last: '{last}', total: '{totalRecords}' })">
+                    :currentPageReportTemplate="t('common.paginationReport', { first: '{first}', last: '{last}', total: '{totalRecords}', item: 'unités' })">
 
                     <template #header>
-                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4 bg-slate-50/30">
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
-                                <InputIcon class="pi pi-search" />
-                                <InputText v-model="search" :placeholder="t('common.search')" @input="performSearch" class="w-full md:w-80 rounded-2xl border-slate-200 bg-white" />
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('common.search')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
-                            <Button :label="t('common.export')" icon="pi pi-upload" severity="secondary" text size="small" @click="dt.exportCSV()" />
+                            <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" />
                         </div>
                     </template>
 
@@ -158,6 +188,9 @@ const dialogTitle = computed(() => editing.value ? t('unities.dialog.editTitle')
                                 <Avatar :label="data.designation[0].toUpperCase()" shape="circle" class="bg-primary-50 text-primary-600 font-bold" />
                                 <span class="font-bold text-slate-700">{{ data.designation }}</span>
                             </div>
+                        </template>
+                         <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('common.searchByName')" />
                         </template>
                     </Column>
 
@@ -169,7 +202,7 @@ const dialogTitle = computed(() => editing.value ? t('unities.dialog.editTitle')
                         </template>
                     </Column>
 
-                    <Column :header="t('common.actions')" class="w-32">
+                    <Column :header="t('common.actions')" alignFrozen="right" frozen class="min-w-[120px]">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-1">
                                 <Button icon="pi pi-pencil" text rounded severity="info" @click="editUnit(data)" />
@@ -181,82 +214,65 @@ const dialogTitle = computed(() => editing.value ? t('unities.dialog.editTitle')
             </div>
         </div>
 
-        <Dialog v-model:visible="labelDialog" modal :header="dialogTitle"
-            :style="{ width: '90vw', maxWidth: '500px' }" class="ultimate-modal">
+        <Dialog v-model:visible="labelDialog" modal :header="false" :closable="false"
+            :style="{ width: '90vw', maxWidth: '600px' }"
+            :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
 
-            <div class="flex flex-col gap-6 py-4">
-                <span class="text-slate-500 text-sm">
-                    {{ editing ? t('unities.dialog.editSubtitle') : t('unities.dialog.createSubtitle') }}
-                </span>
+            <div class="px-8 py-5 bg-slate-900 text-white rounded-xl flex justify-between items-center relative z-50">
+                <div class="flex items-center gap-4">
+                     <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200">
+                        <i class="pi pi-box text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-slate-100 m-0">{{ dialogTitle }}</h4>
+                        <p class="text-xs text-slate-500 m-0">{{ editing ? t('unities.dialog.editSubtitle') : t('unities.dialog.createSubtitle') }}</p>
+                    </div>
+                </div>
+                <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
+            </div>
 
-                <div class="flex flex-col gap-2">
-                    <label for="designation" class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t('unities.fields.name') }}</label>
-                    <InputText id="designation" v-model.trim="form.designation" autofocus
-                        :class="{ 'p-invalid': submitted && !form.designation }" class="w-full py-3 rounded-xl border-slate-200" />
-                    <small class="text-red-500 font-bold" v-if="submitted && !form.designation">{{ t('unities.validation.nameRequired') }}</small>
+            <div class="p-6 bg-white space-y-6">
+                 <div class="flex flex-col gap-2">
+                    <label for="designation" class="text-xs font-black text-slate-500 uppercase">{{ t('unities.fields.name') }}</label>
+                    <InputText id="designation" v-model.trim="form.designation" autofocus :class="{ 'p-invalid': form.errors.designation }" class="w-full py-3.5 rounded-xl border-slate-200" />
+                    <small class="text-red-500 font-bold italic" v-if="form.errors.designation">{{ form.errors.designation }}</small>
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label for="abreviation" class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t('unities.fields.symbol') }}</label>
-                    <InputText id="abreviation" v-model="form.abreviation" class="w-full py-3 rounded-xl border-slate-200" placeholder="ex: kg, m, pcs" />
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-100 mt-4">
-                    <Button :label="t('common.cancel')" severity="secondary" text @click="hideDialog" class="flex-1 rounded-xl" />
-                    <Button :label="t('common.save')" severity="primary" raised @click="saveUnit" :loading="form.processing"
-                        class="flex-1 py-4 rounded-xl font-black shadow-lg shadow-primary-200 uppercase text-xs tracking-widest" />
+                    <label for="abreviation" class="text-xs font-black text-slate-500 uppercase">{{ t('unities.fields.symbol') }}</label>
+                    <InputText id="abreviation" v-model="form.abreviation" class="w-full py-3.5 rounded-xl border-slate-200" placeholder="ex: kg, m, pcs" />
                 </div>
             </div>
+
+            <template #footer>
+                <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+                    <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
+                    <Button :label="editing ? t('common.update') : t('common.save')" icon="pi pi-check-circle" severity="indigo" class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs" @click="saveUnit" :loading="form.processing" />
+                </div>
+            </template>
         </Dialog>
     </AppLayout>
 </template>
 
 <style lang="scss">
-/* --- STYLE MINIMALISTE V11 --- */
-.p-datatable-minimal {
-    border: none !important;
-
+.p-datatable-custom {
     .p-datatable-thead > tr > th {
-        background: transparent;
-        color: #94a3b8;
+        background: #f8fafc;
+        color: #475569;
         font-weight: 800;
         text-transform: uppercase;
-        font-size: 0.65rem;
+        font-size: 0.7rem;
         letter-spacing: 0.05em;
         padding: 1.25rem 1rem;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 2px solid #f1f5f9;
     }
 
     .p-datatable-tbody > tr {
-        background: transparent;
-        > td {
-            border-bottom: 1px solid #f8fafc;
-            padding: 1rem;
+        background: white;
+        transition: all 0.2s;
+        &:hover {
+            background: #f1f5f9 !important;
         }
-        &:hover { background: #f8fafc !important; }
-        &:last-child > td { border-bottom: none; }
     }
-
-    .p-paginator {
-        border-top: 1px solid #f1f5f9 !important;
-        background: #fdfdfd;
-        padding: 0.75rem;
-    }
-}
-
-/* --- STYLE MODAL ULTIMATE --- */
-.ultimate-modal {
-    .p-dialog-header {
-        padding: 2rem 2rem 0 2rem;
-        .p-dialog-title { font-weight: 900; color: #1e293b; font-size: 1.25rem; }
-    }
-    .p-dialog-content { padding: 0 2rem 2rem 2rem; }
-}
-
-/* --- BOUTON PRIMARY --- */
-.p-button.p-button-primary {
-    background: #2563eb !important;
-    border: none;
-    &:hover { background: #1d4ed8 !important; transform: translateY(-1px); }
 }
 </style>

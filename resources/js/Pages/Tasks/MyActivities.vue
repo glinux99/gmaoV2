@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Head, useForm } from '@inertiajs/vue3';
 // Layout
 import AppLayout from '@/sakai/layout/AppLayout.vue';
@@ -32,6 +33,7 @@ const props = defineProps({
     tasks: Array,
 });
 
+const { t } = useI18n();
 const toast = useToast();
 
 // --- GESTION DES MODALES ET DE L'ACTION ---
@@ -46,15 +48,15 @@ const sparePartData = ref({
     index: -1,
     type: 'used'
 });
-const statusOptions = [
-    { label: '📅 Planifié', value: 'scheduled' },
-    { label: '⚡ En cours', value: 'in_progress' },
-    { label: '✅ Terminé', value: 'completed' },
-    { label: '⚠️ Terminé avec réserves', value: 'completed_with_issues' },
-    { label: '⏸️ Suspendu', value: 'suspended' },
-    { label: '🚫 Annulé', value: 'canceled' },
-    { label: '⏳ Attente ressources', value: 'awaiting_resources' }
-];
+const statusOptions = computed(() => Object.entries(t('myActivities.statusOptions', {}, { returnObjects: true })).map(([value, label]) => ({ label, value })));
+
+const instructionTypes = computed(() => Object.entries(t('myActivities.instructionTypes', {}, { returnObjects: true })).map(([value, label]) => ({ label, value })));
+
+const availableDisplayOptions = computed(() => Object.entries(t('myActivities.displayOptions', {}, { returnObjects: true })).map(([value, label]) => ({ label, value })));
+
+const getStatusLabel = (status) => {
+    return t(`myActivities.status.${status}`, status);
+};
 
 
 // --- FORMULAIRE INERTIA ---
@@ -73,7 +75,7 @@ const form = useForm({
     spare_parts_returned: [],
     user_id: null,
     service_order_cost: 0,
-    service_order_description: 'Paiement des pièces détachées et autres',
+    service_order_description: t('myActivities.defaults.sparePartPayment'),
     instruction_answers: {},
     parent_id: null,
     task_id: null,
@@ -88,7 +90,7 @@ const parseJson = (data) => {
         try {
             return JSON.parse(data);
         } catch (e) {
-            console.warn("Erreur de parsing JSON. Retourne un tableau vide.", e);
+            console.warn(t('myActivities.toast.jsonParseError'), e);
             return [];
         }
     }
@@ -97,7 +99,7 @@ const parseJson = (data) => {
 
 const getSparePartReference = (id) => {
     const part = props.spareParts.find(p => p.id === id);
-    return part ? part.reference : 'Inconnu';
+    return part ? part.reference : t('myActivities.unknownReference');
 };
 
 // --- LOGIQUE D'AFFICHAGE ET STYLE ---
@@ -151,21 +153,6 @@ const getPrioritySeverity = (priority) => {
     return severities[priority?.toLowerCase()] || 'secondary';
 };
 
-const getStatusLabel = (status) => {
-    switch(status) {
-        case 'scheduled': return 'Planifiée';
-        case 'in_progress': return 'En cours';
-        case 'completed': return 'Terminée';
-        case 'completed_with_issues': return 'Terminée avec problèmes';
-        case 'suspended': return 'Suspendue';
-        case 'canceled': return 'Annulée';
-        case 'awaiting_resources': return 'En attente de ressources';
-        case 'to_be_reviewed_later': return 'À revoir plus tard';
-        default: return status;
-    }
-};
-
-
 // --- PRÉPARATION DES DONNÉES D'INSTRUCTIONS (sécurisée) ---
 // Note: Cette fonction ne doit pas appeler parseJson si les données sont déjà parsées
 const formatInstructionAnswer = (activity) => {
@@ -180,20 +167,19 @@ const formatInstructionAnswer = (activity) => {
     return answers.map(answer => {
         const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
         const instruction = instructions.find(i => i.id === instructionId);
-
-        const label = instruction ? instruction.label : `Instruction ID ${instructionId} (Introuvable)`;
+        const label = instruction ? instruction.label : t('myActivities.common.instructionNotFound', { id: instructionId });
         let value = answer.value;
 
         if (instruction && instruction.type === 'boolean') {
-            value = value === '1' || value === 1 || value === true ? 'Oui' : 'Non';
+            value = value === '1' || value === 1 || value === true ? t('myActivities.boolean.yes') : t('myActivities.boolean.no');
         } else if (instruction && instruction.type === 'date' && value) {
             try {
                 value = new Date(value).toLocaleDateString('fr-FR');
             } catch {
-                value = 'Date invalide';
+                value = t('myActivities.common.invalidDate');
             }
         } else if (value === null || value === undefined || value === '') {
-             value = 'Non renseigné';
+             value = t('myActivities.common.notSet');
         }
 
         return { label, value };
@@ -260,14 +246,6 @@ const defaultDisplayFields = [
     'additional_information',
     'spare_parts_used',
 ];
-const availableDisplayOptions = ref([
-    { label: 'Heure de fin réelle', value: 'actual_end_time' },
-    { label: 'Propositions/Recommandations', value: 'proposals' },
-    { label: 'Intervenant', value: 'jobber' },
-    { label: 'Informations Additionnelles', value: 'additional_information' },
-    { label: 'Pièces Utilisées', value: 'spare_parts_used' },
-    { label: 'Pièces Retournées', value: 'spare_parts_returned' },
-]);
 
 onMounted(() => {
     displayFields.value = [...defaultDisplayFields];
@@ -333,7 +311,7 @@ const editActivity = (activity) => {
     form.task_id = activity.task_id;
     form.maintenance_id = activity.maintenance_id;
     form.service_order_cost = activity.service_order_cost || 0;
-    form.service_order_description = activity.service_order_description || 'Paiement des pièces détachées et autres';
+    form.service_order_description = activity.service_order_description || t('myActivities.defaults.sparePartPayment');
 
     // Les données sont déjà parsées (grâce à currentActivities) mais nous prenons les valeurs brutes ou parsées si l'activité vient des props
     form.spare_parts_used = parseJson(rawActivity?.spare_parts_used || activity.spare_parts_used);
@@ -375,7 +353,7 @@ const createSubActivity = (parentActivity) => {
     // Champs de contexte copiés
     form.jobber = parentActivity.jobber || null;
     form.user_id = parentActivity.user_id || null;
-    form.service_order_description = parentActivity.service_order_description || 'Paiement des pièces détachées et autres'; // Default value
+    form.service_order_description = parentActivity.service_order_description || t('myActivities.defaults.sparePartPayment'); // Default value
 
     // Instructions (avec gestion de la conversion en string)
     if (parentActivity.instructions && typeof parentActivity.instructions !== 'string') {
@@ -394,7 +372,7 @@ const createSubActivity = (parentActivity) => {
 
     // Reste du formulaire (valeurs propres à la nouvelle sous-activité)
     form.status = 'scheduled'; // Default status for new activities
-    form.problem_resolution_description = `Sous-activité pour ${parentActivity.task?.title || parentActivity.maintenance?.title || 'Activité'} : `;
+    form.problem_resolution_description = t('myActivities.subActivityFor', { title: parentActivity.task?.title || parentActivity.maintenance?.title || t('myActivities.unnamedActivity') });
     form.proposals = '';
     form.additional_information = ''; // Empty for new sub-activity
     form.service_order_cost = 0;
@@ -443,7 +421,7 @@ const saveActivity = () => {
     const method = isCreatingSubActivity.value ? 'post' : 'put';
     const routeName = isCreatingSubActivity.value ? 'activities.store' : 'activities.update';
     const routeParams = isCreatingSubActivity.value ? {} : form.id;
-    const successMessage = isCreatingSubActivity.value ? 'Sous-activité créée avec succès.' : 'Activité mise à jour avec succès.';
+    const successMessage = isCreatingSubActivity.value ? t('myActivities.toast.subActivityCreated') : t('myActivities.toast.activityUpdated');
     form.instructions =(getAvailableInstructions.value);
     console.log("XXXXXXXXXXXXXXXXXXXX2545");
     console.log({...form, instructions: getAvailableInstructions.value});
@@ -451,7 +429,7 @@ const saveActivity = () => {
     const handler = {
         onSuccess: () => {
             hideDialog();
-            toast.add({ severity: 'success', summary: 'Succès', detail: successMessage, life: 3000 });
+            toast.add({ severity: 'success', summary: t('myActivities.toast.success'), detail: successMessage, life: 3000 });
         },
         onError: (errors) => {
             console.error(errors);
@@ -460,7 +438,7 @@ const saveActivity = () => {
             form.scheduled_start_time = tempScheduledStartTime;
             form.actual_end_time = tempActualEndTime;
 
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'enregistrement. Voir la console pour plus de détails.', life: 3000 });
+            toast.add({ severity: 'error', summary: t('myActivities.toast.error'), detail: t('myActivities.toast.saveError'), life: 3000 });
         }
     };
 
@@ -487,7 +465,7 @@ const openSparePartDialog = (type, part = null, index = -1) => {
 
 const sparePartOptions = computed(() => {
     return props.spareParts.map(part => ({
-        label: `${part.reference} (${part.name}) - Stock: ${part.stock}`,
+        label: `${part.reference} (${part.name}) - Stock: ${part.stock}`, // This is dynamic, better to leave it as is or construct it with t()
         value: part.id
     }));
 });
@@ -507,34 +485,27 @@ const newInstruction = ref({
     is_required: false
 });
 
-const instructionTypes = [
-    { label: 'Texte court', value: 'text' },
-    { label: 'Zone de texte', value: 'textarea' },
-    { label: 'Nombre', value: 'number' },
-    { label: 'Date', value: 'date' },
-    { label: 'Oui/Non (Binaire)', value: 'boolean' }
-];
 
 const addNewInstructionToForm = () => {
     if (!newInstruction.value.label) {
-        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Le libellé est obligatoire', life: 3000 });
+        toast.add({ severity: 'warn', summary: t('myActivities.toast.warning'), detail: t('myActivities.toast.instructionLabelRequired'), life: 3000 });
         return;
     }
 
     // Créer un ID temporaire unique
     const tempId = 'new_' + Date.now();
 
-    // 1. On l'ajoute à la liste des instructions affichées (pour le rendu immédiat)
+    // 1. On l'ajoute à la liste des instructions affichées
     const currentInstructions = parseJson(form.instructions) || [];
     const updatedInstructions = [...currentInstructions, { ...newInstruction.value, id: tempId }];
 
-    // 2. On met à jour le champ caché du formulaire qui sera envoyé au serveur
+    // 2. On met à jour le champ du formulaire
     form.instructions = JSON.stringify(updatedInstructions);
 
     // Réinitialiser le petit formulaire d'ajout
     newInstruction.value = { label: '', type: 'text', is_required: false };
 
-    toast.add({ severity: 'success', summary: 'Ajouté', detail: 'Instruction ajoutée à la liste', life: 2000 });
+    toast.add({ severity: 'success', summary: t('myActivities.toast.added'), detail: t('myActivities.toast.instructionAdded'), life: 2000 });
 };
 // --- CONFIGURATION DES INSTRUCTIONS DYNAMIQUES ---
 
@@ -598,29 +569,29 @@ const removeInstruction = (index, instructionId) => {
 
     toast.add({
         severity: 'info',
-        summary: 'Instruction retirée',
-        detail: 'La liste a été mise à jour.',
+        summary: t('myActivities.toast.instructionRemoved'),
+        detail: t('myActivities.toast.listUpdated'),
         life: 2000
     });
 };
 </script>
 
 <template>
-    <AppLayout title="Mes Activités">
-        <Head title="Mes Activités" />
+    <AppLayout :title="t('myActivities.title')">
+        <Head :title="t('myActivities.title')" />
 
         <div class="grid">
             <div class="col-12">
                 <Card>
                     <template #title>
                         <h2 class="text-3xl font-bold text-primary-600 mb-2">
-                            <i class="pi pi-list-check mr-2"></i> Chronologie de mes activités
+                            <i class="pi pi-list-check mr-2"></i> {{ t('myActivities.timelineTitle') }}
                         </h2>
                     </template>
 
                     <template #subtitle>
                         <div class="flex flex-column md:flex-row md:justify-content-between md:items-center">
-                            <span class="mb-2 md:mb-0">Aperçu de l'évolution de vos tâches et interventions.</span>
+                            <span class="mb-2 md:mb-0">{{ t('myActivities.timelineSubtitle') }}</span>
 
                             <div class="flex flex-column md:flex-row items-center gap-3">
                                 <MultiSelect
@@ -628,7 +599,7 @@ const removeInstruction = (index, instructionId) => {
                                     :options="availableDisplayOptions"
                                     optionLabel="label"
                                     optionValue="value"
-                                    placeholder="Colonnes à afficher dans le tableau"
+                                    :placeholder="t('myActivities.columnsPlaceholder')"
                                     class="w-full md:w-20rem"
                                     display="chip"
                                     :maxSelectedLabels="2"
@@ -664,7 +635,7 @@ const removeInstruction = (index, instructionId) => {
                                         <div class="p-0 text-sm font-medium text-400 mt-1 flex align-items-center">
                                             <i class="pi pi-clock mr-1"></i>
                                             <span>
-                                                {{ slotProps.item.actual_start_time ? new Date(slotProps.item.actual_start_time).toLocaleString('fr-FR') : (slotProps.item.scheduled_start_time ? new Date(slotProps.item.scheduled_start_time).toLocaleString('fr-FR') : 'Date non définie') }}
+                                                {{ slotProps.item.actual_start_time ? new Date(slotProps.item.actual_start_time).toLocaleString('fr-FR') : (slotProps.item.scheduled_start_time ? new Date(slotProps.item.scheduled_start_time).toLocaleString('fr-FR') : t('myActivities.common.unspecifiedDate')) }}
                                             </span>
                                         </div>
                                     </template>
@@ -674,8 +645,8 @@ const removeInstruction = (index, instructionId) => {
                                             <template #title>
                                                 <div class="text-xl font-bold text-700 flex align-items-center justify-content-between">
                                                     <span>
-                                                        {{ slotProps.item.task?.title || slotProps.item.maintenance?.title || 'Activité Sans Titre' }}
-                                                        <span class="text-base font-normal text-500 ml-2">#WorkOrderID: {{ slotProps.item.task?.id|| slotProps.item.maintenance?.id }}</span>
+                                                        {{ slotProps.item.task?.title || slotProps.item.maintenance?.title || t('myActivities.common.unnamedActivity') }}
+                                                        <span class="text-base font-normal text-500 ml-2">{{ t('myActivities.common.workOrderId', { id: slotProps.item.task?.id || slotProps.item.maintenance?.id }) }}</span>
                                                     </span>
                                                 </div>
                                             </template>
@@ -690,23 +661,23 @@ const removeInstruction = (index, instructionId) => {
                                                 <div class="mt-2 text-600 line-height-3">
 
                                                     <p v-if="slotProps.item.problem_resolution_description" class="mb-2">
-                                                        <strong>Problème/Résolution:</strong> {{ slotProps.item.problem_resolution_description }}
+                                                        <strong>{{ t('myActivities.common.problemResolution') }}</strong> {{ slotProps.item.problem_resolution_description }}
                                                     </p>
 
                                                     <p v-if="slotProps.item.proposals" class="mb-2">
-                                                        <strong>Propositions:</strong> {{ slotProps.item.proposals }}
+                                                        <strong>{{ t('myActivities.common.proposals') }}</strong> {{ slotProps.item.proposals }}
                                                     </p>
 
                                                     <p v-if="slotProps.item.additional_information" class="mb-2">
-                                                        <strong>Informations Additionnelles:</strong> {{ slotProps.item.additional_information }}
+                                                        <strong>{{ t('myActivities.common.additionalInfo') }}</strong> {{ slotProps.item.additional_information }}
                                                     </p>
 
                                                     <p v-if="slotProps.item.jobber" class="mt-3">
-                                                        <strong>Intervenant:</strong> {{ slotProps.item.jobber }}
+                                                        <strong>{{ t('myActivities.common.technician') }}</strong> {{ slotProps.item.jobber }}
                                                     </p>
 
                                                     <div v-if="slotProps.item.instruction_answers.length > 0" class="mt-3 p-3 bg-bluegray-50 border-round-md border-left-3 border-blue-500">
-                                                        <h5 class="font-bold text-blue-800 mb-2">Réponses aux Instructions :</h5>
+                                                        <h5 class="font-bold text-blue-800 mb-2">{{ t('myActivities.common.instructionAnswers') }}</h5>
                                                         <ul class="list-disc ml-4">
                                                             <li v-for="(answer, ansIndex) in formatInstructionAnswer(slotProps.item)" :key="ansIndex" class="mb-1">
                                                                 <strong class="text-700">{{ answer.label }}:</strong> {{ answer.value }}
@@ -715,7 +686,7 @@ const removeInstruction = (index, instructionId) => {
                                                     </div>
 
                                                     <div v-if="displayFields.includes('spare_parts_used') && slotProps.item.spare_parts_used.length > 0" class="mt-3">
-                                                        <h5 class="font-bold text-700 mb-1">Pièces utilisées:</h5>
+                                                        <h5 class="font-bold text-700 mb-1">{{ t('myActivities.common.usedParts') }}</h5>
                                                         <ul class="list-disc ml-4">
                                                             <li v-for="(part, index) in slotProps.item.spare_parts_used" :key="index">
                                                                 {{ part.quantity }} x {{ getSparePartReference(part.id) }} ({{ part.price }} XOF)
@@ -724,7 +695,7 @@ const removeInstruction = (index, instructionId) => {
                                                     </div>
 
                                                     <div v-if="displayFields.includes('spare_parts_returned') && slotProps.item.spare_parts_returned.length > 0" class="mt-3">
-                                                        <h5 class="font-bold text-700 mb-1">Pièces retournées:</h5>
+                                                        <h5 class="font-bold text-700 mb-1">{{ t('myActivities.common.returnedParts') }}</h5>
                                                         <ul class="list-disc ml-4">
                                                             <li v-for="(part, index) in slotProps.item.spare_parts_returned" :key="index">
                                                                 {{ part.quantity }} x {{ getSparePartReference(part.id) }}
@@ -734,13 +705,13 @@ const removeInstruction = (index, instructionId) => {
 
                                                     <p v-if="displayFields.includes('actual_end_time') && slotProps.item.actual_end_time" class="mt-3 text-sm text-700">
                                                         <i class="pi pi-check-circle mr-1 text-green-600"></i>
-                                                        <strong>Heure de fin réelle:</strong> {{ new Date(slotProps.item.actual_end_time).toLocaleString('fr-FR') }}
+                                                        <strong>{{ t('myActivities.common.actualEndTime') }}</strong> {{ new Date(slotProps.item.actual_end_time).toLocaleString('fr-FR') }}
                                                     </p>
 
                                                     <div class="mt-4 pt-3 border-top-2 border-gray-200">
-                                                        <h4 class="font-semibold text-gray-700 mb-2">Détails de la Tâche Associée</h4>
-                                                        <p class="mb-1"><strong>Priorité:</strong> <Tag :value="slotProps.item.task?.priority || slotProps.item.maintenance?.priority" /></p>
-                                                        <p v-if="slotProps.item.task?.description" class="text-sm"><strong>Description:</strong> {{ slotProps.item.task?.description || slotProps.item.maintenance?.description }}</p>
+                                                        <h4 class="font-semibold text-gray-700 mb-2">{{ t('myActivities.common.associatedTaskDetails') }}</h4>
+                                                        <p class="mb-1"><strong>{{ t('myActivities.common.priority') }}</strong> <Tag :value="slotProps.item.task?.priority || slotProps.item.maintenance?.priority" /></p>
+                                                        <p v-if="slotProps.item.task?.description" class="text-sm"><strong>{{ t('myActivities.common.description') }}</strong> {{ slotProps.item.task?.description || slotProps.item.maintenance?.description }}</p>
                                                     </div>
 
                                                 </div>
@@ -749,11 +720,11 @@ const removeInstruction = (index, instructionId) => {
 
                                                     <Button
                                                         icon="pi pi-plus-circle"
-                                                        label="Créer sous-activité"
+                                                        :label="t('myActivities.common.createSubActivity')"
                                                         class="p-button-text p-button-sm p-button-secondary mr-2"
                                                         @click="createSubActivity(slotProps.item)"
                                                     />
-                                                    <Button icon="pi pi-pencil" label="Compléter" class="p-button-text p-button-info p-button-sm" @click="editActivity(slotProps.item)" />
+                                                    <Button icon="pi pi-pencil" :label="t('myActivities.common.complete')" class="p-button-text p-button-info p-button-sm" @click="editActivity(slotProps.item)" />
                                                 </div>
                                             </template>
                                         </Card>
@@ -764,79 +735,79 @@ const removeInstruction = (index, instructionId) => {
 
                             <div v-else-if="viewMode === 'table'">
                                 <DataTable :value="currentActivities" responsiveLayout="scroll" dataKey="id" class="p-datatable-sm shadow-2 border-round-lg">
-                                    <Column field="task.title" header="Titre de la Tâche" :sortable="true" class="font-semibold">
+                                    <Column field="task.title" :header="t('myActivities.common.taskTitle')" :sortable="true" class="font-semibold">
                                         <template #body="slotProps">
-                                            {{ slotProps.data.task?.title || slotProps.data.maintenance?.title || 'N/A' }}
+                                            {{ slotProps.data.task?.title || slotProps.data.maintenance?.title || t('myActivities.common.notApplicable') }}
                                         </template>
                                     </Column>
-                                    <Column field="status" header="Statut" :sortable="true">
+                                    <Column field="status" :header="t('myActivities.common.status')" :sortable="true">
                                         <template #body="slotProps">
                                             <Tag :value="getStatusLabel(slotProps.data.status)" :severity="getStatusSeverity(slotProps.data.status)" />
                                         </template>
                                     </Column>
-                                    <Column field="actual_start_time" header="Début Réel" :sortable="true">
+                                    <Column field="actual_start_time" :header="t('myActivities.common.actualStart')" :sortable="true">
                                         <template #body="slotProps">
-                                            {{ slotProps.data.actual_start_time ? new Date(slotProps.data.actual_start_time).toLocaleString('fr-FR') : 'N/A' }}
+                                            {{ slotProps.data.actual_start_time ? new Date(slotProps.data.actual_start_time).toLocaleString('fr-FR') : t('myActivities.common.notApplicable') }}
                                         </template>
                                     </Column>
-                                    <Column field="task.priority" header="Priorité" :sortable="true">
+                                    <Column field="task.priority" :header="t('myActivities.common.priority')" :sortable="true">
                                         <template #body="slotProps">
                                             <Tag :value="slotProps.data.task?.priority || slotProps.data.maintenance?.priority" :severity="getPrioritySeverity(slotProps.data.task?.priority || slotProps.data.maintenance?.priority)" />
                                         </template>
                                     </Column>
 
-                                    <Column v-if="displayFields.includes('actual_end_time')" header="Fin Réelle" :sortable="true">
+                                    <Column v-if="displayFields.includes('actual_end_time')" :header="t('myActivities.displayOptions.actual_end_time')" :sortable="true">
                                         <template #body="slotProps">
-                                            {{ slotProps.data.actual_end_time ? new Date(slotProps.data.actual_end_time).toLocaleString('fr-FR') : 'N/A' }}
+                                            {{ slotProps.data.actual_end_time ? new Date(slotProps.data.actual_end_time).toLocaleString('fr-FR') : t('myActivities.common.notApplicable') }}
                                         </template>
                                     </Column>
 
-                                    <Column v-if="displayFields.includes('proposals')" header="Propositions" :sortable="false">
+                                    <Column v-if="displayFields.includes('proposals')" :header="t('myActivities.displayOptions.proposals')" :sortable="false">
                                         <template #body="slotProps">
-                                            <span v-tooltip.top="slotProps.data.proposals" class="max-w-10rem truncate block">{{ slotProps.data.proposals || 'N/A' }}</span>
+                                            <span v-tooltip.top="slotProps.data.proposals" class="max-w-10rem truncate block">{{ slotProps.data.proposals || t('myActivities.common.notApplicable') }}</span>
                                         </template>
                                     </Column>
 
-                                    <Column v-if="displayFields.includes('jobber')" field="jobber" header="Intervenant" :sortable="true"></Column>
+                                    <Column v-if="displayFields.includes('jobber')" field="jobber" :header="t('myActivities.displayOptions.jobber')" :sortable="true"></Column>
 
-                                    <Column v-if="displayFields.includes('additional_information')" header="Info Add." :sortable="false">
+                                    <Column v-if="displayFields.includes('additional_information')" :header="t('myActivities.displayOptions.additional_information')" :sortable="false">
                                         <template #body="slotProps">
-                                            <span v-tooltip.top="slotProps.data.additional_information" class="max-w-10rem truncate block">{{ slotProps.data.additional_information || 'N/A' }}</span>
+                                            <span v-tooltip.top="slotProps.data.additional_information" class="max-w-10rem truncate block">{{ slotProps.data.additional_information || t('myActivities.common.notApplicable') }}</span>
                                         </template>
                                     </Column>
 
-                                    <Column v-if="displayFields.includes('spare_parts_used')" header="Pièces Utilisées" :sortable="false">
+                                    <Column v-if="displayFields.includes('spare_parts_used')" :header="t('myActivities.displayOptions.spare_parts_used')" :sortable="false">
                                         <template #body="slotProps">
                                             <div v-if="slotProps.data.spare_parts_used.length > 0">
                                                 <Tag
-                                                    :value="`${slotProps.data.spare_parts_used.length} Pièce(s)`"
+                                                    :value="t('myActivities.common.usedPartsCount', { count: slotProps.data.spare_parts_used.length })"
                                                     severity="contrast"
                                                     v-tooltip.top="slotProps.data.spare_parts_used.map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
                                                 />
                                             </div>
-                                            <span v-else>Non</span>
+                                            <span v-else>{{ t('myActivities.boolean.no') }}</span>
                                         </template>
                                     </Column>
 
-                                    <Column v-if="displayFields.includes('spare_parts_returned')" header="Pièces Retournées" :sortable="false">
+                                    <Column v-if="displayFields.includes('spare_parts_returned')" :header="t('myActivities.displayOptions.spare_parts_returned')" :sortable="false">
                                         <template #body="slotProps">
                                             <div v-if="slotProps.data.spare_parts_returned.length > 0">
                                                 <Tag
-                                                    :value="`${slotProps.data.spare_parts_returned.length} Pièce(s)`"
+                                                    :value="t('myActivities.common.returnedPartsCount', { count: slotProps.data.spare_parts_returned.length })"
                                                     severity="warning"
                                                     v-tooltip.top="slotProps.data.spare_parts_returned.map(p => `${p.quantity} x ${getSparePartReference(p.id)}`).join(', ')"
                                                 />
                                             </div>
-                                            <span v-else>Non</span>
+                                            <span v-else>{{ t('myActivities.boolean.no') }}</span>
                                         </template>
                                     </Column>
 
-                                    <Column header="Instructions/Actions" class="text-right">
+                                    <Column :header="t('myActivities.common.instructionsAndActions')" class="text-right">
                                         <template #body="slotProps">
                                             <div class="flex justify-content-end align-items-center">
                                                 <div v-if="slotProps.data.instruction_answers.length > 0" class="mr-2">
                                                     <Tag
-                                                        :value="`${slotProps.data.instruction_answers.length} Rép.`"
+                                                        :value="t('myActivities.common.answersCount', { count: slotProps.data.instruction_answers.length })"
                                                         severity="info"
                                                         v-tooltip.top="formatInstructionAnswer(slotProps.data).map(a => `${a.label}: ${a.value}`).join(' | ')"
                                                     />
@@ -845,7 +816,7 @@ const removeInstruction = (index, instructionId) => {
                                                     icon="pi pi-pencil"
                                                     class="p-button-rounded p-button-info p-button-sm"
                                                     @click="editActivity(slotProps.data)"
-                                                    v-tooltip.top="'Compléter/Modifier l\'Activité'"
+                                                    v-tooltip.top="t('myActivities.common.completeActivityTooltip')"
                                                 />
                                             </div>
                                         </template>
@@ -858,8 +829,8 @@ const removeInstruction = (index, instructionId) => {
 
                         <div v-else class="text-center p-5 surface-50 border-round-md shadow-2">
                             <i class="pi pi-calendar-times text-5xl text-400 mb-3"></i>
-                            <p class="text-xl text-700">Aucune activité à afficher pour le moment.</p>
-                            <p class="text-600">Revenez plus tard ou ajoutez une nouvelle tâche.</p>
+                            <p class="text-xl text-700">{{ t('myActivities.noActivitiesTitle') }}</p>
+                            <p class="text-600">{{ t('myActivities.noActivitiesSubtitle') }}</p>
                         </div>
 <template>
     <Dialog
@@ -879,10 +850,10 @@ const removeInstruction = (index, instructionId) => {
                 </div>
                 <div class="flex flex-col">
                     <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">
-                        {{ isCreatingSubActivity ? 'Initialisation Sous-Activité' : 'Rapport Technique d\'Intervention' }}
+                        {{ isCreatingSubActivity ? t('myActivities.dialog.subActivityInitialization') : t('myActivities.dialog.technicalInterventionReport') }}
                     </h2>
                     <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">
-                        Console d'administration GMAO v2025 • High-Performance System
+                        {{ t('myActivities.dialog.gmaoAdminConsole') }}
                     </span>
                 </div>
             </div>
@@ -895,18 +866,18 @@ const removeInstruction = (index, instructionId) => {
                 <div class="md:col-span-7 space-y-8">
 
                     <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                        <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-4 italic">Resolution & Technical Actions</label>
+                        <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-4 italic">{{ t('myActivities.dialog.resolutionTitle') }}</label>
                         <Textarea v-model="form.problem_resolution_description" rows="6"
                             class="w-full p-4 rounded-2xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 text-sm shadow-inner"
-                            placeholder="Décrivez précisément les interventions effectuées..." />
+                            :placeholder="t('myActivities.dialog.resolutionPlaceholder')" />
 
                         <div class="grid grid-cols-2 gap-4 mt-4">
                             <div class="field">
-                                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Recommandations</label>
+                                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">{{ t('myActivities.dialog.recommendationsLabel') }}</label>
                                 <Textarea v-model="form.proposals" rows="3" class="w-full text-xs rounded-xl border-slate-200" />
                             </div>
                             <div class="field">
-                                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Notes Internes</label>
+                                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">{{ t('myActivities.dialog.internalNotesLabel') }}</label>
                                 <Textarea v-model="form.additional_information" rows="3" class="w-full text-xs rounded-xl border-slate-200" />
                             </div>
                         </div>
@@ -915,9 +886,9 @@ const removeInstruction = (index, instructionId) => {
                     <div class="p-6 border-2 border-dashed border-slate-200 rounded-[2rem]">
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-xs font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
-                                <i class="pi pi-list-check"></i> Checklist de Conformité
+                                <i class="pi pi-list-check"></i> {{ t('myActivities.dialog.checklistTitle') }}
                             </h3>
-                            <Tag :value="`${getAvailableInstructions.length} points`" severity="info" rounded />
+                            <Tag :value="t('myActivities.dialog.checklistPoints', { count: getAvailableInstructions.length })" severity="info" rounded />
                         </div>
 
                         <div class="flex gap-2 mb-6 p-2 bg-indigo-50/50 rounded-xl border border-indigo-100">
@@ -933,7 +904,7 @@ const removeInstruction = (index, instructionId) => {
         <button
             @click="removeInstruction(index, instruction.id)"
             class="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg flex items-center justify-center z-10"
-            title="Supprimer cette consigne"
+            :title="t('myActivities.dialog.removeInstructionTitle')"
         >
             <i class="pi pi-times text-[10px]"></i>
         </button>
@@ -960,26 +931,26 @@ const removeInstruction = (index, instructionId) => {
 
                     <div class="p-6 bg-slate-900 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
                         <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
-                        <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mb-6 text-blue-300 italic">Configuration Mission</h4>
+                        <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mb-6 text-blue-300 italic">{{ t('myActivities.dialog.missionConfigTitle') }}</h4>
 
                         <div class="space-y-4">
                             <div class="field">
-                                <label class="text-[8px] font-bold uppercase opacity-50 mb-1 block">Status</label>
+                                <label class="text-[8px] font-bold uppercase opacity-50 mb-1 block">{{ t('myActivities.dialog.statusLabel') }}</label>
                                 <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value"
                                           class="w-full bg-white/5 border-white/10 text-white rounded-xl text-sm" />
                             </div>
                             <div class="field">
-                                <label class="text-[8px] font-bold uppercase opacity-50 mb-1 block">Technicien Assigné</label>
+                                <label class="text-[8px] font-bold uppercase opacity-50 mb-1 block">{{ t('myActivities.dialog.assignedTechnicianLabel') }}</label>
                                 <Dropdown v-model="form.user_id" :options="props.users" optionLabel="name" optionValue="id"
                                           filter class="w-full bg-white/5 border-white/10 text-white rounded-xl text-sm" />
                             </div>
                             <div class="grid grid-cols-2 gap-4 pt-2">
                                 <div class="field">
-                                    <label class="text-[8px] font-bold uppercase text-blue-400">Début Réel</label>
+                                    <label class="text-[8px] font-bold uppercase text-blue-400">{{ t('myActivities.dialog.actualStartLabel') }}</label>
                                     <Calendar v-model="form.actual_start_time" showTime hourFormat="24" class="quantum-calendar-dark" />
                                 </div>
                                 <div class="field">
-                                    <label class="text-[8px] font-bold uppercase text-orange-400">Fin Réelle</label>
+                                    <label class="text-[8px] font-bold uppercase text-orange-400">{{ t('myActivities.dialog.actualEndLabel') }}</label>
                                     <Calendar v-model="form.actual_end_time" showTime hourFormat="24" class="quantum-calendar-dark" />
                                 </div>
                             </div>
@@ -989,7 +960,7 @@ const removeInstruction = (index, instructionId) => {
                     <div class="space-y-4">
                         <div class="p-6 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
                             <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-[10px] font-black uppercase text-slate-500 tracking-widest">📦 Sorties Stock</h4>
+                                <h4 class="text-[10px] font-black uppercase text-slate-500 tracking-widest">📦 {{ t('myActivities.dialog.stockOutflowsTitle') }}</h4>
                                 <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('used')" />
                             </div>
                             <div class="space-y-2 max-h-40 overflow-y-auto">
@@ -1003,7 +974,7 @@ const removeInstruction = (index, instructionId) => {
 
                         <div class="p-6 bg-emerald-50/50 border border-emerald-100 rounded-[2.5rem] shadow-sm">
                             <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest">🔄 Retours Magasin</h4>
+                                <h4 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest">🔄 {{ t('myActivities.dialog.storeReturnsTitle') }}</h4>
                                 <Button icon="pi pi-plus" rounded severity="success" size="small" @click="openSparePartDialog('returned')" />
                             </div>
                             <div class="space-y-2 max-h-40 overflow-y-auto">
@@ -1017,11 +988,11 @@ const removeInstruction = (index, instructionId) => {
                     </div>
 
                     <div class="p-6 bg-slate-100 rounded-[2.5rem] border border-slate-200">
-                        <label class="text-[9px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Impact Financier Estimé</label>
+                        <label class="text-[9px] font-black uppercase text-slate-400 mb-2 block tracking-widest">{{ t('myActivities.dialog.financialImpactLabel') }}</label>
                         <div class="text-4xl font-black text-slate-900 tracking-tighter">
                             {{ serviceOrderCost.toLocaleString() }} <small class="text-xs font-bold opacity-40">XOF</small>
                         </div>
-                        <InputText v-model="form.service_order_description" placeholder="Libellé facturation..." class="mt-4 p-inputtext-sm w-full bg-white/50 border-none" />
+                        <InputText v-model="form.service_order_description" :placeholder="t('myActivities.dialog.billingLabelPlaceholder')" class="mt-4 p-inputtext-sm w-full bg-white/50 border-none" />
                     </div>
                 </div>
             </div>
@@ -1029,8 +1000,8 @@ const removeInstruction = (index, instructionId) => {
 
         <template #footer>
             <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
-                <Button label="Annuler" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
-                <Button :label="isCreatingSubActivity ? 'Créer Sous-Activité' : 'Publier le Rapport'"
+                <Button :label="t('myActivities.dialog.cancelButton')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
+                <Button :label="isCreatingSubActivity ? t('myActivities.dialog.createSubActivityButton') : t('myActivities.dialog.publishReportButton')"
                         icon="pi pi-check-circle" severity="indigo"
                         class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs"
                         @click="saveActivity" :loading="form.processing" />
@@ -1045,27 +1016,27 @@ const removeInstruction = (index, instructionId) => {
         <div class="p-6 bg-slate-900 text-white flex items-center gap-4">
             <i class="pi pi-box text-blue-400 text-xl"></i>
             <h2 class="text-xs font-black uppercase tracking-widest">
-                {{ sparePartData.type === 'used' ? 'Sortie Matériel' : 'Réintégration Stock' }}
+                {{ sparePartData.type === 'used' ? t('myActivities.dialog.sparePartModalUsedTitle') : t('myActivities.dialog.sparePartModalReturnedTitle') }}
             </h2>
         </div>
 
         <div class="p-8 space-y-6 bg-white">
             <div class="field">
-                <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">Référence(s)</label>
-                <MultiSelect v-if="sparePartData.index === -1" v-model="sparePartData.ids" :options="sparePartOptions" optionLabel="label" optionValue="value" filter display="chip" placeholder="Rechercher une pièce..." class="w-full" />
+                <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">{{ t('myActivities.dialog.referencesLabel') }}</label>
+                <MultiSelect v-if="sparePartData.index === -1" v-model="sparePartData.ids" :options="sparePartOptions" optionLabel="label" optionValue="value" filter display="chip" :placeholder="t('myActivities.dialog.searchPartPlaceholder')" class="w-full" />
                 <Dropdown v-else v-model="sparePartData.ids[0]" :options="sparePartOptions" optionLabel="label" optionValue="value" filter class="w-full" />
 
             </div>
 
             <div class="field">
-                <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">Quantité Unitaire</label>
+                <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">{{ t('myActivities.dialog.unitQuantityLabel') }}</label>
                 <InputNumber v-model="sparePartData.quantity" showButtons :min="1" buttonLayout="horizontal" class="w-full" />
             </div>
         </div>
 
         <div class="p-4 bg-slate-50 flex gap-3 border-t">
-            <Button label="Fermer" text severity="secondary" class="flex-1 font-bold text-xs" @click="sparePartDialogVisible = false" />
-            <Button label="Valider" severity="indigo" class="flex-1 font-bold text-xs rounded-xl shadow-lg shadow-indigo-100" @click="saveSparePart" />
+            <Button :label="t('myActivities.dialog.closeButton')" text severity="secondary" class="flex-1 font-bold text-xs" @click="sparePartDialogVisible = false" />
+            <Button :label="t('myActivities.dialog.validateButton')" severity="indigo" class="flex-1 font-bold text-xs rounded-xl shadow-lg shadow-indigo-100" @click="saveSparePart" />
         </div>
     </Dialog>
 </template>

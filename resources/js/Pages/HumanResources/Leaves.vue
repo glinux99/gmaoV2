@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 
 // API v4 / V11
-import { FilterMatchMode } from '@primevue/core/api';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
 // Composants PrimeVue
 import Button from 'primevue/button';
@@ -16,9 +17,8 @@ import InputIcon from 'primevue/inputicon';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Dialog from 'primevue/dialog';
-import Select from 'primevue/select';
-import MultiSelect from 'primevue/multiselect';
-import DatePicker from 'primevue/datepicker';
+import Dropdown from 'primevue/dropdown';
+import Calendar from 'primevue/calendar';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Tag from 'primevue/tag';
@@ -33,9 +33,9 @@ const props = defineProps({
 
 const toast = useToast();
 const confirm = useConfirm();
+const { t } = useI18n();
 const leaveDialog = ref(false);
 const editing = ref(false);
-const search = ref(props.filters?.search || '');
 const selectedLeaves = ref(null);
 const dt = ref();
 
@@ -54,21 +54,54 @@ const form = useForm({
 });
 
 // --- CONSTANTES ---
-const leaveTypes = ref([
-    { label: 'Congé Annuel', value: 'annuel', icon: 'pi-sun', color: '#3B82F6' },
-    { label: 'Congé Maladie', value: 'maladie', icon: 'pi-heart', color: '#EF4444' },
-    { label: 'RTT', value: 'rtt', icon: 'pi-clock', color: '#8B5CF6' },
-    { label: 'Exceptionnel', value: 'exceptionnel', icon: 'pi-star', color: '#F59E0B' }
+const leaveTypes = computed(() => [
+    { label: t('leaves.types.annual'), value: 'annuel', icon: 'pi-sun', color: '#3B82F6' },
+    { label: t('leaves.types.sick'), value: 'maladie', icon: 'pi-heart', color: '#EF4444' },
+    { label: t('leaves.types.rtt'), value: 'rtt', icon: 'pi-clock', color: '#8B5CF6' },
+    { label: t('leaves.types.exceptional'), value: 'exceptionnel', icon: 'pi-star', color: '#F59E0B' }
 ]);
 
+const statusOptions = computed(() => [
+    { label: t('leaves.status.approved'), value: 'approved' },
+    { label: t('leaves.status.pending'), value: 'pending' },
+    { label: t('leaves.status.rejected'), value: 'rejected' },
+]);
+
+// --- FILTRES ---
+const filters = ref({
+    global: { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
+    status: { value: null, matchMode: FilterMatchMode.IN },
+    type: { value: null, matchMode: FilterMatchMode.IN },
+});
+
 // --- LOGIQUE ---
+const stats = computed(() => {
+    const data = props.leaves.data || [];
+    return {
+        total: data.length,
+        pending: data.filter(l => l.status === 'pending').length,
+        approved: data.filter(l => l.status === 'approved').length,
+        rejected: data.filter(l => l.status === 'rejected').length,
+    };
+});
+
 const getStatusSeverity = (status) => {
     switch (status) {
         case 'approved': return 'success';
-        case 'pending': return 'warn';
+        case 'pending': return 'warning';
         case 'rejected': return 'danger';
         default: return 'secondary';
     }
+};
+
+const getLeaveTypeIcon = (type) => {
+    const found = leaveTypes.value.find(t => t.value === type);
+    return found ? found.icon : 'pi-calendar';
+};
+
+const getLeaveTypeColor = (type) => {
+    const found = leaveTypes.value.find(t => t.value === type);
+    return found ? found.color : '#64748B';
 };
 
 const openNew = () => {
@@ -97,7 +130,7 @@ const saveLeave = () => {
         forceFormData: true,
         onSuccess: () => {
             leaveDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Opération réussie', life: 3000 });
+            toast.add({ severity: 'success', summary: t('common.success'), detail: t('leaves.toast.success'), life: 3000 });
         },
         ...(editing.value && { _method: 'put' })
     });
@@ -107,31 +140,55 @@ const onFileUpload = (event) => {
     form.document_file = event.files[0];
 };
 
-const performSearch = () => {
-    router.get(route('leaves.index'), { search: search.value }, { preserveState: true, replace: true });
+const deleteLeave = (leave) => {
+    confirm.require({
+        message: t('confirm.deleteConfirmation'),
+        header: t('common.attention'),
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            router.delete(route('leaves.destroy', leave.id), {
+                onSuccess: () => toast.add({ severity: 'info', summary: t('common.info'), detail: t('common.delete'), life: 3000 })
+            });
+        }
+    });
 };
 </script>
 
 <template>
     <AppLayout>
-        <Head title="Gestion des Congés" />
+        <Head :title="t('leaves.title')" />
 
-        <div class="p-4 lg:p-10 bg-[#F8FAFC] min-h-screen">
+        <div class="p-4 lg:p-8 bg-[#F8FAFC] min-h-screen">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
                 <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center shadow-xl shadow-primary-100 rotate-3">
+                    <div class="w-16 h-16 bg-primary-600 rounded-[2rem] flex items-center justify-center shadow-xl shadow-primary-200">
                         <i class="pi pi-calendar text-white text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-[900] text-slate-900 tracking-tight">Gestion des Congés</h1>
-                        <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">
-                            {{ leaves.data?.length || 0 }} Demandes répertoriées
+                        <h1 class="text-3xl font-[900] text-slate-900 tracking-tight">{{ t('leaves.title') }}</h1>
+                        <p class="text-slate-500 font-medium">
+                            {{ t('leaves.subtitle', { count: leaves.data?.length || 0 }) }}
                         </p>
                     </div>
                 </div>
                 <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-                    <Button icon="pi pi-download" text severity="secondary" @click="dt.exportCSV()" />
-                    <Button label="Nouvelle Demande" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
+                    <Button icon="pi pi-upload" text severity="secondary" @click="dt.exportCSV()" />
+                    <Button :label="t('leaves.newRequest')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-lg font-bold" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div v-for="(val, key) in stats" :key="key" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <div class="flex flex-col gap-2">
+                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ t(`leaves.stats.${key}`) }}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="text-3xl font-black text-slate-800">{{ val }}</span>
+                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                <i class="pi pi-calendar-plus text-slate-400"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -140,26 +197,26 @@ const performSearch = () => {
                     ref="dt"
                     :value="leaves.data"
                     v-model:selection="selectedLeaves"
+                    v-model:filters="filters"
                     dataKey="id"
                     :paginator="true"
                     :rows="10"
-                    class="ultimate-table"
-                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                    currentPageReportTemplate="{first} à {last} sur {totalRecords}"
+                    filterDisplay="menu"
+                    class="p-datatable-custom"
+                    removableSort
                 >
                     <template #header>
-                        <div class="flex justify-between items-center p-4">
+                        <div class="flex flex-wrap justify-between items-center gap-4 p-2">
                             <IconField iconPosition="left">
-                                <InputIcon class="pi pi-search text-primary-500" />
-                                <InputText v-model="search" placeholder="Recherche rapide..." @input="performSearch"
-                                    class="w-full md:w-96 rounded-2xl border-none bg-slate-100 focus:bg-white transition-all" />
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('common.search')" class="w-full md:w-80 border-none bg-slate-50 rounded-xl" />
                             </IconField>
                         </div>
                     </template>
 
                     <Column selectionMode="multiple" style="width: 3rem"></Column>
 
-                    <Column field="user.name" header="Demandeur" sortable>
+                    <Column field="user.name" :header="t('leaves.table.applicant')" sortable>
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
@@ -170,13 +227,19 @@ const performSearch = () => {
                         </template>
                     </Column>
 
-                    <Column field="type" header="Type">
+                    <Column field="type" :header="t('leaves.table.type')" filterField="type" :showFilterMatchModes="false">
                         <template #body="{ data }">
-                            <b class="text-xs uppercase tracking-wider text-slate-500">{{ data.type }}</b>
+                            <div class="flex items-center gap-2">
+                                <i :class="getLeaveTypeIcon(data.type)" :style="{ color: getLeaveTypeColor(data.type) }"></i>
+                                <b class="text-xs uppercase tracking-wider text-slate-500">{{ data.type }}</b>
+                            </div>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="leaveTypes" optionLabel="label" optionValue="value" :placeholder="t('common.total', {item: ''})" class="p-column-filter" />
                         </template>
                     </Column>
 
-                    <Column field="start_date" header="Période" style="min-width: 12rem">
+                    <Column field="start_date" :header="t('leaves.table.period')" style="min-width: 12rem">
                         <template #body="{ data }">
                             <div class="flex flex-col text-sm">
                                 <span class="text-slate-700 font-semibold">Du {{ new Date(data.start_date).toLocaleDateString() }}</span>
@@ -185,9 +248,12 @@ const performSearch = () => {
                         </template>
                     </Column>
 
-                    <Column field="status" header="État">
+                    <Column field="status" :header="t('leaves.table.status')" filterField="status" :showFilterMatchModes="false">
                         <template #body="{ data }">
-                            <Tag :value="data.status" :severity="getStatusSeverity(data.status)" class="rounded-lg px-3 uppercase text-[10px] font-black" />
+                            <Tag :value="t(`leaves.status.${data.status}`)" :severity="getStatusSeverity(data.status)" class="rounded-md font-bold text-[10px]" />
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('common.total', {item: ''})" class="p-column-filter" />
                         </template>
                     </Column>
 
@@ -203,28 +269,42 @@ const performSearch = () => {
             </div>
         </div>
 
-        <Dialog v-model:visible="leaveDialog" modal :header="editing ? 'Mise à jour Congé' : 'Nouvelle Demande'"
-            :style="{ width: '550px' }" class="v11-dialog">
-            <div class="grid grid-cols-1 gap-6 py-4">
+        <Dialog v-model:visible="leaveDialog" modal :header="false" :closable="false"
+            :style="{ width: '90vw', maxWidth: '600px' }"
+            :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
+            <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200">
+                        <i class="pi pi-calendar-plus text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-slate-100 m-0">{{ editing ? t('leaves.dialog.editTitle') : t('leaves.dialog.createTitle') }}</h4>
+                        <p class="text-xs text-slate-500 m-0">{{ t('leaves.dialog.headerSubtitle') }}</p>
+                    </div>
+                </div>
+                <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="leaveDialog = false" class="text-white hover:bg-white/10" />
+            </div>
+
+            <div class="p-6 bg-white max-h-[80vh] overflow-y-auto scroll-smooth space-y-6">
                 <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Collaborateur</label>
-                    <Select v-model="form.user_id" :options="users" optionLabel="name" optionValue="id"
-                        placeholder="Sélectionner le demandeur" class="v11-input w-full" />
+                    <label class="text-xs font-black text-slate-500 uppercase">{{ t('leaves.dialog.applicant') }}</label>
+                    <Dropdown v-model="form.user_id" :options="users" optionLabel="name" optionValue="id"
+                        :placeholder="t('leaves.dialog.applicantPlaceholder')" class="v11-input w-full" />
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date de début</label>
-                        <DatePicker v-model="form.start_date" dateFormat="dd/mm/yy" showIcon iconDisplay="input" class="v11-datepicker" />
+                        <label class="text-xs font-black text-slate-500 uppercase">{{ t('leaves.dialog.startDate') }}</label>
+                        <Calendar v-model="form.start_date" dateFormat="dd/mm/yy" showIcon class="v11-calendar" />
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date de fin</label>
-                        <DatePicker v-model="form.end_date" dateFormat="dd/mm/yy" showIcon iconDisplay="input" class="v11-datepicker" />
+                        <label class="text-xs font-black text-slate-500 uppercase">{{ t('leaves.dialog.endDate') }}</label>
+                        <Calendar v-model="form.end_date" dateFormat="dd/mm/yy" showIcon class="v11-calendar" />
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type de congé</label>
+                    <label class="text-xs font-black text-slate-500 uppercase">{{ t('leaves.dialog.leaveType') }}</label>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
                         <div v-for="type in leaveTypes" :key="type.value"
                             @click="form.type = type.value"
@@ -237,23 +317,23 @@ const performSearch = () => {
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Motif de la demande</label>
-                    <Textarea v-model="form.reason" rows="3" class="v11-input w-full" placeholder="Expliquez brièvement le motif..." />
+                    <label class="text-xs font-black text-slate-500 uppercase">{{ t('leaves.dialog.reason') }}</label>
+                    <Textarea v-model="form.reason" rows="3" class="v11-input w-full" :placeholder="t('leaves.dialog.reasonPlaceholder')" />
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Justificatif (PDF, Image)</label>
-                    <FileUpload mode="basic" @select="onFileUpload" :auto="true" chooseLabel="Choisir un fichier" class="v11-upload" />
+                    <label class="text-xs font-black text-slate-500 uppercase">{{ t('leaves.dialog.attachment') }}</label>
+                    <FileUpload mode="basic" @select="onFileUpload" :auto="true" :chooseLabel="t('leaves.dialog.attachmentChoose')" class="v11-upload" />
                 </div>
             </div>
 
-            <template #footer>
-                <div class="flex gap-3 w-full pt-4">
-                    <Button label="Annuler" text severity="secondary" @click="leaveDialog = false" class="flex-1 rounded-xl" />
-                    <Button label="Envoyer la demande" severity="primary" raised @click="saveLeave"
-                        :loading="form.processing" class="flex-1 rounded-xl font-black py-4 shadow-lg shadow-primary-200" />
-                </div>
-            </template>
+            <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+                <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="leaveDialog = false" class="font-bold uppercase text-[10px] tracking-widest" />
+                <Button :label="t('leaves.dialog.sendRequest')" icon="pi pi-check-circle" severity="primary"
+                        class="px-10 h-14 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
+                        @click="saveLeave" :loading="form.processing" />
+            </div>
+
         </Dialog>
 
         <Toast position="bottom-right" />
@@ -262,35 +342,21 @@ const performSearch = () => {
 </template>
 
 <style lang="scss">
-/* DESIGN SYSTEM V11 - CSS CUSTOMS */
-
-.ultimate-table {
+.p-datatable-custom {
     .p-datatable-thead > tr > th {
-        @apply bg-slate-50/50 text-slate-400 font-black text-[10px] uppercase tracking-[0.15em] py-6 px-4 border-b border-slate-100;
-        &.p-highlight { @apply text-primary-600 bg-primary-50/30; }
+        @apply bg-slate-50/50 text-slate-400 font-black text-[10px] uppercase tracking-[0.15em] py-6 px-4 border-b border-slate-200/60;
     }
     .p-datatable-tbody > tr {
-        @apply border-b border-slate-50 transition-all duration-300;
-        &:hover { @apply bg-primary-50/5 !important; }
-        td { @apply py-4 px-4; }
+        @apply border-b border-slate-100;
+        &:hover { @apply bg-slate-50/50; }
     }
 }
 
-.v11-input, .v11-datepicker {
-    &.p-select, &.p-datepicker, &.p-textarea, &.p-inputtext {
-        @apply rounded-xl border-slate-200 bg-slate-50 p-3 text-sm font-bold;
-        &:focus { @apply bg-white ring-4 ring-primary-50 border-primary-500 outline-none; }
+.v11-input, .v11-calendar .p-inputtext, .v11-input .p-inputtext {
+    @apply rounded-xl border-slate-200 bg-slate-50 p-3 text-sm font-bold w-full;
+    &:focus-within, &:focus {
+        @apply bg-white ring-2 ring-primary-200 border-primary-300;
     }
-}
-
-.v11-dialog {
-    .p-dialog-header { @apply p-8 border-none; .p-dialog-title { @apply font-black text-slate-900; } }
-    .p-dialog-content { @apply px-8 pb-8; }
-}
-
-.p-paginator {
-    @apply border-t border-slate-100 py-4 bg-white rounded-b-[2.5rem];
-    .p-paginator-page { @apply rounded-lg font-bold; &.p-highlight { @apply bg-primary-50 text-primary-600; } }
 }
 
 .v11-upload {

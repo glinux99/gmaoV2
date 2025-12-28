@@ -12,6 +12,7 @@ class Region extends Model
     protected $fillable = [
         'designation',
         'type_centrale',
+        'status',
         'puissance_centrale',
     ];
     public function engins()

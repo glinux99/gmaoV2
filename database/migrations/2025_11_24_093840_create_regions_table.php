@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('regions', function (Blueprint $table) {
             $table->id();
             $table->string('designation')->unique();
+            $table->string('status')->nullable();
             $table->string('type_centrale')->nullable();
             $table->decimal('puissance_centrale', 8, 2)->nullable();
             $table->timestamps();
