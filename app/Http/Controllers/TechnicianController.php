@@ -33,7 +33,7 @@ class TechnicianController extends Controller
             });
         }
 
-        $technicians = $query->paginate(10)->withQueryString();
+        $technicians = $query->paginate(100)->withQueryString();
 
 
         return Inertia::render('Teams/Technicians', [

@@ -110,6 +110,7 @@ Route::middleware('auth', 'verified')->group(function () {
 // ... autres routes
 
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
+Route::put('/equipments/{equipment}/update-quantity', [EquipmentController::class, 'updateQuantity'])->name('equipments.update-quantity');
 Route::post('/interventions/bulk-destroy', [InterventionRequestController::class, 'bulkDestroy'])->name('interventions.bulkdestroy');
 Route::put('/interventions/{intervention}/assign', [InterventionRequestController::class, 'assign'])->name('interventions.assign');
 Route::put('/interventions/{intervention}/cancel', [InterventionRequestController::class, 'cancel'])->name('interventions.cancel');

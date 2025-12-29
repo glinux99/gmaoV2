@@ -246,7 +246,7 @@ watch(() => filters.value.global.value, (newValue) => {
         <Dialog v-model:visible="employeeDialog" modal :header="false" :closable="false"
             :style="{ width: '90vw', maxWidth: '600px' }"
             :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
-            <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+            <div class="px-8 py-5 bg-slate-900 text-white rounded-xl flex justify-between items-center relative z-50">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200">
                         <i class="pi pi-user-plus text-xl"></i>

@@ -7,6 +7,7 @@ import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import OverlayPanel from 'primevue/overlaypanel';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import MultiSelect from 'primevue/multiselect';
 import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';
@@ -32,9 +33,28 @@ const equipmentDialog = ref(false);
 const deleteEquipmentsDialog = ref(false);
 const submitted = ref(false);
 const activeStep = ref(1);
+const insufficientQuantityDialog = ref(false); // Nouvelle variable pour le dialogue
 const editing = ref(false);
 const equipmentTypeDialog = ref(false);
 const search = ref(props.filters?.search || '');
+
+const filters = ref({
+    'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
+    'tag': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'equipment_type.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'status': { value: null, matchMode: FilterMatchMode.EQUALS },
+});
+
+const initFilters = () => {
+    filters.value.global.value = null;
+    filters.value.tag.constraints[0].value = null;
+    filters.value.designation.constraints[0].value = null;
+    filters.value['equipment_type.name'].constraints[0].value = null;
+    filters.value['region.designation'].constraints[0].value = null;
+    filters.value.status.value = null;
+};
 
 const form = useForm({
     id: null,
@@ -69,7 +89,7 @@ const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonne
 const allColumns = ref([
     { field: 'tag', header: computed(() => t('equipments.table.tag')) },
     { field: 'designation', header: computed(() => t('equipments.table.designation')) },
-    { field: 'equipmentType.name', header: computed(() => t('equipments.table.type')) },
+    { field: 'equipment_type.name', header: computed(() => t('equipments.table.type')) },
     { field: 'brand', header: computed(() => t('equipments.table.brand')) },
     { field: 'model', header: computed(() => t('equipments.table.model')) },
     { field: 'region.designation', header: computed(() => t('equipments.table.region')) },
@@ -78,12 +98,12 @@ const allColumns = ref([
 ]);
 const visibleColumns = ref(allColumns.value.map(col => col.field)); // Affiche toutes les colonnes par défaut
 
-const statusOptions = ref([
-    { label: computed(() => t('equipments.statusOptions.in_service')), value: 'en service' },
-    { label: computed(() => t('equipments.statusOptions.down')), value: 'en panne' },
-    { label: computed(() => t('equipments.statusOptions.in_maintenance')), value: 'en maintenance' },
-    { label: computed(() => t('equipments.statusOptions.out_of_service')), value: 'hors service' },
-    { label: computed(() => t('equipments.statusOptions.in_stock')), value: 'en stock' },
+const statusOptions = computed(() => [
+    { label: t('equipments.statusOptions.in_service'), value: 'en service' },
+    { label: t('equipments.statusOptions.down'), value: 'en panne' },
+    { label: t('equipments.statusOptions.in_maintenance'), value: 'en maintenance' },
+    { label: t('equipments.statusOptions.out_of_service'), value: 'hors service' },
+    { label: t('equipments.statusOptions.in_stock'), value: 'en stock' },
 ]);
 
 const isChild = computed(() => !!form.parent_id);
@@ -268,6 +288,10 @@ const saveEquipment = () => {
     submitted.value = true;
 
     // Validation côté client simple
+    if (form.parent_id && !form.quantity) {
+        form.setError('quantity', t('equipments.validation.quantityRequiredForChild'));
+        return;
+    }
     // Suppression des validations requises côté client pour la création
 
     form.clearErrors();
@@ -278,7 +302,7 @@ const saveEquipment = () => {
     // CORRECTION : Nous allons toujours utiliser la transformation en FormData pour garantir
     // que les tableaux de caractéristiques sont correctement sérialisés, même sans fichier.
     // Et c'est OBLIGATOIRE en cas de fichier.
-
+      console.log(form);
     form.transform((originalData) => {
         const formData = new FormData();
 
@@ -322,6 +346,7 @@ const saveEquipment = () => {
 
         return formData; // Retourner le FormData
     })
+
     // 4. Exécuter l'envoi
     .submit('post', url, { // On utilise 'post' car nous avons simulé 'PUT' avec _method
         onSuccess: () => {
@@ -330,36 +355,42 @@ const saveEquipment = () => {
         },
         onError: (errors) => {
             console.error("Erreur lors de la sauvegarde de l'équipement", errors);
-            // CORRECTION: Utiliser les erreurs du formulaire pour afficher un message d'erreur plus détaillé.
-            const errorDetail = Object.values(errors).flat().join(' ; ');
-            toast.add({ severity: 'error', summary: t('equipments.toast.saveError'), detail: errorDetail || t('equipments.toast.error'), life: 5000 });
+            if (errors.quantity && errors.quantity.includes('La quantité du parent est insuffisante ou le parent n\'est pas en stock.')) {
+                insufficientQuantityDialog.value = true; // Ouvrir le dialogue spécifique
+            } else {
+                 insufficientQuantityDialog.value = true;
+                // CORRECTION: Utiliser les erreurs du formulaire pour afficher un message d'erreur plus détaillé.
+                const errorDetail = Object.values(errors).flat().join(' ; ');
+                toast.add({ severity: 'error', summary: t('equipments.toast.saveError'), detail: errorDetail || t('equipments.toast.error'), life: 5000 });
+            }
         },
         forceFormData: true, // IMPORTANT: Force l'envoi en multipart/form-data
+
     });
 };
 
 
 // Le reste du code est conservé car il est fonctionnel ou n'est pas la cause de l'erreur
 const deleteEquipment = (equipment) => {
-    confirm.require({
-        message: t('equipments.confirm.deleteMessage', { name: equipment.tag || equipment.designation }),
-        header: t('equipments.confirm.deleteHeader'),
-        icon: 'pi pi-info-circle',
-        rejectClass: 'p-button-secondary p-button-outlined',
-        rejectLabel: t('equipments.confirm.cancel'),
-        acceptLabel: t('equipments.confirm.delete'),
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            router.delete(route('equipments.destroy', equipment.id), {
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: t('equipments.toast.success'), detail: t('equipments.toast.deleteSuccess'), life: 3000 });
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: t('equipments.toast.error'), detail: t('equipments.toast.deleteError'), life: 3000 });
-                }
-            });
-        },
-    });
+ confirm.require({
+ message: t('equipments.confirm.deleteMessage', { name: equipment.tag || equipment.designation }),
+ header: t('equipments.confirm.deleteHeader'),
+ icon: 'pi pi-info-circle',
+ rejectClass: 'p-button-secondary p-button-outlined',
+ rejectLabel: t('equipments.confirm.cancel'),
+ acceptLabel: t('equipments.confirm.delete'),
+ acceptClass: 'p-button-danger',
+ accept: () => {
+ router.delete(route('equipments.destroy', equipment.id), {
+ onSuccess: () => {
+ toast.add({ severity: 'success', summary: t('equipments.toast.success'), detail: t('equipments.toast.deleteSuccess'), life: 3000 });
+ },
+ onError: () => {
+ toast.add({ severity: 'error', summary: t('equipments.toast.error'), detail: t('equipments.toast.deleteError'), life: 3000 });
+ }
+ });
+ },
+ });
 };
 
 const openNewEquipmentType = () => {
@@ -430,7 +461,58 @@ const addCharacteristic = () => {
 const removeCharacteristic = (index) => {
     form.characteristics.splice(index, 1);
 };
+// 1. Fonction de mise à jour API
+const updateParentQuantityApi = (parentId, newQuantity, onFinishCallback) => {
+    router.put(route('equipments.update-quantity', parentId),
+        { quantity: newQuantity },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.add({
+                    severity: 'success',
+                    summary: t('common.success'),
+                    detail: t('equipments.toast.parentQuantityUpdated'),
+                    life: 3000
+                });
+                // On n'exécute la suite QUE si l'API a réussi
+                if (onFinishCallback) onFinishCallback();
+            },
+            onError: (errors) => {
+                console.error("Erreurs validation:", errors);
+                toast.add({
+                    severity: 'error',
+                    summary: t('common.error'),
+                    detail: t('equipments.toast.parentQuantityUpdateError'),
+                    life: 3000
+                });
+            }
+        }
+    );
+};
 
+// 2. Fonction de traitement du dialogue
+const insufficienQty = () => {
+    const parent = props.parentEquipments.find(p => p.id === form.parent_id);
+
+    if (parent) {
+        const currentParentQty = parseFloat(parent.quantity) || 0;
+        const movementQty = parseFloat(form.quantity) || 0;
+
+        // Calcul : On déduit la quantité du stock parent
+        const finalQuantity = movementQty;
+
+        // On passe saveEquipment comme "callback" pour qu'il s'exécute après le succès
+        updateParentQuantityApi(form.parent_id, finalQuantity, () => {
+            insufficientQuantityDialog.value = false;
+            saveEquipment();
+        });
+    } else {
+        // Si pas de parent, on ferme et on tente de sauvegarder quand même
+        insufficientQuantityDialog.value = false;
+        saveEquipment();
+    }
+};
 let timeoutId = null;
 const performSearch = () => {
     clearTimeout(timeoutId);
@@ -469,6 +551,14 @@ const deleteButtonLabel = computed(() => {
     }
     return t('equipments.deleteSelectedSingle');
 });
+
+const equipmentStats = computed(() => {
+    const total = props.equipments.data.length;
+    const in_service = props.equipments.data.filter(e => e.status === 'en service').length;
+    const in_stock = props.equipments.data.filter(e => e.status === 'en stock').length;
+    const down = props.equipments.data.filter(e => e.status === 'en panne').length;
+    return { total, in_service, in_stock, down };
+});
 // Exposer les fonctions et variables nécessaires au template
 defineExpose({
     openNew, hideDialog, editEquipment, saveEquipment, deleteEquipment,
@@ -480,6 +570,7 @@ defineExpose({
 });
 </script>
 
+
 <template>
     <AppLayout :title="t('equipments.title')">
         <Head :title="t('equipments.headTitle')" />
@@ -489,15 +580,20 @@ defineExpose({
         <div class="quantum-v11-container p-4 lg:p-8 bg-[#f8fafc] min-h-screen">
 
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                 <div class="flex items-center gap-4">
+                                    <div class="flex h-16 w-16 items-center justify-center rounded-[1rem] bg-primary-600 shadow-xl shadow-primary-200 text-white text-2xl">
+ <i class="pi pi-cog"></i>
+                    </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
                         {{ t('equipments.title') }} <span class="text-primary-600">GMAO</span>
                     </h1>
                     <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">{{ t('equipments.subtitle') }}</p>
                 </div>
+                </div>
                 <div class="flex gap-2">
                     <Button :label="t('equipments.addNew')" icon="pi pi-plus"
-                            class="p-button-primary shadow-lg shadow-primary-200" @click="openNew" />
+                            class=" shadow-lg shadow-primary-200" @click="openNew" />
                 </div>
             </div>
 
@@ -593,258 +689,342 @@ defineExpose({
     v-model:visible="equipmentDialog"
     modal
     :header="false"
-    class="quantum-dialog w-full max-w-6xl shadow-2xl"
+    :closable="false"
+    :style="{ width: '95vw', maxWidth: '1150px' }"
+    :contentStyle="{ maxHeight: '90vh', overflow: 'auto' }"
     :pt="{
-        root: { class: 'border-none rounded-[2rem] overflow-hidden bg-white' },
-        mask: { style: 'backdrop-filter: blur(6px); background: rgba(0,0,0,0.4)' },
-        content: { class: 'p-0' }
+        root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl bg-white' },
+        mask: { style: 'backdrop-filter: blur(8px)' }
     }"
 >
-    <div class="p-6 bg-slate-950 text-white flex justify-between items-center">
-        <div class="flex items-center gap-4">
-            <div class="bg-emerald-500 p-3 rounded-2xl shadow-lg shadow-emerald-500/20">
-                <i class="pi pi-database text-xl"></i>
+    <div class="px-8 py-6 bg-slate-900 rounded-xl text-white flex justify-between items-center relative z-50">
+        <div class="flex items-center gap-5">
+            <div class="w-14 h-14 bg-primary-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-500/20">
+                <i class="pi pi-database text-2xl"></i>
             </div>
             <div>
-                <h2 class="text-lg font-black uppercase tracking-tight">{{ form.id ? 'Fiche Asset Expert' : 'Nouvel Enregistrement Asset' }}</h2>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Configuration Master Data & Cycle de Vie</p>
+                <h4 class="text-lg font-black text-slate-100 m-0 uppercase tracking-tight">
+                    {{ form.id ? 'Fiche Asset Expert' : 'Nouvel Enregistrement Asset' }}
+                </h4>
+                <p class="text-xs text-slate-500 m-0 font-bold uppercase tracking-widest">Master Data & Cycle de Vie Technique</p>
             </div>
         </div>
-        <Button icon="pi pi-times" text rounded severity="secondary" @click="hideDialog" class="text-white opacity-50 hover:opacity-100" />
+        <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
     </div>
 
-    <div class="p-6">
+    <div class="p-8 bg-white">
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
 
             <div class="md:col-span-7 space-y-6">
 
-                <div class="p-6 bg-slate-50 rounded-[1.5rem] border border-slate-100">
-                    <div class="flex items-center gap-2 mb-4">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span class="text-[11px] font-black text-slate-500 uppercase">Spécifications d'Usine</span>
+                <div class="p-7 bg-slate-50 rounded-[1rem] border border-slate-100">
+                    <div class="flex items-center gap-2 mb-6 italic">
+                        <span class="w-2 h-2 rounded-full bg-primary-500"></span>
+                        <span class="text-[11px] font-black text-slate-500 uppercase">Identité & Origine</span>
                     </div>
 
                     <div class="grid grid-cols-12 gap-4">
-                        <div class="col-span-12 field">
-                            <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-1">Équipement Maître / Parent</label>
-                            <Dropdown v-model="form.parent_id" :options="parentEquipments" optionLabel="designation" optionValue="id" filter class="quantum-input-v16 w-full" />
+                        <div class="col-span-12 flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Unité Parent (Hierarchie)</label>
+                            <Dropdown v-model="form.parent_id" :options="parentEquipments" optionLabel="designation" optionValue="id" filter class="w-full rounded-xl border-slate-200" placeholder="Aucun parent" />
                         </div>
-                        <div class="col-span-4 field">
-                            <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-1">Code Asset / Tag</label>
-                            <InputText v-model="form.tag" class="quantum-input-v16 font-mono uppercase text-emerald-600" />
+
+                        <div class="col-span-4 flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tag / Code Asset</label>
+                            <InputText v-model="form.tag" class="w-full py-3 rounded-xl border-slate-200 font-mono text-primary-600 font-bold" placeholder="TAG-000" />
                         </div>
-                        <div class="col-span-8 field">
-                            <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-1">Nom de l'Unité</label>
-                            <InputText v-model="form.designation" class="quantum-input-v16 font-bold" />
+
+                        <div class="col-span-8 flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Désignation complète</label>
+                            <InputText v-model="form.designation" class="w-full py-3 rounded-xl border-slate-200 font-bold" placeholder="Nom de l'équipement" />
                         </div>
-                        <div class="col-span-6 field mt-2">
-                            <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-1">Numéro de Série (S/N)</label>
-                            <InputText v-model="form.serial_number" class="quantum-input-v16" placeholder="SN-XXXX-XXXX" />
+
+                        <div class="col-span-6 flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Marque (Brand)</label>
+                            <InputText v-model="form.brand" class="w-full py-3 rounded-xl border-slate-200" />
                         </div>
-                        <div class="col-span-6 field mt-2">
-                            <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-1">Code Barre / QR</label>
-                            <InputText v-model="form.barcode" class="quantum-input-v16" placeholder="EAN-13" />
+
+                        <div class="col-span-6 flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Modèle</label>
+                            <InputText v-model="form.model" class="w-full py-3 rounded-xl border-slate-200" />
+                        </div>
+
+                        <div class="col-span-6 flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">S/N (Serial Number)</label>
+                            <InputText v-model="form.serial_number" class="w-full py-3 rounded-xl border-slate-200 font-mono" />
+                        </div>
+
+                        <div class="col-span-6 flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Quantité en stock</label>
+                            <InputNumber v-model="form.quantity" showButtons :min="0" class="w-full" inputClass="py-3 rounded-xl border-slate-200" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-7 bg-white rounded-[1rem] border border-slate-100 shadow-sm">
+                    <div class="flex items-center gap-2 mb-6 italic">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span class="text-[11px] font-black text-slate-500 uppercase">Localisation & Propriété</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase">Région / Site</label>
+                            <Dropdown v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id" class="rounded-xl border-slate-200" />
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase">Localisation précise</label>
+                            <InputText v-model="form.location" placeholder="Ex: Hangar A / Zone 4" class="py-3 rounded-xl border-slate-200" />
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase">Responsable (User)</label>
+                            <Dropdown v-model="form.user_id" :options="users" optionLabel="name" optionValue="id" filter class="rounded-xl border-slate-200" />
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black text-slate-400 uppercase">Étiquette / Label</label>
+                            <Dropdown v-model="form.label_id" :options="labels" optionLabel="name" optionValue="id" class="rounded-xl border-slate-200" />
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-4">
                     <div class="flex items-center justify-between px-2">
-                        <div class="flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <span class="text-[11px] font-black text-slate-500 uppercase italic">Attributs Techniques Personnalisables</span>
-                        </div>
-                        <Button icon="pi pi-plus" label="Ajouter un attribut" @click="addCharacteristic" text class="p-button-sm text-[10px] font-black text-emerald-600 uppercase" />
+                        <span class="text-[11px] font-black text-slate-500 uppercase italic">Spécifications Techniques Additionnelles</span>
+                        <Button icon="pi pi-plus" label="Ajouter" @click="addCharacteristic" text class="text-[10px] font-black text-primary-600 uppercase" />
                     </div>
-
-                    <div class="p-2 bg-white rounded-3xl border border-slate-100 shadow-inner min-h-[150px] max-h-[300px] overflow-y-auto">
-                        <div v-for="(char, index) in form.characteristics" :key="index"
-                             class="flex gap-2 p-2 mb-2 bg-slate-50 border border-slate-100 rounded-2xl items-center group transition-all hover:bg-white hover:shadow-md hover:border-emerald-200">
-                            <InputText v-model="char.name" placeholder="Paramètre" class="flex-1 border-none bg-transparent text-xs font-bold focus:ring-0" />
-                            <Dropdown v-model="char.type" :options="characteristicTypes" optionLabel="label" optionValue="value" class="w-32 border-none bg-slate-200/50 rounded-xl text-[10px]" />
-                            <div class="flex-[1.5]">
-                                <InputText v-if="char.type === 'text'" v-model="char.value" class="w-full border-none bg-transparent text-xs" />
-                                <InputNumber v-else-if="char.type === 'number'" v-model="char.value" class="w-full text-xs" />
-                                <Calendar v-else-if="char.type === 'date'" v-model="char.value" dateFormat="dd/mm/yy" />
-                                <InputSwitch v-else-if="char.type === 'boolean'" v-model="char.value" />
-                            </div>
-                            <Button icon="pi pi-trash" severity="danger" text rounded @click="removeCharacteristic(index)" class="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div class="p-3 bg-slate-50 rounded-[1rem] border-2 border-dashed border-slate-200 max-h-[250px] overflow-y-auto">
+                        <div v-for="(char, index) in form.characteristics" :key="index" class="flex gap-3 p-2 mb-2 bg-white rounded-xl items-center shadow-sm border border-slate-100">
+                            <InputText v-model="char.name" placeholder="Nom (ex: Voltage)" class="flex-1 text-xs border-none font-bold" />
+                            <InputText v-model="char.value" placeholder="Valeur" class="flex-1 text-xs border-none" />
+                            <Button icon="pi pi-trash" severity="danger" text @click="removeCharacteristic(index)" class="p-button-sm" />
                         </div>
                     </div>
-                </div>
-
-                <div class="field">
-                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">Consignes de sécurité / Remarques</label>
-                    <textarea v-model="form.notes" rows="3" class="w-full p-4 rounded-3xl border-slate-100 bg-slate-50 text-xs focus:ring-emerald-500" placeholder="Équipement critique, nécessite habilitation HT..."></textarea>
                 </div>
             </div>
 
-            <div class="md:col-span-5 space-y-4">
+            <div class="md:col-span-5 space-y-6">
 
-                <div class="p-6 bg-emerald-950 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden shadow-emerald-900/20">
-                    <div class="absolute top-0 right-0 p-4 opacity-10">
-                        <i class="pi pi-shield text-6xl"></i>
-                    </div>
-
-                    <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-6">Gestion Opérationnelle</h4>
-
+                <div class="p-8 bg-primary-950 rounded-[1rem] text-white shadow-xl relative overflow-hidden">
+                    <h4 class="text-[10px] font-black uppercase tracking-widest text-primary-400 mb-6 italic">Statut Opérationnel</h4>
                     <div class="space-y-5">
-                        <div class="field">
-                            <label class="text-[9px] font-black opacity-40 uppercase mb-2 block">État de l'unité</label>
-                            <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full bg-white/5 border-white/10 text-white rounded-2xl" />
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[9px] font-black opacity-40 uppercase">État actuel</label>
+                            <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full bg-white/5 border-white/10 text-white rounded-xl" />
                         </div>
-                        <div class="field">
-                            <label class="text-[9px] font-black opacity-40 uppercase mb-2 block">Catégorie Technique</label>
-                            <div class="flex gap-2">
-                                <Dropdown v-model="form.equipment_type_id" :options="equipmentTypes" optionLabel="name" optionValue="id" class="flex-1 bg-white/5 border-white/10 text-white rounded-2xl" />
-                                <Button icon="pi pi-plus" @click="openNewEquipmentType" class="bg-emerald-500 border-none text-white rounded-xl" />
-                            </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[9px] font-black opacity-40 uppercase">Catégorie d'équipement</label>
+                            <Dropdown v-model="form.equipment_type_id" :options="equipmentTypes" optionLabel="name" optionValue="id" class="w-full bg-white/5 border-white/10 text-white rounded-xl" />
                         </div>
                     </div>
                 </div>
 
-                <div class="p-5 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="field">
-                            <label class="text-[9px] font-black text-slate-400 uppercase">Constructeur</label>
-                            <InputText v-model="form.brand" class="quantum-input-sm w-full" placeholder="Ex: Siemens" />
+                <div class="p-7 bg-white rounded-[1rem] border border-slate-100 shadow-sm space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[9px] font-black text-slate-400 uppercase">Prix d'Achat</label>
+                            <InputNumber v-model="form.price" mode="currency" currency="USD" class="w-full" inputClass="py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700" />
                         </div>
-                        <div class="field">
-                            <label class="text-[9px] font-black text-slate-400 uppercase">Modèle / Réf</label>
-                            <InputText v-model="form.model" class="quantum-input-sm w-full" placeholder="Ex: S7-1200" />
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3 border-t border-slate-50 pt-4">
-                        <div class="field">
-                            <label class="text-[9px] font-black text-slate-400 uppercase italic">Coût Acquisition</label>
-                            <InputNumber v-model="form.price" mode="currency" currency="EUR" locale="fr-FR" class="quantum-input-sm w-full" />
-                        </div>
-                        <div class="field">
-                            <label class="text-[9px] font-black text-slate-400 uppercase italic">Puissance (kW/VA)</label>
-                            <InputNumber v-model="form.puissance" suffix=" kW" class="quantum-input-sm w-full" />
+                        <div class="flex flex-col gap-2">
+                            <label class="text-[9px] font-black text-slate-400 uppercase">Puissance</label>
+                            <InputNumber v-model="form.puissance" suffix=" kW" class="w-full" inputClass="py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700" />
                         </div>
                     </div>
                 </div>
 
-                <div class="p-5 bg-slate-900 rounded-[2rem] text-white space-y-4">
-                    <div class="flex items-center gap-4">
-                        <div class="flex-1">
-                            <label class="text-[9px] font-black opacity-40 uppercase mb-1 block">Date Mise en Service</label>
-                            <Calendar v-model="form.purchase_date" class="quantum-calendar-dark" showIcon iconDisplay="input" />
-                        </div>
-                        <div class="flex-1">
-                            <label class="text-[9px] font-black opacity-40 uppercase mb-1 block">Fin de Garantie</label>
-                            <Calendar v-model="form.warranty_end_date" class="quantum-calendar-dark" showIcon iconDisplay="input" />
-                        </div>
+                <div class="p-7 bg-slate-900 rounded-[1rem] text-white space-y-5 shadow-2xl">
+                    <div class="flex items-center gap-2 mb-2">
+                         <i class="pi pi-calendar text-primary-400 text-xs"></i>
+                         <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Chronologie</span>
                     </div>
-                    <div class="field">
-                        <label class="text-[9px] font-black opacity-40 uppercase mb-1 block">Fréquence de maintenance préventive (Jours)</label>
-                        <InputNumber v-model="form.maintenance_interval" suffix=" jours" class="w-full bg-white/5 border-none rounded-xl" />
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[9px] font-black opacity-40 uppercase">Date d'Acquisition</label>
+                        <Calendar v-model="form.purchase_date" class="w-full" inputClass="bg-white/5 border-none text-white rounded-xl py-3 text-xs" showIcon />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[9px] font-black opacity-40 uppercase">Expiration Garantie</label>
+                        <Calendar v-model="form.warranty_end_date" class="w-full" inputClass="bg-white/5 border-none text-white rounded-xl py-3 text-xs" showIcon />
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="bg-slate-100 p-4 rounded-3xl border border-slate-200">
-                        <span class="block text-[8px] font-black text-slate-400 uppercase mb-1">Entité / Région</span>
-                        <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" class="w-full bg-transparent border-none p-0 text-xs font-bold" />
-                    </div>
-                    <div class="bg-emerald-50 p-4 rounded-3xl border border-emerald-100 flex flex-col justify-center">
-                        <span class="block text-[8px] font-black text-emerald-400 uppercase mb-1 text-center">Localisation Géo</span>
-                        <InputText v-model="form.location" class="bg-transparent border-none p-0 text-center text-xs font-black text-emerald-800 uppercase" placeholder="COORDONNÉES" />
-                    </div>
-                </div>
-
-                <div class="p-4 border-2 border-dashed border-slate-200 rounded-[2rem] hover:border-emerald-400 transition-colors cursor-pointer group">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                            <i class="pi pi-upload"></i>
-                        </div>
-                        <div>
-                            <span class="block text-xs font-black text-slate-600 uppercase">Manuel Technique / Schéma</span>
-                            <span class="text-[9px] text-slate-400 font-bold uppercase">PDF, JPG (Max 10MB)</span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 
     <template #footer>
-        <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center w-full rounded-b-[2rem]">
-            <Button :label="t('equipments.dialog.cancel')" icon="pi pi-times" class="p-button-text p-button-secondary font-bold text-xs" @click="hideDialog" />
-            <div class="flex gap-3">
-                <Button v-if="form.id" label="Dupliquer" icon="pi pi-copy" severity="secondary" outlined class="rounded-2xl px-4 font-bold text-xs" />
-                <Button :label="t('equipments.dialog.save')" icon="pi pi-check-circle"
-                        class="p-button-emerald px-10 rounded-2xl shadow-xl shadow-emerald-100 font-black uppercase text-xs tracking-widest"
+        <div class="flex justify-between items-center w-full px-10 py-6 bg-slate-50 border-t border-slate-100">
+            <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
+            <div class="flex gap-4">
+                <Button :label="form.id ? 'Mettre à jour' : 'Enregistrer Asset'"
+                        icon="pi pi-check-circle"
+
+                        class="px-12 h-14 rounded-2xl shadow-xl shadow-primary-200 font-black uppercase tracking-widest text-xs"
                         @click="saveEquipment" :loading="form.processing" />
             </div>
         </div>
     </template>
 </Dialog>
+
+<!-- Nouveau Dialogue pour Quantité Insuffisante -->
 <Dialog
-    v-model:visible="equipmentTypeDialog"
+    v-model:visible="insufficientQuantityDialog"
     modal
     :header="false"
-    :style="{ width: '30rem' }"
-    class="quantum-dialog"
+    :closable="false"
+    :style="{ width: '90vw', maxWidth: '500px' }"
     :pt="{
-        root: { class: 'border-none rounded-[2rem] bg-white shadow-2xl' },
-        mask: { style: 'backdrop-filter: blur(4px)' }
+        root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl bg-white' },
+        mask: { style: 'backdrop-filter: blur(8px)' }
     }"
 >
-    <div class="p-6 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
-            <i class="pi pi-tags text-lg"></i>
+    <div class="px-8 py-6 bg-red-600 text-white flex justify-between items-center relative z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white shadow-inner">
+                <i class="pi pi-exclamation-circle text-2xl animate-pulse"></i>
+            </div>
+            <div>
+                <h4 class="font-black text-white m-0 uppercase tracking-tight leading-none">
+                    {{ t('equipments.insufficientQuantityDialog.title') }}
+                </h4>
+                <p class="text-[10px] text-red-100 m-0 mt-1 font-bold uppercase tracking-widest opacity-80">
+                    {{ t('equipments.insufficientQuantityDialog.subtitle') || 'Alerte de Stock' }}
+                </p>
+            </div>
         </div>
-        <div>
-            <h3 class="text-sm font-black uppercase tracking-widest text-slate-700">{{ t('equipments.typeDialog.title') }}</h3>
-            <p class="text-[9px] font-bold text-slate-400 uppercase">Configuration des catégories d'actifs</p>
-        </div>
+        <Button
+            icon="pi pi-times"
+            variant="text"
+            rounded
+            @click="insufficientQuantityDialog = false"
+            class="text-white hover:bg-white/10"
+        />
     </div>
 
-    <div class="p-8 space-y-5">
-        <div class="field">
-            <label for="equipment_type_name" class="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block tracking-tighter">
-                {{ t('equipments.typeDialog.name') }}
-            </label>
-            <InputText
-                id="equipment_type_name"
-                v-model.trim="equipmentTypeForm.name"
-                required
-                autofocus
-                :placeholder="t('equipments.typeDialog.name')"
-                class="quantum-input-v16 w-full font-bold"
-                :class="{ 'p-invalid': equipmentTypeForm.errors.name }"
-            />
-            <small class="p-error text-[10px] font-bold mt-1 block" v-if="equipmentTypeForm.errors.name">
-                <i class="pi pi-times-circle mr-1"></i> {{ equipmentTypeForm.errors.name }}
-            </small>
+    <div class="p-8 bg-white space-y-6">
+        <div class="flex flex-col items-center text-center gap-4">
+            <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
+                <i class="pi pi-box text-3xl text-red-400 opacity-50"></i>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-slate-900 font-bold text-base leading-relaxed">
+                    {{ t('equipments.insufficientQuantityDialog.message') }}
+                </p>
+                <p class="text-slate-500 text-xs italic font-medium">
+                    L'exécution de ce mouvement pourrait entraîner un stock négatif ou une rupture de service.
+                </p>
+            </div>
         </div>
 
-        <div class="field">
-            <label for="equipment_type_description" class="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block tracking-tighter">
-                {{ t('equipments.typeDialog.description') }}
-            </label>
-            <Textarea
-                id="equipment_type_description"
-                v-model.trim="equipmentTypeForm.description"
-                rows="3"
-                class="w-full p-4 rounded-2xl bg-slate-50 border-slate-100 text-sm focus:ring-2 focus:ring-emerald-500 transition-all"
-                :class="{ 'p-invalid': equipmentTypeForm.errors.description }"
-            />
+        <div class="p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3 items-start">
+            <i class="pi pi-info-circle text-amber-600 mt-1"></i>
+            <p class="text-[11px] font-bold text-amber-800 leading-tight uppercase tracking-tight">
+                Voulez-vous forcer cette opération ou annuler pour régulariser l'inventaire ?
+            </p>
         </div>
     </div>
 
     <template #footer>
-        <div class="flex justify-between items-center w-full px-4 pb-4">
-            <Button :label="t('equipments.typeDialog.cancel')" icon="pi pi-times" @click="hideEquipmentTypeDialog" class="p-button-text p-button-secondary font-bold text-xs" />
+        <div class="flex justify-between items-center w-full px-8 py-6 bg-slate-50 border-t border-slate-100">
+            <Button
+                :label="t('equipments.insufficientQuantityDialog.cancel')"
+                icon="pi pi-arrow-left"
+                text
+                severity="secondary"
+                @click="insufficientQuantityDialog = false"
+                class="font-black uppercase text-[10px] tracking-widest"
+            />
+
+            <Button
+                :label="t('equipments.insufficientQuantityDialog.performMovement')"
+                icon="pi pi-bolt"
+                severity="danger"
+                class="px-8 h-12 rounded-2xl shadow-xl shadow-red-100 font-black uppercase tracking-widest text-xs"
+                @click="insufficienQty"
+            />
+        </div>
+    </template>
+</Dialog>
+
+
+<Dialog
+    v-model:visible="equipmentTypeDialog"
+    modal
+    :header="false"
+    :closable="false"
+    :style="{ width: '90vw', maxWidth: '500px' }"
+    :contentStyle="{ maxHeight: '80vh', overflow: 'hidden' }"
+    :pt="{
+        root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl bg-white' },
+        mask: { style: 'backdrop-filter: blur(8px)' }
+    }"
+>
+    <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-900/20">
+                <i class="pi pi-tags text-xl"></i>
+            </div>
+            <div>
+                <h4 class="font-black text-slate-100 m-0 uppercase tracking-tight">
+                    {{ t('equipments.typeDialog.title') }}
+                </h4>
+                <p class="text-[10px] text-slate-500 m-0 font-bold uppercase tracking-widest">Configuration des catégories</p>
+            </div>
+        </div>
+        <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideEquipmentTypeDialog" class="text-white hover:bg-white/10" />
+    </div>
+
+    <div class="p-8 bg-white space-y-6">
+        <div class="flex flex-col gap-2">
+            <label for="equipment_type_name" class="text-xs font-black text-slate-500 uppercase ml-1">
+                {{ t('equipments.typeDialog.name') }}
+            </label>
+            <IconField iconPosition="left">
+                <InputIcon class="pi pi-tag" />
+                <InputText
+                    id="equipment_type_name"
+                    v-model.trim="equipmentTypeForm.name"
+                    required
+                    autofocus
+                    :placeholder="t('equipments.typeDialog.name')"
+                    class="w-full py-3.5 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary-50 font-bold"
+                    :class="{ 'p-invalid': equipmentTypeForm.errors.name }"
+                />
+            </IconField>
+            <small v-if="equipmentTypeForm.errors.name" class="text-red-500 font-bold italic text-[10px] ml-1">
+                {{ equipmentTypeForm.errors.name }}
+            </small>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <label for="equipment_type_description" class="text-xs font-black text-slate-500 uppercase ml-1">
+                {{ t('equipments.typeDialog.description') }}
+            </label>
+            <textarea
+                id="equipment_type_description"
+                v-model.trim="equipmentTypeForm.description"
+                rows="4"
+                class="w-full p-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-primary-50 transition-all text-sm outline-none"
+                :placeholder="t('equipments.typeDialog.description')"
+            ></textarea>
+        </div>
+    </div>
+
+    <template #footer>
+        <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+            <Button
+                :label="t('equipments.typeDialog.cancel')"
+                icon="pi pi-times"
+                text
+                severity="secondary"
+                @click="hideEquipmentTypeDialog"
+                class="font-bold uppercase text-[10px] tracking-widest"
+            />
             <Button
                 :label="t('equipments.typeDialog.create')"
-                icon="pi pi-check"
+                icon="pi pi-check-circle"
+                severity="primary"
+                class="px-8 h-12 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
                 @click="saveEquipmentType"
                 :loading="equipmentTypeForm.processing"
-                class="p-button-emerald px-6 rounded-xl shadow-lg shadow-emerald-100 font-black uppercase text-[10px]"
             />
         </div>
     </template>

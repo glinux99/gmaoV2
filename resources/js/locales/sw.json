@@ -646,6 +646,12 @@
             "leader": "Désigner un leader",
             "members": "Sélectionner les membres"
         },
+        "stats": {
+            "total_teams": "Total Équipes",
+            "total_members": "Total Membres",
+            "avg_members": "Membres / Équipe",
+            "with_leader": "Avec Leader"
+        },
         "messages": {
             "createSuccess": "Équipe créée avec succès.",
             "updateSuccess": "Équipe mise à jour avec succès.",

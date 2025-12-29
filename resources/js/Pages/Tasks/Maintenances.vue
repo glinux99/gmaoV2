@@ -6,6 +6,7 @@ import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useI18n } from 'vue-i18n';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
 // Importations ajoutées pour la sélection de colonnes et l'export
 import OverlayPanel from 'primevue/overlaypanel';
@@ -22,6 +23,8 @@ import InputIcon from 'primevue/inputicon';
 import Tag from 'primevue/tag';
 import TreeSelect from 'primevue/treeselect';
 import Checkbox from 'primevue/checkbox';
+import InputNumber from 'primevue/inputnumber';
+import Avatar from 'primevue/avatar';
 
 const props = defineProps({
     maintenances: Object,
@@ -47,6 +50,29 @@ const editing = ref(false);
 const searchFilter = ref(props.filters?.search || '');
 const dt = ref(); // Référence au DataTable pour l'export
 const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonnes
+
+// --- SYSTÈME DE FILTRES AVANCÉS (V11 Custom) ---
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    title: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'assignable.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    status: { value: null, matchMode: FilterMatchMode.EQUALS },
+    priority: { value: null, matchMode: FilterMatchMode.EQUALS },
+    type: { value: null, matchMode: FilterMatchMode.EQUALS },
+    'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+});
+
+const initFilters = () => {
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        title: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'assignable.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        status: { value: null, matchMode: FilterMatchMode.EQUALS },
+        priority: { value: null, matchMode: FilterMatchMode.EQUALS },
+        type: { value: null, matchMode: FilterMatchMode.EQUALS },
+        'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    };
+};
 
 // Colonnes pour la sélection
 const allColumns = ref([
@@ -808,7 +834,7 @@ const transformedEquipmentTree = computed(() => {
 
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
                 <div class="flex items-center gap-4">
-                    <div class="flex h-16 w-16 items-center justify-center rounded-[2rem] bg-blue-600 shadow-xl shadow-blue-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-[1rem] bg-primary-600 shadow-xl shadow-primary-200">
                         <i class="pi pi-wrench text-2xl text-white"></i>
                     </div>
                     <div>
@@ -821,42 +847,65 @@ const transformedEquipmentTree = computed(() => {
                     <button @click="exportCSV" class="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-emerald-600 shadow-sm transition-all hover:bg-emerald-50 active:scale-95 lg:flex-none">
                         <i class="pi pi-file-excel"></i> {{ t('maintenances.exportExcel') }}
                     </button>
-                    <button @click="openNew" class="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 lg:flex-none">
+                    <button @click="openNew" class="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-primary-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-primary-100 transition-all hover:bg-primary-700 active:scale-95 lg:flex-none">
                         <i class="pi pi-plus-circle"></i> {{ t('maintenances.new') }}
                     </button>
                 </div>
             </div>
 
-            <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[2.5rem] border border-white bg-white/50 p-4 shadow-sm backdrop-blur-md">
-                <div class="relative flex-1 min-w-[280px]">
+            <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[1rem] border border-white bg-white/50 p-4 shadow-sm backdrop-blur-md">
+                <!-- <div class="relative flex-1 min-w-[280px]">
                     <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input v-model="searchFilter" type="text" :placeholder="t('maintenances.searchPlaceholder')" @input="applyFilters"
-                           class="w-full rounded-2xl border-none bg-white py-3 pl-12 text-sm font-semibold shadow-inner focus:ring-2 focus:ring-indigo-500/20" />
+                           class="w-full rounded-2xl border-none bg-white py-3 pl-12 text-sm font-semibold shadow-inner focus:ring-2 focus:ring-primary-500/20" />
                 </div>
 
                 <div class="flex items-center gap-2">
                     <Button icon="pi pi-filter-slash" text @click="applyFilters" class="h-12 w-12 !text-slate-400 hover:!text-red-500" v-tooltip.bottom="t('maintenances.resetTooltip')" />
-                    <Button icon="pi pi-columns" text @click="toggleColumnSelection" class="h-12 w-12 !text-slate-400 hover:!text-indigo-500" v-tooltip.bottom="t('maintenances.columnsTooltip')" />
-                </div>
+                    <Button icon="pi pi-columns" text @click="toggleColumnSelection" class="h-12 w-12 !text-slate-400 hover:!text-primary-500" v-tooltip.bottom="t('maintenances.columnsTooltip')" />
+                </div> -->
             </div>
 
-            <div class="overflow-hidden rounded-[3rem] border border-white bg-white shadow-2xl shadow-slate-200/60">
+            <div class="overflow-hidden rounded-[1rem] border border-white bg-white shadow-2xl shadow-slate-200/60">
                 <DataTable :value="maintenances.data" ref="dt" dataKey="id" :paginator="true" :rows="10"
-                    scrollable scrollHeight="600px" class="v11-table">
+                    scrollable scrollHeight="600px" class="v11-table"
+                    v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['title', 'assignable.name', 'status', 'priority', 'type', 'region.designation']"
+                    removableSort>
 
+                    <template #header>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('maintenances.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                            </IconField>
+                            <div class="flex items-center gap-2">
+                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" />
+                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" />
+                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="toggleColumnSelection" />
+                                <!-- <Button v-if="selectedMaintenances && selectedMaintenances.length > 0"
+                                        :label="t('common.deleteSelected', { count: selectedMaintenances.length })"
+                                        icon="pi pi-trash" severity="danger" raised
+                                        @click="deleteSelectedMaintenances" /> -->
+                            </div>
+                        </div>
+                    </template>
                     <Column selectionMode="multiple" headerStyle="width: 4rem" class="pl-8"></Column>
 
-                    <Column v-if="visibleColumns.includes('title')" :header="t('maintenances.columns.title')" minWidth="300px">
+  <Column v-if="visibleColumns.includes('title')" :header="t('maintenances.columns.title')" minWidth="300px">
                         <template #body="{ data }">
                             <div class="group flex cursor-pointer items-center gap-4 py-2" @click="editMaintenance(data)">
-                                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 transition-all group-hover:bg-blue-100 text-blue-500">
+                                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 transition-all group-hover:bg-primary-100 text-primary-500">
                                     <i class="pi pi-tag text-xl"></i>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-lg font-black tracking-tight text-slate-800">{{ data.title }}</span>
-                                    <span class="text-[10px] font-bold uppercase tracking-widest text-blue-500">ID: #{{ data.id.toString().padStart(4, '0') }}</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest text-primary-500">ID: #{{ data.id.toString().padStart(4, '0') }}</span>
                                 </div>
                             </div>
+                        </template>
+                        <template #filter="{ filterModel }">
+ <InputText v-model="filterModel.constraints[0].value" type="text" class="p-column-filter" :placeholder="t('maintenances.filter.title')" />
+
                         </template>
                     </Column>
 
@@ -875,11 +924,18 @@ const transformedEquipmentTree = computed(() => {
                                 <span class="text-sm font-bold text-slate-700">{{ slotProps.data.assignable.name }}</span>
                             </div>
                         </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('maintenances.filter.assignable')" />
+                        </template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('status')" field="status" :header="t('maintenances.columns.status')" minWidth="150px">
                         <template #body="slotProps">
                             <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" />
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="maintenanceStatuses" optionLabel="label" optionValue="value"
+                                      :placeholder="t('maintenances.filter.status')" class="p-column-filter" showClear />
                         </template>
                     </Column>
 
@@ -887,16 +943,28 @@ const transformedEquipmentTree = computed(() => {
                         <template #body="slotProps">
                             <Tag :value="slotProps.data.priority" :severity="getPrioritySeverity(slotProps.data.priority)" />
                         </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="maintenancePriorities"
+                                      :placeholder="t('maintenances.filter.priority')" class="p-column-filter" showClear />
+                        </template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('scheduled_start_date')" field="scheduled_start_date" :header="t('maintenances.columns.scheduled_start_date')" minWidth="200px">
                         <template #body="slotProps">
-                            <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded-md">{{ new Date(slotProps.data.scheduled_start_date).toLocaleString() }}</span>
+                            <span class="font-mono text-sm bg-primary-50 text-primary-600 px-2 py-1 rounded-md">{{ new Date(slotProps.data.scheduled_start_date).toLocaleString() }}</span>
                         </template>
                     </Column>
 
                     <!-- Colonnes additionnelles cachées par défaut -->
-                    <Column v-if="visibleColumns.includes('type')" field="type" :header="t('maintenances.columns.type')" :sortable="true" style="min-width: 10rem;"></Column>
+                    <Column v-if="visibleColumns.includes('type')" field="type" :header="t('maintenances.columns.type')" :sortable="true" style="min-width: 10rem;">
+                        <template #body="slotProps">
+                            {{ slotProps.data.type }}
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="maintenanceTypes"
+                                      :placeholder="t('maintenances.filter.type')" class="p-column-filter" showClear />
+                        </template>
+                    </Column>
                     <Column v-if="visibleColumns.includes('description')" field="description" :header="t('maintenances.columns.description')" :sortable="true" style="min-width: 15rem;"></Column>
                     <Column v-if="visibleColumns.includes('estimated_duration')" field="estimated_duration" :header="t('maintenances.columns.estimated_duration')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
@@ -912,6 +980,10 @@ const transformedEquipmentTree = computed(() => {
                         <template #body="slotProps">
                             {{ slotProps.data.region ? slotProps.data.region.designation : 'N/A' }}
                         </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter"
+                                       :placeholder="t('maintenances.filter.region')" />
+                        </template>
                     </Column>
                     <Column v-if="visibleColumns.includes('recurrence_type')" field="recurrence_type" :header="t('maintenances.columns.recurrence_type')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
@@ -921,7 +993,7 @@ const transformedEquipmentTree = computed(() => {
                     <Column :header="t('maintenances.columns.actions')" alignFrozen="right" frozen class="pr-8">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
-                                <Button icon="pi pi-pencil" text rounded @click="editMaintenance(data)" class="!text-slate-400 hover:!bg-indigo-50 hover:!text-indigo-600 transition-all" />
+                                <Button icon="pi pi-pencil" text rounded @click="editMaintenance(data)" class="!text-slate-400 hover:!bg-primary-50 hover:!text-primary-600 transition-all" />
                                 <Button icon="pi pi-bolt" text rounded @click="openActivityCreationDialog(data, false)" class="!text-slate-400 hover:!bg-green-50 hover:!text-green-600 transition-all" v-tooltip.top="'Créer une activité'" />
                                 <Button icon="pi pi-trash" text rounded @click="deleteMaintenance(data)" class="!text-slate-400 hover:!bg-red-50 hover:!text-red-500 transition-all" />
                             </div>
@@ -948,7 +1020,7 @@ const transformedEquipmentTree = computed(() => {
 
         <!-- NOUVEAU : Dialogue de création d'activités -->
         <Dialog v-model:visible="activityCreationDialog" modal
-        :header="t('maintenances.activityDialog.title')"
+         :header="false" :closable="false"
         class="v12-enterprise-dialog w-full max-w-7xl"
         :pt="{
             root: { class: 'border-none shadow-2xl' },
@@ -958,7 +1030,7 @@ const transformedEquipmentTree = computed(() => {
 
     <template #header>
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-slate-900 rounded flex items-center justify-center">
+            <div class="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center">
                 <i class="pi pi-layers text-white text-xs"></i>
             </div>
             <div>
@@ -973,7 +1045,7 @@ const transformedEquipmentTree = computed(() => {
         <div class="bg-slate-900 px-6 py-4 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-6">
                 <div class="space-y-1">
-                    <span class="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">{{ t('maintenances.activityDialog.parentMaintenance') }}</span>
+                    <span class="text-[9px] font-black text-primary-400 uppercase tracking-[0.2em]">{{ t('maintenances.activityDialog.parentMaintenance') }}</span>
                     <h3 class="text-white text-sm font-bold flex items-center gap-2">
                         {{ selectedMaintenanceForActivity.title }}
                         <i class="pi pi-external-link text-[10px] text-slate-500"></i>
@@ -987,7 +1059,7 @@ const transformedEquipmentTree = computed(() => {
             </div>
             <div class="flex gap-2">
                 <Button :label="t('maintenances.activityDialog.newActivity')" icon="pi pi-plus"
-                        class="p-button-sm p-button-raised bg-indigo-600 border-none text-[11px] font-bold"
+                        class="p-button-sm p-button-raised bg-primary-600 border-none text-[11px] font-bold"
                         @click="addActivityToForm" />
             </div>
         </div>
@@ -1018,7 +1090,7 @@ const transformedEquipmentTree = computed(() => {
                              <div class="col-span-12 lg:col-span-6 space-y-4">
                         <div class="p-4 border border-slate-100 rounded-md bg-slate-50/30">
                             <h5 class="text-[10px] font-black text-slate-900 uppercase mb-3 flex items-center gap-2">
-                                <i class="pi pi-user text-indigo-500"></i> {{ t('maintenances.activityDialog.attribution') }}
+                                <i class="pi pi-user text-primary-500"></i> {{ t('maintenances.activityDialog.attribution') }}
                             </h5>
                             <div class="space-y-3">
                                 <div class="field">
@@ -1039,14 +1111,14 @@ const transformedEquipmentTree = computed(() => {
                     <div class="col-span-12 lg:col-span-6 space-y-4">
                         <div class="p-4 border border-slate-100 rounded-md flex flex-col">
                             <h5 class="text-[10px] font-black text-slate-900 uppercase mb-3 flex items-center gap-2">
-                                <i class="pi pi-box text-indigo-500"></i> {{ t('maintenances.activityDialog.concernedAssets') }}
+                                <i class="pi pi-box text-primary-500"></i> {{ t('maintenances.activityDialog.concernedAssets') }}
                             </h5>
                             <MultiSelect v-model="activity.equipment_ids" :options="availableEquipmentsForActivity(index)"
                                          optionLabel="designation" optionValue="id" display="chip"
                                          class="w-full v12-input flex-1" filter :placeholder="t('maintenances.activityDialog.searchEquipmentsPlaceholder')" />
-                            <div class="mt-3 p-3 bg-indigo-50 rounded border border-indigo-100">
+                            <div class="mt-3 p-3 bg-primary-50 rounded border border-primary-100">
                                 <div class="flex items-center justify-between text-[10px]">
-                                    <span class="font-bold text-indigo-700">{{ t('maintenances.activityDialog.estimatedCost') }}</span>
+                                    <span class="font-bold text-primary-700">{{ t('maintenances.activityDialog.estimatedCost') }}</span>
                                     <InputNumber v-model="activity.cost" mode="currency" currency="XOF" class="quantum-input-transparent text-right font-black" />
                                 </div>
                             </div>
@@ -1055,7 +1127,7 @@ const transformedEquipmentTree = computed(() => {
                         </div>
                          <div class="p-4 border border-slate-100 rounded-md bg-slate-50/30">
                             <h5 class="text-[10px] font-black text-slate-900 uppercase mb-3 flex items-center gap-2">
-                                <i class="pi pi-calendar text-indigo-500"></i> {{ t('maintenances.activityDialog.planning') }}
+                                <i class="pi pi-calendar text-primary-500"></i> {{ t('maintenances.activityDialog.planning') }}
                             </h5>
                             <div class="grid grid-cols-2 gap-2">
                                 <div class="field">
@@ -1138,20 +1210,20 @@ const transformedEquipmentTree = computed(() => {
 </Dialog>
 
                   <Dialog v-model:visible="maintenanceDialog" modal
-        :header="dialogTitle"
+        :header="false" :closable="false"
         class="quantum-dialog w-full max-w-7xl"
         :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
 
- <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+ <div class="px-8 py-5 bg-slate-900 rounded-xl text-white flex justify-between items-center relative z-50">
  <div class="flex items-center gap-4">
- <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
- <i :class="[isCreatingSubActivity ? 'pi pi-plus-circle' : 'pi pi-shield', 'text-blue-400 text-xl']"></i>
+ <div class="p-2.5 bg-primary-500/20 rounded-xl border border-primary-500/30">
+ <i :class="['pi pi-shield', 'text-primary-400 text-xl']"></i>
  </div>
  <div class="flex flex-col">
  <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">
- {{ isCreatingSubActivity ? 'Initialisation Sous-Activité' : t('maintenances.formDialog.technicalReportTitle') }}
+ {{ t('maintenances.formDialog.technicalReportTitle') }}
  </h2>
- <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">
+ <span class="text-[9px] text-primary-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">
  {{ t('maintenances.formDialog.gmaoConsole') }}
  </span>
  </div>
@@ -1164,7 +1236,7 @@ const transformedEquipmentTree = computed(() => {
             <div class="md:col-span-7 space-y-6">
 
                 <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
-                    <h3 class="text-xs font-black uppercase tracking-widest text-indigo-600 mb-2 flex items-center gap-2">
+                    <h3 class="text-xs font-black uppercase tracking-widest text-primary-600 mb-2 flex items-center gap-2">
                         <i class="pi pi-tag"></i> {{ t('maintenances.formDialog.missionId') }}
                     </h3>
 
@@ -1178,10 +1250,11 @@ const transformedEquipmentTree = computed(() => {
                     </div>
 
                     <div class="field">
+
                         <label for="related_equipments" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.concernedEquipments') }}</label>
                         <TreeSelect id="related_equipments" v-model="form.related_equipments"
                                     :options="transformedEquipmentTree"
-                                    :placeholder="t('maintenances.formDialog.selectAssets')"
+                                    :placeholder="t('maintenances.formDialog.selectAssets')" :expandedKeys="expandedKeys"
                                     filter selectionMode="checkbox" display="chip"
                                     class="w-full quantum-input !bg-white" />
                         <small class="p-error block mt-1" v-if="form.errors.related_equipments">{{ form.errors.related_equipments }}</small>
@@ -1190,7 +1263,7 @@ const transformedEquipmentTree = computed(() => {
                     <div class="field">
                         <label for="description" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.detailedDescription') }}</label>
                         <Textarea id="description" v-model="form.description" rows="4"
-                                  class="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
+                                  class="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-primary-500 text-sm bg-white"
                                   :placeholder="t('maintenances.formDialog.generalInstructions')" />
                         <small class="p-error block mt-1" v-if="form.errors.description">{{ form.errors.description }}</small>
                     </div>
@@ -1199,11 +1272,11 @@ const transformedEquipmentTree = computed(() => {
                 <div class="space-y-4">
                     <div class="flex items-center justify-between px-2">
                         <h3 class="text-xs font-black uppercase tracking-widest text-slate-700 flex items-center gap-2">
-                            <i class="pi pi-sitemap text-indigo-500"></i> {{ t('maintenances.formDialog.configPerEquipment') }}
+                            <i class="pi pi-sitemap text-primary-500"></i> {{ t('maintenances.formDialog.configPerEquipment') }}
                         </h3>
                         <Button :label="showAdvancedInstructions ? t('maintenances.formDialog.hideControlPoints') : t('maintenances.formDialog.showControlPoints')"
                                 :icon="showAdvancedInstructions ? 'pi pi-chevron-up' : 'pi pi-cog'"
-                                class="p-button-text p-button-sm font-bold text-indigo-600"
+                                class="p-button-text p-button-sm font-bold text-primary-600"
                                 @click="showAdvancedInstructions = !showAdvancedInstructions" />
                     </div>
 
@@ -1230,14 +1303,14 @@ const transformedEquipmentTree = computed(() => {
                             <div v-if="isGroupExpanded(group.parent.key)" class="p-4 space-y-6 border-t border-slate-50">
                                 <div v-for="child in group.children" :key="child.key" class="p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
                                     <div class="flex flex-wrap justify-between items-center gap-4 mb-4 border-b border-slate-200/60 pb-3">
-                                        <span class="text-xs font-black text-indigo-600 uppercase">{{ child.label }}</span>
+                                        <span class="text-xs font-black text-primary-600 uppercase">{{ child.label }}</span>
                                         <div class="flex gap-2">
                                             <Button v-if="form.node_instructions[child.key]?.length"
                                                     icon="pi pi-copy" :label="t('maintenances.formDialog.clone')"
                                                     class="p-button-text p-button-sm text-[10px] font-bold"
                                                     @click="openCopyDialog(child.key)" />
                                             <Button icon="pi pi-plus" :label="t('maintenances.formDialog.addInstruction')"
-                                                    class="p-button-indigo p-button-sm text-[10px] font-bold shadow-sm"
+                                                    class="p-button-primary p-button-sm text-[10px] font-bold shadow-sm"
                                                     @click="addInstruction(child.key)" />
                                         </div>
                                     </div>
@@ -1275,13 +1348,13 @@ const transformedEquipmentTree = computed(() => {
 
             <div class="md:col-span-5 space-y-6">
 
-                <div class="p-8 bg-slate-900 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                <div class="p-8 bg-slate-900 rounded-[1rem] text-white shadow-2xl relative overflow-hidden">
                     <div class="absolute top-0 right-0 p-6 opacity-10">
                         <i class="pi pi-calendar-plus text-6xl"></i>
                     </div>
 
-                    <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mb-8 text-indigo-400 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mb-8 text-primary-400 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
                         {{ t('maintenances.formDialog.logisticsAndTiming') }}
                     </h4>
 
@@ -1337,36 +1410,36 @@ const transformedEquipmentTree = computed(() => {
                     </div>
                 </div>
 
-                <div class="p-8 bg-indigo-50 rounded-[3rem] border border-indigo-100 shadow-sm space-y-6">
-                    <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-700 flex items-center gap-2">
+                <div class="p-8 bg-primary-50 rounded-[1rem] border border-primary-100 shadow-sm space-y-6">
+                    <h4 class="text-[10px] font-black uppercase tracking-widest text-primary-700 flex items-center gap-2">
                         <i class="pi pi-sync"></i> {{ t('maintenances.formDialog.recurrenceCycle') }}
                     </h4>
 
                     <div class="space-y-5">
                         <div class="field">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.frequency') }}</label>
+                            <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.frequency') }}</label>
                             <Dropdown v-model="form.recurrence_type" :options="recurrenceTypes" optionLabel="label" optionValue="value"
                                       class="w-full quantum-input !bg-white shadow-none" />
                         </div>
 
                         <div v-if="form.recurrence_type === 'daily'" class="field animate-fade-in">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">{{ t('maintenances.formDialog.dailyInterval') }}</label>
+                            <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block">{{ t('maintenances.formDialog.dailyInterval') }}</label>
                             <InputNumber v-model="form.recurrence_interval" :min="1" :max="365" suffix=" jours" class="w-full" />
                         </div>
 
-                        <div v-if="form.recurrence_type === 'weekly'" class="field animate-fade-in p-4 bg-white rounded-2xl border border-indigo-100">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">{{ t('maintenances.formDialog.daysSelection') }}</label>
+                        <div v-if="form.recurrence_type === 'weekly'" class="field animate-fade-in p-4 bg-white rounded-2xl border border-primary-100">
+                            <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block">{{ t('maintenances.formDialog.daysSelection') }}</label>
                             <MultiSelect v-model="form.recurrence_days" :options="daysOfWeek" optionLabel="label" optionValue="value"
                                          display="chip" class="w-full border-none p-0" />
                         </div>
 
                         <div v-if="form.recurrence_type === 'monthly'" class="grid grid-cols-2 gap-4 animate-fade-in">
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
+                                <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
                                 <InputNumber v-model="form.recurrence_day_of_month" :min="1" :max="31" class="w-full" />
                             </div>
                             <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.everyNMonths') }}</label>
+                                <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.everyNMonths') }}</label>
                                 <InputNumber v-model="form.recurrence_month_interval" :min="1" :max="12" suffix=" mois" class="w-full" />
                             </div>
                         </div>
@@ -1374,34 +1447,34 @@ const transformedEquipmentTree = computed(() => {
                         <div v-if="['quarterly', 'biannual', 'annual'].includes(form.recurrence_type)" class="space-y-4 animate-fade-in">
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.startMonth') }}</label>
+                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.startMonth') }}</label>
                                     <Dropdown v-model="form.recurrence_month" :options="months" optionLabel="label" optionValue="value" class="w-full bg-white" />
                                 </div>
                                 <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
+                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
                                     <InputNumber v-model="form.recurrence_day_of_month" :min="1" :max="31" class="w-full" />
                                 </div>
                             </div>
-                            <div class="field p-4 bg-indigo-600 rounded-2xl text-white">
+                            <div class="field p-4 bg-primary-600 rounded-2xl text-white">
                                 <label class="text-[9px] font-bold uppercase opacity-70 mb-2 block">{{ t('maintenances.formDialog.earlyReminder') }}</label>
                                 <div class="flex items-center gap-3">
                                     <InputNumber v-model="form.reminder_days" :min="0" suffix=" jours" class="flex-1 quantum-input-dark" />
-                                    <i class="pi pi-bell animate-bounce text-indigo-200"></i>
+                                    <i class="pi pi-bell animate-bounce text-primary-200"></i>
                                 </div>
                             </div>
                         </div>
 
                         <div v-if="form.recurrence_type === 'custom'" class="field animate-fade-in">
-                            <label class="text-[9px] font-bold uppercase text-indigo-400 mb-2 block">{{ t('maintenances.formDialog.customRule') }}</label>
+                            <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block">{{ t('maintenances.formDialog.customRule') }}</label>
                             <Textarea v-model="form.custom_recurrence_config" rows="2" class="w-full quantum-input !bg-white" :placeholder="t('maintenances.formDialog.customRulePlaceholder')" />
                         </div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="p-6 bg-white rounded-3xl border border-slate-100 flex flex-col items-center text-center shadow-sm group hover:border-indigo-300 transition-colors">
-                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-3 group-hover:bg-indigo-50">
-                            <i class="pi pi-clock text-slate-400 group-hover:text-indigo-500"></i>
+                    <div class="p-6 bg-white rounded-3xl border border-slate-100 flex flex-col items-center text-center shadow-sm group hover:border-primary-300 transition-colors">
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-3 group-hover:bg-primary-50">
+                            <i class="pi pi-clock text-slate-400 group-hover:text-primary-500"></i>
                         </div>
                         <label for="estimated_duration" class="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1 block">{{ t('maintenances.formDialog.estimatedDuration') }}</label>
                         <InputNumber id="estimated_duration" v-model="form.estimated_duration" suffix=" min" class="quantum-input-transparent" :min="0" />
@@ -1424,7 +1497,7 @@ const transformedEquipmentTree = computed(() => {
             <Button :label="t('maintenances.formDialog.cancelChanges')" icon="pi pi-times" class="p-button-text p-button-secondary font-bold" @click="hideDialog" />
             <div class="flex gap-3">
                  <Button :label="t('maintenances.formDialog.savePlan')" icon="pi pi-check-circle"
-                        class="p-button-indigo px-8 py-4 !rounded-2xl shadow-xl shadow-indigo-100 font-black tracking-tight transition-all hover:scale-[1.02] active:scale-95"
+                        class="p-button-primary px-8 py-4 !rounded-2xl shadow-xl shadow-primary-100 font-black tracking-tight transition-all hover:scale-[1.02] active:scale-95"
                         @click="saveMaintenance" :loading="form.processing" />
             </div>
         </div>

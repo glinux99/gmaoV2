@@ -29,7 +29,7 @@ class EquipmentController extends Controller
 
         $query = Equipment::with(['equipmentType', 'region', 'user', 'parent'])
             ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('purchase_date', [$startDate, $endDate]);
+                $q->whereBetween('created_at', [$startDate, $endDate]);
             });
 
         // --- Logique de recherche (Filtre global) ---
@@ -50,8 +50,8 @@ class EquipmentController extends Controller
 
         // --- Chargement des équipements parents disponibles pour la création d'enfants ---
         $parentEquipments = Equipment::whereNull('parent_id') // Équipements qui ne sont pas des enfants
-                                    ->where('status', 'en stock') // Seulement ceux qui sont en stock
-                                    ->where('quantity', '>', 0) // Quantité disponible
+                                    // ->where('status', 'en stock') // Seulement ceux qui sont en stock
+                                    // ->where('quantity', '>', 0) // Quantité disponible
                                     ->get(['id', 'tag', 'designation', 'brand', 'model', 'equipment_type_id', 'region_id', 'quantity', 'status', 'characteristics']);
 
         return Inertia::render('Actifs/Equipments', [
@@ -126,7 +126,7 @@ class EquipmentController extends Controller
                 }
 
                 // Création des enfants
-                for ($i = 0; $i < $requestedQuantity; $i++) {
+                for ($i = 0; $i < 1; $i++) {
                     $equipmentChildData = $equipmentData;
 
                     // Les enfants ne doivent pas hériter du tag ou du serial_number du parent
@@ -348,6 +348,42 @@ class EquipmentController extends Controller
         });
 
         return redirect()->route('equipments.index')->with('success', 'Équipements sélectionnés supprimés avec succès.');
+    }
+
+    /**
+     * Met à jour la quantité d'un équipement.
+     */
+    public function updateQuantity(Request $request, Equipment $equipment)
+    {
+
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:0',
+        ]);
+
+        DB::transaction(function () use ($equipment, $validated) {
+            $originalQuantity = $equipment->quantity;
+            $newQuantity = $validated['quantity'];
+
+            // Mettre à jour la quantité
+            $equipment->quantity = $newQuantity;
+                $equipment->status = 'en stock';
+            $equipment->save();
+
+            // Loguer le mouvement de quantité
+            EquipmentMovement::create([
+                'equipment_id' => $equipment->id,
+                'user_id' => Auth::id(),
+                'type' => 'changement_quantité',
+                'description' => "Quantité changée de '{$originalQuantity}' à '{$newQuantity}'.",
+            ]);
+
+            // Si l'équipement est un enfant et sa quantité est mise à jour,
+            // cela pourrait nécessiter une logique plus complexe pour le parent.
+            // Pour l'instant, on suppose que la quantité d'un enfant est toujours 1
+            // et que cette route est principalement pour les équipements en stock.
+        });
+
+        return redirect()->route('equipments.index')->with('success', 'Quantité de l\'équipement mise à jour avec succès.');
     }
 
     // --- Fonctions utilitaires ---

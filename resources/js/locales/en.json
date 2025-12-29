@@ -1,1481 +1,755 @@
 {
     "dashboard": {
-        "users": "Utilisateurs",
-        "active_tasks": "Tâches Actives",
-        "time_spent_h": "Temps Passé (h)",
-        "avg_intervention_time": "Tps Moyen Interv.",
-        "by_status": "Par Statut",
-        "by_priority": "Par Priorité",
-        "incoming_parts": "Pièces entrantes",
-        "outgoing_parts": "Pièces sortantes",
-        "interventions_count": "Nombre d'interventions",
-        "stopped": "Stoppée",
-        "degraded": "Dégradée",
-        "improvement": "Amélioration",
-        "avg_resolution_time": "Délai de résolution moyen",
-        "delay_hours": "Délai (Heures)",
-        "financial_tracking": "Suivi Financier",
-        "total_budget": "Budget Total",
-        "service_expenses": "Dépenses de prestation",
-        "total_validated_expenses": "Total Dépense validée",
-        "key_metrics_overview": "Aperçu des Métriques Clés",
-        "from_last_period": "depuis la dernière période",
-        "detailed_visualizations": "Visualisations Détaillées",
-        "monthly_intervention_volume_title": "Volume mensuel des interventions et délai moyen de résolution",
-        "monthly_intervention_volume_subtitle": "Statut et temps de résolution sur la période",
-        "spare_parts_movement_title": "Mouvements des Pièces Détachées",
-        "spare_parts_movement_subtitle": "Entrées et sorties sur la période sélectionnée",
-        "failures_by_type_title": "Pannes par type de défaut",
-        "failures_by_type_subtitle": "Répartition des causes de défauts",
-        "interventions_by_type_title": "Interventions par type",
-        "interventions_by_type_subtitle": "Total des actions menées : {count}",
-        "tasks_distribution_title": "Répartition des Tâches",
-        "filter_by": "Filtrer par",
-        "view_by": "Vue par {type}",
-        "status": "statut",
-        "priority": "priorité"
+        "users": "Users",
+        "active_tasks": "Active Tasks",
+        "time_spent_h": "Time Spent (h)",
+        "avg_intervention_time": "Avg. Intervention Time",
+        "by_status": "By Status",
+        "by_priority": "By Priority",
+        "incoming_parts": "Incoming Parts",
+        "outgoing_parts": "Outgoing Parts",
+        "interventions_count": "Number of interventions",
+        "stopped": "Stopped",
+        "degraded": "Degraded",
+        "improvement": "Improvement",
+        "avg_resolution_time": "Avg. Resolution Time",
+        "delay_hours": "Delay (Hours)",
+        "financial_tracking": "Financial Tracking",
+        "total_budget": "Total Budget",
+        "service_expenses": "Service Expenses",
+        "total_validated_expenses": "Total Validated Expenses",
+        "key_metrics_overview": "Key Metrics Overview",
+        "from_last_period": "since last period",
+        "detailed_visualizations": "Detailed Visualizations",
+        "monthly_intervention_volume_title": "Monthly intervention volume and average resolution time",
+        "monthly_intervention_volume_subtitle": "Status and resolution time over the period",
+        "spare_parts_movement_title": "Spare Parts Movements",
+        "spare_parts_movement_subtitle": "Entries and exits over the selected period",
+        "failures_by_type_title": "Failures by defect type",
+        "failures_by_type_subtitle": "Distribution of defect causes",
+        "interventions_by_type_title": "Interventions by type",
+        "interventions_by_type_subtitle": "Total actions taken: {count}",
+        "tasks_distribution_title": "Tasks Distribution",
+        "filter_by": "Filter by",
+        "view_by": "View by {type}",
+        "status": "status",
+        "priority": "priority"
     },
     "topbar": {
         "menuModes": {
-            "static": "Statique",
+            "static": "Static",
             "overlay": "Overlay"
         },
         "themes": {
-            "light": "Clair",
-            "dark": "Sombre",
+            "light": "Light",
+            "dark": "Dark",
             "accent": "Accent"
         },
         "languages": {
-            "french": "Français",
-            "english": "Anglais",
+            "french": "French",
+            "english": "English",
             "swahili": "Swahili",
-            "german": "Allemand"
+            "german": "German"
         },
-        "toggle_sidebar": "Basculer le menu latéral",
-        "search_placeholder": "Rechercher un dossier, un agent ou un service...",
+        "toggle_sidebar": "Toggle sidebar",
+        "search_placeholder": "Search for a file, an agent or a service...",
         "status": {
-            "connected": "Connecté"
+            "connected": "Connected"
         },
         "userMenu": {
-            "edit_profile": "Éditer Profil",
-            "security": "Sécurité",
-            "logout": "Fermer Session"
+            "edit_profile": "Edit Profile",
+            "security": "Security",
+            "logout": "Logout"
         }
     },
     "menu": {
         "dashboard": {
-            "title": "Tableau de bord",
-            "home": "Accueil",
-            "analytics": "Analytiques"
+            "title": "Dashboard",
+            "home": "Home",
+            "analytics": "Analytics"
         },
         "assetManagement": {
-            "title": "Gestion des actifs",
-            "inventories": "Inventaires",
-            "spareParts": "Pièces détachées",
-            "equipments": "Équipements"
+            "title": "Asset Management",
+            "inventories": "Inventories",
+            "spareParts": "Spare Parts",
+            "equipments": "Equipments"
         },
         "taskManagement": {
-            "title": "Gestion des tâches",
+            "title": "Task Management",
             "agenda": "Agenda",
-            "myActivities": "Mes activités",
-            "workOrder": "Ordre de travail",
-            "interventionRequests": "Demandes d'intervention",
-            "maintenancePlan": "Plan de maintenance",
-            "connections": "Connexions",
-            "expenses": "Dépenses"
+            "myActivities": "My Activities",
+            "workOrder": "Work Order",
+            "interventionRequests": "Intervention Requests",
+            "maintenancePlan": "Maintenance Plan",
+            "connections": "Connections",
+            "expenses": "Expenses"
         },
         "teamManagement": {
-            "title": "Gestion d'équipe",
-            "teams": "Équipes",
-            "technicians": "Techniciens"
+            "title": "Team Management",
+            "teams": "Teams",
+            "technicians": "Technicians"
         },
         "hrManagement": {
-            "title": "Gestion RH",
-            "employees": "Employés",
-            "leaves": "Congés",
-            "attendances": "Présences",
-            "payroll": "Paie"
+            "title": "HR Management",
+            "employees": "Employees",
+            "leaves": "Leaves",
+            "attendances": "Attendances",
+            "payroll": "Payroll"
         },
         "systemConfiguration": {
-            "title": "Configuration du système",
-            "userManagement": "Gestion des utilisateurs",
-            "users": "Utilisateurs",
-            "roles": "Rôles",
+            "title": "System Configuration",
+            "userManagement": "User Management",
+            "users": "Users",
+            "roles": "Roles",
             "permissions": "Permissions",
-            "reports": "Rapports",
-            "maps": "Cartes",
-            "regions": "Régions",
-            "rollingStock": "Matériel roulant",
-            "units": "Unités",
-            "labels": "Étiquettes",
-            "systemPriority": "Priorité du système"
+            "reports": "Reports",
+            "maps": "Maps",
+            "regions": "Regions",
+            "rollingStock": "Rolling Stock",
+            "units": "Units",
+            "labels": "Labels",
+            "systemPriority": "System Priority"
         },
         "dateFilter": {
-            "thisMonth": "Ce mois-ci",
-            "lastMonth": "Le mois dernier",
-            "lastWeek": "La semaine dernière",
-            "custom": "Personnalisé"
+            "thisMonth": "This month",
+            "lastMonth": "Last month",
+            "lastWeek": "Last week",
+            "custom": "Custom"
         }
     },
     "equipments": {
-        "title": "Gestion des Équipements",
-        "headTitle": "Équipements",
-        "addNew": "Ajouter un équipement",
-        "searchPlaceholder": "Rechercher...",
-        "export": "Exporter",
-        "deleteSelected": "Supprimer ({count})",
-        "deleteSelectedSingle": "Supprimer",
+        "title": "Equipment Management",
+        "headTitle": "Equipments",
+        "addNew": "Add equipment",
+        "searchPlaceholder": "Search...",
+        "export": "Export",
+        "deleteSelected": "Delete ({count})",
+        "deleteSelectedSingle": "Delete",
         "table": {
-            "report": "Affichage de {first} à {last} sur {totalRecords} équipements",
+            "report": "Showing {first} to {last} of {totalRecords} equipments",
             "tag": "Tag",
-            "designation": "Désignation",
+            "designation": "Designation",
             "type": "Type",
-            "brand": "Marque",
-            "model": "Modèle",
-            "region": "Région",
-            "status": "Statut",
-            "quantity": "Quantité",
+            "brand": "Brand",
+            "model": "Model",
+            "region": "Region",
+            "status": "Status",
+            "quantity": "Quantity",
             "actions": "Actions"
         },
         "dialog": {
-            "editTitle": "Modifier l'Équipement",
-            "createTitle": "Créer un nouvel Équipement",
-            "parentLabel": "Équipement Parent (pour créer à partir du stock)",
-            "parentPlaceholder": "Optionnel: Sélectionner un parent",
+            "editTitle": "Edit Equipment",
+            "createTitle": "Create New Equipment",
+            "parentLabel": "Parent Equipment (to create from stock)",
+            "parentPlaceholder": "Optional: Select a parent",
             "tag": "Tag",
-            "designation": "Désignation",
-            "type": "Type d'équipement",
-            "typePlaceholder": "Sélectionner un type",
-            "addType": "Ajouter un nouveau type",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "brand": "Marque",
-            "model": "Modèle",
-            "power": "Puissance (kW)",
-            "serialNumber": "Numéro de série",
-            "price": "Prix",
-            "status": "Statut",
-            "statusPlaceholder": "Sélectionner un statut",
-            "stockQuantity": "Quantité en stock",
-            "purchaseDate": "Date d'achat",
-            "warrantyEnd": "Fin de garantie",
-            "location": "Emplacement",
-            "importCharacteristics": "Importer les caractéristiques préexistantes",
-            "importCharacteristicsPlaceholder": "Optionnel: Sélectionner un label pour ajouter ses caractéristiques",
-            "characteristicNamePlaceholder": "Nom de la caractéristique",
+            "designation": "Designation",
+            "type": "Equipment Type",
+            "typePlaceholder": "Select a type",
+            "addType": "Add new type",
+            "region": "Region",
+            "regionPlaceholder": "Select a region",
+            "brand": "Brand",
+            "model": "Model",
+            "power": "Power (kW)",
+            "serialNumber": "Serial Number",
+            "price": "Price",
+            "status": "Status",
+            "statusPlaceholder": "Select a status",
+            "stockQuantity": "Stock Quantity",
+            "purchaseDate": "Purchase Date",
+            "warrantyEnd": "Warranty End",
+            "location": "Location",
+            "importCharacteristics": "Import pre-existing characteristics",
+            "importCharacteristicsPlaceholder": "Optional: Select a label to add its characteristics",
+            "characteristicNamePlaceholder": "Characteristic name",
             "characteristicTypePlaceholder": "Type",
-            "characteristicValueText": "Valeur (Texte)",
-            "characteristicValueNumber": "Valeur (Nombre)",
-            "characteristicValueDate": "Valeur (Date)",
-            "characteristicValue": "Valeur",
-            "existingFile": "Fichier existant",
-            "addCharacteristic": "Ajouter une caractéristique",
-            "cancel": "Annuler",
-            "save": "Sauvegarder"
+            "characteristicValueText": "Value (Text)",
+            "characteristicValueNumber": "Value (Number)",
+            "characteristicValueDate": "Value (Date)",
+            "characteristicValue": "Value",
+            "existingFile": "Existing file",
+            "addCharacteristic": "Add characteristic",
+            "cancel": "Cancel",
+            "save": "Save"
         },
         "typeDialog": {
-            "title": "Nouveau Type d'Équipement",
-            "name": "Nom du type",
+            "title": "New Equipment Type",
+            "name": "Type name",
             "description": "Description",
-            "cancel": "Annuler",
-            "create": "Créer"
+            "cancel": "Cancel",
+            "create": "Create"
         },
         "toast": {
-            "success": "Succès",
-            "updateSuccess": "Équipement mis à jour avec succès.",
-            "createSuccess": "Équipement créé avec succès.",
-            "deleteSuccess": "Équipement supprimé avec succès.",
-            "bulkDeleteSuccess": "Équipements supprimés avec succès.",
-            "saveError": "Erreur de Sauvegarde",
-            "error": "Erreur",
-            "deleteError": "Une erreur est survenue lors de la suppression.",
-            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse.",
-            "typeCreateSuccess": "Type d'équipement créé avec succès.",
-            "typeSaveError": "Erreur lors de la sauvegarde du type d'équipement"
+            "success": "Success",
+            "updateSuccess": "Equipment updated successfully.",
+            "createSuccess": "Equipment created successfully.",
+            "deleteSuccess": "Equipment deleted successfully.",
+            "bulkDeleteSuccess": "Equipments deleted successfully.",
+            "saveError": "Save Error",
+            "error": "Error",
+            "deleteError": "An error occurred during deletion.",
+            "bulkDeleteError": "An error occurred during bulk deletion.",
+            "typeCreateSuccess": "Equipment type created successfully.",
+            "typeSaveError": "Error while saving equipment type"
         },
         "confirm": {
-            "deleteHeader": "Confirmation de suppression",
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'équipement \"{name}\" ?",
-            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?",
-            "cancel": "Annuler",
-            "delete": "Supprimer"
+            "deleteHeader": "Delete confirmation",
+            "deleteMessage": "Are you sure you want to delete equipment \"{name}\"?",
+            "bulkDeleteMessage": "Are you sure you want to delete the selected equipments?",
+            "cancel": "Cancel",
+            "delete": "Delete"
         },
         "statusOptions": {
-            "in_service": "En Service",
-            "down": "En Panne",
-            "in_maintenance": "En Maintenance",
-            "out_of_service": "Hors Service",
-            "in_stock": "En Stock"
+            "in_service": "In Service",
+            "down": "Out of Order",
+            "in_maintenance": "In Maintenance",
+            "out_of_service": "Out of Service",
+            "in_stock": "In Stock"
         },
         "characteristicTypes": {
-            "text": "Texte",
-            "number": "Nombre",
+            "text": "Text",
+            "number": "Number",
             "date": "Date",
-            "file": "Fichier",
-            "boolean": "Oui/Non"
+            "file": "File",
+            "boolean": "Yes/No"
         }
     },
     "spareParts": {
-        "title": "Gestion des Pièces Détachées",
-        "headTitle": "Pièces Détachées",
+        "title": "Spare Parts Management",
+        "headTitle": "Spare Parts",
         "toolbar": {
-            "add": "Ajouter une pièce détachée",
-            "searchPlaceholder": "Rechercher...",
-            "export": "Exporter"
+            "add": "Add spare part",
+            "searchPlaceholder": "Search...",
+            "export": "Export"
         },
         "table": {
-            "report": "Affichage de {first} à {last} sur {totalRecords} pièces détachées",
-            "name": "Nom",
-            "reference": "Référence",
-            "equipment": "Équipement",
-            "location": "Emplacement",
-            "quantity": "Quantité",
-            "min_quantity": "Quantité Min.",
-            "price": "Prix Unitaire",
-            "partType": "Type de pièce",
-            "responsible": "Responsable",
-            "characteristics": "Caractéristiques",
+            "report": "Showing {first} to {last} of {totalRecords} spare parts",
+            "name": "Name",
+            "reference": "Reference",
+            "equipment": "Equipment",
+            "location": "Location",
+            "quantity": "Quantity",
+            "min_quantity": "Min. Quantity",
+            "price": "Unit Price",
+            "partType": "Part Type",
+            "responsible": "Responsible",
+            "characteristics": "Characteristics",
             "actions": "Actions"
         },
         "dialog": {
-            "editTitle": "Modifier la Pièce Détachée",
-            "createTitle": "Créer une nouvelle Pièce Détachée",
-            "editSubtitle": "Mettre à jour les informations de la pièce détachée.",
-            "createSubtitle": "Remplissez les informations pour créer une nouvelle pièce.",
-            "partType": "Type de pièce",
-            "partTypePlaceholder": "Sélectionner un type",
-            "reference": "Référence",
-            "quantity": "Quantité",
-            "min_quantity": "Quantité Min.",
-            "price": "Prix Unitaire",
-            "location": "Emplacement",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "responsible": "Responsable",
-            "responsiblePlaceholder": "Sélectionner un responsable",
-            "characteristicValues": "Valeurs des caractéristiques",
+            "editTitle": "Edit Spare Part",
+            "createTitle": "Create New Spare Part",
+            "editSubtitle": "Update spare part information.",
+            "createSubtitle": "Fill in the information to create a new part.",
+            "partType": "Part Type",
+            "partTypePlaceholder": "Select a type",
+            "reference": "Reference",
+            "quantity": "Quantity",
+            "min_quantity": "Min. Quantity",
+            "price": "Unit Price",
+            "location": "Location",
+            "region": "Region",
+            "regionPlaceholder": "Select a region",
+            "responsible": "Responsible",
+            "responsiblePlaceholder": "Select a responsible",
+            "characteristicValues": "Characteristic values",
             "description": "Description",
-            "equipment": "Équipement (pour cette pièce)",
-            "equipmentPlaceholder": "Optionnel: Sélectionner un équipement",
-            "supplier": "Fournisseur",
-            "supplierPlaceholder": "Sélectionner un fournisseur",
-            "purchaseDate": "Date d'achat",
-            "warrantyEnd": "Fin de garantie",
-            "addCharacteristic": "Ajouter une caractéristique",
-            "characteristicNamePlaceholder": "Nom de la caractéristique",
+            "equipment": "Equipment (for this part)",
+            "equipmentPlaceholder": "Optional: Select an equipment",
+            "supplier": "Supplier",
+            "supplierPlaceholder": "Select a supplier",
+            "purchaseDate": "Purchase Date",
+            "warrantyEnd": "Warranty End",
+            "addCharacteristic": "Add characteristic",
+            "characteristicNamePlaceholder": "Characteristic name",
             "characteristicTypePlaceholder": "Type",
-            "characteristicValueText": "Valeur (Texte)",
-            "characteristicValueNumber": "Valeur (Nombre)",
-            "characteristicValueDate": "Valeur (Date)",
-            "characteristicValue": "Valeur",
-            "existingFile": "Fichier existant",
-            "cancel": "Annuler",
-            "save": "Sauvegarder"
+            "characteristicValueText": "Value (Text)",
+            "characteristicValueNumber": "Value (Number)",
+            "characteristicValueDate": "Value (Date)",
+            "characteristicValue": "Value",
+            "existingFile": "Existing file",
+            "cancel": "Cancel",
+            "save": "Save"
         },
         "toast": {
-            "success": "Succès",
-            "updateSuccess": "Pièce détachée mise à jour avec succès.",
-            "createSuccess": "Pièce détachée créée avec succès.",
-            "deleteSuccess": "Pièce détachée supprimée avec succès.",
-            "bulkDeleteSuccess": "Pièces détachées supprimées avec succès.",
-            "saveError": "Erreur de Sauvegarde",
-            "error": "Erreur",
-            "deleteError": "Une erreur est survenue lors de la suppression.",
-            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse."
+            "success": "Success",
+            "updateSuccess": "Spare part updated successfully.",
+            "createSuccess": "Spare part created successfully.",
+            "deleteSuccess": "Spare part deleted successfully.",
+            "bulkDeleteSuccess": "Spare parts deleted successfully.",
+            "saveError": "Save Error",
+            "error": "Error",
+            "deleteError": "An error occurred during deletion.",
+            "bulkDeleteError": "An error occurred during bulk deletion."
         },
         "validation": {
-            "characteristicRequired": "La caractéristique \"{characteristic}\" est obligatoire."
+            "characteristicRequired": "The characteristic \"{characteristic}\" is required."
         },
         "confirm": {
-            "deleteHeader": "Confirmation de suppression",
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer la pièce détachée \"{name}\" ?",
-            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les pièces détachées sélectionnées ?",
-            "cancel": "Annuler",
-            "delete": "Supprimer"
+            "deleteHeader": "Delete confirmation",
+            "deleteMessage": "Are you sure you want to delete the spare part \"{name}\"?",
+            "bulkDeleteMessage": "Are you sure you want to delete the selected spare parts?",
+            "cancel": "Cancel",
+            "delete": "Delete"
         }
     },
- "sparePartMovements": {
-        "title": "Mouvements des Pièces de Rechange",
-        "headTitle": "Gestion des Stocks - Mouvements",
-        "subtitle": "Suivi des entrées et sorties de stock",
-        "stockLabel": "Stock actuel",
+    "sparePartMovements": {
+        "title": "Spare Parts Movements",
+        "headTitle": "Stock Management - Movements",
+        "subtitle": "Stock entry and exit tracking",
+        "stockLabel": "Current stock",
         "toolbar": {
-            "addMovement": "Nouveau Mouvement",
-            "searchPlaceholder": "Rechercher un mouvement...",
-            "export": "Exporter CSV"
+            "addMovement": "New Movement",
+            "searchPlaceholder": "Search for a movement...",
+            "export": "Export CSV"
         },
         "table": {
-            "sparePart": "Pièce de Rechange",
-            "user": "Utilisateur",
+            "sparePart": "Spare Part",
+            "user": "User",
             "type": "Type",
-            "quantity": "Quantité",
-            "location": "Emplacement",
+            "quantity": "Quantity",
+            "location": "Location",
             "notes": "Notes",
             "date": "Date",
             "actions": "Actions"
         },
         "dialog": {
-            "createTitle": "Enregistrer un mouvement",
-            "editTitle": "Modifier le mouvement",
-            "createSubtitle": "Remplissez les informations ci-dessous pour ajouter un mouvement de stock.",
-            "editSubtitle": "Modifier les détails du mouvement sélectionné."
+            "createTitle": "Record a movement",
+            "editTitle": "Edit movement",
+            "createSubtitle": "Fill in the information below to add a stock movement.",
+            "editSubtitle": "Modify the details of the selected movement."
         },
         "form": {
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "sparePart": "Pièce de Rechange",
-            "sparePartPlaceholder": "Sélectionner une pièce",
-            "user": "Utilisateur",
-            "userPlaceholder": "Sélectionner l'utilisateur",
-            "movementType": "Type de mouvement",
-            "movementTypePlaceholder": "Entrée ou Sortie ?",
-            "quantity": "Quantité",
-            "location": "Emplacement spécifique",
-            "unity": "Unité / Service",
-            "unityPlaceholder": "Sélectionner l'unité",
-            "notes": "Notes complémentaires"
+            "region": "Region",
+            "regionPlaceholder": "Select a region",
+            "sparePart": "Spare Part",
+            "sparePartPlaceholder": "Select a part",
+            "user": "User",
+            "userPlaceholder": "Select user",
+            "movementType": "Movement type",
+            "movementTypePlaceholder": "Entry or Exit?",
+            "quantity": "Quantity",
+            "location": "Specific location",
+            "unity": "Unit / Service",
+            "unityPlaceholder": "Select unit",
+            "notes": "Additional notes"
         },
         "movementTypes": {
-            "entry": "Entrée",
-            "exit": "Sortie"
+            "entry": "Entry",
+            "exit": "Exit"
         },
         "confirm": {
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer le mouvement pour la pièce {reference} ?"
+            "deleteMessage": "Are you sure you want to delete the movement for part {reference}?"
         },
         "toast": {
-            "createSuccess": "Le mouvement a été enregistré avec succès.",
-            "updateSuccess": "Le mouvement a été mis à jour avec succès.",
-            "deleteSuccess": "Le mouvement a été supprimé.",
-            "saveError": "Erreur lors de l'enregistrement du mouvement.",
-            "error": "Erreur",
-            "deleteError": "Impossible de supprimer ce mouvement."
+            "createSuccess": "The movement was recorded successfully.",
+            "updateSuccess": "The movement was updated successfully.",
+            "deleteSuccess": "The movement was deleted.",
+            "saveError": "Error while recording the movement.",
+            "error": "Error",
+            "deleteError": "Unable to delete this movement."
         }
     },
-
     "characteristics": {
         "types": {
-            "text": "Texte",
-            "number": "Nombre",
+            "text": "Text",
+            "number": "Number",
             "date": "Date",
             "image": "Image",
-            "boolean": "Booléen",
-            "select": "Liste de sélection"
+            "boolean": "Boolean",
+            "select": "Selection list"
         }
     },
     "confirm": {
-        "deleteHeader": "Confirmation de suppression",
-        "cancel": "Annuler",
-    "delete": "Supprimer",
-    "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer cet élément ?"
-    }
-    ,
+        "deleteHeader": "Delete confirmation",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "deleteConfirmation": "Are you sure you want to delete this item?"
+    },
     "engins": {
-        "title": "Gestion des Engins",
-        "headTitle": "Liste des Engins",
-        "subtitle": "{count} Unités en ligne",
+        "title": "Vehicle Management",
+        "headTitle": "Vehicle List",
+        "subtitle": "{count} Units online",
         "toolbar": {
-      "advancedFilters": "Filtres Avancés",
-      "showColumns": "Afficher les colonnes",
-      "deleteSelected": "Supprimer la sélection",
-
-            "addEngin": "Ajouter un engin",
-            "searchPlaceholder": "Rechercher...",
-            "export": "Exporter",
-            "resetFilters": "Réinitialiser les filtres",
-            "searchByName": "Rechercher par nom"
+            "advancedFilters": "Advanced Filters",
+            "showColumns": "Show columns",
+            "deleteSelected": "Delete selection",
+            "addEngin": "Add vehicle",
+            "searchPlaceholder": "Search...",
+            "export": "Export",
+            "resetFilters": "Reset filters",
+            "searchByName": "Search by name"
         },
         "table": {
-            "designation": "Nom / Désignation",
-            "immatriculation": "Immatriculation",
-            "type": "Type d'Engin",
-            "region": "Région",
-            "dateAcquisition": "Date d'Acquisition",
-            "hourMeter": "Compteur Horaire",
+            "designation": "Name / Designation",
+            "immatriculation": "Registration",
+            "type": "Vehicle Type",
+            "region": "Region",
+            "dateAcquisition": "Acquisition Date",
+            "hourMeter": "Hour Meter",
             "actions": "Actions",
-            "category": "Catégorie",
-            "assignment": "Affectation"
+            "category": "Category",
+            "assignment": "Assignment"
         },
         "form": {
-            "type": "Type d'Engin",
-            "typePlaceholder": "Sélectionner un type",
-            "designation": "Désignation",
-            "immatriculation": "Immatriculation",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "dateAcquisition": "Date de mise en service",
-            "datePlaceholder": "Sélectionner la date",
-            "hourMeter": "Compteur Horaire"
+            "type": "Vehicle Type",
+            "typePlaceholder": "Select a type",
+            "designation": "Designation",
+            "immatriculation": "Registration",
+            "region": "Region",
+            "regionPlaceholder": "Select a region",
+            "dateAcquisition": "Service Entry Date",
+            "datePlaceholder": "Select date",
+            "hourMeter": "Hour Meter"
         },
         "dialog": {
-            "createTitle": "Créer un nouvel Engin",
-            "editTitle": "Modifier l'Engin",
-            "createSubtitle": "Saisissez les informations pour le nouvel engin.",
-            "editSubtitle": "Mettez à jour les informations de l'engin sélectionné."
+            "createTitle": "Create New Vehicle",
+            "editTitle": "Edit Vehicle",
+            "createSubtitle": "Enter information for the new vehicle.",
+            "editSubtitle": "Update the information of the selected vehicle."
         },
         "confirm": {
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'engin \"{name}\" ?",
+            "deleteMessage": "Are you sure you want to delete vehicle \"{name}\"?",
             "header": "Confirmation"
         },
         "toast": {
-            "createSuccess": "Engin créé avec succès.",
-            "updateSuccess": "Engin mis à jour avec succès.",
-            "deleteSuccess": "Engin supprimé avec succès.",
-            "saveError": "Une erreur est survenue lors de l'enregistrement.",
-            "deleteError": "Erreur lors de la suppression."
+            "createSuccess": "Vehicle created successfully.",
+            "updateSuccess": "Vehicle updated successfully.",
+            "deleteSuccess": "Vehicle deleted successfully.",
+            "saveError": "An error occurred during recording.",
+            "deleteError": "Error during deletion."
         },
         "common": {
-            "update": "Mettre à jour",
-            "save": "Enregistrer",
-            "cancel": "Annuler",
-            "noPlate": "SANS PLAQUE"
+            "update": "Update",
+            "save": "Save",
+            "cancel": "Cancel",
+            "noPlate": "NO PLATE",
+            "create": "Create"
         }
     },
     "dataTable": {
-        "currentPageReportEngins": "Affichage de {first} à {last} sur {totalRecords} engins"
+        "currentPageReportEngins": "Showing {first} to {last} of {totalRecords} vehicles"
     },
-
-  "labels": {
-    "title": "Gestion des Labels",
-    "fields": {
-      "labelParameters": "Paramètres du Label",
-      "labelParametersSubtitle": "Configurez le nom, la couleur et la description.",
-      "technicalAttributes": "Attributs Techniques",
-      "technicalAttributesSubtitle": "Définissez les points de contrôle pour ce type d'actif.",
-      "name": "Nom",
-      "description": "Description",
-      "color": "Couleur",
-      "style": "Style / Couleur",
-      "characteristics": "Attributs Techniques",
-      "charName": "Nom de la caractéristique",
-      "charType": "Type",
-      "isRequiredShort": "Requis"
-    },
-    "actions": {
-      "add": "Ajouter un label",
-      "addChar": "Ajouter une caractéristique"
-    },    "toolbar": {
-      "resetFilters": "Réinitialiser",
-      "searchPlaceholder": "Rechercher un label..."
-
-    },
-    "types": {
-      "text": "Texte",
-      "number": "Nombre",
-      "date": "Date",
-      "file": "Fichier",
-      "boolean": "Boolean",
-      "select": "Liste déroulante"
-    },
-    "dialog": {
-      "createTitle": "Créer un nouveau Label",
-      "editTitle": "Modifier le Label",
-      "labelParameters": "Paramètres du Label",
-      "labelParametersSubtitle": "Configurez le nom, la couleur et la description.",
-      "createSubtitle": "Créez un nouveau label.",
-      "editSubtitle": "Mettez à jour les informations du label."
-    },
-    "stats": {
-      "total": "Total Labels",      "withChars": "Avec Attributs"
-    },
-    "validation": {
-      "nameRequired": "Le nom est requis."
-    },
-    "messages": {
-      "createSuccess": "Label créé avec succès",
-      "updateSuccess": "Label mis à jour avec succès",
-      "deleteSuccess": "Label supprimé avec succès",
-      "confirmDelete": "Êtes-vous sûr de vouloir supprimer le label \"{name}\" ?",
-      "confirmChange": "Vous avez modifié des caractéristiques. Cela peut affecter les données existantes. Continuer ?",
-      "confirmCharDelete": "Supprimer la caractéristique \"{name}\" ? Cette action est irréversible.",
-      "charRemovedInfo": "La caractéristique sera supprimée lors de la sauvegarde.",
-      "deleteError": "Erreur lors de la suppression."
-    }
-  },
-  "common": {
-        "save": "Sauvegarder",
-        "update": "Mettre à jour",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "import": "Importer",
-    "export": "Exporter",
-    "search": "Rechercher...",
-    "success": "Succès",
-    "error": "Erreur",
-    "attention": "Attention",
-    "confirmation": "Confirmation",
-    "deleteConfirmation": "Confirmation de suppression",
-    "actions": "Actions",
-    "chooseFile": "Choisir un fichier",
-    "paginationReport": "Affichage de {first} à {last} sur {total} régions",
-    "errorOccurred": "Une erreur est survenue.",
-         "notApplicable": "N/A",
-            "unspecifiedDate": "Date non définie",
-            "resetFilters": "Réinitialiser les filtres",
-            "unnamedActivity": "Activité Sans Titre",
-            "workOrderId": "#WorkOrderID: {id}",
-            "problemResolution": "Problème/Résolution:",
-            "proposals": "Propositions:",
-            "additionalInfo": "Informations Additionnelles:",
-            "technician": "Intervenant:",
-            "instructionAnswers": "Réponses aux Instructions :",
-            "usedParts": "Pièces utilisées:",
-            "returnedParts": "Pièces retournées:",
-            "actualEndTime": "Heure de fin réelle:",
-            "associatedTaskDetails": "Détails de la Tâche Associée",
-            "priority": "Priorité:",
-            "description": "Description:",
-            "createSubActivity": "Créer sous-activité",
-            "complete": "Compléter",
-            "taskTitle": "Titre de la Tâche",
-            "status": "Statut",
-            "actualStart": "Début Réel",
-            "usedPartsCount": "{count} Pièce(s)",
-            "returnedPartsCount": "{count} Pièce(s)",
-            "answersCount": "{count} Réponse(s)",
-            "instructionsAndActions": "Instructions/Actions",
-            "completeActivityTooltip": "Compléter/Modifier l'Activité",
-            "invalidDate": "Date invalide",
-            "notSet": "Non renseigné",
-            "instructionNotFound": "Instruction ID {id} (Introuvable)",
-
-  "payments": {
-    "title": "Gestion des Paiements",
-    "subtitle": "Suivi des flux financiers et transactions",
-    "newTransaction": "Nouvelle Transaction",
-    "stats": {
-      "totalFlux": "Flux Total",
-      "transactions": "Transactions",
-      "pending": "En attente",
-      "average": "Moyenne"
-    },
-    "table": {
-      "amount": "Montant",
-      "beneficiary": "Bénéficiaire",
-      "status": "Statut",
-      "date": "Date de Valeur",
-      "actions": "Actions"
-    },
-    "payableTypes": {
-      "employee": "Employé",
-      "supplier": "Fournisseur",
-      "user": "Utilisateur interne"
-    },
-    "statusTypes": {
-      "pending": "En attente",
-      "completed": "Terminé",
-      "failed": "Échoué"
-    },
-    "dialog": {
-      "financeSettings": "Paramètres financiers",
-      "financeSubtitle": "Veuillez renseigner les détails du mouvement de fonds",
-      "amountLabel": "Montant (XOF)",
-      "valueDate": "Date de valeur",
-      "beneficiaryType": "Type Bénéficiaire",
-      "specificBeneficiary": "Bénéficiaire Spécifique",
-      "notes": "Notes & Références",
-      "required": "Requis"
-    },
-    "toast": {
-      "saved": "La transaction a été enregistrée avec succès.",
-      "deleted": "Transaction supprimée.",
-      "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer le paiement de {amount} pour {beneficiary} ?"
-    }
-  },
-    "columnSelector": {
-      "title": "Sélectionner les colonnes",
-      "placeholder": "Choisir les colonnes"
-    },
-    "yes": "Oui",
-    "no": "Non",
-
-    "info": "Information",
-    "actions": "Actions",
-    "search": "Rechercher...",
-    "searchByName": "Rechercher par nom",
-    "export": "Exporter",
-    "errorOccurred": "Une erreur est survenue.",
-    "paginationReport": "Affichage de {first} à {last} sur {total} éléments",
-    "save": "Sauvegarder",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "import": "Importer",
-    "export": "Exporter",
-    "search": "Rechercher...",
-    "success": "Succès",
-    "error": "Erreur",
-    "attention": "Attention",
-    "confirmation": "Confirmation",
-    "deleteConfirmation": "Confirmation de suppression",
-    "actions": "Actions",
-    "chooseFile": "Choisir un fichier",
-    "paginationReport": "Affichage de {first} à {last} sur {total} régions",
-    "errorOccurred": "Une erreur est survenue.",
-    "saveChanges": "Valider les modifications",
-    "create": "Créer le profil",
-    "total": "Total {item}"
-  },
-
-  "unities": {
-        "title": "Gestion des Unités",
-        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
+    "labels": {
+        "title": "Labels Management",
         "fields": {
-            "name": "Désignation",
-            "symbol": "Symbole / Abréviation"
+            "labelParameters": "Label Parameters",
+            "labelParametersSubtitle": "Configure name, color and description.",
+            "technicalAttributes": "Technical Attributes",
+            "technicalAttributesSubtitle": "Define control points for this asset type.",
+            "name": "Name",
+            "description": "Description",
+            "color": "Color",
+            "style": "Style / Color",
+            "characteristics": "Technical Attributes",
+            "charName": "Characteristic name",
+            "charType": "Type",
+            "isRequiredShort": "Required"
         },
         "actions": {
-            "add": "Ajouter une unité"
+            "add": "Add label",
+            "addChar": "Add characteristic"
+        },
+        "toolbar": {
+            "resetFilters": "Reset",
+            "searchPlaceholder": "Search for a label..."
+        },
+        "types": {
+            "text": "Text",
+            "number": "Number",
+            "date": "Date",
+            "file": "File",
+            "boolean": "Boolean",
+            "select": "Dropdown list"
         },
         "dialog": {
-            "createTitle": "Créer une unité",
-            "editTitle": "Modifier l'unité",
-            "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
-            "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
+            "createTitle": "Create New Label",
+            "editTitle": "Edit Label",
+            "labelParameters": "Label Parameters",
+            "labelParametersSubtitle": "Configure name, color and description.",
+            "createSubtitle": "Create a new label.",
+            "editSubtitle": "Update label information."
+        },
+        "stats": {
+            "total": "Total Labels",
+            "withChars": "With Attributes"
         },
         "validation": {
-            "nameRequired": "Le nom de l'unité est obligatoire."
+            "nameRequired": "Name is required."
         },
         "messages": {
-            "createSuccess": "Unité créée avec succès.",
-            "updateSuccess": "Unité mise à jour avec succès.",
-            "deleteSuccess": "Unité supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
+            "createSuccess": "Label created successfully",
+            "updateSuccess": "Label updated successfully",
+            "deleteSuccess": "Label deleted successfully",
+            "confirmDelete": "Are you sure you want to delete label \"{name}\"?",
+            "confirmChange": "You have modified characteristics. This may affect existing data. Continue?",
+            "confirmCharDelete": "Delete characteristic \"{name}\"? This action is irreversible.",
+            "charRemovedInfo": "The characteristic will be deleted upon saving.",
+            "deleteError": "Error during deletion."
+        }
+    },
+    "common": {
+        "save": "Save",
+        "update": "Update",
+        "create": "Create",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "import": "Import",
+        "export": "Export",
+        "search": "Search...",
+        "success": "Success",
+        "error": "Error",
+        "attention": "Attention",
+        "confirmation": "Confirmation",
+        "deleteConfirmation": "Delete confirmation",
+        "actions": "Actions",
+        "chooseFile": "Choose file",
+        "paginationReport": "Showing {first} to {last} of {total} regions",
+        "errorOccurred": "An error has occurred.",
+        "types": {
+            "annual": "Annual",
+            "sick": "Sick leave",
+            "rtt": "RDO",
+            "exceptional": "Exceptional"
+        },
+        "status": {
+            "approved": "Approved",
+            "pending": "Pending",
+            "rejected": "Rejected"
+        },
+        "notApplicable": "N/A",
+        "unspecifiedDate": "Undefined date",
+        "resetFilters": "Reset filters",
+        "unnamedActivity": "Untitled Activity",
+        "workOrderId": "#WorkOrderID: {id}",
+        "problemResolution": "Problem/Resolution:",
+        "proposals": "Proposals:",
+        "additionalInfo": "Additional Information:",
+        "technician": "Technician:",
+        "instructionAnswers": "Instruction Answers:",
+        "usedParts": "Used parts:",
+        "returnedParts": "Returned parts:",
+        "actualEndTime": "Actual end time:",
+        "associatedTaskDetails": "Associated Task Details",
+        "priority": "Priority:",
+        "description": "Description:",
+        "createSubActivity": "Create sub-activity",
+        "complete": "Complete",
+        "taskTitle": "Task Title",
+        "status": "Status",
+        "actualStart": "Actual Start",
+        "usedPartsCount": "{count} Part(s)",
+        "returnedPartsCount": "{count} Part(s)",
+        "answersCount": "{count} Answer(s)",
+        "instructionsAndActions": "Instructions/Actions",
+        "completeActivityTooltip": "Complete/Modify Activity",
+        "invalidDate": "Invalid date",
+        "notSet": "Not specified",
+        "instructionNotFound": "Instruction ID {id} (Not Found)"
+    },
+    "payments": {
+        "title": "Payments Management",
+        "subtitle": "Financial flow and transaction tracking",
+        "newTransaction": "New Transaction",
+        "stats": {
+            "totalFlux": "Total Flow",
+            "transactions": "Transactions",
+            "pending": "Pending",
+            "average": "Average"
+        },
+        "table": {
+            "amount": "Amount",
+            "beneficiary": "Beneficiary",
+            "status": "Status",
+            "date": "Value Date",
+            "actions": "Actions"
+        },
+        "payableTypes": {
+            "employee": "Employee",
+            "supplier": "Supplier",
+            "user": "Internal User"
+        },
+        "statusTypes": {
+            "pending": "Pending",
+            "completed": "Completed",
+            "failed": "Failed"
+        },
+        "dialog": {
+            "financeSettings": "Financial settings",
+            "financeSubtitle": "Please enter the details of the fund movement",
+            "amountLabel": "Amount (XOF)",
+            "valueDate": "Value date",
+            "beneficiaryType": "Beneficiary Type",
+            "specificBeneficiary": "Specific Beneficiary",
+            "notes": "Notes & References",
+            "required": "Required"
+        },
+        "toast": {
+            "saved": "The transaction was recorded successfully.",
+            "deleted": "Transaction deleted.",
+            "deleteConfirmation": "Are you sure you want to delete the payment of {amount} for {beneficiary}?"
+        }
+    },
+    "columnSelector": {
+        "title": "Select columns",
+        "placeholder": "Choose columns",
+        "yes": "Yes",
+        "no": "No",
+        "info": "Information",
+        "actions": "Actions",
+        "search": "Search...",
+        "searchByName": "Search by name",
+        "export": "Export",
+        "errorOccurred": "An error has occurred.",
+        "paginationReport": "Showing {first} to {last} of {total} items",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "import": "Import",
+        "success": "Success",
+        "error": "Error",
+        "attention": "Attention",
+        "confirmation": "Confirmation",
+        "deleteConfirmation": "Delete confirmation",
+        "chooseFile": "Choose file",
+        "saveChanges": "Validate changes",
+        "create": "Create profile",
+        "total": "Total {item}"
+    },
+    "unities": {
+        "title": "Units Management",
+        "subtitle": "Define units of measurement (kg, m, pcs, etc.)",
+        "fields": {
+            "name": "Designation",
+            "symbol": "Symbol / Abbreviation"
+        },
+        "actions": {
+            "add": "Add unit"
+        },
+        "dialog": {
+            "createTitle": "Create unit",
+            "editTitle": "Edit unit",
+            "createSubtitle": "Add a new unit of measurement to your system.",
+            "editSubtitle": "Edit information of the selected unit."
+        },
+        "validation": {
+            "nameRequired": "Unit name is required."
+        },
+        "messages": {
+            "createSuccess": "Unit created successfully.",
+            "updateSuccess": "Unit updated successfully.",
+            "deleteSuccess": "Unit deleted successfully.",
+            "confirmDelete": "Are you sure you want to delete unit \"{name}\"?"
         }
     },
     "employees": {
-        "title": "Gestion des Employés",
-        "count_label": "Employés enregistrés",
+        "title": "Employee Management",
+        "count_label": "Registered employees",
         "actions": {
-            "add": "Ajouter un employé"
+            "add": "Add employee"
         },
         "fields": {
-            "first_name": "Prénom",
-            "last_name": "Nom",
+            "first_name": "First Name",
+            "last_name": "Last Name",
             "email": "Email",
-            "phone": "Téléphone",
-            "status": "Statut d'emploi",
-            "salary": "Salaire",
-            "hire_date": "Date d'embauche",
-            "job_title": "Poste / Fonction",
+            "phone": "Phone",
+            "status": "Employment Status",
+            "salary": "Salary",
+            "hire_date": "Hire Date",
+            "job_title": "Job Title / Function",
             "notes": "Observations"
         },
         "status": {
-            "active": "Actif",
-            "on_leave": "En congé",
-            "terminated": "Contrat terminé"
+            "active": "Active",
+            "on_leave": "On leave",
+            "terminated": "Contract terminated"
         },
         "dialog": {
-            "new": "Nouvel Employé",
-            "edit": "Modifier l'Employé"
+            "new": "New Employee",
+            "edit": "Edit Employee"
         },
         "messages": {
-            "saved": "L'employé a été enregistré avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
-            "deleteSuccess": "Employé supprimé."
+            "saved": "Employee saved successfully.",
+            "confirmDelete": "Are you sure you want to delete {name}?",
+            "deleteSuccess": "Employee deleted."
         }
     },
     "technicians": {
-        "title": "Gestion des Techniciens",
-        "subtitle": "Base de données Master",
+        "title": "Technicians Management",
+        "subtitle": "Master Database",
+        "createTitle": "Enroll new technician",
+        "editTitle": "Edit technician profile",
         "actions": {
-            "add": "Enrôler Technicien",
+            "add": "Enroll Technician",
             "exportExcel": "Export Excel",
             "exportPDF": "Export PDF",
-            "deleteSelected": "Supprimer la sélection"
+            "deleteSelected": "Delete selection"
         },
         "toolbar": {
-            "searchPlaceholder": "Rechercher par nom, email...",
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser",
-            "showColumns": "Afficher les colonnes"
+            "searchPlaceholder": "Search by name, email...",
+            "advancedFilters": "Advanced Filters",
+            "resetFilters": "Reset",
+            "showColumns": "Show columns"
+        },
+        "stats": {
+            "total": "Total Technicians",
+            "supervisors": "Supervisors",
+            "chiefs": "Chiefs",
+            "daily": "Daily",
+            "weekly": "Weekly",
+            "monthly": "Monthly"
+        },
+        "fields": {
+            "name": "Technician",
+            "fonction": "Function",
+            "region": "Region",
+            "numero": "Phone",
+            "email": "Email",
+            "pointure": "Shoe Size",
+            "size": "Size",
+            "created_at": "Created on",
+            "updated_at": "Updated on",
+            "teams": "Teams"
         }
     },
     "teams": {
-        "title": "Unités de Terrain",
-        "subtitle": "Management des ressources",
+        "title": "Field Units",
+        "subtitle": "Resource Management",
         "actions": {
-            "add": "Nouvelle Équipe"
+            "add": "New Team"
         },
         "toolbar": {
-            "searchPlaceholder": "Rechercher une unité...",
-            "filterByRegion": "Toutes les régions",
-            "filterByLeader": "Tous les leaders",
-            "resetFilters": "Réinitialiser les filtres"
+            "searchPlaceholder": "Search for a unit...",
+            "filterByRegion": "All regions",
+            "filterByLeader": "All leaders",
+            "resetFilters": "Reset filters"
         },
         "fields": {
-            "name": "Désignation de l'Unité",
-            "leader": "Commandement",
-            "members": "Effectifs"
+            "name": "Unit Designation",
+            "leader": "Command",
+            "members": "Staff"
         },
         "dialog": {
-            "createTitle": "Créer une nouvelle Unité",
-            "editTitle": "Fiche de l'Unité"
+            "createTitle": "Create New Unit",
+            "editTitle": "Unit File"
         },
         "placeholders": {
             "name": "Ex: EQP-DELTA-01",
-            "leader": "Désigner un leader",
-            "members": "Sélectionner les membres"
-        },
-        "messages": {
-            "createSuccess": "Équipe créée avec succès.",
-            "updateSuccess": "Équipe mise à jour avec succès.",
-            "deleteSuccess": "Équipe supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'équipe \"{name}\" ?"
-        }
-    },
-    "spareParts": {
-        "title": "Inventory Control",
-        "headTitle": "Gestion des Pièces de Rechange",
-        "toolbar": {
-            "searchPlaceholder": "Rechercher une référence ou un composant...",
-            "add": "Nouvel Actif",
-            "export": "Exporter la base"
-        },
-        "table": {
-            "ref": "REF",
-            "component": "Composant",
-            "stockAlerte": "Stock / Alerte",
-            "price": "Prix HT",
-            "actions": "Actions"
-        },
-        "form": {
-            "partType": "Type de Composant",
-            "partTypePlaceholder": "Sélectionner la catégorie",
-            "reference": "Référence Constructeur",
-            "quantity": "Quantité en Stock",
-            "min_quantity": "Seuil d'Alerte",
-            "price": "Prix Unitaire HT",
-            "location": "Localisation Physique",
-            "region": "Entité / Région",
-            "regionPlaceholder": "Affecter une zone",
-            "responsible": "Superviseur Responsable",
-            "responsiblePlaceholder": "Choisir un gestionnaire",
-            "characteristicValues": "Spécifications Techniques"
-        },
-        "dialog": {
-            "createTitle": "Nouvelle Entrée Stock",
-            "editTitle": "Configuration Technique",
-            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
-            "editSubtitle": "Modification des paramètres et des seuils logistiques"
-        }
-    },
-    "validation": {
-        "required": "Le champ {field} est strictement obligatoire",
-        "invalid": "Format de donnée incorrect pour {field}"
-    },
-    "dialog": {
-        "cancel": "Abandonner",
-        "save": "Valider l'entrée",
-        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
-        "editTitle": "Modifier le Raccordement",
-        "createTitle": "Nouveau Raccordement"
-    },
-    "connections": {
-        "title": "Gestion des Raccordements",
-        "headTitle": "Raccordements",
-        "subtitle": "Clients & Points de connexion",
-        "addNew": "Nouveau Raccordement",
-        "import": "Importer",
-        "delete": "Supprimer",
-        "closest": "Plus proches",
-        "exportCSV": "Exporter en CSV",
-        "selectColumns": "Choisir les colonnes",
-        "searchPlaceholder": "Rechercher...",
-        "actions": "Actions",
-        "importDialog": {
-            "title": "Importer depuis Excel/CSV",
-            "chooseFile": "Choisir un fichier",
-            "startImport": "Lancer l'import"
-        },
-        "dialog": {
-            "editTitle": "Modifier le Raccordement",
-            "createTitle": "Nouveau Raccordement",
-            "customerCode": "Code Client",
-            "firstName": "Prénom",
-            "lastName": "Nom",
-            "phone": "Téléphone",
-            "region": "Région",
-            "zone": "Zone",
-            "status": "Statut",
-            "gpsLatitude": "Latitude GPS",
-            "gpsLongitude": "Longitude GPS",
-            "cancel": "Annuler",
-            "save": "Enregistrer"
-        }
-    },
-    "expenses": {
-            "title": "Gestion des Dépenses",
-        "headTitle": "Dépenses",
-        "subtitle": "Suivi des coûts et validation",
-        "addNew": "Nouvelle Dépense",
-        "approveSelected": "Approuver Sélection",
-        "rejectSelected": "Rejeter Sélection",
-        "export": "Exporter en CSV",
-        "toolbar": {
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser"
-        },
-        "searchPlaceholder": "Rechercher...",
-        "selectColumns": "Choisir les colonnes",
-        "table": {
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date",
-            "category": "Catégorie",
-            "status": "Statut",
-            "createdBy": "Créé par",
-            "linkedTo": "Lié à",
-            "approvedBy": "Approuvé par",
-            "notes": "Notes",
-            "selectedTotal": "Total sélectionné"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Dépense",
-            "editTitle": "Modifier la Dépense",
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date de la dépense",
-            "category": "Catégorie",
-            "linkedToType": "Type d'élément lié",
-            "linkedToItem": "Élément lié",
-            "notes": "Notes / Justificatif"
-        },
-        "confirm": {
-            "header": "Confirmation de {action}",
-            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
-            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
-        },
-        "toast": {
-            "statusUpdateSuccess": "Dépense {action} avec succès.",
-            "statusUpdateError": "La mise à jour du statut a échoué.",
-            "bulkStatusUpdateSuccess": "{count} dépenses {status} avec succès.",
-            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
-        },
-
-        "title": "Gestion des Dépenses",
-        "headTitle": "Dépenses",
-        "subtitle": "Suivi des coûts et validation",
-        "addNew": "Nouvelle Dépense",
-        "approveSelected": "Approuver Sélection",
-        "rejectSelected": "Rejeter Sélection",
-        "export": "Exporter en CSV",
-        "searchPlaceholder": "Rechercher...",
-        "selectColumns": "Choisir les colonnes",
-        "table": {
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date",
-            "category": "Catégorie",
-            "status": "Statut",
-            "createdBy": "Créé par",
-            "linkedTo": "Lié à",
-            "approvedBy": "Approuvé par",
-            "notes": "Notes",
-            "selectedTotal": "Total sélectionné"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Dépense",
-            "editTitle": "Modifier la Dépense",
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date de la dépense",
-            "category": "Catégorie",
-            "linkedToType": "Type d'élément lié",
-            "linkedToItem": "Élément lié",
-            "notes": "Notes / Justificatif"
-        },
-        "confirm": {
-            "header": "Confirmation de {action}",
-            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
-            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
-        },
-        "toast": {
-            "success": "Succès",
-            "error": "Erreur",
-            "updateSuccess": "Dépense mise à jour avec succès.",
-            "createSuccess": "Dépense créée avec succès.",
-            "deleteSuccess": "Dépense supprimée avec succès.",
-            "statusUpdateSuccess": "Dépense {action} avec succès.",
-            "statusUpdateError": "La mise à jour du statut a échoué.",
-            "bulkStatusUpdateSuccess": "{count} dépenses {action} avec succès.",
-            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
-        },
-        "filter": {
-            "status": "Filtrer par statut",
-            "category": "Filtrer par catégorie",
-            "dateRange": "Filtrer par date",
-            "paymentMethod": "Filtrer par mode de paiement",
-            "project": "Filtrer par projet",
-            "vehicle": "Filtrer par véhicule",
-            "provider": "Filtrer par fournisseur",
-            "apply": "Appliquer les filtres"
+            "leader": "Assign a leader",
+            "members": "Select members"
         },
         "stats": {
-            "totalAmount": "Montant Total",
-            "pending": "Dépenses en attente",
-            "average": "Coût Moyen"
-        }
-    },
-    "title": "Gestion des Labels",
-    "fields": {
-      "name": "Nom",
-      "description": "Description",
-      "color": "Couleur",
-      "style": "Style / Couleur",
-      "characteristics": "Attributs Techniques",
-      "charName": "Nom de la caractéristique",
-      "charType": "Type",
-      "isRequiredShort": "Requis"
-    },
-    "actions": {
-      "add": "Ajouter un label",
-      "addChar": "Ajouter une caractéristique"
-    },    "toolbar": {
-      "resetFilters": "Réinitialiser"    },
-    "types": {
-      "text": "Texte",
-      "number": "Nombre",
-      "date": "Date",
-      "file": "Fichier",
-      "boolean": "Boolean",
-      "select": "Liste déroulante"
-    },
-    "dialog": {
-      "createTitle": "Créer un nouveau Label",
-      "editTitle": "Modifier le Label",
-      "createSubtitle": "Créez un nouveau label.",
-      "editSubtitle": "Mettez à jour les informations du label."
-    },
-    "validation": {
-      "nameRequired": "Le nom est requis."
-    },
-    "messages": {
-      "createSuccess": "Label créé avec succès",
-      "updateSuccess": "Label mis à jour avec succès",
-      "deleteSuccess": "Label supprimé avec succès",
-      "confirmDelete": "Êtes-vous sûr de vouloir supprimer le label \"{name}\" ?",
-      "confirmChange": "Vous avez modifié des caractéristiques. Cela peut affecter les données existantes. Continuer ?",
-      "confirmCharDelete": "Supprimer la caractéristique \"{name}\" ? Cette action est irréversible.",
-      "charRemovedInfo": "La caractéristique sera supprimée lors de la sauvegarde.",
-      "deleteError": "Erreur lors de la suppression."
-    }
-  ,
-
-
-  "unities": {
-        "title": "Gestion des Unités",
-        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
-        "fields": {
-            "name": "Désignation",
-            "symbol": "Symbole / Abréviation"
-        },
-        "actions": {
-            "add": "Ajouter une unité"
-        },
-        "dialog": {
-            "createTitle": "Créer une unité",
-            "editTitle": "Modifier l'unité",
-            "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
-            "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
-        },
-        "validation": {
-            "nameRequired": "Le nom de l'unité est obligatoire."
+            "total_teams": "Total Teams",
+            "total_members": "Total Members",
+            "avg_members": "Members / Team",
+            "with_leader": "With Leader"
         },
         "messages": {
-            "createSuccess": "Unité créée avec succès.",
-            "updateSuccess": "Unité mise à jour avec succès.",
-            "deleteSuccess": "Unité supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
-        }
-    },
-    "employees": {
-        "title": "Gestion des Employés",
-        "count_label": "Employés enregistrés",
-        "actions": {
-            "add": "Ajouter un employé"
-        },
-        "fields": {
-            "first_name": "Prénom",
-            "last_name": "Nom",
-            "email": "Email",
-            "phone": "Téléphone",
-            "status": "Statut d'emploi",
-            "salary": "Salaire",
-            "hire_date": "Date d'embauche",
-            "job_title": "Poste / Fonction",
-            "notes": "Observations"
-        },
-        "status": {
-            "active": "Actif",
-            "on_leave": "En congé",
-            "terminated": "Contrat terminé"
-        },
-        "dialog": {
-            "new": "Nouvel Employé",
-            "edit": "Modifier l'Employé"
-        },
-        "messages": {
-            "saved": "L'employé a été enregistré avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
-            "deleteSuccess": "Employé supprimé."
-        }
-    },
-    "technicians": {
-        "title": "Gestion des Techniciens",
-        "subtitle": "Base de données Master",
-        "actions": {
-            "add": "Enrôler Technicien",
-            "exportExcel": "Export Excel",
-            "exportPDF": "Export PDF",
-            "deleteSelected": "Supprimer la sélection"
-        },
-        "toolbar": {
-            "searchPlaceholder": "Rechercher par nom, email...",
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser",
-            "showColumns": "Afficher les colonnes"
-        }
-    },
-    "spareParts": {
-        "title": "Inventory Control",
-        "headTitle": "Gestion des Pièces de Rechange",
-        "toolbar": {
-            "searchPlaceholder": "Rechercher une référence ou un composant...",
-            "add": "Nouvel Actif",
-            "export": "Exporter la base"
-        },
-        "table": {
-            "ref": "REF",
-            "component": "Composant",
-            "stockAlerte": "Stock / Alerte",
-            "price": "Prix HT",
-            "actions": "Actions"
-        },
-        "form": {
-            "partType": "Type de Composant",
-            "partTypePlaceholder": "Sélectionner la catégorie",
-            "reference": "Référence Constructeur",
-            "quantity": "Quantité en Stock",
-            "min_quantity": "Seuil d'Alerte",
-            "price": "Prix Unitaire HT",
-            "location": "Localisation Physique",
-            "region": "Entité / Région",
-            "regionPlaceholder": "Affecter une zone",
-            "responsible": "Superviseur Responsable",
-            "responsiblePlaceholder": "Choisir un gestionnaire",
-            "characteristicValues": "Spécifications Techniques"
-        },
-        "dialog": {
-            "createTitle": "Nouvelle Entrée Stock",
-            "editTitle": "Configuration Technique",
-            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
-            "editSubtitle": "Modification des paramètres et des seuils logistiques"
-        }
-    },
-    "validation": {
-        "required": "Le champ {field} est strictement obligatoire",
-        "invalid": "Format de donnée incorrect pour {field}"
-    },
-    "dialog": {
-        "cancel": "Abandonner",
-        "save": "Valider l'entrée",
-        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
-        "editTitle": "Modifier le Raccordement",
-        "createTitle": "Nouveau Raccordement"
-    },
-    "connections": {
-        "title": "Gestion des Raccordements",
-        "headTitle": "Raccordements",
-        "subtitle": "Clients & Points de connexion",
-        "addNew": "Nouveau Raccordement",
-        "import": "Importer",
-        "delete": "Supprimer",
-        "closest": "Plus proches",
-        "exportCSV": "Exporter en CSV",
-        "selectColumns": "Choisir les colonnes",
-        "searchPlaceholder": "Rechercher...",
-        "actions": "Actions",
-        "importDialog": {
-            "title": "Importer depuis Excel/CSV",
-            "chooseFile": "Choisir un fichier",
-            "startImport": "Lancer l'import"
-        },
-        "dialog": {
-            "editTitle": "Modifier le Raccordement",
-            "createTitle": "Nouveau Raccordement",
-            "customerCode": "Code Client",
-            "firstName": "Prénom",
-            "lastName": "Nom",
-            "phone": "Téléphone",
-            "region": "Région",
-            "zone": "Zone",
-            "status": "Statut",
-            "gpsLatitude": "Latitude GPS",
-            "gpsLongitude": "Longitude GPS",
-            "cancel": "Annuler",
-            "save": "Enregistrer"
-        }
-    },
-
-    "interventions": {
-        "title": "Interventions Field Service",
-        "subtitle": "Opérations & Maintenance Réseau",
-        "addNew": "Nouvelle Intervention",
-        "searchPlaceholder": "Rechercher une référence...",
-        "filters": "Filtres",
-        "deleteSelected": "Supprimer",
-        "selectColumns": "Colonnes actives",
-        "table": {
-            "reference": "Référence",
-            "status": "Statut",
-            "customerCode": "Code Client",
-            "clientName": "Nom Client",
-            "region": "Région",
-            "priority": "Priorité",
-            "deadline": "Échéance",
-            "assignedTo": "Assigné à",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Détails Intervention",
-            "createTitle": "Création de Ticket",
-            "origin": "Origine de la demande",
-            "externalClient": "Client Externe",
-            "internalAgent": "Agent Interne",
-            "searchPlaceholder": "Rechercher...",
-            "subjectDescription": "Sujet / Description",
-            "autoReference": "Référence auto",
-            "problemPlaceholder": "Expliquez le problème technique ici...",
-            "assignmentDeadline": "Assignation & Délai",
-            "priority": "Priorité",
-            "assignedTo": "Assigné à",
-            "deadline": "Échéance",
-            "region": "Région",
-            "zone": "Zone",
-            "notApplicable": "N/A",
-            "cancel": "Annuler",
-            "save": "Enregistrer l'Intervention"
-        },
-        "filtersPanel": {
-            "title": "Filtres avancés",
-            "status": "Statut",
-            "statusPlaceholder": "Tous",
-            "region": "Région",
-            "regionPlaceholder": "Toutes",
-            "priority": "Priorité",
-            "priorityPlaceholder": "Toutes",
-            "reset": "Réinitialiser",
-            "apply": "Appliquer"
-        },
-        "tooltips": {
-            "manage": "Gérer"
-        }
-  },
-  "regions": {
-    "title": "Gestion du Parc Énergétique",
-    "headTitle": "Gestion du ",
-    "headTitle2": "Parc",
-    "subtitle": "Supervision technique des régions énergétiques",
-    "actions": {
-      "add": "Nouvelle Région",
-      "resetFilters": "Réinitialiser Filtres"
-    },
-    "toolbar": {
-      "searchPlaceholder": "Recherche globale...",
-      "searchByName": "Chercher par nom",
-      "allTypes": "Tous les types"
-    },
-    "stats": {
-      "total": "Total Régions",
-      "totalMW": "Puissance Totale",
-      "avgPower": "Puissance Moyenne",
-      "highPerf": "Haute Performance"
-    },
-    "types": {
-      "thermique": "Thermique",
-      "solaire": "Solaire",
-      "hydraulique": "Hydraulique",
-      "eolienne": "Éolienne"
-    },
-    "fields": {
-      "designation": "Désignation",
-      "type": "Source",
-      "power": "Capacité (MW)",
-      "notes": "Notes Techniques",
-      "status": "Statut"
-    },
-    "dialog": {
-      "createTitle": "Nouvelle Configuration de Région",
-      "editTitle": "Mise à jour Technique de la Région",
-      "regionSettings": "Paramètres de la région",
-      "productionInfo": "Complétez les informations de production"
-    },
-    "placeholders": {
-      "designation": "Ex: Centrale Nord-Est",
-      "notes": "Détails supplémentaires, consignes de sécurité..."
-    },
-    "status": {
-        "active": "Actif",
-        "inactive": "Inactif"
-    }
-    },
-    "maintenances": {
-        "title": "Gestion des Maintenances",
-        "headTitle": "Maintenances",
-        "subtitle": "Opérations préventives & correctives",
-        "exportExcel": "Export Excel",
-        "new": "Nouvelle Maintenance",
-        "searchPlaceholder": "Rechercher une maintenance...",
-        "resetTooltip": "Réinitialiser",
-        "columnsTooltip": "Choisir les colonnes",
-        "deleteSelected": "Supprimer la sélection",
-        "columns": {
-            "title": "Titre de la maintenance",
-            "equipments": "Équipement(s)",
-            "assignable": "Assigné à",
-            "status": "Statut",
-            "priority": "Priorité",
-            "scheduled_start_date": "Début Planifié",
-            "description": "Description",
-            "estimated_duration": "Durée Estimée",
-            "cost": "Coût",
-            "region": "Région",
-            "recurrence_type": "Récurrence",
-            "recurrence_interval": "Intervalle Récurrence",
-            "recurrence_month_interval": "Intervalle Mois",
-            "recurrence_days": "Jours Récurrence",
-            "recurrence_day_of_month": "Jour du Mois",
-            "recurrence_month": "Mois Récurrence",
-            "actions": "Actions"
-        },
-        "columnSelector": {
-            "title": "Sélectionner les colonnes :",
-            "placeholder": "Choisir les colonnes"
-        },
-        "activityDialog": {
-            "title": "Système de Planification d'Activités",
-            "batchManagerTitle": "Batch Activity Manager",
-            "batchManagerSubtitle": "Version 12.0 • Enterprise Asset Management",
-            "parentMaintenance": "Maintenance Parente",
-            "activityVolume": "Volume d'activités",
-            "newActivity": "Nouvelle Activité",
-            "activityNamePlaceholder": "Nommer l'activité...",
-            "statusLabel": "Statut:",
-            "duplicateTooltip": "Dupliquer",
-            "attribution": "Attribution",
-            "entityTypePlaceholder": "Type d'entité",
-            "responsiblePlaceholder": "Sélectionner le responsable",
-            "concernedAssets": "Assets Concernés",
-            "searchEquipmentsPlaceholder": "Rechercher des équipements...",
-            "estimatedCost": "Coût estimé",
-            "planning": "Planification",
-            "priority": "Priorité",
-            "durationInMinutes": "Durée (m)",
-            "executionPeriod": "Période d'exécution",
-            "start": "Début",
-            "end": "Fin",
-            "checklist": "Checklist",
-            "addInstruction": "Ajouter une instruction",
-            "instructionPlaceholder": "Instruction...",
-            "selectType": "Sélectionner le type",
-            "zeroInstructions": "Zéro instruction.",
-            "spareParts": "Pièces Détachées",
-            "resetForm": "Réinitialiser le formulaire",
-            "cancel": "Annuler",
-            "validateAndDeploy": "Valider et Déployer"
-        },
-        "formDialog": {
-            "editTitle": "Modifier la Maintenance",
-            "createTitle": "Créer une nouvelle Maintenance",
-            "technicalReportTitle": "Rapport Technique d'Intervention",
-            "gmaoConsole": "Console d'administration GMAO v2025 • High-Performance System",
-            "missionId": "Identification de la mission",
-            "interventionTitle": "Titre de l'intervention",
-            "interventionTitlePlaceholder": "Ex: Maintenance préventive Trimestre 1",
-            "concernedEquipments": "Équipements concernés",
-            "selectAssets": "Sélectionner les actifs...",
-            "detailedDescription": "Description détaillée",
-            "generalInstructions": "Instructions générales pour l'équipe...",
-            "configPerEquipment": "Configuration par équipement",
-            "showControlPoints": "Configurer les points de contrôle",
-            "hideControlPoints": "Masquer",
-            "noEquipmentSelected": "Aucun équipement sélectionné",
-            "parentGroupLabel": "Équipements de premier niveau",
-            "clone": "Cloner",
-            "addInstruction": "Ajouter une instruction",
-            "instructionLabelPlaceholder": "Libellé (ex: Vérification niveau d'huile)",
-            "required": "Requis",
-            "noSpecificInstruction": "Aucune instruction spécifique définie",
-            "logisticsAndTiming": "Logistique & Timing",
-            "plannedStart": "Début planifié",
-            "actualStart": "Date de début",
-            "plannedEnd": "Fin planifiée",
-            "actualEnd": "Date de fin",
-            "interventionResponsible": "Responsable de l'intervention",
-            "assignableTypePlaceholder": "Type",
-            "assignableSelectPlaceholder": "Sélectionner...",
-            "maintenanceType": "Type de maintenance",
-            "currentStatus": "Statut actuel",
-            "priorityLevel": "Niveau de Priorité",
-            "interventionRegion": "Région d'intervention",
-            "recurrenceCycle": "Cycle de Récurrence",
-            "frequency": "Fréquence",
-            "dailyInterval": "Intervalle journalier",
-            "daysSelection": "Sélection des jours",
-            "dayOfMonth": "Le (Jour)",
-            "everyNMonths": "Tous les (Mois)",
-            "startMonth": "Mois de début",
-            "earlyReminder": "Rappel anticipé (Push/Email)",
-            "customRule": "Règle personnalisée (Cron/Text)",
-            "customRulePlaceholder": "Ex: Every 2nd Monday of the month",
-            "estimatedDuration": "Durée estimée",
-            "estimatedBudget": "Budget Estimé",
-            "cancelChanges": "Annuler les modifications",
-            "savePlan": "Sauvegarder le Plan de Maintenance"
-        },
-        "copyDialog": {
-            "title": "Copier les Instructions",
-            "subtitle": "Sélectionnez les équipements cibles",
-            "apply": "Appliquer la copie",
-            "cancel": "Annuler"
-        },
-        "status": {
-            "scheduled": "Planifiée",
-            "in_progress": "En cours",
-            "completed": "Terminée",
-            "completed_with_issues": "Terminée avec problèmes",
-            "suspended": "Suspendue",
-            "canceled": "Annulée",
-            "awaiting_resources": "En attente de ressources",
-            "to_be_reviewed_later": "À revoir plus tard"
-        },
-        "priority": {
-            "low": "Basse",
-            "medium": "Moyenne",
-            "high": "Haute",
-            "urgent": "Urgente"
-        },
-        "assignableTypes": {
-            "none": "Aucun",
-            "user": "Technicien",
-            "team": "Équipe"
-        },
-        "recurrence": {
-            "none": "Aucune",
-            "daily": "Quotidienne",
-            "weekly": "Hebdomadaire",
-            "monthly": "Mensuelle",
-            "quarterly": "Trimestrielle",
-            "biannual": "Semestrielle",
-            "annual": "Annuelle",
-            "custom": "Personnalisée"
-        }
-    },
-    "myActivities": {
-        "title": "Mes Activités",
-        "timelineTitle": "Chronologie de mes activités",
-        "timelineSubtitle": "Aperçu de l'évolution de vos tâches et interventions.",
-        "columnsPlaceholder": "Colonnes à afficher dans le tableau",
-        "noActivitiesTitle": "Aucune activité à afficher pour le moment.",
-        "noActivitiesSubtitle": "Revenez plus tard ou ajoutez une nouvelle tâche.",
-        "unknownReference": "Inconnu",
-        "subActivityFor": "Sous-activité pour {title} : ",
-        "unnamedActivity": "Activité",
-        "dialog": {
-            "subActivityInitialization": "Initialisation Sous-Activité",
-            "technicalInterventionReport": "Rapport Technique d'Intervention",
-            "gmaoAdminConsole": "Console d'administration GMAO v2025 • High-Performance System",
-            "resolutionTitle": "Resolution & Technical Actions",
-            "resolutionPlaceholder": "Décrivez précisément les interventions effectuées...",
-            "recommendationsLabel": "Recommandations",
-            "internalNotesLabel": "Notes Internes",
-            "checklistTitle": "Checklist de Conformité",
-            "checklistPoints": "{count} points",
-            "newInstructionPlaceholder": "Nouvelle consigne...",
-            "missionConfigTitle": "Configuration Mission",
-            "statusLabel": "Status",
-            "assignedTechnicianLabel": "Technicien Assigné",
-            "actualStartLabel": "Début Réel",
-            "actualEndLabel": "Fin Réelle",
-            "stockOutflowsTitle": "Sorties Stock",
-            "storeReturnsTitle": "Retours Magasin",
-            "financialImpactLabel": "Impact Financier Estimé",
-            "billingLabelPlaceholder": "Libellé facturation...",
-            "cancelButton": "Annuler",
-            "createSubActivityButton": "Créer Sous-Activité",
-            "publishReportButton": "Publier le Rapport",
-            "sparePartModalUsedTitle": "Sortie Matériel",
-            "sparePartModalReturnedTitle": "Réintégration Stock",
-            "referencesLabel": "Référence(s)",
-            "searchPartPlaceholder": "Rechercher une pièce...",
-            "unitQuantityLabel": "Quantité Unitaire",
-            "closeButton": "Fermer",
-            "validateButton": "Valider",
-            "instructionLabel": "Libellé (ex: Vérification niveau d'huile)",
-            "instructionRequired": "Requis",
-            "removeInstructionTitle": "Supprimer cette consigne"
-        },
-        "status": {
-            "scheduled": "Planifiée",
-            "in_progress": "En cours",
-            "completed": "Terminée",
-            "completed_with_issues": "Terminée avec problèmes",
-            "suspended": "Suspendue",
-            "canceled": "Annulée",
-            "awaiting_resources": "En attente de ressources",
-            "to_be_reviewed_later": "À revoir plus tard",
-            "pending": "En attente"
-        },
-        "statusOptions": {
-            "scheduled": "📅 Planifié",
-            "in_progress": "⚡ En cours",
-            "completed": "✅ Terminé",
-            "completed_with_issues": "⚠️ Terminé avec réserves",
-            "suspended": "⏸️ Suspendu",
-            "canceled": "🚫 Annulé",
-            "awaiting_resources": "⏳ Attente ressources"
-        },
-        "priority": {
-            "high": "Haute",
-            "medium": "Moyenne",
-            "low": "Basse",
-            "urgent": "Urgente"
-        },
-        "displayOptions": {
-            "actual_end_time": "Heure de fin réelle",
-            "proposals": "Propositions/Recommandations",
-            "jobber": "Intervenant",
-            "additional_information": "Informations Additionnelles",
-            "spare_parts_used": "Pièces Utilisées",
-            "spare_parts_returned": "Pièces Retournées"
-        },
-        "instructionTypes": {
-            "text": "Texte court",
-            "textarea": "Zone de texte",
-            "number": "Nombre",
-            "date": "Date",
-            "boolean": "Oui/Non (Binaire)"
-        },
-        "boolean": {
-            "yes": "Oui",
-            "no": "Non"
-        },
-
-        "toast": {
-            "subActivityCreated": "Sous-activité créée avec succès.",
-            "activityUpdated": "Activité mise à jour avec succès.",
-            "success": "Succès",
-            "error": "Erreur",
-            "saveError": "Une erreur est survenue lors de l'enregistrement. Voir la console pour plus de détails.",
-            "instructionLabelRequired": "Le libellé est obligatoire",
-            "warning": "Attention",
-            "instructionAdded": "Instruction ajoutée à la liste",
-            "added": "Ajouté",
-            "instructionRemoved": "Instruction retirée",
-            "info": "Info",
-            "listUpdated": "La liste a été mise à jour."
-        },
-        "defaults": {
-            "sparePartPayment": "Paiement des pièces détachées et autres"
+            "createSuccess": "Team created successfully.",
+            "updateSuccess": "Team updated successfully.",
+            "deleteSuccess": "Team deleted successfully.",
+            "confirmDelete": "Are you sure you want to delete team \"{name}\"?"
         }
     }
 }

@@ -18,6 +18,9 @@ class InterventionRequest extends Model
         'title',
         'description',
         'status',
+        'is_validated',
+        'reported_at',
+
         'requested_by_user_id',
         'requested_by_connection_id',
         'assignable_id',
@@ -98,7 +101,22 @@ class InterventionRequest extends Model
     {
         return $this->hasOne(Activity::class);
     }
+     protected static function booted(): void
+    {
+        static::updating(function (InterventionRequest $interventionRequest) {
+            // Si 'is_validated' passe à false (0), mettez le statut à 'pending'
+            // Assurez-vous que 'is_validated' est bien un booléen ou un entier 0/1
+            if ($interventionRequest->isDirty('is_validated') && !$interventionRequest->is_validated) {
+                $interventionRequest->status = 'Non validé';
+            }
+            if ($interventionRequest->isDirty('is_validated') && $interventionRequest->is_validated) {
+                $interventionRequest->status = 'pending';
+            }
+        });
 
+
+
+    }
     // Vous pourriez ajouter d'autres relations HasMany ici (ex: commentaires, logs d'activité)
     /*
     public function comments(): HasMany

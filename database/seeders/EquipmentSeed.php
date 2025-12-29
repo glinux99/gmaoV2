@@ -16,12 +16,12 @@ class EquipmentSeed extends Seeder
     public function run(): void
     {
         // Générer 20 équipements
-        Equipment::factory()->count(20)->create();
+        Equipment::factory()->count(5)->create();
 
         // Générer 10 étiquettes
         Label::factory()->count(10)->create();
 
         // Générer 20 pièces de rechange
-        SparePart::factory()->count(20)->create();
+        SparePart::factory()->count(5)->create();
     }
 }

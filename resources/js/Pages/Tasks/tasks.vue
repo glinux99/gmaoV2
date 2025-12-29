@@ -776,15 +776,20 @@ const updateInstructions = (taskId, instructions) => {
         <div class="quantum-v11-container p-4 lg:p-8 bg-[#f8fafc] min-h-screen">
 
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div class="flex items-center gap-4">
+                <div class="flex h-16 w-16 items-center justify-center rounded-[1rem] bg-primary-600 shadow-xl shadow-primary-200">
+                        <i class="pi pi-briefcase text-2xl text-white"></i>
+                    </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
-                        Ordres de Travail <span class="text-indigo-600">GMAO</span>
+
+                        Ordres de Travail <span class="text-primary-600">GMAO</span>
                     </h1>
                     <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">Planification & Suivi des Tâches</p>
-                </div>
+                </div></div>
                 <div class="flex gap-2">
                     <Button label="Nouvel Ordre de Travail" icon="pi pi-plus"
-                            class="p-button-indigo shadow-lg shadow-indigo-200" @click="openNew" />
+                            class="shadow-lg shadow-primary-200" @click="openNew" />
                 </div>
             </div>
 
@@ -860,7 +865,7 @@ const updateInstructions = (taskId, instructions) => {
                     <Column header="Actions" alignFrozen="right" frozen class="pr-8">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
-                                <Button icon="pi pi-pencil" text rounded @click="editTask(data)" class="!text-slate-400 hover:!bg-indigo-50 hover:!text-indigo-600 transition-all" v-tooltip.top="'Modifier'" />
+                                <Button icon="pi pi-pencil" text rounded @click="editTask(data)" class="!text-slate-400 hover:!bg-primary-50 hover:!text-primary-600 transition-all" v-tooltip.top="'Modifier'" />
                                 <Button icon="pi pi-trash" text rounded @click="deleteTask(data)" class="!text-slate-400 hover:!bg-red-50 hover:!text-red-500 transition-all" v-tooltip.top="'Supprimer'" />
                             </div>
                         </template>
@@ -881,7 +886,7 @@ const updateInstructions = (taskId, instructions) => {
 <Dialog
     v-model:visible="taskDialog"
     modal
-    :header="false"
+    :header="false" :closable="false"
     class="quantum-dialog w-full max-w-7xl overflow-hidden"
     :pt="{
         root: { class: 'border-none shadow-3xl bg-white rounded-xl' },
@@ -890,7 +895,7 @@ const updateInstructions = (taskId, instructions) => {
 >
     <div class="flex flex-col h-[90vh]">
 
-        <div class="px-8 py-4 bg-slate-900 text-white flex justify-between items-center shadow-lg relative z-50">
+        <div class="px-8 py-4 bg-slate-900 rounded-xl text-white flex justify-between items-center shadow-lg relative z-50">
             <div class="flex items-center gap-4">
                 <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
                     <i class="pi pi-shield text-blue-400 text-xl"></i>
@@ -995,15 +1000,15 @@ const updateInstructions = (taskId, instructions) => {
                             </div>
                         </div>
 
-                        <div class="p-8 bg-indigo-50 rounded-[1rem] border border-indigo-100 space-y-6 flex flex-col justify-start shadow-sm">
+                        <div class="p-8 bg-primary-50 rounded-[1rem] border border-primary-100 space-y-6 flex flex-col justify-start shadow-sm">
                             <div class="flex items-center gap-3 mb-4">
-                                <i class="pi pi-sync text-indigo-600 text-xl"></i>
-                                <span class="text-xs font-black text-indigo-900 uppercase tracking-widest">Récurrence</span>
+                                <i class="pi pi-sync text-primary-600 text-xl"></i>
+                                <span class="text-xs font-black text-primary-900 uppercase tracking-widest">Récurrence</span>
                             </div>
                             <Dropdown v-model="form.recurrence_type" :options="recurrenceTypes" optionLabel="label" optionValue="value" class="w-full" />
 
-                            <div v-if="form.recurrence_type" class="pt-6 border-t border-indigo-200 mt-4 space-y-4 animate-slide-in">
-                                <span class="text-[10px] font-bold text-indigo-700 uppercase">Intervalle</span>
+                            <div v-if="form.recurrence_type" class="pt-6 border-t border-primary-200 mt-4 space-y-4 animate-slide-in">
+                                <span class="text-[10px] font-bold text-primary-700 uppercase">Intervalle</span>
                                 <InputNumber v-model="form.recurrence_interval" class="w-full" suffix=" cycles" />
                             </div>
                         </div>
@@ -1170,7 +1175,7 @@ const updateInstructions = (taskId, instructions) => {
 
 <style scoped>
 /* STYLE V11 CUSTOM TOKENS */
-.p-button-indigo {
+.p-button-primary {
     background: #4f46e5;
     border: none;
     color: white;

@@ -88,7 +88,7 @@ class UserSeeder extends Seeder
         // Générer 50 utilisateurs aléatoires avec un rôle aléatoire parmi ceux existants
         if (count($roles) > 0) {
             User::factory()
-                ->count(100)
+                ->count(5)
                 ->create()
                 ->each(function (User $user) use ($roles) {
                     $role = $roles[array_rand($roles)];

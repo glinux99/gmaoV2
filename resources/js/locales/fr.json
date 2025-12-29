@@ -122,6 +122,14 @@
         "headTitle": "Équipements",
         "addNew": "Ajouter un équipement",
         "searchPlaceholder": "Rechercher...",
+        "subtitle": "Base de données Master & Cycle de vie",
+        "stats": {
+            "total": "Total Équipements",
+            "in_service": "En Service",
+            "in_stock": "En Stock",
+            "down": "En Panne"
+        },
+
         "export": "Exporter",
         "deleteSelected": "Supprimer ({count})",
         "deleteSelectedSingle": "Supprimer",
@@ -135,6 +143,13 @@
             "region": "Région",
             "status": "Statut",
             "quantity": "Quantité",
+            "filter": {
+                "tag": "Filtrer par tag",
+                "designation": "Filtrer par désignation",
+                "type": "Filtrer par type",
+                "region": "Filtrer par région",
+                "status": "Filtrer par statut"
+            },
             "actions": "Actions"
         },
         "dialog": {
@@ -180,11 +195,27 @@
             "cancel": "Annuler",
             "create": "Créer"
         },
+          "insufficientQuantityDialog": {
+                "title": "Quantité Insuffisante",
+                "subtitle": "Alerte de Stock",
+                "message": "La quantité demandée dépasse le stock disponible. L'exécution de ce mouvement pourrait entraîner un stock négatif ou une rupture de service.",
+                "cancel": "Annuler",
+                "performMovement": "Forcer le mouvement",
+                "statusOptions": {
+                    "in_service": "En Service",
+                    "down": "En Panne",
+                    "in_maintenance": "En Maintenance",
+                    "out_of_service": "Hors Service",
+                    "in_stock": "En Stock"
+                }
+            },
         "toast": {
             "success": "Succès",
             "updateSuccess": "Équipement mis à jour avec succès.",
             "createSuccess": "Équipement créé avec succès.",
             "deleteSuccess": "Équipement supprimé avec succès.",
+            "insufficientQuantity": "Quantité insuffisante en stock.",
+
             "bulkDeleteSuccess": "Équipements supprimés avec succès.",
             "saveError": "Erreur de Sauvegarde",
             "error": "Erreur",
@@ -205,7 +236,10 @@
             "down": "En Panne",
             "in_maintenance": "En Maintenance",
             "out_of_service": "Hors Service",
-            "in_stock": "En Stock"
+            "in_stock": "En Stock",
+             "en_service": "En Service",
+            "en_maintenance": "En Maintenance",
+            "en_stock": "En Stock"
         },
         "characteristicTypes": {
             "text": "Texte",
@@ -427,7 +461,8 @@
             "update": "Mettre à jour",
             "save": "Enregistrer",
             "cancel": "Annuler",
-            "noPlate": "SANS PLAQUE"
+            "noPlate": "SANS PLAQUE",
+            "create":"Créer"
         }
     },
     "dataTable": {
@@ -494,6 +529,7 @@
   "common": {
         "save": "Sauvegarder",
         "update": "Mettre à jour",
+         "create":"Créer",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "import": "Importer",
@@ -687,6 +723,9 @@
     "technicians": {
         "title": "Gestion des Techniciens",
         "subtitle": "Base de données Master",
+          "createTitle": "Enrôler un nouveau technicien",
+            "editTitle": "Modifier le profil du technicien",
+
         "actions": {
             "add": "Enrôler Technicien",
             "exportExcel": "Export Excel",
@@ -698,6 +737,26 @@
             "advancedFilters": "Filtres Avancés",
             "resetFilters": "Réinitialiser",
             "showColumns": "Afficher les colonnes"
+        },
+        "stats":{
+            "total":"Total Techniciens",
+            "supervisors":"Superviseurs",
+            "chiefs":   "Chefs",
+            "daily": "Quotidienne",
+            "weekly": "Hebdomadaire",
+            "monthly": "Mensuelle"
+        },
+        "fields": {
+            "name": "Technicien",
+            "fonction": "Fonction",
+            "region": "Région",
+            "numero": "Téléphone",
+            "email": "Email",
+            "pointure": "Pointure",
+            "size": "Taille",
+            "created_at": "Créé le",
+            "updated_at": "Mis à jour le",
+            "teams":"Équipes"
         }
     },
     "teams": {
@@ -725,6 +784,12 @@
             "name": "Ex: EQP-DELTA-01",
             "leader": "Désigner un leader",
             "members": "Sélectionner les membres"
+        },
+        "stats": {
+            "total_teams": "Total Équipes",
+            "total_members": "Total Membres",
+            "avg_members": "Membres / Équipe",
+            "with_leader": "Avec Leader"
         },
         "messages": {
             "createSuccess": "Équipe créée avec succès.",
@@ -1030,22 +1095,7 @@
             "deleteSuccess": "Employé supprimé."
         }
     },
-    "technicians": {
-        "title": "Gestion des Techniciens",
-        "subtitle": "Base de données Master",
-        "actions": {
-            "add": "Enrôler Technicien",
-            "exportExcel": "Export Excel",
-            "exportPDF": "Export PDF",
-            "deleteSelected": "Supprimer la sélection"
-        },
-        "toolbar": {
-            "searchPlaceholder": "Rechercher par nom, email...",
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser",
-            "showColumns": "Afficher les colonnes"
-        }
-    },
+
     "spareParts": {
         "title": "Inventory Control",
         "headTitle": "Gestion des Pièces de Rechange",
@@ -1093,6 +1143,7 @@
         "editTitle": "Modifier le Raccordement",
         "createTitle": "Nouveau Raccordement"
     },
+
     "connections": {
         "title": "Gestion des Raccordements",
         "headTitle": "Raccordements",
@@ -1128,25 +1179,36 @@
     },
 
     "interventions": {
-        "title": "Interventions Field Service",
+         "title": "Gestion des Interventions",
+        "headTitle": "Interventions <span class='text-primary-600'>Field Service</span>",
         "subtitle": "Opérations & Maintenance Réseau",
         "addNew": "Nouvelle Intervention",
         "searchPlaceholder": "Rechercher une référence...",
         "filters": "Filtres",
         "deleteSelected": "Supprimer",
         "selectColumns": "Colonnes actives",
-        "table": {
-            "reference": "Référence",
-            "status": "Statut",
-            "customerCode": "Code Client",
-            "clientName": "Nom Client",
-            "region": "Région",
-            "priority": "Priorité",
-            "deadline": "Échéance",
-            "assignedTo": "Assigné à",
-            "actions": "Actions"
-        },
+        "notAssigned": "Non assigné",
+        "notApplicable": "N/A",
+
         "dialog": {
+            "editTitle": "Détails Intervention",
+            "createTitle": "Création de Ticket",
+            "gmaoConsole": "Console d'administration GMAO v2025",
+            "origin": "Origine de la demande",
+            "externalClient": "Client Externe",
+            "internalAgent": "Agent Interne",
+            "searchPlaceholder": "Rechercher...",
+            "subjectDescription": "Sujet / Description",
+            "autoReference": "Référence auto",
+            "problemPlaceholder": "Expliquez le problème technique ici...",
+            "assignmentDeadline": "Assignation & Délai",
+            "priority": "Priorité",
+            "assignedTo": "Assigné à",
+            "deadline": "Échéance",
+            "region": "Région",
+            "zone": "Zone",
+            "cancel": "Annuler",
+            "save": "Enregistrer l'Intervention",
             "editTitle": "Détails Intervention",
             "createTitle": "Création de Ticket",
             "origin": "Origine de la demande",
@@ -1164,7 +1226,19 @@
             "zone": "Zone",
             "notApplicable": "N/A",
             "cancel": "Annuler",
-            "save": "Enregistrer l'Intervention"
+            "save": "Enregistrer l'Intervention",
+            "classification": "Classification",
+            "interventionReason": "Motif d'intervention",
+            "selectReason": "Sélectionner une raison",
+            "category": "Catégorie",
+            "technicalComplexity": "Complexité Technique",
+            "planningTracking": "Planification & Suivi",
+            "minTime": "Temps Min (h)",
+            "maxTime": "Temps Max (h)",
+            "autoConfig": "Auto-configuration",
+            "settingsApplied": "Paramètres appliqués pour : {reason}",
+            "validateIntervention": "Valider l'Intervention"
+
         },
         "filtersPanel": {
             "title": "Filtres avancés",
@@ -1179,6 +1253,58 @@
         },
         "tooltips": {
             "manage": "Gérer"
+        },
+        "assignableTypes": {
+            "technician": "Technicien",
+            "team": "Équipe"
+        },
+
+        "table": {
+
+            "reason": "Motif",
+            "complexity": "Complexité",
+            "completedAt": "Terminé le",
+            "category": "Catégorie",
+            "description": "Description",
+               "reference": "Référence",
+            "status": "Statut",
+            "customerCode": "Code Client",
+            "clientName": "Nom Client",
+            "region": "Région",
+            "priority": "Priorité",
+            "deadline": "Échéance",
+            "assignedTo": "Assigné à",
+            "actions": "Actions",
+            "report": "Affichage de {first} à {last} sur {totalRecords} interventions"
+        },
+        "stats": {
+            "total": "Total Interventions",
+            "pending": "En Attente",
+            "in_progress": "En Cours",
+            "completed": "Terminées"
+            ,"notValidated": "Non Validées",
+            "reason": "Motif",
+            "complexity": "Complexité",
+            "completedAt": "Terminé le",
+            "category": "Catégorie"
+        },
+
+        "filtersPanel": {
+            "title": "Filtres avancés",
+            "status": "Statut",
+            "statusPlaceholder": "Tous",
+            "region": "Région",
+            "regionPlaceholder": "Toutes",
+            "priority": "Priorité",
+            "priorityPlaceholder": "Toutes",
+            "reset": "Réinitialiser",
+            "apply": "Appliquer"
+        },
+        "tooltips": {
+            "manage": "Gérer"
+        },
+        "status": {
+            "notValidated": "Non validé"
         }
   },
   "regions": {
@@ -1230,6 +1356,7 @@
     }
     },
     "maintenances": {
+
         "title": "Gestion des Maintenances",
         "headTitle": "Maintenances",
         "subtitle": "Opérations préventives & correctives",
@@ -1381,6 +1508,153 @@
             "custom": "Personnalisée"
         }
     },
+    "myActivities": {
+        "title": "Mes Activités",
+        "timelineTitle": "Chronologie de mes activités",
+        "timelineSubtitle": "Aperçu de l'évolution de vos tâches et interventions.",
+        "columnsPlaceholder": "Colonnes à afficher dans le tableau",
+        "noActivitiesTitle": "Aucune activité à afficher pour le moment.",
+        "noActivitiesSubtitle": "Revenez plus tard ou ajoutez une nouvelle tâche.",
+        "unknownReference": "Inconnu",
+        "subActivityFor": "Sous-activité pour {title} : ",
+        "unnamedActivity": "Activité",
+        "dialog": {
+            "subActivityInitialization": "Initialisation Sous-Activité",
+            "technicalInterventionReport": "Rapport Technique d'Intervention",
+            "gmaoAdminConsole": "Console d'administration GMAO v2025 • High-Performance System",
+            "resolutionTitle": "Resolution & Technical Actions",
+            "resolutionPlaceholder": "Décrivez précisément les interventions effectuées...",
+            "recommendationsLabel": "Recommandations",
+            "internalNotesLabel": "Notes Internes",
+            "checklistTitle": "Checklist de Conformité",
+            "checklistPoints": "{count} points",
+            "newInstructionPlaceholder": "Nouvelle consigne...",
+            "missionConfigTitle": "Configuration Mission",
+            "statusLabel": "Status",
+            "assignedTechnicianLabel": "Technicien Assigné",
+            "actualStartLabel": "Début Réel",
+            "actualEndLabel": "Fin Réelle",
+            "stockOutflowsTitle": "Sorties Stock",
+            "storeReturnsTitle": "Retours Magasin",
+            "financialImpactLabel": "Impact Financier Estimé",
+            "billingLabelPlaceholder": "Libellé facturation...",
+            "cancelButton": "Annuler",
+            "createSubActivityButton": "Créer Sous-Activité",
+            "publishReportButton": "Publier le Rapport",
+            "sparePartModalUsedTitle": "Sortie Matériel",
+            "sparePartModalReturnedTitle": "Réintégration Stock",
+            "referencesLabel": "Référence(s)",
+            "searchPartPlaceholder": "Rechercher une pièce...",
+            "unitQuantityLabel": "Quantité Unitaire",
+            "closeButton": "Fermer",
+            "validateButton": "Valider",
+            "instructionLabel": "Libellé (ex: Vérification niveau d'huile)",
+            "instructionRequired": "Requis",
+            "removeInstructionTitle": "Supprimer cette consigne"
+        },
+        "status": {
+            "scheduled": "Planifiée",
+            "in_progress": "En cours",
+            "completed": "Terminée",
+            "completed_with_issues": "Terminée avec problèmes",
+            "suspended": "Suspendue",
+            "canceled": "Annulée",
+            "awaiting_resources": "En attente de ressources",
+            "to_be_reviewed_later": "À revoir plus tard",
+            "pending": "En attente"
+        },
+        "statusOptions": {
+            "scheduled": "📅 Planifié",
+            "in_progress": "⚡ En cours",
+            "completed": "✅ Terminé",
+            "completed_with_issues": "⚠️ Terminé avec réserves",
+            "suspended": "⏸️ Suspendu",
+            "canceled": "🚫 Annulé",
+            "awaiting_resources": "⏳ Attente ressources"
+        },
+        "priority": {
+            "high": "Haute",
+            "medium": "Moyenne",
+            "low": "Basse",
+            "urgent": "Urgente"
+        },
+        "displayOptions": {
+            "actual_end_time": "Heure de fin réelle",
+            "proposals": "Propositions/Recommandations",
+            "jobber": "Intervenant",
+            "additional_information": "Informations Additionnelles",
+            "spare_parts_used": "Pièces Utilisées",
+            "spare_parts_returned": "Pièces Retournées"
+        },
+        "instructionTypes": {
+            "text": "Texte court",
+            "textarea": "Zone de texte",
+            "number": "Nombre",
+            "date": "Date",
+            "boolean": "Oui/Non (Binaire)"
+        },
+        "boolean": {
+            "yes": "Oui",
+            "no": "Non"
+        },
+
+        "toast": {
+            "subActivityCreated": "Sous-activité créée avec succès.",
+            "activityUpdated": "Activité mise à jour avec succès.",
+            "success": "Succès",
+            "error": "Erreur",
+            "saveError": "Une erreur est survenue lors de l'enregistrement. Voir la console pour plus de détails.",
+            "instructionLabelRequired": "Le libellé est obligatoire",
+            "warning": "Attention",
+            "instructionAdded": "Instruction ajoutée à la liste",
+            "added": "Ajouté",
+            "instructionRemoved": "Instruction retirée",
+            "info": "Info",
+            "listUpdated": "La liste a été mise à jour."
+        },
+        "defaults": {
+            "sparePartPayment": "Paiement des pièces détachées et autres"
+        }
+    },
+    "leaves": {
+        "title": "Gestion des Congés",
+        "subtitle": "{count} Demandes répertoriées",
+        "newRequest": "Nouvelle Demande",
+        "stats": {
+            "total": "Total Demandes",
+            "pending": "En Attente",
+            "approved": "Approuvées",
+            "rejected": "Rejetées"
+        },
+        "table": {
+            "applicant": "Demandeur",
+            "type": "Type",
+            "period": "Période",
+            "status": "État",
+            "actions": "Actions"
+        },
+        "dialog": {
+            "editTitle": "Mise à jour Congé",
+            "createTitle": "Nouvelle Demande de Congé",
+            "headerTitle": "Planification d'Absence",
+            "headerSubtitle": "Veuillez renseigner les détails de votre demande",
+            "applicant": "Collaborateur",
+            "applicantPlaceholder": "Sélectionner le demandeur",
+            "startDate": "Date de début",
+            "endDate": "Date de fin",
+            "leaveType": "Type de congé",
+            "reason": "Motif de la demande",
+            "reasonPlaceholder": "Expliquez brièvement le motif...",
+            "attachment": "Justificatif (PDF, Image)",
+            "attachmentChoose": "Choisir un fichier",
+            "sendRequest": "Envoyer la demande"
+        },
+        "toast": {
+            "success": "Opération réussie"
+        }
+    }
+
+,
     "myActivities": {
         "title": "Mes Activités",
         "timelineTitle": "Chronologie de mes activités",

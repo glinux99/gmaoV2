@@ -28,7 +28,7 @@ class InterventionRequestController extends Controller
                 'Rétablissement Déconnexion', 'Déplacement Câble (Planifié)', 'Déplacement Poteau (Planifié)',
                 'Reconnexion Client', 'Support Envoi Formulaire', 'Intervention Non-Classifiée',
             ],
-            'statuses' => ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'],
+            'statuses' => ['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'Non validé'],
             'technicalComplexities' => ['Pas complexe', 'Peu complexe', 'Moyennement complexe', 'Très complexe'],
             'categories' => ['Réseau', 'Support Technique', 'Client', 'Support / Autres'],
             'priorities' => ['Faible', 'Moyenne', 'Élevée', 'Urgent'],
@@ -119,6 +119,7 @@ class InterventionRequestController extends Controller
 
    public function update(Request $request, InterventionRequest $intervention)
 {
+
     // Note: J'ai changé le nom de la variable en $intervention pour plus de clarté
     $validated = $request->validate([
         'title' => 'required|string|max:255',
@@ -148,7 +149,7 @@ class InterventionRequestController extends Controller
     $intervention->update($validated);
 
     // Si l'intervention est validée et assignée, créer ou mettre à jour une activité
-    if ($$intervention->status=='completed' && ($intervention->assignable_id && $intervention->assignable_type)) {
+    if ($intervention->status=='completed' && ($intervention->assignable_id && $intervention->assignable_type)) {
         Activity::updateOrCreate(
             ['intervention_request_id' => $intervention->id], // Critère de recherche
             [

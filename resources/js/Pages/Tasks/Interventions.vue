@@ -1,12 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { useForm, router, Head } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { useForm, router, Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Toast from 'primevue/toast';
+import Textarea from 'primevue/textarea';
 import Toolbar from 'primevue/toolbar';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
@@ -18,7 +19,10 @@ import SplitButton from 'primevue/splitbutton';
 import OverlayPanel from 'primevue/overlaypanel';
 import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
+import InputNumber from 'primevue/inputnumber';
+import Checkbox from 'primevue/checkbox';
 import { useToast } from "primevue/usetoast";
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
     interventionRequests: Object,
@@ -30,9 +34,34 @@ const props = defineProps({
     zones: Array,
     statuses: Array,
     priorities: Array,
-    interventionReasons: Array
+    interventionReasons: Array,
+    categories: Array, // e.g., ['Réseau', 'Support Technique', 'Client']
+    technicalComplexities: Array, // e.g., ['Pas complexe', 'Peu complexe', ...]
 });
-
+const REASONS_CONFIG = {
+    "Dépannage Réseau Urgent": { category: "Réseau", complexity: "Moyennement complexe", priority: "Haute", min: 72, max: 72 },
+    "Réparation Éclairage Public": { category: "Réseau", complexity: "Moyennement complexe", priority: "Moyenne", min: 4, max: 24 },
+    "Entretien Réseau Planifié": { category: "Réseau", complexity: "Très complexe", priority: "Moyenne", min: 24, max: 72 },
+    "Incident Majeur Réseau": { category: "Réseau", complexity: "Moyennement complexe", priority: "Haute", min: 4, max: 48 },
+    "Support Achat MobileMoney": { category: "Support Technique", complexity: "Peu complexe", priority: "Basse", min: 1, max: 1 },
+    "Support Achat Token Impossible": { category: "Support Technique", complexity: "Pas complexe", priority: "Basse", min: 0.5, max: 1 },
+    "Aide Recharge (Sans clavier)": { category: "Support Technique / Client", complexity: "Pas complexe", priority: "Basse", min: 0.25, max: 1 },
+    "Élagage Réseau": { category: "Réseau", complexity: "Peu complexe", priority: "Moyenne", min: 72, max: 72 },
+    "Réparation Chute de Tension": { category: "Réseau", complexity: "Moyennement complexe", priority: "Moyenne", min: 4, max: 24 },
+    "Coupure Individuelle (CI)": { category: "Réseau", complexity: "Peu complexe", priority: "Moyenne", min: 2, max: 4 },
+    "CI Équipement Client": { category: "Réseau", complexity: "Peu complexe", priority: "Moyenne", min: 2, max: 4 },
+    "CI Équipement Virunga": { category: "Réseau", complexity: "Peu complexe", priority: "Moyenne", min: 2, max: 4 },
+    "CI Vol de Câble": { category: "Réseau", complexity: "Moyennement complexe", priority: "Moyenne", min: 4, max: 72 },
+    "Dépannage Clavier Client": { category: "Client", complexity: "Pas complexe", priority: "Basse", min: 0.5, max: 1 },
+    "Réparation Compteur Limité": { category: "Client", complexity: "Pas complexe", priority: "Basse", min: 0.5, max: 1 },
+    "Rétablissement Déconnexion": { category: "Client", complexity: "Pas complexe", priority: "Basse", min: 0.5, max: 1 },
+    "Déplacement Câble (Planifié)": { category: "Réseau", complexity: "Peu complexe", priority: "Moyenne", min: 8, max: 72 },
+    "Déplacement Poteau (Planifié)": { category: "Réseau", complexity: "Peu complexe", priority: "Moyenne", min: 24, max: 72 },
+    "Reconnexion Client": { category: "Client", complexity: "Pas complexe", priority: "Basse", min: 0.5, max: 1 },
+    "Support Envoi Formulaire": { category: "Support Technique", complexity: "Pas complexe", priority: "Basse", min: 0.1, max: 0.5 },
+    "Intervention Non-Classifiée": { category: "Support / Autres", complexity: "Pas complexe", priority: "Basse", min: 0.5, max: 24 }
+};
+const { t } = useI18n();
 const toast = useToast();
 const opFilters = ref();
 const isModalOpen = ref(false);
@@ -41,21 +70,47 @@ const dt = ref();
 const op = ref();
 const selectedItems = ref([]);
 const lastAssignable = ref({ type: null, id: null });
+const requester_type = ref('client');
+
+
+
+// --- STATISTIQUES ---
+const stats = computed(() => {
+    const data = props.interventionRequests.data || [];
+    return {
+        total: props.interventionRequests.total,
+        pending: data.filter(ir => ir.status === 'pending').length,
+        in_progress: data.filter(ir => ir.status === 'in_progress').length,
+        completed: data.filter(ir => ir.status === 'completed').length,
+    };
+});
+
+const statLabels = computed(() => ({
+    total: t('interventions.stats.total'),
+    pending: t('interventions.stats.pending'),
+    in_progress: t('interventions.stats.in_progress'),
+    completed: t('interventions.stats.completed'),
+}));
 
 // --- CONFIGURATION V11 ---
-const allColumns = [
-    { field: 'title', header: 'Référence', sortable: true },
-    { field: 'status', header: 'Statut', sortable: true },
-    { field: 'customer_code', header: 'Code Client', sortable: false },
-    { field: 'client_name', header: 'Nom Client', sortable: false },
-    { field: 'region_name', header: 'Région', sortable: false },
-    { field: 'priority', header: 'Priorité', sortable: true },
-    { field: 'scheduled_date', header: 'Échéance', sortable: true },
-    { field: 'assigned_to_name', header: 'Assigné à', sortable: false },
-];
+const allColumns = computed(() => [
+    { field: 'title', header: t('interventions.table.reference'), sortable: true },
+    { field: 'intervention_reason', header: t('interventions.table.reason'), sortable: true },
+    { field: 'status', header: t('interventions.table.status'), sortable: true },
+    { field: 'customer_code', header: t('interventions.table.customerCode'), sortable: false },
+    { field: 'client_name', header: t('interventions.table.clientName'), sortable: false },
+    { field: 'region_name', header: t('interventions.table.region'), sortable: false },
+    { field: 'priority', header: t('interventions.table.priority'), sortable: true },
+    { field: 'technical_complexity', header: t('interventions.table.complexity'), sortable: false },
+    { field: 'scheduled_date', header: t('interventions.table.deadline'), sortable: true },
+    { field: 'completed_date', header: t('interventions.table.completedAt'), sortable: false },
+    { field: 'assigned_to_name', header: t('interventions.table.assignedTo'), sortable: false },
+    { field: 'category', header: t('interventions.table.category'), sortable: false },
+    { field: 'description', header: t('interventions.table.description'), sortable: false },
+]);
 
-const selectedColumnFields = ref(['title', 'status', 'client_name', 'priority', 'scheduled_date', 'assigned_to_name']);
-const displayedColumns = computed(() => allColumns.filter(col => selectedColumnFields.value.includes(col.field)));
+const selectedColumnFields = ref(['title', 'status', 'client_name', 'priority', 'scheduled_date', 'assigned_to_name', 'intervention_reason']); // Gardez les clés ici
+const displayedColumns = computed(() => allColumns.value.filter(col => selectedColumnFields.value.includes(col.field)));
 
 // --- LOGIQUE FILTRES ---
 const search = ref(props.filters?.search || '');
@@ -101,19 +156,36 @@ const getPriorityColor = (priority) => {
     }
 };
 
+const getComplexitySeverity = (complexity) => {
+    switch (complexity) {
+        case 'Pas complexe': return 'success';
+        case 'Peu complexe': return 'info';
+        case 'Moyennement complexe': return 'warning';
+        case 'Très complexe': return 'danger';
+        default: return 'secondary';
+    }
+};
+
 // --- FORMULAIRE & ACTIONS ---
 const form = useForm({
-    id: null, title: '', description: '', status: 'pending',
-    requested_by_user_id: null, requested_by_connection_id: null,
-    assignable_type: null, assignable_id: null, region_id: null, zone_id: null,
-    intervention_reason: '', priority: '', scheduled_date: null,
-    gps_latitude: null, gps_longitude: null, is_validated: true,
+    id: null, title: '', description: '', status: 'pending', // Core fields
+    requested_by_user_id: null, requested_by_connection_id: null, // Requester
+    assignable_type: null, assignable_id: null, // Assignable
+    region_id: null, zone_id: null, // Location
+    intervention_reason: null, category: null, technical_complexity: null, priority: null, // Classification
+    min_time_hours: null, max_time_hours: null, // Time estimation
+    scheduled_date: null, completed_date: null, // Dates
+    comments: null, resolution_notes: null, // Notes
+    gps_latitude: null, gps_longitude: null, // GPS
+    is_validated: false, // Validation
 });
-
+const editing =ref(false);
 const openCreate = () => {
     form.reset();
     form.title = `PLT-${Math.floor(Date.now() / 1000)}`;
-    form.scheduled_date = new Date();
+    form.scheduled_date = new Date().toISOString().slice(0, 10); // Format YYYY-MM-DD
+     form.is_validated=true;
+        editing.value = false;
     isModalOpen.value = true;
 };
 
@@ -121,86 +193,150 @@ const openEdit = (data) => {
     form.clearErrors();
     form.defaults({
         ...data,
-        scheduled_date: data.scheduled_date ? new Date(data.scheduled_date) : null
+        scheduled_date: data.scheduled_date ? new Date(data.scheduled_date).toISOString().slice(0, 10) : null,
+        completed_date: data.completed_date ? new Date(data.completed_date).toISOString().slice(0, 10) : null,
     }).reset();
+       editing.value = true;
+    form.is_validated = form.is_validated ? true : false;
     isModalOpen.value = true;
 };
 
+const connectionsList = computed(() => {
+    return props.connections.map(conn => ({ ...conn, search_label: `${conn.first_name} ${conn.last_name} (${conn.customer_code})` }));
+});
+
+
 const formattedList = computed(() => (props.interventionRequests?.data || []).map(ir => ({
     ...ir,
-    client_name: ir.requested_by_connection ? `${ir.requested_by_connection.first_name} ${ir.requested_by_connection.last_name}` : '-',
+    client_name: ir.requested_by_connection ? `${ir.requested_by_connection.first_name} ${ir.requested_by_connection.last_name}` : t('interventions.notApplicable'),
     customer_code: ir.requested_by_connection ? ir.requested_by_connection.customer_code : '-',
-    assigned_to_name: ir.assignable ? ir.assignable.name : 'Non assigné',
+    assigned_to_name: ir.assignable ? ir.assignable.name : t('interventions.notAssigned'),
     region_name: ir.region?.designation || '-',
 })));
 
-const assignableTypes = [{ label: 'Technicien', value: 'App\\Models\\User' }, { label: 'Équipe', value: 'App\\Models\\Team' }];
+const assignableTypes = computed(() => [{ label: t('interventions.assignableTypes.technician'), value: 'App\\Models\\User' }, { label: t('interventions.assignableTypes.team'), value: 'App\\Models\\Team' }]);
 const getAssignables = (type) => type === 'App\\Models\\User' ? props.users : (type === 'App\\Models\\Team' ? props.teams : []);
+const loading = ref(false);
+const labelDialog = ref(false);
 
 const submit = () => {
-    const url = form.id ? route('interventions.update', form.id) : route('interventions.store');
-    form.post(url, { onSuccess: () => isModalOpen.value = false });
-};
-</script>
-<script>
-import { ref } from 'vue';
+    console.log("form.id");
+    console.log(form.id);
 
-export default {
-    data() {
-        return { requester_type: ref('client') };
-    }
+    const url = form.id ? route('interventions.update', form.id) : route('interventions.store');
+
+
+     loading.value = true;
+    const method = editing.value ? 'put' : 'post';
+
+    form.submit(method, url, {
+        onSuccess: () => {
+            labelDialog.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Région enregistrée', life: 3000 });
+            isModalOpen.value = false ;
+        },
+        onError: () => {  isModalOpen.value = false ; }
+    });
 };
+watch(() => form.requested_by_connection_id, (newVal) => {
+    if (newVal) {
+        const connection = props.connections.find(conn => conn.id === newVal);
+        if (connection) {
+            form.region_id = connection.region_id;
+            form.zone_id = connection.zone_id;
+        }
+    }
+});
+watch(() => form.intervention_reason, (newReason) => {
+    if (newReason && REASONS_CONFIG[newReason]) {
+        const config = REASONS_CONFIG[newReason];
+
+        // Remplissage automatique
+        form.category = config.category;
+        form.technical_complexity = config.complexity;
+        form.priority = config.priority;
+        form.min_time_hours = config.min;
+        form.max_time_hours = config.max;
+
+        toast.add({
+            severity: 'info',
+            summary: 'Auto-configuration',
+            detail: `Paramètres appliqués pour : ${newReason}`,
+            life: 2000
+        });
+    }
+});
+const interventionStatuses = ref( ['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'Non validé']);
 </script>
 
 <template>
     <AppLayout>
-        <Head title="Gestion des Interventions" />
+        <Head :title="t('interventions.title')" />
         <Toast />
 
         <div class="quantum-v11-container p-4 lg:p-8 bg-[#f8fafc] min-h-screen">
 
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div class="flex items-center gap-4">
+                <div class="flex h-16 w-16 items-center justify-center rounded-[1rem] bg-primary-600 shadow-xl shadow-primary-200">
+                        <i class="pi pi-map-marker text-2xl text-white"></i>
+                    </div>
                 <div>
-                    <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
-                        Interventions <span class="text-indigo-600">Field Service</span>
+                    <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase" v-html="t('interventions.headTitle')">
                     </h1>
-                    <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">Opérations & Maintenance Réseau</p>
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">{{ t('interventions.subtitle') }}</p>
+                </div>
                 </div>
                 <div class="flex gap-2">
-                    <Button label="Nouvelle Intervention" icon="pi pi-plus"
-                            class="p-button-indigo shadow-lg shadow-indigo-200" @click="openCreate" />
+                    <Button :label="t('interventions.addNew')" icon="pi pi-plus"
+                            class=" shadow-lg shadow-primary-200" @click="openCreate" />
                 </div>
             </div>
 
-            <div class="bg-white/70 backdrop-blur-md border border-white shadow-sm rounded-2xl p-4 mb-6">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex gap-2">
-                        <IconField iconPosition="left">
-                            <InputIcon class="pi pi-search" />
-                            <InputText v-model="search" placeholder="Rechercher une référence..."
-                                       class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="applyFilters" />
-                        </IconField>
-                        <Button icon="pi pi-filter" :label="activeFiltersCount > 0 ? activeFiltersCount.toString() : 'Filtres'" badgeClass="p-badge-danger" :badge="activeFiltersCount > 0 ? activeFiltersCount.toString() : null"
-                                class="p-button-text p-button-secondary p-button-sm font-bold" @click="opFilters.toggle($event)" />
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <Button v-if="selectedItems.length" icon="pi pi-trash" label="Supprimer"
-                                class="p-button-danger p-button-text p-button-sm animate-fadein" @click="deleteDialog = true" />
-                        <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div v-for="(val, key) in stats" :key="key" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <div class="flex flex-column gap-2">
+                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ statLabels[key] }}</span>
+                        <div class="flex items-center justify-between">
+                            <span class="text-3xl font-black text-slate-800">{{ val }}</span>
+                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                <i :class="key === 'totalMW' ? 'pi pi-bolt' : 'pi pi-database'" class="text-slate-400"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
                 <DataTable :value="formattedList" v-model:selection="selectedItems" dataKey="id"
                            :rows="10" paginator class="p-datatable-sm quantum-table"
-                           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
-                           currentPageReportTemplate="{first} à {last} sur {totalRecords}">
+                           :paginatorTemplate="t('dataTable.paginatorTemplate')"
+                           :currentPageReportTemplate="t('interventions.table.report')">
+                    <template #header>
 
+                        <div class="flex flex-wrap justify-between items-center gap-4 p-2 w-full">
+                             <div class="flex gap-2">
+                        <IconField iconPosition="left">
+                            <InputIcon class="pi pi-search" />
+                            <InputText v-model="search" :placeholder="t('interventions.searchPlaceholder')"
+                                       class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="applyFilters" />
+                        </IconField>
+                        <Button icon="pi pi-filter" :label="activeFiltersCount > 0 ? activeFiltersCount.toString() : t('interventions.filters')" badgeClass="p-badge-danger" :badge="activeFiltersCount > 0 ? activeFiltersCount.toString() : null"
+                                class="p-button-text p-button-secondary p-button-sm font-bold" @click="opFilters.toggle($event)" />
+                    </div>
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2">
+                        <Button v-if="selectedItems.length" icon="pi pi-trash" :label="t('interventions.deleteSelected')"
+                                class="p-button-danger p-button-text p-button-sm animate-fadein" @click="deleteDialog = true" />
+                        <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
+                    </div>
+                                <MultiSelect v-model="selectedColumnFields" :options="allColumns" optionLabel="header" optionValue="field"
+                             display="chip" class="w-64 quantum-multiselect" />
+                            </div>
+                        </div>
+                    </template>
                     <Column selectionMode="multiple" headerStyle="width: 3rem" />
 
-                    <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable">
+                    <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable" :pt="{ header: { class: 'whitespace-nowrap' } }">
                         <template #header>
                             <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">{{ col.header }}</span>
                         </template>
@@ -216,152 +352,222 @@ export default {
                                 <span class="text-xs font-medium">{{ data.priority }}</span>
                             </div>
 
+                            <Tag v-else-if="field === 'technical_complexity'" :value="data.technical_complexity"
+                                 :severity="getComplexitySeverity(data.technical_complexity)" class="text-[9px] px-2" />
+
+                            <span v-else-if="field === 'scheduled_date' || field === 'completed_date'" class="text-slate-600 text-sm font-mono">{{ data[field] ? new Date(data[field]).toLocaleDateString() : '-' }}</span>
+
                             <div v-else-if="field === 'assigned_to_name'" class="flex items-center gap-2">
-                                <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                                <div class="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-[10px] font-bold text-primary-600">
                                     {{ data.assigned_to_name.charAt(0) }}
                                 </div>
                                 <span class="text-xs">{{ data.assigned_to_name }}</span>
                             </div>
 
-                            <span v-else class="text-slate-600 text-sm">{{ data[field] }}</span>
+                            <span v-else class="text-slate-600 text-sm truncate" :title="data[field]">{{ data[field] }}</span>
                         </template>
                     </Column>
 
-                    <Column header="Actions" headerStyle="width: 5rem">
+                    <Column :header="t('interventions.table.actions')" headerStyle="width: 5rem">
                         <template #body="{ data }">
                             <Button icon="pi pi-arrow-right" class="p-button-rounded p-button-text p-button-secondary"
-                                    @click="openEdit(data)" v-tooltip.left="'Gérer'" />
+                                    @click="openEdit(data)" v-tooltip.left="t('interventions.tooltips.manage')" />
                         </template>
                     </Column>
                 </DataTable>
             </div>
         </div>
 
-        <Dialog v-model:visible="isModalOpen" modal :header="form.id ? 'Détails Intervention' : 'Création de Ticket'"
-                class="quantum-dialog w-full max-w-4xl" :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
+        <Dialog v-model:visible="isModalOpen" modal :header="false" :closable="false"
+                class="quantum-dialog w-full max-w-6xl" :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
 
-            <div class="px-8 py-4 bg-slate-900 text-white flex justify-between items-center shadow-lg relative z-50">
+            <div class="px-8 py-4 bg-slate-900 rounded-xl text-white flex justify-between items-center shadow-lg relative z-50">
                 <div class="flex items-center gap-4">
                     <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
                         <i class="pi pi-shield text-blue-400 text-xl"></i>
                     </div>
                     <div class="flex flex-col">
-                        <h2 class="text-sm font-black uppercase tracking-widest text-white leading-none">{{ form.id ? 'Détails Intervention' : 'Création de Ticket' }}</h2>
-                        <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1 italic">Console d'administration GMAO v2025</span>
+                        <h2 class="text-sm font-black uppercase tracking-widest text-white leading-none">{{ form.id ? t('interventions.dialog.editTitle') : t('interventions.dialog.createTitle') }}</h2>
+                        <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1 italic">{{ t('interventions.dialog.gmaoConsole') }}</span>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-6">
 
-                    <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="isModalOpen = false" class="text-white hover:bg-white/10" />
+                   <div class="flex items-center gap-6">
+                <div class="flex flex-col items-end mr-4">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase mb-1">Status de l'intervention</span>
+                    <SelectButton v-model="form.status" :options="interventionStatuses" class="p-selectbutton-sm custom-dark-priority" />
                 </div>
+                <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="isModalOpen = false" class="text-white hover:bg-white/10" />
+            </div>
             </div>
 
+
             <div class="p-2">
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    <div class="md:col-span-7 space-y-6">
-                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-3">Origine de la demande</label>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
+                    <div class="md:col-span-4 space-y-4">
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 h-full">
+                            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-3">{{ t('interventions.dialog.origin') }}</label>
                             <div class="flex gap-4">
                                 <div class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3"
-                                     :class="requester_type === 'client' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white'"
+                                     :class="requester_type === 'client' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-200 bg-white'"
                                      @click="requester_type = 'client'">
                                     <i class="pi pi-users"></i>
-                                    <span class="text-xs font-bold">Client Externe</span>
+                                    <span class="text-xs font-bold">{{ t('interventions.dialog.externalClient') }}</span>
                                 </div>
                                 <div class="flex-1 p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3"
-                                     :class="requester_type === 'agent' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white'"
+                                     :class="requester_type === 'agent' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-200 bg-white'"
                                      @click="requester_type = 'agent'">
                                     <i class="pi pi-user"></i>
-                                    <span class="text-xs font-bold">Agent Interne</span>
+                                    <span class="text-xs font-bold">{{ t('interventions.dialog.internalAgent') }}</span>
                                 </div>
                             </div>
 
                             <div class="mt-4">
+
                                 <Dropdown v-model="form.requested_by_connection_id" :options="connectionsList"
-                                          optionLabel="search_label" optionValue="id" filter placeholder="Rechercher..."
+                                          optionLabel="search_label" optionValue="id" filter :placeholder="t('interventions.dialog.searchPlaceholder')"
                                           class="w-full quantum-input" v-if="requester_type === 'client'" />
                                 <Dropdown v-model="form.requested_by_user_id" :options="props.users"
                                           optionLabel="name" optionValue="id" filter class="w-full quantum-input" v-else />
                             </div>
                         </div>
+                    </div>
 
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 mb-1 block">Sujet / Description</label>
-                                <InputText v-model="form.title" class="w-full font-bold mb-2" readonly placeholder="Référence auto" />
-                                <textarea v-model="form.description" rows="4"
-                                          class="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm"
-                                          placeholder="Expliquez le problème technique ici..."></textarea>
+                    <div class="md:col-span-4 space-y-4">
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-3">{{ t('interventions.dialog.subjectDescription') }}</label>
+                            <InputText v-model="form.title" class="w-full font-bold mb-2" readonly :placeholder="t('interventions.dialog.autoReference')" />
+                            <Textarea v-model="form.description" rows="4"
+                                      class="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500 text-sm"
+                                      :placeholder="t('interventions.dialog.problemPlaceholder')"></Textarea>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-3">{{  t('interventions.dialog.classification') }}</label>
+                            <div class="space-y-4">
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] font-bold uppercase text-slate-500">{{  t('interventions.dialog.interventionReason') }}</label>
+                                    <Dropdown
+    v-model="form.intervention_reason"
+    :options="Object.keys(REASONS_CONFIG)"
+    placeholder="Sélectionner une raison"
+    class="w-full"
+    filter
+/></div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[9px] font-bold uppercase text-slate-500">{{  t('interventions.dialog.category') }}</label>
+                                        <Dropdown v-model="form.category" :options="props.categories" class="w-full" />
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[9px] font-bold uppercase text-slate-500">{{  t('interventions.dialog.priority') }}</label>
+                                        <Dropdown v-model="form.priority" :options="props.priorities" class="w-full" />
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] font-bold uppercase text-slate-500">Complexité Technique</label>
+                                    <Dropdown v-model="form.technical_complexity" :options="props.technicalComplexities" class="w-full" />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="md:col-span-5 space-y-4">
-                        <div class="p-4 bg-indigo-900 rounded-2xl text-white shadow-xl">
-                            <h4 class="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Assignation & Délai</h4>
-                            <div class="space-y-4">
+                    <div class="md:col-span-4 space-y-4">
+                        <div class="p-4 bg-slate-900 rounded-xl text-white shadow-xl">
+                            <h4 class="text-xs font-black uppercase tracking-widest mb-4 opacity-70">{{ t('interventions.dialog.assignmentDeadline') }}</h4>
+                            <div class="space-y-3">
                                 <div class="flex flex-col gap-1">
-                                    <label class="text-[9px] font-bold uppercase">Assigné à</label>
-                                    <Dropdown v-model="form.assignable_id" :options="getAssignables(form.assignable_type)"
-                                              optionLabel="name" optionValue="id" class="w-full bg-white/10 border-none text-white rounded-lg" />
+                                    <label class="text-[9px] font-bold uppercase">Type d'entité</label>
+                                    <Dropdown v-model="form.assignable_type" :options="assignableTypes" optionLabel="label" optionValue="value" class="w-full bg-white/10 border-none text-white rounded-lg" />
                                 </div>
                                 <div class="flex flex-col gap-1">
-                                    <label class="text-[9px] font-bold uppercase">Échéance</label>
-                                    <Calendar v-model="form.scheduled_date" class="w-full" />
+                                    <label class="text-[9px] font-bold uppercase">Assigné à</label>
+                                    <Dropdown v-model="form.assignable_id" :options="getAssignables(form.assignable_type)" :disabled="!form.assignable_type"
+                                              optionLabel="name" optionValue="id" filter class="w-full bg-white/10 border-none text-white rounded-lg" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-3">Planification & Suivi</label>
+                            <div class="space-y-4">
+                             <div class="grid grid-cols-2 gap-x-4 mb-4 w-full">
+
+    <div class="flex flex-col gap-1.5 min-w-0"> <label class="text-[9px] font-bold uppercase text-slate-500 tracking-wider truncate">
+            Temps Min (h)
+        </label>
+        <InputNumber v-model="form.min_time_hours" class="w-full" inputClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1.5 min-w-0">
+        <label class="text-[9px] font-bold uppercase text-slate-500 tracking-wider truncate">
+            Temps Max (h)
+        </label>
+        <InputNumber v-model="form.max_time_hours" class="w-full" inputClass="w-full" />
+    </div>
+
+</div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] font-bold uppercase">{{ t('interventions.dialog.deadline') }}</label>
+                                    <Calendar v-model="form.scheduled_date" class="w-full" dateFormat="yy-mm-dd" />
                                 </div>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2">
                              <div class="p-3 bg-slate-100 rounded-xl text-center">
-                                <span class="block text-[8px] font-black uppercase text-slate-400">Région</span>
-                                <span class="text-[10px] font-bold">{{ props.regions.find(r => r.id === form.region_id)?.designation || 'N/A' }}</span>
+                                <span class="block text-[8px] font-black uppercase text-slate-400">{{ t('interventions.dialog.region') }}</span>
+                                <span class="text-[10px] font-bold">{{ props.regions.find(r => r.id === form.region_id)?.designation || t('interventions.notApplicable') }}</span>
                              </div>
                              <div class="p-3 bg-slate-100 rounded-xl text-center">
-                                <span class="block text-[8px] font-black uppercase text-slate-400">Zone</span>
-                                <span class="text-[10px] font-bold">{{ props.zones.find(z => z.id === form.zone_id)?.title || 'N/A' }}</span>
+                                <span class="block text-[8px] font-black uppercase text-slate-400">{{ t('interventions.dialog.zone') }}</span>
+                                <span class="text-[10px] font-bold">{{ props.zones.find(z => z.id === form.zone_id)?.title || t('interventions.notApplicable') }}</span>
                              </div>
                         </div>
                     </div>
+ <div class="md:col-span-12 flex items-center gap-2 mt-4">
+ <Checkbox v-model="form.is_validated" :binary="true" inputId="is_validated" />
+ <label for="is_validated" class="text-sm font-medium text-slate-700">
+ {{ t('interventions.dialog.validateIntervention') }}
+ </label>
+ </div>
+
+
                 </div>
             </div>
 
             <template #footer>
                 <div class="flex justify-between items-center w-full px-2">
-                    <Button label="Annuler" icon="pi pi-times" class="p-button-text p-button-secondary" @click="isModalOpen = false" />
-                    <Button label="Enregistrer l'Intervention" icon="pi pi-save"
-                            class="p-button-indigo px-6 shadow-lg shadow-indigo-100" @click="submit" :loading="form.processing" />
+                    <Button :label="t('interventions.dialog.cancel')" icon="pi pi-times" class="p-button-text p-button-secondary" @click="isModalOpen = false" />
+                    <Button :label="t('interventions.dialog.save')" icon="pi pi-save"
+                            class="px-6 shadow-lg shadow-primary-100" @click="submit" :loading="form.processing" />
                 </div>
             </template>
         </Dialog>
 
-        <OverlayPanel ref="op" class="quantum-overlay">
-            <div class="p-2 space-y-3">
-                <span class="text-[10px] font-black uppercase text-slate-400 block border-b pb-2">Colonnes actives</span>
-                <MultiSelect v-model="selectedColumnFields" :options="allColumns" optionLabel="header" optionValue="field"
-                             display="chip" class="w-64 quantum-multiselect" />
-            </div>
-        </OverlayPanel>
+
+
 
         <OverlayPanel ref="opFilters" class="p-4">
             <div class="space-y-4">
-                <h4 class="text-xs font-black uppercase text-slate-500">Filtres avancés</h4>
+                <h4 class="text-xs font-black uppercase text-slate-500">{{ t('interventions.filtersPanel.title') }}</h4>
                 <div class="field">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Statut</label>
-                    <Dropdown v-model="filterForm.status" :options="props.statuses" placeholder="Tous" showClear class="w-full" @change="applyFilters" />
+                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">{{ t('interventions.filtersPanel.status') }}</label>
+                    <Dropdown v-model="filterForm.status" :options="props.statuses" :placeholder="t('interventions.filtersPanel.statusPlaceholder')" showClear class="w-full" @change="applyFilters" />
                 </div>
                 <div class="field">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Région</label>
-                    <Dropdown v-model="filterForm.region_id" :options="props.regions" optionLabel="designation" optionValue="id" placeholder="Toutes" showClear filter class="w-full" @change="applyFilters" />
+                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">{{ t('interventions.filtersPanel.region') }}</label>
+                    <Dropdown v-model="filterForm.region_id" :options="props.regions" optionLabel="designation" optionValue="id" :placeholder="t('interventions.filtersPanel.regionPlaceholder')" showClear filter class="w-full" @change="applyFilters" />
                 </div>
                 <div class="field">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Priorité</label>
-                    <Dropdown v-model="filterForm.priority" :options="props.priorities" placeholder="Toutes" showClear class="w-full" @change="applyFilters" />
+                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">{{ t('interventions.filtersPanel.priority') }}</label>
+                    <Dropdown v-model="filterForm.priority" :options="props.priorities" :placeholder="t('interventions.filtersPanel.priorityPlaceholder')" showClear class="w-full" @change="applyFilters" />
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
-                    <Button label="Réinitialiser" text severity="secondary" @click="resetFilters" />
-                    <Button label="Appliquer" @click="applyFilters" />
+                    <Button :label="t('interventions.filtersPanel.reset')" text severity="secondary" @click="resetFilters" />
+                    <Button :label="t('interventions.filtersPanel.apply')" @click="applyFilters" />
                 </div>
             </div>
         </OverlayPanel>
@@ -371,7 +577,7 @@ export default {
 
 <style scoped>
 /* STYLE V11 CUSTOM TOKENS */
-.p-button-indigo {
+.p-button-primary {
     background: #4f46e5;
     border: none;
     color: white;

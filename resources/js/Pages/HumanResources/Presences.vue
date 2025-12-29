@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
@@ -16,6 +19,7 @@ import Toolbar from 'primevue/toolbar';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import MultiSelect from 'primevue/multiselect'; // Nécessaire pour les membres
+import OverlayPanel from 'primevue/overlaypanel';
 import Calendar from 'primevue/calendar'; // Nécessaire pour la date
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -33,20 +37,33 @@ const confirm = useConfirm();
 const paymentDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
-const search = ref(props.filters?.search || '');
 const selectedPayments = ref(null); // Pour la suppression multiple
-const dt = ref();
+const dt = ref(); // Référence au DataTable
+const op = ref(); // Référence à l'OverlayPanel
+
+// --- SYSTÈME DE FILTRES AVANCÉS (basé sur Regions.vue) ---
+const filters = ref();
+const initFilters = () => {
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        'payable_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        category: { value: null, matchMode: FilterMatchMode.IN },
+        status: { value: null, matchMode: FilterMatchMode.EQUALS },
+        amount: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+    };
+};
+initFilters(); // Initialiser les filtres
 
 // Colonnes dynamiques pour le DataTable
 const allColumns = ref([
     { field: 'amount', header: 'Montant', default: true },
     { field: 'payment_date', header: 'Date de Paiement', default: true },
-    { field: 'payment_method', header: 'Méthode', default: true },
-    { field: 'reference', header: 'Référence', default: true },
+    { field: 'payable_name', header: 'Payable à', default: true }, // Nom de l'entité payable
     { field: 'category', header: 'Catégorie', default: true },
     { field: 'status', header: 'Statut', default: true },
-    { field: 'paid_by_user.name', header: 'Payé par', default: true },
-    { field: 'payable_name', header: 'Payable à', default: true }, // Nom de l'entité payable
+    { field: 'paid_by_user.name', header: 'Payé par', default: false },
+    { field: 'payment_method', header: 'Méthode', default: false },
+    { field: 'reference', header: 'Référence', default: false },
     { field: 'notes', header: 'Notes', default: false },
 ]);
 const selectedColumns = ref(allColumns.value.filter(col => col.default));
@@ -229,17 +246,6 @@ const exportCSV = () => {
     dt.value.exportCSV();
 };
 
-let timeoutId = null;
-const performSearch = () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-        router.get(route('payments.index'), { search: search.value }, {
-            preserveState: true,
-            replace: true,
-        });
-    }, 300);
-};
-
 const dialogTitle = computed(() => editing.value ? 'Modifier le Paiement' : 'Créer un nouveau Paiement');
 
 </script>
@@ -265,26 +271,37 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Paiement' : 'Cr�
                         </template>
 
                         <template #end>
-                            <MultiSelect v-model="selectedColumns" :options="allColumns" optionLabel="header"
-                                placeholder="Afficher les colonnes" display="chip" class="mr-2" />
-                            <IconField class="mr-2">
-                                <InputIcon><i class="pi pi-search" /></InputIcon>
-                                <InputText v-model="search" placeholder="Rechercher..." @input="performSearch" />
-                            </IconField>
-                            <Button label="Exporter" icon="pi pi-upload" class="p-button-help" @click="exportCSV($event)" />
+                            <div class="flex items-center gap-2">
+                                <IconField class="mr-2">
+                                    <InputIcon><i class="pi pi-search" /></InputIcon>
+                                    <InputText v-model="filters['global'].value" placeholder="Rechercher..." class="p-inputtext-sm" />
+                                </IconField>
+                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="p-button-sm" />
+
+                                <Button icon="pi pi-download" label="Exporter" class="p-button-text p-button-secondary p-button-sm font-bold" @click="exportCSV" />
+                                <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
+                            </div>
                         </template>
                     </Toolbar>
+                    <OverlayPanel ref="op" class="quantum-overlay">
+                        <div class="p-2 space-y-3">
+                            <span class="text-[10px] font-black uppercase text-slate-400 block border-b pb-2">Colonnes actives</span>
+                            <MultiSelect v-model="selectedColumns" :options="allColumns" optionLabel="header" optionValue="field"
+                                         display="chip" class="w-64 quantum-multiselect" />
+                        </div>
+                    </OverlayPanel>
                     <DataTable ref="dt" :value="payments.data" dataKey="id" :paginator="true" :rows="10"
+                        v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['payable_name', 'category', 'status', 'amount']"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                         :rowsPerPageOptions="[5, 10, 25]"
                         currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} paiements"
                         responsiveLayout="scroll"
                         v-model:selection="selectedPayments">
 
-                        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+                        <Column selectionMode="multiple" headerStyle="width: 3rem" frozen></Column>
 
                         <template v-for="col in visibleColumns" :key="col.field">
-                            <Column :field="col.field" :header="col.header" :sortable="true" style="min-width: 10rem;">
+                            <Column :field="col.field" :header="col.header" :sortable="true" style="min-width: 12rem;">
                                 <template #body="slotProps">
                                     <span v-if="col.field === 'amount'">
                                         {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slotProps.data.amount) }}
@@ -292,23 +309,38 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Paiement' : 'Cr�
                                     <span v-else-if="col.field === 'payment_date'">
                                         {{ new Date(slotProps.data.payment_date).toLocaleDateString('fr-FR') }}
                                     </span>
-                                    <span v-else-if="col.field === 'status'">
+                                    <span v-else-if="col.field === 'status'" >
                                         <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" />
                                     </span>
                                     <span v-else-if="col.field === 'paid_by_user.name'">
                                         {{ slotProps.data.paid_by_user ? slotProps.data.paid_by_user.name : 'N/A' }}
                                     </span>
                                     <span v-else-if="col.field === 'payable_name'">
-                                        {{ getPayableName(slotProps.data.payable_type, slotProps.data.payable_id) }}
+                                        {{ slotProps.data.payable_name }}
                                     </span>
                                     <span v-else>
                                         {{ slotProps.data[col.field] }}
                                     </span>
                                 </template>
+
+                                <template #filter="{ filterModel }" v-if="col.field === 'status'">
+                                    <Dropdown v-model="filterModel.value" :options="paymentStatuses" optionLabel="label" optionValue="value" placeholder="Tous les statuts" class="p-column-filter" showClear>
+                                    </Dropdown>
+                                </template>
+
+                                <template #filter="{ filterModel }" v-if="col.field === 'category'">
+                                    <MultiSelect v-model="filterModel.value" :options="paymentCategories" optionLabel="label" optionValue="value" placeholder="Toutes les catégories" class="p-column-filter">
+                                    </MultiSelect>
+                                </template>
+
+                                <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'payable_name'">
+                                    <InputText v-model="filterModel.value" type="text" @keydown.enter="filterCallback()" class="p-column-filter" placeholder="Rechercher par nom"/>
+                                </template>
+
                             </Column>
                         </template>
 
-                        <Column headerStyle="min-width:10rem;" header="Actions" bodyStyle="text-align: right">
+                        <Column headerStyle="min-width:10rem;" header="Actions" bodyStyle="text-align: right" frozen alignFrozen="right">
                             <template #body="slotProps">
                                 <Button icon="pi pi-pencil" class="p-button-rounded mr-2" severity="info"
                                     @click="editPayment(slotProps.data)" />
