@@ -49,7 +49,8 @@ class EquipmentController extends Controller
         }
 
         // --- Chargement des équipements parents disponibles pour la création d'enfants ---
-        $parentEquipments = Equipment::whereNull('parent_id') // Équipements qui ne sont pas des enfants
+        $parentEquipments = Equipment::with('equipmentType', 'region')->whereNotNull('parent_id')
+
                                     // ->where('status', 'en stock') // Seulement ceux qui sont en stock
                                     // ->where('quantity', '>', 0) // Quantité disponible
                                     ->get(['id', 'tag', 'designation', 'brand', 'model', 'equipment_type_id', 'region_id', 'quantity', 'status', 'characteristics']);
