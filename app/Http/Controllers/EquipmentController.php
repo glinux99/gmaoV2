@@ -246,7 +246,7 @@ class EquipmentController extends Controller
 
             // Si le statut n'est pas "en stock", la quantité doit rester à 1
             if ($equipment->status !== 'en stock') {
-                $equipment->quantity = 1;
+                $equipment->quantity = $equipment->quantity ?? 1;
             }
 
             // Gérer les logs de changement de statut

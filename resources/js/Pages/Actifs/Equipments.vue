@@ -88,15 +88,21 @@ const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonne
 // Colonnes pour la sélection
 const allColumns = ref([
     { field: 'tag', header: computed(() => t('equipments.table.tag')) },
-    { field: 'designation', header: computed(() => t('equipments.table.designation')) },
-    { field: 'equipment_type.name', header: computed(() => t('equipments.table.type')) },
-    { field: 'brand', header: computed(() => t('equipments.table.brand')) },
-    { field: 'model', header: computed(() => t('equipments.table.model')) },
-    { field: 'region.designation', header: computed(() => t('equipments.table.region')) },
-    { field: 'status', header: computed(() => t('equipments.table.status')) },
-    { field: 'quantity', header: computed(() => t('equipments.table.quantity')) },
+    { field: 'designation', header: 'Désignation' },
+    { field: 'equipment_type.name', header: 'Type' },
+    { field: 'brand', header: 'Marque' },
+    { field: 'model', header: 'Modèle' },
+    { field: 'serial_number', header: 'N° de série' },
+    { field: 'region.designation', header: 'Région' },
+    { field: 'location', header: 'Localisation' },
+    { field: 'status', header: 'Statut' },
+    { field: 'quantity', header: 'Quantité' },
+    { field: 'price', header: 'Prix' },
+    { field: 'purchase_date', header: 'Date d\'achat' },
+    { field: 'warranty_end_date', header: 'Fin de garantie' },
+    { field: 'user.name', header: 'Responsable' }
 ]);
-const visibleColumns = ref(allColumns.value.map(col => col.field)); // Affiche toutes les colonnes par défaut
+const visibleColumns = ref(allColumns.value.slice(0, 6).map(col => col.field)); // Affiche les 6 premières par défaut
 
 const statusOptions = computed(() => [
     { label: t('equipments.statusOptions.in_service'), value: 'en service' },
@@ -597,69 +603,130 @@ defineExpose({
                 </div>
             </div>
 
-            <div class="bg-white/70 backdrop-blur-md border border-white shadow-sm rounded-2xl p-4 mb-6">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex gap-2 items-center">
-                        <IconField iconPosition="left">
-                            <InputIcon class="pi pi-search" />
-                            <InputText v-model="search" :placeholder="t('equipments.searchPlaceholder')"
-                                       class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="performSearch" />
-                        </IconField>
-                        <Button v-if="showBulkDeleteButton" :label="deleteButtonLabel" icon="pi pi-trash" severity="danger"
-                                class="p-button-sm" @click="confirmDeleteSelected" :disabled="bulkDeleteButtonIsDisabled" />
+            <!-- Section des statistiques -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-box text-2xl text-slate-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ equipmentStats.total }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Équipements</div>
                     </div>
-
-                    <div class="flex items-center gap-2">
-                        <Button icon="pi pi-download" :label="t('equipments.export')"
-                                class="p-button-text p-button-secondary p-button-sm font-bold" @click="exportCSV" />
-                        <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-green-50 flex items-center justify-center"><i class="pi pi-check-circle text-2xl text-green-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ equipmentStats.in_service }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Service</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-red-50 flex items-center justify-center"><i class="pi pi-exclamation-triangle text-2xl text-red-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ equipmentStats.down }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Panne</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-sky-50 flex items-center justify-center"><i class="pi pi-inbox text-2xl text-sky-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ equipmentStats.in_stock }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Stock</div>
                     </div>
                 </div>
             </div>
 
+
+
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
                 <DataTable :value="equipments.data" ref="dt" dataKey="id" v-model:selection="selectedEquipments" :paginator="true" :rows="10"
-                           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['tag', 'designation', 'equipment_type.name', 'region.designation', 'status']" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
                            :currentPageReportTemplate="t('equipments.table.report')"
                            class="p-datatable-sm quantum-table">
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
+                    <template #header>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('equipments.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                            </IconField>
+                            <div class="flex items-center gap-2">
+                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
+                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" v-tooltip.bottom="t('common.export')" />
+                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="'Colonnes'" />
+                            </div>
+                        </div>
+                    </template>
+
                     <Column v-if="visibleColumns.includes('tag')" field="tag" :header="t('equipments.table.tag')" :sortable="true" style="min-width: 8rem;">
                         <template #body="{ data }">
                             <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{{ data.tag }}</span>
                         </template>
+                        <template #filter="{ filterModel }"><InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('equipments.table.filter.tag')" /></template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('designation')" field="designation" :header="t('equipments.table.designation')" :sortable="true" style="min-width: 12rem;">
                         <template #body="{ data }">
                             <div class="font-bold text-slate-800 tracking-tight cursor-pointer" @click="editEquipment(data)">{{ data.designation }}</div>
                         </template>
+                        <template #filter="{ filterModel }"><InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('equipments.table.filter.designation')" /></template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('equipmentType.name')" field="equipmentType.name" :header="t('equipments.table.type')" :sortable="true" style="min-width: 10rem;">
+                    <Column v-if="visibleColumns.includes('equipment_type.name')" field="equipment_type.name" :header="t('equipments.table.type')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
                             <span v-if="slotProps.data.parent_id && slotProps.data.parent">{{ slotProps.data.parent.equipment_type?.name }}</span>
                             <span v-else>{{ slotProps.data.equipment_type?.name }}</span>
                         </template>
+                        <template #filter="{ filterModel }"><InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('equipments.table.filter.type')" /></template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('brand')" field="brand" :header="t('equipments.table.brand')" :sortable="true" style="min-width: 8rem;"></Column>
                     <Column v-if="visibleColumns.includes('model')" field="model" :header="t('equipments.table.model')" :sortable="true" style="min-width: 8rem;"></Column>
 
+                    <Column v-if="visibleColumns.includes('serial_number')" field="serial_number" header="N° de série" :sortable="true" style="min-width: 10rem;"></Column>
+
                     <Column v-if="visibleColumns.includes('region.designation')" field="region.designation" :header="t('equipments.table.region')" :sortable="true" style="min-width: 8rem;">
                         <template #body="slotProps">{{ slotProps.data.region?.designation }}</template>
+                        <template #filter="{ filterModel }"><InputText v-model="filterModel.value" type="text" class="p-column-filter" :placeholder="t('equipments.table.filter.region')" /></template>
                     </Column>
+
+                    <Column v-if="visibleColumns.includes('location')" field="location" header="Localisation" :sortable="true" style="min-width: 10rem;"></Column>
 
                     <Column v-if="visibleColumns.includes('status')" field="status" :header="t('equipments.table.status')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
-                            <Tag :value="t(`equipments.statusOptions.${slotProps.data.status.replace(/ /g, '_')}`)" :severity="getStatusSeverity(slotProps.data.status)" class="uppercase text-[9px] px-2" />
+                            <Tag :value="t(`equipments.statusOptions.${slotProps.data.status.replace(/ /g, '_')}`, slotProps.data.status)" :severity="getStatusSeverity(slotProps.data.status)" class="uppercase text-[9px] px-2" />
                         </template>
+                        <template #filter="{ filterModel }"><Dropdown v-model="filterModel.value" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('equipments.table.filter.status')" class="p-column-filter" showClear /></template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('quantity')" field="quantity" :header="t('equipments.table.quantity')" :sortable="true" style="min-width: 8rem;">
                         <template #body="slotProps">
-                            {{ slotProps.data.status === 'en stock' ? slotProps.data.quantity : 'N/A' }}
+                            {{ slotProps.data.quantity }}
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('price')" field="price" header="Prix" :sortable="true" style="min-width: 8rem;">
+                        <template #body="{ data }">
+                            {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(data.price) }}
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('purchase_date')" field="purchase_date" header="Date d'achat" :sortable="true" style="min-width: 10rem;">
+                        <template #body="{ data }">
+                            {{ data.purchase_date ? new Date(data.purchase_date).toLocaleDateString() : '' }}
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('warranty_end_date')" field="warranty_end_date" header="Fin de garantie" :sortable="true" style="min-width: 10rem;">
+                        <template #body="{ data }">
+                            {{ data.warranty_end_date ? new Date(data.warranty_end_date).toLocaleDateString() : '' }}
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('user.name')" field="user.name" header="Responsable" :sortable="true" style="min-width: 10rem;">
+                        <template #body="slotProps">
+                            {{ slotProps.data.user?.name }}
                         </template>
                     </Column>
 
@@ -675,13 +742,7 @@ defineExpose({
             </div>
         </div>
 
-        <OverlayPanel ref="op" class="quantum-overlay">
-            <div class="p-2 space-y-3">
-                <span class="text-[10px] font-black uppercase text-slate-400 block border-b pb-2">Colonnes actives</span>
-                <MultiSelect v-model="visibleColumns" :options="allColumns" optionLabel="header" optionValue="field"
-                             display="chip" class="w-64 quantum-multiselect" />
-            </div>
-        </OverlayPanel>
+
 
 
 

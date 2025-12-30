@@ -148,7 +148,8 @@
                 "designation": "Filtrer par désignation",
                 "type": "Filtrer par type",
                 "region": "Filtrer par région",
-                "status": "Filtrer par statut"
+                "status": "Filtrer par statut",
+                "brand": "Filtrer par marque"
             },
             "actions": "Actions"
         },
@@ -239,7 +240,8 @@
             "in_stock": "En Stock",
              "en_service": "En Service",
             "en_maintenance": "En Maintenance",
-            "en_stock": "En Stock"
+            "en_stock": "En Stock",
+            "en_panne": "En Panne"
         },
         "characteristicTypes": {
             "text": "Texte",
