@@ -21,52 +21,41 @@ class EquipmentController extends Controller
     /**
      * Affiche la liste des équipements avec pagination et filtres.
      */
-    public function index()
-    {
-        $request = request();
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+ public function index()
+{
+    $request = request();
+    $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+    $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+    $search = $request->input('search');
 
-        $query = Equipment::with(['equipmentType', 'region', 'user', 'parent'])
-            ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('created_at', [$startDate, $endDate]);
-            });
+    // 1. Query pour le Tableau (avec pagination et filtres temporels)
+    $tableQuery = Equipment::with(['equipmentType', 'region', 'user', 'parent'])
+        ->whereBetween('created_at', [$startDate, $endDate]);
 
-        // --- Logique de recherche (Filtre global) ---
-        if (request()->has('search') && $search = request('search')) {
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('tag', 'like', '%' . $search . '%')
-                  ->orWhere('designation', 'like', '%' . $search . '%')
-                  ->orWhere('brand', 'like', '%' . $search . '%')
-                  ->orWhere('model', 'like', '%' . $search . '%')
-                  ->orWhere('serial_number', 'like', '%' . $search . '%')
-                  ->orWhere('location', 'like', '%' . $search . '%')
-                  // Recherche dans la relation EquipmentType
-                  ->orWhereHas('equipmentType', fn ($sq) => $sq->where('name', 'like', '%' . $search . '%'))
-                  // Recherche dans la relation Region
-                  ->orWhereHas('region', fn ($sq) => $sq->where('designation', 'like', '%' . $search . '%'));
-            });
-        }
-
-        // --- Chargement des équipements parents disponibles pour la création d'enfants ---
-        $parentEquipments = Equipment::with('equipmentType', 'region')->whereNotNull('parent_id')
-
-                                    // ->where('status', 'en stock') // Seulement ceux qui sont en stock
-                                    // ->where('quantity', '>', 0) // Quantité disponible
-                                    ->get(['id', 'tag', 'designation', 'brand', 'model', 'equipment_type_id', 'region_id', 'quantity', 'status', 'characteristics']);
-
-        return Inertia::render('Actifs/Equipments', [
-            // Correction: Ajout de withQueryString() pour conserver le filtre de recherche lors de la pagination
-            'equipments' => $query->paginate(10),
-            'filters' => request()->only(['search']),
-            'equipmentTypes' => EquipmentType::all(),
-            'regions' => Region::get(),
-            'users' => User::all(['id', 'name']),
-            'labels' => Label::with('labelCharacteristics')->get(),
-            'parentEquipments' => $parentEquipments,
-        ]);
+    if ($search) {
+        $tableQuery->where(function ($q) use ($search) {
+            $q->where('tag', 'like', "%{$search}%")
+              ->orWhere('designation', 'like', "%{$search}%")
+              ->orWhereHas('equipmentType', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
+              ->orWhereHas('region', fn($sq) => $sq->where('designation', 'like', "%{$search}%"));
+        });
     }
 
+    // 2. Query pour l'Arborescence (Besoin de TOUS les équipements pour ne pas briser les liens)
+    // On ne filtre PAS par date ici, sinon les enfants n'auront pas leurs parents si créés avant.
+    $allEquipments = Equipment::with(['equipmentType:id,name', 'region:id,designation'])
+        ->get(['id', 'tag', 'designation', 'parent_id', 'region_id', 'equipment_type_id', 'status']);
+
+    return Inertia::render('Actifs/Equipments', [
+        'equipments' => $tableQuery->paginate(10)->withQueryString(),
+        'filters' => $request->only(['search', 'start_date', 'end_date']),
+        'equipmentTypes' => EquipmentType::all(),
+        'regions' => Region::all(),
+        'users' => User::all(['id', 'name']),
+        'labels' => Label::with('labelCharacteristics')->get(),
+        'parentEquipments' => $allEquipments, // Sera utilisé pour l'OrganizationChart
+    ]);
+}
     /**
      * Crée un nouvel équipement (parent ou enfant).
      */

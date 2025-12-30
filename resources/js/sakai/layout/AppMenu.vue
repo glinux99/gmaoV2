@@ -16,8 +16,9 @@ const model = ref([
             { label: 'menu.assetManagement.inventories', icon: 'pi pi-fw pi-sync', to: '/spare-part-movements', /*can: 'inventories'*/ },
             // { label: 'Sortie', icon: 'pi pi-fw pi-arrow-circle-up', to: '/sorties', /*can: 'sorties'*/ },
             // { label: 'Entrée', icon: 'pi pi-fw pi-arrow-circle-down', to: '/entries', /*can: 'entries'*/ },
-            { label: 'menu.assetManagement.spareParts', icon: 'pi pi-fw pi-book', to: '/spare-parts', /*can: 'categories'*/ }
-       , { label: 'menu.assetManagement.equipments', icon: 'pi pi-fw pi-cog', to: '/equipments', /*can: 'equipment'*/ }
+            { label: 'menu.assetManagement.spareParts', icon: 'pi pi-fw pi-book', to: '/spare-parts', /*can: 'categories'*/ },
+            { label: 'menu.assetManagement.equipments', icon: 'pi pi-fw pi-cog', to: '/equipments', /*can: 'equipment'*/ },
+            { label: 'menu.assetManagement.networks', icon: 'pi pi-fw pi-sitemap', to: '/networks', /*can: 'equipment'*/ }
 
         ]
     },

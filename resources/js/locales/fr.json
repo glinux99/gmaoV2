@@ -72,7 +72,8 @@
             "title": "Gestion des actifs",
             "inventories": "Inventaires",
             "spareParts": "Pièces détachées",
-            "equipments": "Équipements"
+            "equipments": "Équipements",
+            "networks": "Réseaux"
         },
         "taskManagement": {
             "title": "Gestion des tâches",

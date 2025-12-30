@@ -13,10 +13,16 @@ return new class extends Migration
             $table->string('tag')->nullable();
             $table->json('characteristics')->nullable();
             $table->string('designation')->nullable();
+            $table->string('unit')->nullable();
             $table->string('brand')->nullable();
             $table->string('model')->nullable();
             // Quantité uniquement suivie pour le statut "en stock"; par défaut 1
             $table->unsignedInteger('quantity')->default(1);
+            $table->string('technical_file_url')->nullable();
+            $table->timestamp('last_maintenance_at')->nullable();
+            $table->timestamp('next_maintenance_at')->nullable();
+            $table->json('specifications')->nullable();
+
             $table->string('price')->nullable();
             $table->string('serial_number')->nullable()->unique();
             $table->enum('status', ['en service', 'en panne', 'en maintenance', 'hors service', 'en stock'])->default('en service');

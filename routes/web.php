@@ -37,6 +37,7 @@ use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTemplateController;
 use App\Http\Controllers\UnityController;
+use App\Http\Controllers\NetworkController;
 
 /*
 |--------------------------------------------------------------------------
@@ -98,6 +99,7 @@ Route::middleware('auth', 'verified')->group(function () {
     'interventions' => InterventionRequestController::class,
     'reports' => ReportController::class,
  'report-templates' => ReportTemplateController::class,
+ 'networks' => NetworkController::class,
  'analytics' => AnalyticController::class,
 
   ]);

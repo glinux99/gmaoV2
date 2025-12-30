@@ -2,24 +2,25 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
-
         $this->call([
+                // 2. Ensuite les types d'équipements (Nécessaire pour le catalogue)
+            EquipmentTypeSeeder::class,
+            // 1. D'abord les dépendances (Permission, Role, User, Region)
             PermissionSeeder::class,
             RoleSeeder::class,
             UserSeeder::class,
             RegionSeeder::class,
-            EquipmentSeed::class, // Vous pouvez commenter ou supprimer l'ancien seeder si GmaoDataSeeder le remplace
+
+
+
+            // 3. Enfin les équipements (qui utilisent tout ce qui est au-dessus)
+            EquipmentSeed::class,
         ]);
     }
 }

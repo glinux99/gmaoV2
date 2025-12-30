@@ -5,23 +5,22 @@ namespace Database\Seeders;
 use App\Models\Equipment;
 use App\Models\Label;
 use App\Models\SparePart;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\EquipmentType;
 use Illuminate\Database\Seeder;
 
 class EquipmentSeed extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Générer 20 équipements
-        Equipment::factory()->count(5)->create();
+        // Créer les types s'ils n'existent pas encore
+        if (EquipmentType::count() === 0) {
+            $this->call(EquipmentTypeSeeder::class);
+        }
 
-        // Générer 10 étiquettes
+        // Créer 20 équipements (ils piocheront au hasard dans les types)
+        Equipment::factory()->count(20)->create();
+
         Label::factory()->count(10)->create();
-
-        // Générer 20 pièces de rechange
-        SparePart::factory()->count(5)->create();
+        SparePart::factory()->count(10)->create();
     }
 }
