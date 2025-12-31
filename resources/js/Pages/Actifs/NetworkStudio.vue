@@ -74,7 +74,7 @@ const labels = ref([]); // Nouveau : gestion des étiquettes texte
 const zoomLevel = ref(0.85);
 const selectedIds = ref([]);
 const selectedConnectionId = ref(null);
-const selectedLabelId = ref(null);
+const selectedLabelIds = ref([]); // Supporte la multi-sélection de labels
 const isSidebarOpen = ref(true);
 const searchQuery = ref("");
 
@@ -286,6 +286,14 @@ const isNodeInMarquee = (node, rect) => {
     const rectBottom = rect.y + rect.height;
     return node.x < rectRight && nodeRight > rect.x && node.y < rectBottom && nodeBottom > rect.y;
 };
+
+const isLabelInMarquee = (label, rect) => {
+    const labelRight = label.x + (label.text.length * (label.fontSize / 2)); // Approximation de la largeur
+    const labelBottom = label.y + label.fontSize;
+    const rectRight = rect.x + rect.width;
+    const rectBottom = rect.y + rect.height;
+    return label.x < rectRight && labelRight > rect.x && label.y < rectBottom && labelBottom > rect.y;
+};
 // --- GESTION DES OBJETS (ADD/DELETE) ---
 const openAddModal = (item) => {
     newNodeData.tag = item.tag;
@@ -335,9 +343,10 @@ const deleteSelected = () => {
         connections.value = connections.value.filter(c => c.id !== selectedConnectionId.value);
         selectedConnectionId.value = null;
     }
-    if (selectedLabelId.value) {
-        labels.value = labels.value.filter(l => l.id !== selectedLabelId.value);
-        selectedLabelId.value = null;
+    if (selectedLabelIds.value.length) {
+        const ids = selectedLabelIds.value;
+        labels.value = labels.value.filter(l => !ids.includes(l.id));
+        selectedLabelIds.value = [];
     }
     recordState();
 };
@@ -508,23 +517,28 @@ const startMove = (e, item, type = 'node') => {
     const startY = e.clientY;
 
     // Capturer les positions initiales pour les déplacements multiples
-    const targets = type === 'node'
-        ? equipments.value.filter(n => selectedIds.value.includes(n.id))
-        : labels.value.filter(l => l.id === item.id);
+    const isMovingGroup = (type === 'node' && selectedIds.value.includes(item.id)) || (type === 'label' && selectedLabelIds.value.includes(item.id));
 
-    const initialPos = targets.map(t => ({ id: t.id, x: t.x, y: t.y }));
+    let targets = [];
+    if (isMovingGroup) {
+        targets.push(...equipments.value.filter(n => selectedIds.value.includes(n.id)));
+        targets.push(...labels.value.filter(l => selectedLabelIds.value.includes(l.id)));
+    } else {
+        targets.push(item);
+    }
+    const initialPos = targets.map(t => ({ id: t.id, x: t.x, y: t.y, type: t.text === undefined ? 'node' : 'label' }));
 
     const onMouseMove = (me) => {
-        const dx = (me.clientX - startX) / zoomLevel.value;
+        const dx = (me.clientX - startX) / zoomLevel.value; // Calculer le delta en tenant compte du zoom
         const dy = (me.clientY - startY) / zoomLevel.value;
 
         initialPos.forEach(pos => {
             const current = type === 'node'
-                ? equipments.value.find(n => n.id === pos.id)
+                ? equipments.value.find(n => n.id === pos.id) // Cette partie est maintenant simplifiée par la nouvelle logique
                 : labels.value.find(l => l.id === pos.id);
 
             if (current) {
-                current.x = Math.round((pos.x + dx) / 5) * 5;
+                current.x = Math.round((pos.x + dx) / 5) * 5; // Magnétisme à la grille (5px)
                 current.y = Math.round((pos.y + dy) / 5) * 5;
             }
         });
@@ -542,7 +556,7 @@ const startMove = (e, item, type = 'node') => {
 
 const handleSelection = (e, item, type) => {
     if (type === 'node') {
-        selectedLabelId.value = null;
+        selectedLabelIds.value = [];
         selectedConnectionId.value = null;
         if (e.shiftKey) {
             // Mode multi-sélection (Maj)
@@ -559,9 +573,16 @@ const handleSelection = (e, item, type) => {
             }
         }
     } else if (type === 'label') {
-        selectedLabelId.value = item.id;
         selectedIds.value = [];
         selectedConnectionId.value = null;
+        if (e.shiftKey) {
+            const index = selectedLabelIds.value.indexOf(item.id);
+            if (index > -1) selectedLabelIds.value.splice(index, 1);
+            else selectedLabelIds.value.push(item.id);
+        } else {
+            if (!selectedLabelIds.value.includes(item.id))
+                selectedLabelIds.value = [item.id];
+        }
     }
 };
 
@@ -571,7 +592,7 @@ const handleCanvasMouseDown = (e) => {
 
     selectedIds.value = [];
     selectedConnectionId.value = null;
-    selectedLabelId.value = null;
+    selectedLabelIds.value = [];
 
     const rect = e.currentTarget.getBoundingClientRect();
     marquee.active = true;
@@ -654,12 +675,13 @@ const filteredLibrary = computed(() => {
 });
 
 const updateMousePos = (e) => {
-    if (!linking.active) return;
-    const rect = document.getElementById('canvas-svg').getBoundingClientRect();
-    linking.mouseX = (e.clientX - rect.left) / zoomLevel.value;
-    linking.mouseY = (e.clientY - rect.top) / zoomLevel.value;
+    if (linking.active) {
+        const rect = document.getElementById('canvas-svg').getBoundingClientRect();
+        linking.mouseX = (e.clientX - rect.left) / zoomLevel.value;
+        linking.mouseY = (e.clientY - rect.top) / zoomLevel.value;
+    }
 
-    if (marquee.active) {
+    if (marquee.active && e.currentTarget) {
         const rect = e.currentTarget.getBoundingClientRect();
         marquee.x2 = (e.clientX - rect.left) / zoomLevel.value;
         marquee.y2 = (e.clientY - rect.top) / zoomLevel.value;
@@ -674,6 +696,9 @@ const handleMouseUp = () => {
             selectedIds.value = equipments.value
                 .filter(node => isNodeInMarquee(node, rect))
                 .map(node => node.id);
+            selectedLabelIds.value = labels.value
+                .filter(label => isLabelInMarquee(label, rect))
+                .map(label => label.id);
         }
     }
 };
@@ -969,7 +994,7 @@ const exportApiProject = () => {
             <Button icon="pi pi-tag" label="Label" @click="openNewLabelModal" class="p-button-text p-button-sm !text-slate-400" />
             <Button icon="pi pi-save" label="Enregistre" @click="exportApiProject" class="p-button-text p-button-sm !text-indigo-400" />
             <Button icon="pi pi-download" label="Export JSON" @click="exportProject" class="p-button-text p-button-sm !text-slate-400" />
-           <input type="file" id="import-file" class="hidden" accept=".json" @change="importProject" />
+            <input type="file" id="import-file" class="hidden" accept=".json" @change="importProject" />
     <Button icon="pi pi-upload" label="Importer" @click="triggerFileInput" class="p-button-text p-button-sm !text-slate-400" />
      <Button v-if="selectedIds.length > 1"
                     icon="pi pi-object-group" @click="groupSelection" class="p-button-text p-button-sm !text-amber-400" v-tooltip.bottom="'Grouper la sélection'" />
@@ -997,7 +1022,7 @@ const exportApiProject = () => {
       </div>
     </header>
 
-    <div class="flex-grow flex relative">
+    <div class="flex-grow flex relative overflow-hidden">
       <aside :class="['bg-[#0a0f1d] border-r border-white/5 flex flex-col z-50 transition-all duration-300', isSidebarOpen ? 'w-72' : 'w-0 overflow-hidden']">
         <div class="p-4 border-b border-white/5">
             <div class="relative">
@@ -1088,7 +1113,7 @@ const exportApiProject = () => {
                :style="{ left: label.x + 'px', top: label.y + 'px', color: label.color, fontSize: label.fontSize + 'px', fontWeight: label.bold ? 'bold' : 'normal', transform: `rotate(${label.rotation || 0}deg)` }"
                @mousedown.stop="startMove($event, label, 'label')"
                @dblclick.stop="openEditLabelModal(label)"
-               :class="['absolute z-10 px-2 py-1 cursor-move whitespace-nowrap border border-transparent hover:border-white/10 rounded', selectedLabelId === label.id ? '!border-indigo-500 bg-indigo-500/10' : '']">
+               :class="['absolute z-10 px-2 py-1 cursor-move whitespace-nowrap border border-transparent hover:border-white/10 rounded', selectedLabelIds.includes(label.id) ? '!border-indigo-500 bg-indigo-500/10' : '']">
                {{ label.text }}
           </div>
 

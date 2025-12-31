@@ -39,7 +39,6 @@ const connections = ref([]);
 const labels = ref([]);
 const zoomLevel = ref(0.85);
 const showStats = ref(true);
-const mainContainer = ref(null);
 const exportContainer = ref(null);
 
 // --- LOGIQUE DE CHARGEMENT ET MAPPING ---
@@ -88,6 +87,7 @@ const loadNetwork = (network) => {
     }));
 
     labels.value = network.labels || [];
+    requestAnimationFrame(centerView);
 
     toast.add({ severity: 'info', summary: t('networks.systemUpdated'), detail: t('networks.networkLoaded', { name: network.name }), life: 2000 });
 };
@@ -185,7 +185,7 @@ const startMove = (e, item) => {
 const centerView = () => {
     if (equipments.value.length === 0) return;
 
-    const container = mainContainer.value;
+    const container = exportContainer.value;
     if (!container) return;
 
     const containerWidth = container.clientWidth;
@@ -321,7 +321,7 @@ onMounted(() => {
             </div>
 
             <div class="flex-grow flex relative overflow-hidden">
-                <main ref="exportContainer" class="flex-grow relative bg-surface-ground overflow-hidden shadow-inner scroll-smooth" @mousedown="selectedIds = []">
+                <main ref="exportContainer" class="flex-grow relative bg-surface-ground overflow-auto shadow-inner scroll-smooth" @mousedown="selectedIds = []">
                     <div :style="{ transform: `scale(${zoomLevel})`, transformOrigin: '0 0' }" class="absolute inset-0 transition-transform duration-75">
 
                         <svg id="canvas-svg" width="5000" height="5000" class="absolute inset-0 pointer-events-none">
@@ -337,6 +337,13 @@ onMounted(() => {
                                       :stroke="isWireLive(w) ? 'var(--danger-color)' : w.color"
                                       stroke-width="3.5" fill="none" class="transition-colors duration-700"
                                       :style="{ filter: isWireLive(w) ? 'url(#red-glow)' : 'none' }" />
+                                         <path :d="getOrthogonalPath(w)"
+                      :stroke="isWireLive(w) ? w.color : '#1e293b'"
+                      :stroke-width="selectedConnectionId === w.id ? 4 : 2"
+                      :stroke-dasharray="w.dash"
+                      fill="none"
+                      class="transition-all duration-500"
+                      :filter="isWireLive(w) ? 'url(#neon-glow)' : ''" />
 
                                 <g v-if="isWireLive(w)">
                                     <circle v-for="n in ELECTRON_COUNT" :key="n" r="4" fill="#81f50c" class="electron-red shadow-lg">
