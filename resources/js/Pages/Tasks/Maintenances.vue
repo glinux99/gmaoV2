@@ -34,9 +34,10 @@ const props = defineProps({
     teams: Object,
     regions: Array,
     tasks: Array, // Assumant que les tâches sont disponibles pour lier les activités
+    zones: Array,
     spareParts: Array, // Requis pour la sélection de pièces
+    networks: Array, // Ajout des réseaux
     equipmentTree: Array,
-    // Vous devrez ajouter les sous-traitants (subcontractors) ici quand ils seront disponibles
 
     // subcontractors: Array,
 });
@@ -112,6 +113,9 @@ const selectedCopyTargets = ref({}); // Will hold the selection from TreeSelect
 // État pour les groupes d'instructions dépliés/repliés
 const expandedInstructionGroups = ref({});
 
+// --- NOUVEAU : Cache pour les instructions ---
+const instructionsCache = ref({});
+
 // --- NOUVEAU : Logique pour la création d'activités ---
 const activityCreationDialog = ref(false);
 const selectedMaintenanceForActivity = ref(null);
@@ -162,6 +166,7 @@ const form = useForm({
     scheduled_end_date: null,
     estimated_duration: null,
     cost: null,
+    equipment_ids:[],
     region_id: null,
     recurrence_type: null, // Nouvelle propriété pour le type de récurrence
     recurrence_interval: null, // Intervalle pour quotidienne, trimestrielle, semestrielle, annuelle
@@ -171,8 +176,13 @@ const form = useForm({
     recurrence_month: null, // Nouvelle propriété pour le mois (pour annuel)
     reminder_days: null, // Jours de rappel avant exécution
     custom_recurrence_config: null, // Pour la récurrence personnalisée
+    placementType: null, // 'region' or 'zone'
+    zone_id: null,
+
+    network_id: null, // Ajout pour la sélection du réseau
     node_instructions: {}, // Pour les instructions spécifiques aux noeuds,
     related_equipments: {}, // Pour les équipements liés (TreeSelect model)
+    network_node_id: null, // Pour la sélection d'un seul noeud de réseau
 });
 
 // Options pour les listes déroulantes
@@ -261,6 +271,14 @@ watch(() => form.recurrence_type, (newValue) => {
     form.recurrence_month = null;
 });
 
+// Réinitialiser la région et les équipements si le réseau change
+watch(() => form.network_id, (newValue) => {
+    form.placementType = null;
+    form.region_id = null;
+    form.zone_id = null;
+    form.network_node_id = null; // Réinitialiser le noeud de réseau sélectionné
+});
+
 // Surveiller les équipements liés pour préparer les instructions de nœud
 watch(() => form.related_equipments, (newSelection, oldSelection) => {
     const newKeys = newSelection ? Object.keys(newSelection) : [];
@@ -276,25 +294,34 @@ watch(() => form.related_equipments, (newSelection, oldSelection) => {
 
 // Surveiller les équipements liés pour mettre à jour les enfants cochés par défaut
 watch(() => form.related_equipments, (newSelection) => {
-    const newSelectedChildren = {};
-    if (newSelection) {
-        const selectedKeys = Object.keys(newSelection).filter(key => newSelection[key].checked);
-        configurableNodes.value.forEach(node => {
-            if (selectedKeys.includes(node.key)) {
-                newSelectedChildren[node.key] = true;
-            }
-        });
+    // 1. Obtenir la liste des IDs d'équipements actuellement sélectionnés
+    let currentSelectedIds = [];
+    if (typeof newSelection === 'object' && newSelection !== null && !Array.isArray(newSelection)) {
+        currentSelectedIds = Object.keys(newSelection).filter(key => newSelection[key].checked).map(String);
+    } else if (Array.isArray(newSelection)) {
+        currentSelectedIds = newSelection.map(String);
     }
-    selectedChildrenForInstructions.value = newSelectedChildren;
 
-    const relevantKeys = Object.keys(newSelectedChildren);
-    Object.keys(form.node_instructions).forEach(key => {
-        if (!relevantKeys.includes(key)) {
-            delete form.node_instructions[key];
+    // 2. Parcourir le cache d'instructions
+    for (const equipmentId in instructionsCache.value) {
+        // Si un équipement du cache est dans la sélection actuelle mais pas dans le formulaire, on le restaure
+        if (currentSelectedIds.includes(equipmentId) && !form.node_instructions[equipmentId]) {
+            form.node_instructions[equipmentId] = JSON.parse(JSON.stringify(instructionsCache.value[equipmentId]));
         }
-    });
-}, { deep: true });
+    }
 
+    // 3. Mettre à jour le cache avec les nouvelles instructions saisies par l'utilisateur
+    for (const equipmentId in form.node_instructions) {
+        if (currentSelectedIds.includes(equipmentId)) {
+            instructionsCache.value[equipmentId] = JSON.parse(JSON.stringify(form.node_instructions[equipmentId]));
+        }
+    }
+
+    // 4. (Optionnel mais propre) Nettoyer les instructions du formulaire pour les équipements non sélectionnés
+    // Object.keys(form.node_instructions).forEach(key => {
+    //     if (!currentSelectedIds.includes(key)) delete form.node_instructions[key];
+    // });
+}, { deep: true });
 
 const openNew = () => {
     form.reset();
@@ -302,6 +329,8 @@ const openNew = () => {
     submitted.value = false;
     showAdvancedInstructions.value = false;
     maintenanceDialog.value = true;
+    instructionsCache.value = {}; // Vider le cache pour une nouvelle maintenance
+    form.network_node_id = null; // Réinitialiser pour le nouveau formulaire
     selectedChildrenForInstructions.value = {};
 
     // Set default scheduled dates for new maintenance
@@ -318,6 +347,7 @@ const hideDialog = () => {
 };
 
 const editMaintenance = (maintenance) => {
+    editing.value =true;
     form.id = maintenance.id;
     form.title = maintenance.title;
     form.description = maintenance.description;
@@ -325,6 +355,8 @@ const editMaintenance = (maintenance) => {
     form.assignable_id = maintenance.assignable_id;
     form.type = maintenance.type;
     form.status = maintenance.status;
+    form.network_node_id = maintenance.network_node_id;
+    form.network_id = maintenance.network_id;
     form.priority = maintenance.priority;
     form.scheduled_start_date = maintenance.scheduled_start_date ? new Date(maintenance.scheduled_start_date) : null;
     form.scheduled_end_date = maintenance.scheduled_end_date ? new Date(maintenance.scheduled_end_date) : null;
@@ -335,57 +367,89 @@ const editMaintenance = (maintenance) => {
     form.recurrence_interval = maintenance.recurrence_interval;
     form.recurrence_days = maintenance.recurrence_days || []; // Déjà un tableau grâce au cast Laravel
     form.recurrence_day_of_month = maintenance.recurrence_day_of_month;
+    form.placementType = maintenance.region_id ? 'region' : (maintenance.zone_id ? 'zone' : null);
+    form.network_id = maintenance.network_id;
+    defaultNodeID.value =form.network_node_id;
+    console.log(form.id);
+    form.related_equipments = maintenance.equipments.map(e => e.id);
+    console.log(maintenance.instructions);
+    // --- AJOUT : CHARGEMENT DES INSTRUCTIONS EXISTANTES ---
+    const groupedInstructions = {}; // Initialise l'objet pour les instructions groupées
 
-    // Transformer les équipements pour le TreeSelect
-    const relatedEquipmentsForTree = {};
-    if (maintenance.equipments) {
-        maintenance.equipments.forEach(eq => {
-            relatedEquipmentsForTree[String(eq.id)] = { checked: true, partialChecked: false };
-        });
+    // Vérifie si `maintenance.instructions` existe
+    if (maintenance.instructions) {
+        // Convertit en tableau si ce n'est pas déjà le cas (gère objet unique et tableau)
+        const instructionsArray = Array.isArray(maintenance.instructions)
+            ? maintenance.instructions
+            : [maintenance.instructions];
+
+        // Boucle sur le tableau d'instructions pour les grouper par ID d'équipement
+        for (const inst of instructionsArray) {
+            if (inst && inst.equipment_id) { // Vérifie que l'instruction et son equipment_id existent
+                const equipmentIdKey = String(inst.equipment_id);
+                if (!groupedInstructions[equipmentIdKey]) groupedInstructions[equipmentIdKey] = [];
+                groupedInstructions[equipmentIdKey].push({ ...inst });
+            }
+        }
     }
-    form.related_equipments = relatedEquipmentsForTree;
-
-    // Transformer les instructions
-    form.node_instructions = maintenance.instructions ? maintenance.instructions.reduce((acc, instruction) => {
-        const key = String(instruction.equipment_id);
-        if (!acc[key]) acc[key] = [];
-        acc[key].push({ label: instruction.label, type: instruction.type, is_required: instruction.is_required });
-        return acc;
-    }, {}) : {};
-
-    // Initialiser les enfants sélectionnés si des instructions existent
-    showAdvancedInstructions.value = false;
-    editing.value = true;
-    maintenanceDialog.value = true;
+    form.node_instructions = groupedInstructions;
+    instructionsCache.value = JSON.parse(JSON.stringify(groupedInstructions)); // Remplir le cache
+    console.log({...groupedInstructions})
+      maintenanceDialog.value = true;
 };
-
+const defaultNodeID =ref(null);
 const saveMaintenance = () => {
+      form.equipment_ids=form.related_equipments;
+
     submitted.value = true;
-    if (!form.title || Object.keys(form.related_equipments).length === 0 || !form.type) {
+    if (!form.title  || !form.type) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez remplir les champs obligatoires.', life: 3000 });
         return;
     }
 
-    // Préparer les données pour la soumission
-   // const equipmentIds = form.related_equipments ? Object.keys(form.related_equipments).filter(key => form.related_equipments[key].checked) : [];
-// Corrigé (pour garantir des nombres si les clés sont des chaînes) :
-const equipmentIds = form.related_equipments
-    ? Object.keys(form.related_equipments)
-        .filter(key => form.related_equipments[key].checked)
-        .map(key => parseInt(key, 10)) // Convertir les clés en entiers
-    : [];
-    // Dans saveMaintenance:
+    // --- NOUVELLE LOGIQUE DE PRÉPARATION DES DONNÉES ---
+    let equipmentIds = []; // Initialiser le tableau d'IDs d'équipements
+
+    // Cas 1: `related_equipments` est un objet (vient du TreeSelect)
+    if (typeof form.related_equipments === 'object' && form.related_equipments !== null && !Array.isArray(form.related_equipments)) {
+        equipmentIds = Object.keys(form.related_equipments)
+            .filter(key => form.related_equipments[key].checked) // On ne garde que les équipements cochés
+            .map(key => parseInt(key, 10)) // On convertit les clés en nombres
+            .filter(id => !isNaN(id)); // On filtre les NaN pour plus de sécurité
+    }
+    // Cas 2: `related_equipments` est un tableau (vient de la sélection simple ou de l'édition)
+    else if (Array.isArray(form.related_equipments)) {
+        equipmentIds = form.related_equipments
+            .map(id => parseInt(id, 10))
+            .filter(id => !isNaN(id));
+    }
+    // Cas 3: `related_equipments` est un seul ID (sélection simple)
+    else if (form.related_equipments) {
+        const singleId = parseInt(form.related_equipments, 10);
+        if (!isNaN(singleId)) equipmentIds = [singleId];
+    }
+
+    // --- AJOUT : Nettoyage final des instructions avant envoi ---
+    const finalInstructions = {};
+    for (const equipmentId of equipmentIds) {
+        if (form.node_instructions[equipmentId]) {
+            finalInstructions[equipmentId] = form.node_instructions[equipmentId];
+        }
+    }
 const data = {
     ...form.data(),
-    equipment_ids: equipmentIds,
+    equipment_ids: equipmentIds, // Utiliser le tableau d'IDs nettoyé
     scheduled_start_date: form.scheduled_start_date ? new Date(form.scheduled_start_date).toISOString().slice(0, 19).replace('T', ' ') : null,
     scheduled_end_date: form.scheduled_end_date ? new Date(form.scheduled_end_date).toISOString().slice(0, 19).replace('T', ' ') : null,
 };
-
+ console.log("form.equipment_ids");
+ data.node_instructions = finalInstructions; // Utiliser les instructions nettoyées
+  console.log(data);
     // Assurer que assignable_id est null si assignable_type est null
     if (!form.assignable_type) {
         data.assignable_id = null;
     }
+
     console.log(form);
     if (editing.value) {
         router.put(route('maintenances.update', form.id), data, {
@@ -393,6 +457,7 @@ const data = {
                 maintenanceDialog.value = false;
                 toast.add({ severity: 'success', summary: 'Succès', detail: 'Maintenance mise à jour avec succès.', life: 3000 });
                 form.reset();
+                instructionsCache.value = {}; // Vider le cache après succès
             },
             onError: (errors) => {
                 console.error("Erreur lors de la mise à jour de la maintenance", errors);
@@ -407,6 +472,7 @@ const data = {
             maintenanceDialog.value = false;
             toast.add({ severity: 'success', summary: 'Succès', detail: 'Maintenance créée avec succès.', life: 3000 });
             form.reset();
+            instructionsCache.value = {}; // Vider le cache après succès
         },
         onError: (errors) => {
             console.error("Erreur lors de la sauvegarde de la maintenance", errors);
@@ -544,47 +610,6 @@ const getPrioritySeverity = (priority) => {
 
 const dialogTitle = computed(() => editing.value ? t('maintenances.formDialog.editTitle') : t('maintenances.formDialog.createTitle'));
 
-// Récupère les nœuds pour lesquels on peut configurer des instructions.
-// Si un parent est sélectionné, on prend ses enfants.
-// Si un enfant est sélectionné, on le prend lui-même.
-const configurableNodes = computed(() => {
-    if (!form.related_equipments || Object.keys(form.related_equipments).length === 0) {
-        return [];
-    }
-    const selectedKeys = Object.keys(form.related_equipments).filter(key => form.related_equipments[key]);
-    const nodes = new Map();
-
-    const findNodeRecursive = (n, key) => {
-        if (n.key === key) {
-            // Si le nœud sélectionné est un parent, on ajoute ses enfants
-            if (n.children && n.children.length > 0) {
-                n.children.forEach(child => {
-                    if (!nodes.has(child.key)) {
-                        nodes.set(child.key, child);
-                    }
-                });
-            } else { // Sinon, c'est un enfant, on l'ajoute lui-même
-                if (!nodes.has(n.key)) {
-                    nodes.set(n.key, n);
-                }
-            }
-            return n;
-        }
-        if (n.children) {
-            for (const child of n.children) {
-                const found = findNodeRecursive(child, key);
-                if (found) return found;
-            }
-        }
-        return null;
-    };
-
-    selectedKeys.forEach(key => {
-        transformedEquipmentTree.value.forEach(rootNode => findNodeRecursive(rootNode, key));
-    });
-    return Array.from(nodes.values());
-});
-
 // Regroupe les nœuds configurables par leur parent direct.
 const groupedConfigurableNodes = computed(() => {
     if (!configurableNodes.value.length) {
@@ -595,7 +620,7 @@ const groupedConfigurableNodes = computed(() => {
 
     // Fonction récursive pour trouver le parent d'un nœud dans l'arbre
     const findParent = (nodes, childKey) => {
-        for (const node of nodes) {
+        for (const node of nodes) { // `nodes` ici devrait être networkNodesTree
             if (node.children && node.children.some(child => child.key === childKey)) {
                 return node;
             }
@@ -608,7 +633,7 @@ const groupedConfigurableNodes = computed(() => {
     };
 
     configurableNodes.value.forEach(node => {
-        const parent = findParent(transformedEquipmentTree.value, node.key);
+        const parent = findParent(networkNodesTree.value, node.key);
         const parentKey = parent ? parent.key : 'root'; // 'root' pour les orphelins
         const parentLabel = parent ? parent.label : t('maintenances.formDialog.parentGroupLabel');
 
@@ -643,12 +668,52 @@ const removeInstruction = (nodeKey, index) => {
     }
 };
 
-// Logique pour copier les instructions
+// --- ÉTATS ---
+
+
+/**
+ * Logique pour ouvrir le dialogue de copie des instructions
+ * @param {String|Number} sourceKey - La clé (ID) du nœud source
+ */
 const openCopyDialog = (sourceKey) => {
-    // Reset state
+    // 1. Définir la source
     sourceNodeKeyForCopy.value = sourceKey;
-    selectedCopyTargets.value = {}; // Reset selection
+
+    // 2. Réinitialiser la sélection (on repart de zéro)
+    selectedCopyTargets.value = {};
+
+    // 3. Optionnel : Pré-calculer ou filtrer les cibles pour l'affichage
+    // On exclut généralement la source elle-même de la liste des cibles possibles
+    const availableTargets = networkNodesOptions.value.filter(
+        node => String(node.value) !== String(sourceKey)
+    );
+
+    // 4. Ouvrir le dialogue
     copyInstructionsDialog.value = true;
+
+    // Feedback console pour le debug
+    console.log(`Copie initiée depuis la source : ${sourceKey}`);
+};
+
+/**
+ * Logique pour exécuter la copie (à lier à votre bouton "Confirmer")
+ */
+const confirmCopyInstructions = () => {
+    // Extraire les IDs sélectionnés (si selectedCopyTargets est un objet de clés true/false)
+    const targetIds = Object.keys(selectedCopyTargets.value).filter(
+        key => selectedCopyTargets.value[key]
+    );
+
+    if (targetIds.length === 0) {
+        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Sélectionnez au moins une destination.', life: 3000 });
+        return;
+    }
+
+    // Ici, vous appelez votre route Inertia ou votre API
+    // router.post(route('nodes.copy-instructions'), {
+    //     source_id: sourceNodeKeyForCopy.value,
+    //     target_ids: targetIds
+    // });
 };
 
 const sourceNodeForCopy = computed(() => {
@@ -680,7 +745,7 @@ const copyTargetsTree = computed(() => {
         }).filter(Boolean); // Filter out null entries
     };
 
-    return buildTree(transformedEquipmentTree.value);
+    return buildTree(networkNodesTree.value);
 });
 
 // Group copy targets by their parent
@@ -706,7 +771,7 @@ const groupedCopyTargetNodes = computed(() => {
     };
 
     validTargets.forEach(targetNode => {
-        const parent = findParent(transformedEquipmentTree.value, targetNode.key);
+        const parent = findParent(networkNodesTree.value, targetNode.key);
         if (parent) {
             if (!groups.has(parent.key)) {
                 groups.set(parent.key, {
@@ -721,6 +786,30 @@ const groupedCopyTargetNodes = computed(() => {
     return Array.from(groups.values());
 });
 
+const configurableNodes = computed(() => {
+    if (!form.related_equipments) return [];
+
+    let selectedNodeIds = [];
+
+    // Cas 1: `related_equipments` est un objet (TreeSelect)
+    if (typeof form.related_equipments === 'object' && !Array.isArray(form.related_equipments) && form.related_equipments !== null) {
+        selectedNodeIds = Object.keys(form.related_equipments).filter(key => form.related_equipments[key].checked);
+    }
+    // Cas 2: `related_equipments` est un tableau d'IDs (Dropdown `network_node_id`)
+    else if (Array.isArray(form.related_equipments)) {
+        selectedNodeIds = form.related_equipments.map(String); // Convertir les IDs en chaînes pour la comparaison
+    }
+
+    const nodes = [];
+    const findNodes = (tree) => {
+        for (const node of tree) {
+            if (selectedNodeIds.includes(String(node.id))) nodes.push(node); // Comparer avec node.id
+            if (node.children) findNodes(node.children);
+        }
+    };
+    findNodes(props.equipmentTree); // Utiliser l'arbre d'équipement brut qui contient les IDs
+    return nodes;
+});
 const copyTargetNodes = computed(() => {
     if (!sourceNodeKeyForCopy.value) return [];
     // Retourne tous les enfants cochés sauf le nœud source
@@ -799,26 +888,165 @@ const isParentIndeterminate = (group) => {
 const totalSelectedCopyTargets = computed(() => {
     return Object.keys(selectedCopyTargets.value).filter(k => selectedCopyTargets.value[k]).length;
 });
-// Transformation de l'arbre d'équipements pour TreeSelect
-const transformedEquipmentTree = computed(() => {
-    if (!props.equipmentTree || typeof props.equipmentTree !== 'object') {
-        return [];
-    }
 
-    const transformNode = (node) => {
-        if (!node) return null;
-        return {
-            key: String(node.id),
-            label: node.label,
-            icon: 'pi pi-fw pi-cog',
-            children: node.children ? node.children.map(transformNode).filter(n => n) : []
-        };
-    };
+const availableRegions = computed(() => {
+    if (!form.network_id) return props.regions;
 
-    // Convertir l'objet de premier niveau en tableau et transformer chaque nœud
-    return Object.values(props.equipmentTree).map(transformNode).filter(n => n);
+    const selectedNetwork = props.networks.find(n => n.id === form.network_id);
+    if (!selectedNetwork || !selectedNetwork.nodes) return [];
+
+    const regionIds = new Set(selectedNetwork.nodes.filter(node => node.region_id).map(node => node.region_id));
+    return props.regions.filter(region => regionIds.has(region.id));
 });
 
+const availableZones = computed(() => {
+    if (!form.network_id) return props.zones;
+
+    const selectedNetwork = props.networks.find(n => n.id === form.network_id);
+    if (!selectedNetwork || !selectedNetwork.nodes) return [];
+
+    const zoneIds = new Set(selectedNetwork.nodes.filter(node => node.zone_id).map(node => node.zone_id));
+    return props.zones.filter(zone => zoneIds.has(zone.id));
+});
+
+const networkNodesTree = computed(() => {
+    if (!form.network_id) return [];
+
+    const selectedNetwork = props.networks.find(n => n.id === form.network_id);
+    if (!selectedNetwork || !selectedNetwork.nodes) return [];
+
+    // 1. Initialisation des Maps sécurisée
+    const equipmentMap = new Map((props.equipments ?? []).map(e => [e.id, e]));
+    const regionMap = new Map((props.regions ?? []).map(r => [r.id, r]));
+    const zoneMap = new Map((props.zones ?? []).map(z => [z.id, z]));
+
+    const regionNodes = new Map();
+
+    // 2. Filtrage des nœuds uniques
+    const seen = new Set();
+    const uniqueNodes = selectedNetwork.nodes.filter(node => {
+        const uniqueKey = `${node.equipment_id}-${node.region_id}-${node.zone_id}`;
+        if (seen.has(uniqueKey)) return false;
+        seen.add(uniqueKey);
+        return true;
+    });
+
+    // 3. Construction de l'arbre
+    uniqueNodes.forEach(node => {
+        const region = regionMap.get(node.region_id);
+        const zone = zoneMap.get(node.zone_id);
+        const equipment = equipmentMap.get(node.equipment_id);
+
+        // Si on n'a pas de région, on ne peut pas classer l'élément dans l'arbre
+        if (!region) return;
+
+        // Création de la Région si inexistante
+        if (!regionNodes.has(region.id)) {
+            regionNodes.set(region.id, {
+                key: `region-${region.id}`,
+                label: region.designation || region.name || 'Région sans nom',
+                selectable: false,
+                children: new Map(), // On utilise une Map temporaire pour les zones
+            });
+        }
+
+        const regionNode = regionNodes.get(region.id);
+
+        // Cas : On a un équipement
+        if (equipment) {
+            const zoneKey = zone ? `zone-${zone.id}` : 'no-zone';
+            const zoneLabel = zone ? (zone.title || zone.name || 'Zone sans titre') : 'Hors zone';
+
+            // Création de la Zone sous la Région si inexistante
+            if (!regionNode.children.has(zoneKey)) {
+                regionNode.children.set(zoneKey, {
+                    key: zoneKey,
+                    label: zoneLabel,
+                    selectable: false,
+                    children: []
+                });
+            }
+
+            // Construction du label final : "Nom Equipement / Nom Zone"
+            // On utilise equipment.tag ou equipment.designation selon votre structure
+            const eqName = equipment.designation || equipment.name || equipment.tag || 'Équipement inconnu';
+            const finalLabel = zone ? `${eqName} / ${zoneLabel}` : eqName;
+
+            regionNode.children.get(zoneKey).children.push({
+                key: String(node.id),
+                label: finalLabel,
+                data: node // Optionnel: garder les infos du noeud
+            });
+        }
+    });
+
+    // 4. Conversion des Maps en Tableaux pour le Tree de PrimeVue
+    return Array.from(regionNodes.values()).map(region => ({
+        ...region,
+        children: Array.from(region.children.values())
+    }));
+});
+const networkNodesOptions = computed(() => {
+    if (!form.network_id) return [];
+
+    const selectedNetwork = props.networks.find(n => n.id === form.network_id);
+    if (!selectedNetwork || !selectedNetwork.nodes) return [];
+
+    const equipmentMap = new Map((props.equipments ?? []).map(e => [e.id, e]));
+    const regionMap = new Map((props.regions ?? []).map(r => [r.id, r]));
+    const zoneMap = new Map((props.zones ?? []).map(z => [z.id, z]));
+
+    // Utilisation d'un Set pour garantir l'unicité visuelle si nécessaire
+    return selectedNetwork.nodes.map(node => {
+        const equipment = equipmentMap.get(node.equipment_id);
+        const region = regionMap.get(node.region_id);
+        const zone = zoneMap.get(node.zone_id);
+
+        const eqLabel = equipment?.designation || equipment?.tag || 'Équipement sans nom';
+        const zoneLabel = zone?.title || zone?.name || 'Zone indéfinie';
+        const regionLabel = region?.designation || region?.name || 'Région indéfinie';
+
+        return {
+            value: node.id,
+            label: `${eqLabel} / ${zoneLabel} / ${regionLabel}`
+        };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+});
+
+// IMPORTANT : Si vous passez du MultiSelect au Dropdown,
+// réinitialisez la valeur si c'est un tableau
+watch(() => form.network_id, () => {
+    form.network_node_id = defaultNodeID.value;
+});
+// Surveillance du changement de réseau
+// On surveille le changement du nœud spécifique sélectionné
+watch(() => form.network_node_id, (newNodeId) => {
+    // Si on désélectionne le nœud, on vide les équipements liés (ou on garde selon votre besoin)
+    if (!newNodeId) {
+        form.related_equipments = [];
+        return;
+    }
+
+    // 1. Trouver le réseau actif pour chercher dedans
+    const selectedNetwork = props.networks.find(n => n.id === form.network_id);
+
+    if (selectedNetwork && selectedNetwork.nodes) {
+        // 2. Trouver le nœud correspondant à l'ID sélectionné
+        const activeNode = selectedNetwork.nodes.find(node => node.id === newNodeId);
+
+        if (activeNode && activeNode.equipment_id) {
+            // 3. Mettre à jour le tableau related_equipments avec l'ID de l'équipement pur
+            // On utilise un tableau car vous avez précisé que c'est un Array au départ
+            form.related_equipments = [activeNode.equipment_id];
+            form.equipment_ids=[];
+            form.equipment_ids.push(activeNode.equipment_id);
+            form.region_id = activeNode.region_id;
+
+            console.log(`Équipement ID ${activeNode.equipment_id} lié automatiquement au nœud ${newNodeId}`);
+        }
+    }
+}, { immediate: true });
+// Mettre à jour form.related_equipments lorsque network_node_id change
 
 </script>
 
@@ -1214,21 +1442,28 @@ const transformedEquipmentTree = computed(() => {
         class="quantum-dialog w-full max-w-7xl"
         :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
 
- <div class="px-8 py-5 bg-slate-900 rounded-xl text-white flex justify-between items-center relative z-50">
- <div class="flex items-center gap-4">
- <div class="p-2.5 bg-primary-500/20 rounded-xl border border-primary-500/30">
- <i :class="['pi pi-shield', 'text-primary-400 text-xl']"></i>
- </div>
- <div class="flex flex-col">
- <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">
- {{ t('maintenances.formDialog.technicalReportTitle') }}
- </h2>
- <span class="text-[9px] text-primary-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">
- {{ t('maintenances.formDialog.gmaoConsole') }}
- </span>
- </div>
- </div>
- <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
+ <div class="px-8 py-4 bg-slate-900 rounded-xl text-white flex justify-between items-center shadow-lg relative z-50">
+    <div class="flex items-center gap-4">
+        <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+            <i class="pi pi-shield text-blue-400 text-xl"></i>
+        </div>
+        <div class="flex flex-col">
+            <h2 class="text-sm font-black uppercase tracking-widest text-white leading-none">
+                {{ editing ? t('maintenances.formDialog.editTitle') : t('maintenances.formDialog.createTitle') }}
+            </h2>
+            <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1 italic">
+                {{ t('maintenances.formDialog.gmaoConsole') }}
+            </span>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-6">
+        <div v-if="form.network_id" class="flex flex-col items-end mr-4">
+            <span class="text-[9px] font-bold text-slate-400 uppercase mb-1">Réseau Sélectionné</span>
+            <Tag :value="props.networks.find(n => n.id === form.network_id)?.name" class="bg-primary-500/20 text-primary-300 border border-primary-500/30" />
+        </div>
+        <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
+    </div>
  </div>
     <div class="p-2">
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
@@ -1250,13 +1485,60 @@ const transformedEquipmentTree = computed(() => {
                     </div>
 
                     <div class="field">
+                        <label for="network" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Réseau</label>
+                        <Dropdown id="network" v-model="form.network_id"
+                                  :options="props.networks" optionLabel="name" optionValue="id"
+                                  placeholder="Sélectionner un réseau" filter
+                                  class="w-full quantum-input !bg-white" />
+                    </div>
+
+                    <div class="field" v-if="form.network_id">
+                        <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Localisation</label>
+                        <div class="flex gap-2">
+                            <div class="flex items-center">
+                                <input type="radio" id="region" value="region" v-model="form.placementType" class="mr-2" />
+                                <label for="region">Région</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="zone" value="zone" v-model="form.placementType" class="mr-2" />
+                                <label for="zone">Zone</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
 
                         <label for="related_equipments" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.concernedEquipments') }}</label>
-                        <TreeSelect id="related_equipments" v-model="form.related_equipments"
-                                    :options="transformedEquipmentTree"
-                                    :placeholder="t('maintenances.formDialog.selectAssets')" :expandedKeys="expandedKeys"
-                                    filter selectionMode="checkbox" display="chip"
-                                    class="w-full quantum-input !bg-white" />
+                        <div class="field">
+
+    <Dropdown
+        id="network_node_id"
+        v-model="form.network_node_id"
+        :options="networkNodesOptions"
+        optionLabel="label"
+        optionValue="value"
+        :placeholder="t('maintenances.formDialog.selectAssets')"
+        :filter="true"
+        :showClear="true"
+        filterPlaceholder="Rechercher un équipement, une zone..."
+        class="w-full quantum-input !bg-white"
+        :disabled="!form.network_id"
+    >
+        <template #option="slotProps">
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-2">
+                    <i class="pi pi-bolt text-primary-500 text-xs"></i>
+                    <span class="font-bold text-sm">{{ slotProps.option.label.split(' / ')[0] }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] text-slate-400 uppercase tracking-wider ml-5">
+                    <i class="pi pi-map-marker"></i>
+                    <span>{{ slotProps.option.label.split(' / ').slice(1).join(' • ') }}</span>
+                </div>
+            </div>
+        </template>
+    </Dropdown>
+</div>
+
                         <small class="p-error block mt-1" v-if="form.errors.related_equipments">{{ form.errors.related_equipments }}</small>
                     </div>
 
@@ -1404,7 +1686,7 @@ const transformedEquipmentTree = computed(() => {
                             <div class="field">
                                 <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ t('maintenances.formDialog.interventionRegion') }}</label>
                                 <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter
-                                          class="w-full bg-white/5 border-white/10 text-white rounded-xl" />
+                                          class="w-full bg-white/5 border-white/10 text-white rounded-xl" :disabled="!form.network_id" />
                             </div>
                         </div>
                     </div>

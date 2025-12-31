@@ -15,7 +15,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\ServiceOrder;
 use Inertia\Inertia;
 use App\Models\MaintenanceInstruction;
+use App\Models\Network;
 use App\Models\SparePart;
+use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 
 class MaintenanceController extends Controller
@@ -26,11 +28,10 @@ class MaintenanceController extends Controller
     public function index(Request $request)
     {
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
-
-        $maintenancesQuery = Maintenance::with(['assignable', 'equipments', 'instructions.equipment'])
+        $endDate = $request->input('end_date', now()->endOfMonth()->addDay()->toDateString());
+        $maintenancesQuery = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region','instructions'])
             ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('scheduled_start_date', [$startDate, $endDate]);
+                $q->whereBetween('scheduled_start_date', [Carbon::parse($startDate)->subDay(), Carbon::parse($endDate)->addDay()]);
             })
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
@@ -41,7 +42,8 @@ class MaintenanceController extends Controller
         // Transformer l'arbre d'équipements pour le TreeSelect
         $equipmentTree = Equipment::whereNull('parent_id')->with('children.children')->get();
         $transformedEquipmentTree = $this->transformForTreeSelect($equipmentTree);
-
+            //  $maintenancesQuery=( Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode'])->latest()
+            // ->paginate(10));
         return Inertia::render('Tasks/Maintenances', [
             'maintenances' => $maintenancesQuery,
             'filters' => $request->only('search'),
@@ -51,6 +53,7 @@ class MaintenanceController extends Controller
             'regions' => Region::all(), // Assumant que les régions sont disponibles pour lier les activités
             'tasks' => [], // Assumant que les tâches sont disponibles pour lier les activités
             'spareParts' => SparePart::all(), // Requis pour la sélection de pièces
+            'networks' => Network::with('nodes')->get(), // Ajouté pour la sélection des réseaux
             'equipmentTree' => $transformedEquipmentTree,
         ]);
     }
@@ -86,9 +89,10 @@ class MaintenanceController extends Controller
     $validator = Validator::make($request->all(), [
         'title' => 'required|string|max:255',
         'description' => 'nullable|string',
-
+        'network_node_id' => 'nullable|exists:network_nodes,id',
+        'network_id' => 'nullable|exists:networks,id',
         // Validation corrigée: permet des entiers ou des chaînes pour les IDs
-        'equipment_ids' => 'required|array',
+        'equipment_ids' => 'nullable|array',
         'equipment_ids.*' => 'required|numeric|exists:equipment,id', // Assure que c'est un nombre ET qu'il existe
 
         'assignable_type' => ['nullable', 'string', Rule::in(['App\Models\User', 'App\Models\Team'])],
@@ -135,10 +139,11 @@ class MaintenanceController extends Controller
         // Création de l'enregistrement principal
         $maintenance = Maintenance::create($validatedData);
 
-        // 1. Attacher les équipements (relation Many-to-Many via table pivot)
-        // Les IDs doivent être des entiers. On s'assure de la conversion si l'on soupçonne des chaînes.
-        $equipmentIds = collect($validatedData['equipment_ids'])->map(fn($id) => (int) $id)->toArray();
-        $maintenance->equipments()->attach($equipmentIds);
+        // Attacher les équipements (relation Many-to-Many via table pivot)
+        if (!empty($validatedData['equipment_ids'])) {
+            $equipmentIds = collect($validatedData['equipment_ids'])->map(fn($id) => (int)$id)->all();
+            $maintenance->equipments()->attach($equipmentIds);
+        }
 
         // 2. Enregistrer les instructions (relation HasMany)
         if (isset($validatedData['node_instructions'])) {
@@ -198,7 +203,9 @@ class MaintenanceController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'equipment_ids' => 'required|array',
+            'network_node_id' => 'nullable|exists:network_nodes,id',
+             'network_id' => 'nullable|exists:networks,id',
+            'equipment_ids' => 'nullable|array',
             'equipment_ids.*' => 'exists:equipment,id',
             'assignable_type' => ['nullable', 'string', Rule::in(['App\Models\User', 'App\Models\Team'])],
             'assignable_id' => 'nullable|integer',
@@ -236,11 +243,26 @@ class MaintenanceController extends Controller
         }
 
         DB::beginTransaction();
+
         try {
+
             $maintenance->update($validator->validated());
 
             // Mettre à jour les équipements liés (synchronisation Many-to-Many)
-            $maintenance->equipments()->sync($request->input('equipment_ids'));
+            if (isset($validator->validated()['equipment_ids'])) {
+                $networkNodeId = $validator->validated()['network_node_id'];
+
+            // Mettre à jour les équipements liés (synchronisation Many-to-Many)
+            $syncData = collect($validator->validated()['equipment_ids'])->mapWithKeys(function ($id) use ($networkNodeId) {
+    return [(int) $id => [
+        'network_node_id' => $networkNodeId
+    ]];
+})->toArray();
+    $maintenance->equipments()->detach(); // Détacher les équipements existants
+// 3. On attache avec les données du pivot
+$maintenance->equipments()->attach($syncData);
+            }
+
 
             // Mettre à jour les instructions
             $maintenance->instructions()->delete(); // Supprimer les anciennes instructions
@@ -292,6 +314,7 @@ class MaintenanceController extends Controller
             return redirect()->route('maintenances.index')->with('success', 'Maintenance mise à jour avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+            return $e;
             Log::error('Erreur lors de la mise à jour de la maintenance: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de la maintenance.');
         }
@@ -306,13 +329,14 @@ class MaintenanceController extends Controller
     {
         DB::beginTransaction();
         try {
-            $maintenance->expenses()->delete(); // Supprimer les dépenses associées
+            // $maintenance->expenses()->delete(); // Supprimer les dépenses associées
             $maintenance->equipments()->detach(); // Détacher les équipements
             $maintenance->instructions()->delete(); // Supprimer les instructions
             $maintenance->delete();
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
+            return $e;
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de la maintenance: ' . $e->getMessage());
         }
         return redirect()->route('maintenances.index')->with('success', 'Maintenance supprimée avec succès.');

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-class Maintenance extends Model
+class Maintenance extends Model implements HasMedia
 {
     use HasFactory,InteractsWithMedia;
 
@@ -24,7 +24,8 @@ class Maintenance extends Model
         'region_id',
         'maintenance_schedule_id',
         'intervention_request_id',
-
+        'network_node_id',
+        'network_id',
         // Planification et Coût
         'type',
         'status',
@@ -69,7 +70,9 @@ class Maintenance extends Model
     public function equipments(): BelongsToMany
     {
         // Supposons une table pivot 'equipment_maintenance'
-        return $this->belongsToMany(Equipment::class);
+       return $this->belongsToMany(Equipment::class, 'equipment_maintenance')
+                ->withPivot('network_node_id') // <--- CRUCIAL
+                ->withTimestamps();
     }
 
     // Relation BelongsTo (Clés étrangères)
@@ -87,6 +90,11 @@ class Maintenance extends Model
     public function interventionRequest(): BelongsTo
     {
         return $this->belongsTo(InterventionRequest::class);
+    }
+
+    public function networkNode(): BelongsTo
+    {
+        return $this->belongsTo(NetworkNode::class);
     }
 
     // Relations HasMany (Entités liées)

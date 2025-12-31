@@ -18,9 +18,14 @@ class Network extends Model
         'user_id',
         'zoom_level',
         'grid_size',
-
         'is_active',
+        'region_id',
     ];
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
 
     public function user(): BelongsTo
     {

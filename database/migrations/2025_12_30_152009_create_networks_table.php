@@ -19,6 +19,8 @@ return new class extends Migration
     $table->float('zoom_level')->default(0.85);
     $table->integer('grid_size')->default(20);
     $table->boolean('is_active')->default(true);
+     $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
+
     $table->timestamps();
 });
 

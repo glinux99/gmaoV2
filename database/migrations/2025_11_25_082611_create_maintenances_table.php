@@ -22,6 +22,7 @@ return new class extends Migration
     $table->dateTime('started_at')->nullable(); // Date et heure de début réelle
     $table->dateTime('completed_at')->nullable(); // Date et heure de fin réelle
     $table->decimal('cost', 10, 2)->nullable();
+    $table->foreignId('network_id')->nullable()->constrained('networks')->onDelete('set null');
     $table->foreignId('region_id')->nullable()->constrained()->onDelete('set null');
 
     // Champs de récurrence
@@ -29,6 +30,7 @@ return new class extends Migration
     $table->integer('recurrence_interval')->nullable();
     $table->integer('recurrence_month_interval')->nullable();
     $table->json('recurrence_days')->nullable();
+    $table->foreignId('network_node_id')->nullable()->constrained('network_nodes')->onDelete('set null');
     $table->integer('recurrence_day_of_month')->nullable();
     $table->integer('recurrence_month')->nullable();
     $table->integer('reminder_days')->nullable();

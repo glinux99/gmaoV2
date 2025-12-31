@@ -9,24 +9,32 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-       Schema::create('equipment_maintenance', function (Blueprint $table) {
+ public function up(): void
+{
+    Schema::create('equipment_maintenance', function (Blueprint $table) {
+        $table->id(); // Garder un ID unique simple est plus flexible
 
-            // 1. Clé étrangère vers la table 'equipment'
-            $table->foreignId('equipment_id')
-                  ->constrained('equipment') // Assurez-vous que le nom de la table est 'equipment' comme dans votre migration
-                  ->onDelete('cascade');
+        // 1. Clé étrangère vers 'equipment'
+        $table->foreignId('equipment_id')
+              ->constrained('equipment')
+              ->onDelete('cascade');
 
-            // 2. Clé étrangère vers la table 'maintenances'
-            $table->foreignId('maintenance_id')
-                  ->constrained('maintenances')
-                  ->onDelete('cascade');
+        // 2. Clé étrangère vers 'maintenances'
+        $table->foreignId('maintenance_id')
+              ->constrained('maintenances')
+              ->onDelete('cascade');
 
-            // 3. Définir les deux colonnes comme clé primaire composite pour assurer l'unicité
-            $table->primary(['equipment_id', 'maintenance_id']);
-        });
-    }
+        // 3. Clé étrangère vers 'network_nodes'
+        $table->foreignId('network_node_id')
+              ->constrained('network_nodes')
+              ->onDelete('cascade');
+
+        // L'UNICITÉ : Empêche d'avoir le même équipement, pour la même maintenance, sur le même nœud
+        $table->unique(['equipment_id', 'maintenance_id', 'network_node_id'], 'eq_maint_node_unique');
+
+        $table->timestamps();
+    });
+}
 
     /**
      * Reverse the migrations.
