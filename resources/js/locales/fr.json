@@ -1802,6 +1802,41 @@
         "toast": {
             "success": "Opération réussie"
         }
+    },
+    "networks": {
+        "title": "Superviseur Réseau",
+        "newProject": "NOUVEAU_PROJET",
+        "newEmptyProject": "NOUVEAU_PROJET_VIDE",
+        "defaultEquipment": "Équipement Standard",
+        "defaultComponent": "Composant",
+        "monitoringLive": "Monitoring en direct",
+        "systemUpdated": "Système mis à jour",
+        "networkLoaded": "Réseau {name} chargé",
+        "deleteConfirmMessage": "Supprimer définitivement ce réseau ? Les données ne pourront pas être récupérées.",
+        "deleteConfirmHeader": "Confirmation de suppression",
+        "deletedSuccess": "Réseau effacé avec succès",
+        "deletedSummary": "Supprimé",
+        "infrastructureDirectory": "Répertoire des infrastructures",
+        "newNetwork": "Nouveau Réseau",
+        "elements": "Éléments",
+        "liveFlux": "Live Flux",
+        "save": "Sauvegarder",
+        "stats": {
+            "title": "Live Stats",
+            "equipments": "Équipements",
+            "activeFlux": "Flux Actifs",
+            "sources": "Sources",
+            "status": {
+                "optimal": "Optimal",
+                "unstable": "Instable",
+                "critical": "Critique"
+            }
+        },
+        "status": {
+            "optimal": "Optimal",
+            "unstable": "Instable",
+            "critical": "Critique"
+        }
     }
 
 }

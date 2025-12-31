@@ -36,6 +36,11 @@ class Network extends Model
         return $this->hasMany(NetworkConnection::class);
     }
 
+    public function labels(): HasMany
+    {
+        return $this->hasMany(NetworkLabel::class);
+    }
+
 public function getStatsAttribute() {
     return [
         'total_equipments' => $this->nodes()->count(),
