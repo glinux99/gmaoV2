@@ -83,7 +83,7 @@ const loadNetwork = (network) => {
         fromSide: conn.from_side,
         toId: conn.to_node_id,
         toSide: conn.to_side,
-        color: conn.color || 'var(--danger-color)'
+        color: conn.color || '#3b82f6'
     }));
 
     toast.add({ severity: 'info', summary: t('networks.systemUpdated'), detail: t('networks.networkLoaded', { name: network.name }), life: 2000 });
@@ -224,6 +224,7 @@ const exportDiagram = (format) => {
         quality: 0.98,
         pixelRatio: 2, // Augmente la résolution
         backgroundColor: 'var(--surface-ground)',
+        skipAutoScale: true, // Correction pour l'export SVG
     };
 
     const exporter = format === 'png' ? htmlToImage.toPng : htmlToImage.toSvg;
@@ -330,12 +331,12 @@ onMounted(() => {
 
                             <g v-for="w in connections" :key="w.id">
                                 <path :d="getOrthogonalPath(w)"
-                                      :stroke="isWireLive(w) ? 'var(--danger-color)' : 'var(--surface-300)'"
+                                      :stroke="isWireLive(w) ? 'var(--danger-color)' : w.color"
                                       stroke-width="3.5" fill="none" class="transition-colors duration-700"
                                       :style="{ filter: isWireLive(w) ? 'url(#red-glow)' : 'none' }" />
 
                                 <g v-if="isWireLive(w)">
-                                    <circle v-for="n in ELECTRON_COUNT" :key="n" r="4" fill="var(--danger-color)" class="electron-red shadow-lg">
+                                    <circle v-for="n in ELECTRON_COUNT" :key="n" r="4" fill="#81f50c" class="electron-red shadow-lg">
                                         <animateMotion :path="getOrthogonalPath(w)" :dur="FLOW_SPEED + 's'"
                                             :begin="((n - 1) * ELECTRON_SPACING) + 's'" repeatCount="indefinite" />
                                     </circle>
@@ -357,13 +358,17 @@ onMounted(() => {
                                        :class="['pi pi-power-off text-[10px] cursor-pointer transition-colors', node.active ? 'text-green-500' : 'text-surface-300']"></i>
                                 </div>
 
-                                <div class="p-5 flex flex-col items-center justify-center text-center flex-grow">
+                                <div class="p-4 flex flex-col items-center justify-center text-center flex-grow">
                                     <i :class="['pi', node.icon, 'text-xl mb-2 text-color-secondary']"></i>
                                     <span class="text-xs font-black text-color uppercase tracking-tighter leading-none px-2">{{ node.designation }}</span>
 
-                                    <div v-if="energizedNodes.has(node.id)" class="mt-3 py-1 px-3 bg-danger-50 dark:bg-danger-900/30 rounded-full border border-danger-100 dark:border-danger-900/50 flex items-center gap-2">
-                                        <span class="w-1.5 h-1.5 bg-danger-500 rounded-full animate-pulse" :style="{ boxShadow: '0 0 8px var(--danger-color)' }"></span>
-                                        <span class="text-[8px] font-black text-danger-600 dark:text-danger-400 uppercase">{{ t('networks.liveFlux') }}</span>
+                                     <div v-if="energizedNodes.has(node.id)" class="mt-3 flex items-center gap-2">
+                                        <div class="relative flex items-center justify-center w-6 h-4">
+                                            <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce-1"></span>
+                                            <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce-2"></span>
+                                            <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce-3"></span>
+                                              </div>
+
                                     </div>
                                 </div>
 
@@ -410,14 +415,18 @@ onMounted(() => {
     position: absolute;
     width: 12px;
     height: 12px;
-    background: var(--surface-300);
-    border: 3px solid var(--surface-card);
+    background: #334155; /* slate-700 */
+    border: 2px solid var(--surface-ground);
     border-radius: 50%;
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .node-card:hover .port { opacity: 1; transform: scale(1.2); }
+.node-card:hover .port:hover {
+    background: #6366f1; /* indigo-500 */
+    transform: scale(1.5);
+}
 
 .port.N { top: -6px; left: 50%; transform: translateX(-50%); }
 .port.S { bottom: -6px; left: 50%; transform: translateX(-50%); }
@@ -453,4 +462,38 @@ aside::-webkit-scrollbar-thumb { background: var(--surface-300); border-radius: 
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.animate-pulse-slow { animation: pulse-slow 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@keyframes bounce-1 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.animate-bounce-1 { animation: bounce-1 0.9s ease-in-out infinite; }
+
+@keyframes bounce-2 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.animate-bounce-2 { animation: bounce-2 0.9s ease-in-out infinite 0.1s; }
+
+@keyframes bounce-3 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.animate-bounce-3 { animation: bounce-3 0.9s ease-in-out infinite 0.2s; }
+
+@keyframes bounce-4 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.animate-bounce-4 { animation: bounce-4 0.9s ease-in-out infinite 0.3s; }
 </style>

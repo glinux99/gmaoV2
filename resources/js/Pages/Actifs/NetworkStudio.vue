@@ -78,7 +78,19 @@ const selectedLabelId = ref(null);
 const isSidebarOpen = ref(true);
 const searchQuery = ref("");
 
+const mainContainer = ref(null);
+const scrollLeft = ref(0);
+const scrollTop = ref(0);
+const isMinimapVisible = ref(true);
 // Modals
+const isAnalyseVisible = ref(true);
+
+const minimapPosition = ref({ x: window.innerWidth - 240 - 24 - 256 - 12, y: 24 });
+const minimapPanel = ref(null);
+const analysisPosition = ref({ x: window.innerWidth - 240 - 24 - 256 - 12, y: 24 });
+const analysisPanel = ref(null);
+
+
 const showAddModal = ref(false);
 const showLabelModal = ref(false);
 
@@ -103,6 +115,58 @@ const linking = reactive({
     currentColor: '#3b82f6',
     currentDash: '0'
 });
+
+// --- GESTION DU MINI-PLAN (MINIMAP) ---
+const MINIMAP_WIDTH = 240; // Largeur du mini-plan en pixels
+
+const minimapScale = computed(() => MINIMAP_WIDTH / CANVAS_SIZE);
+
+const viewportStyle = computed(() => {
+    if (!mainContainer.value) return {};
+    const container = mainContainer.value;
+    return {
+        width: `${(container.clientWidth / zoomLevel.value) * minimapScale.value}px`,
+        height: `${(container.clientHeight / zoomLevel.value) * minimapScale.value}px`,
+        left: `${(scrollLeft.value / zoomLevel.value) * minimapScale.value}px`,
+        top: `${(scrollTop.value / zoomLevel.value) * minimapScale.value}px`,
+    };
+});
+
+const handleMinimapMouseDown = (e) => {
+    const minimapRect = e.currentTarget.getBoundingClientRect();
+    const isViewportClick = e.target.id === 'minimap-viewport';
+
+    const updateScroll = (me) => {
+        let newLeft = (me.clientX - minimapRect.left) / minimapScale.value;
+        let newTop = (me.clientY - minimapRect.top) / minimapScale.value;
+
+        if (isViewportClick) {
+            const viewportWidth = (mainContainer.value.clientWidth / zoomLevel.value);
+            const viewportHeight = (mainContainer.value.clientHeight / zoomLevel.value);
+            newLeft -= viewportWidth / 2;
+            newTop -= viewportHeight / 2;
+        }
+
+        mainContainer.value.scrollLeft = newLeft * zoomLevel.value;
+        mainContainer.value.scrollTop = newTop * zoomLevel.value;
+    };
+
+    updateScroll(e); // Move on first click
+
+    const onMouseMove = (me) => updateScroll(me);
+    const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+};
+
+const handleScroll = (e) => {
+    scrollLeft.value = e.target.scrollLeft;
+    scrollTop.value = e.target.scrollTop;
+};
 
 // --- HISTORIQUE (UNDO/REDO) ---
 const history = ref([]);
@@ -285,6 +349,89 @@ const groupSelection = () => {
     selectedIds.value = [groupId];
     recordState();
 };
+
+const centerView = () => {
+    if (equipments.value.length === 0 || !mainContainer.value) return;
+
+    const container = mainContainer.value;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    equipments.value.forEach(node => {
+        minX = Math.min(minX, node.x);
+        minY = Math.min(minY, node.y);
+        maxX = Math.max(maxX, node.x + node.w);
+        maxY = Math.max(maxY, node.y + node.h);
+    });
+
+    const networkWidth = maxX - minX;
+    const networkHeight = maxY - minY;
+
+    if (networkWidth <= 0 || networkHeight <= 0) return;
+
+    const padding = 0.2; // 20% de marge
+    const zoomX = containerWidth / (networkWidth * (1 + padding));
+    const zoomY = containerHeight / (networkHeight * (1 + padding));
+    const newZoom = Math.min(zoomX, zoomY, 1.5); // Zoom max de 150%
+
+    zoomLevel.value = newZoom;
+
+    // Attendre que le DOM se mette à jour avec le nouveau zoom
+    nextTick(() => {
+        const centerX = minX + networkWidth / 2;
+        const centerY = minY + networkHeight / 2;
+        container.scrollLeft = (centerX * newZoom) - (containerWidth / 2);
+        container.scrollTop = (centerY * newZoom) - (containerHeight / 2);
+    });
+};
+
+const resetPanelPositions = () => {
+    const padding = 24;
+    const minimapWidth = 240;
+    const analysisWidth = 256;
+    const spacing = 12;
+
+    minimapPosition.value = { x: window.innerWidth - minimapWidth - padding, y: padding };
+    analysisPosition.value = { x: window.innerWidth - minimapWidth - analysisWidth - spacing - padding, y: padding };
+};
+
+const startDrag = (event, panelPositionRef) => {
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const initialX = panelPositionRef.value.x;
+    const initialY = panelPositionRef.value.y;
+
+    const onMouseMove = (moveEvent) => {
+        const panelEl = event.target.closest('.draggable-panel');
+        if (!panelEl) return;
+
+        const panelWidth = panelEl.offsetWidth;
+        const panelHeight = panelEl.offsetHeight;
+
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+
+        let newX = initialX + dx;
+        let newY = initialY + dy;
+
+        // Brider les positions pour rester dans la fenêtre
+        newX = Math.max(0, Math.min(newX, window.innerWidth - panelWidth));
+        newY = Math.max(0, Math.min(newY, window.innerHeight - panelHeight));
+
+        panelPositionRef.value.x = newX;
+        panelPositionRef.value.y = newY;
+    };
+
+    const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+};
+
 
 // --- LOGIQUE DE DRAG & DROP ---
 const handlePortClick = (nodeId, side) => {
@@ -802,6 +949,10 @@ const exportApiProject = () => {
             <i class="pi pi-search text-slate-600 text-[10px]"></i>
             <Slider v-model="zoomLevel" :min="0.1" :max="3" :step="0.01" class="w-24" />
             <span class="text-[10px] font-mono text-indigo-400 w-8">{{ Math.round(zoomLevel*100) }}%</span>
+            <Button icon="pi pi-map" @click="isMinimapVisible = !isMinimapVisible" :class="['p-button-text p-button-sm', isMinimapVisible ? '!text-indigo-400' : '!text-slate-500']" v-tooltip.bottom="'Afficher le mini-plan'" />
+            <Button icon="pi pi-arrows-alt" @click="centerView" class="p-button-text p-button-sm !text-slate-400" v-tooltip.bottom="'Centrer la vue'" />
+            <Button icon="pi pi-window-maximize" @click="resetPanelPositions" class="p-button-text p-button-sm !text-slate-400" v-tooltip.bottom="'Réinitialiser la position des panneaux'" />
+            <Button icon="pi pi-info-circle" @click="isAnalyseVisible = !isAnalyseVisible" :class="['p-button-text p-button-sm', isAnalyseVisible ? '!text-indigo-400' : '!text-slate-500']" v-tooltip.bottom="'Afficher l\'analyse réseau'" />
         </div>
         <Button icon="pi pi-bars" @click="isSidebarOpen = !isSidebarOpen" class="p-button-text p-button-secondary" />
         <Button icon="pi pi-chart-bar"
@@ -844,9 +995,11 @@ const exportApiProject = () => {
         </div>
       </aside>
 
-      <main class="flex-grow relative overflow-hidden bg-dot-pattern"
+      <main ref="mainContainer"
+            class="flex-grow relative overflow-auto bg-dot-pattern custom-scrollbar"
             @mousemove="updateMousePos"
             @mousedown="handleCanvasMouseDown"
+            @scroll="handleScroll"
             @mouseup="handleMouseUp">
 
         <div :style="{ transform: `scale(${zoomLevel})`, transformOrigin: '0 0' }" class="absolute inset-0 transition-transform duration-75">
@@ -948,26 +1101,62 @@ const exportApiProject = () => {
           </div>
         </div>
 
-        <div class="absolute bottom-6 right-6 w-64 bg-[#0a0f1d]/80 backdrop-blur-md border border-white/5 rounded-2xl p-4 shadow-2xl z-[80]">
-            <div class="flex items-center gap-2 mb-4">
-                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Analyse Réseau</span>
+        <!-- MINI-PLAN (MINIMAP) -->
+        <transition name="slide-fade">
+            <div v-if="isMinimapVisible"
+                 ref="minimapPanel"
+                 :style="{ left: minimapPosition.x + 'px', top: minimapPosition.y + 'px' }"
+                 class="absolute w-60 bg-[#0a0f1d]/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl z-[80] overflow-hidden flex flex-col draggable-panel">
+                <div @mousedown.stop="startDrag($event, minimapPosition)" class="h-6 bg-black/20 cursor-move flex items-center justify-center">
+                    <i class="pi pi-ellipsis-h text-slate-600 text-xs"></i>
+                </div>
+                <div class="relative w-full h-48" @mousedown.stop="handleMinimapMouseDown">
+                    <!-- Nodes in minimap -->
+                    <div v-for="node in equipments" :key="'mini-' + node.id"
+                         :style="{
+                             left: `${node.x * minimapScale}px`,
+                             top: `${node.y * minimapScale}px`,
+                             width: `${node.w * minimapScale}px`,
+                             height: `${node.h * minimapScale}px`,
+                             backgroundColor: selectedIds.includes(node.id) ? 'var(--indigo-500)' : 'rgba(255,255,255,0.2)'
+                         }"
+                         class="absolute rounded-[2px] transition-colors"></div>
+                    <!-- Viewport -->
+                    <div id="minimap-viewport" :style="viewportStyle" class="absolute bg-red-500/30 border-2 border-red-500 rounded cursor-grab"></div>
+                </div>
             </div>
-            <div class="space-y-3">
-                <div class="flex justify-between">
-                    <span class="text-[10px] text-slate-500">Appareils</span>
-                    <span class="text-xs font-mono font-bold">{{ equipments.length }}</span>
+        </transition>
+
+        <transition name="slide-fade">
+            <div v-if="isAnalyseVisible"
+                 ref="analysisPanel"
+                 :style="{ left: analysisPosition.x + 'px', top: analysisPosition.y + 'px' }"
+                 class="absolute w-64 bg-[#0a0f1d]/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-2xl z-[80] flex flex-col draggable-panel">
+                <div @mousedown.stop="startDrag($event, analysisPosition)" class="h-6 bg-black/20 cursor-move flex items-center justify-center">
+                     <i class="pi pi-ellipsis-h text-slate-600 text-xs"></i>
                 </div>
-                <div class="flex justify-between">
-                    <span class="text-[10px] text-slate-500">Liaisons</span>
-                    <span class="text-xs font-mono font-bold text-indigo-400">{{ connections.length }}</span>
-                </div>
-                <div class="flex justify-between border-t border-white/5 pt-2 mt-2">
-                    <span class="text-[10px] text-slate-500 italic">Disponibilité</span>
-                    <span class="text-xs font-mono text-green-400">99.8%</span>
+                <div class="p-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Analyse Réseau</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-[10px] text-slate-500">Appareils</span>
+                            <span class="text-xs font-mono font-bold">{{ equipments.length }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-[10px] text-slate-500">Liaisons</span>
+                            <span class="text-xs font-mono font-bold text-indigo-400">{{ connections.length }}</span>
+                        </div>
+                        <div class="flex justify-between border-t border-white/5 pt-2 mt-2">
+                            <span class="text-[10px] text-slate-500 italic">Disponibilité</span>
+                            <span class="text-xs font-mono text-green-400">99.8%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </transition>
 
         <div v-if="linking.active" class="absolute top-20 left-1/2 -translate-x-1/2 bg-[#0f172a] border border-amber-500/50 rounded-xl p-3 z-[200] flex items-center gap-4 shadow-2xl animate-fade-in">
             <span class="text-[10px] font-bold text-amber-500 uppercase px-2">Type de conducteur:</span>
@@ -1047,6 +1236,9 @@ const exportApiProject = () => {
 /* ANIMATIONS */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+
+.slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.slide-fade-enter-from, .slide-fade-leave-to { transform: translateX(-20px) translateY(20px); opacity: 0; }
 
 /* PRIME VUE OVERRIDES DARK THEME */
 .dark-dialog .p-dialog-header {
