@@ -33,6 +33,7 @@ use App\Http\Controllers\SparePartMovementController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\ExpensesController;
+use App\Http\Controllers\InstructionTemplateController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTemplateController;
@@ -98,6 +99,7 @@ Route::middleware('auth', 'verified')->group(function () {
     'connections' => ConnectionController::class,
     'interventions' => InterventionRequestController::class,
     'reports' => ReportController::class,
+ 'instruction-templates' => InstructionTemplateController::class,
  'report-templates' => ReportTemplateController::class,
  'networks' => NetworkController::class,
  'analytics' => AnalyticController::class,

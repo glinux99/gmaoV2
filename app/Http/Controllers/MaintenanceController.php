@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\ServiceOrder;
 use Inertia\Inertia;
 use App\Models\MaintenanceInstruction;
+use App\Models\InstructionTemplate;
 use App\Models\Network;
 use App\Models\SparePart;
 use Carbon\Carbon;
@@ -55,6 +56,7 @@ class MaintenanceController extends Controller
             'spareParts' => SparePart::all(), // Requis pour la sélection de pièces
             'networks' => Network::with('nodes')->get(), // Ajouté pour la sélection des réseaux
             'equipmentTree' => $transformedEquipmentTree,
+            'instructionTemplates' => InstructionTemplate::all(), // Charger les modèles
         ]);
     }
 
@@ -141,8 +143,17 @@ class MaintenanceController extends Controller
 
         // Attacher les équipements (relation Many-to-Many via table pivot)
         if (!empty($validatedData['equipment_ids'])) {
-            $equipmentIds = collect($validatedData['equipment_ids'])->map(fn($id) => (int)$id)->all();
-            $maintenance->equipments()->attach($equipmentIds);
+                $networkNodeId = $validator->validated()['network_node_id'];
+
+            // Mettre à jour les équipements liés (synchronisation Many-to-Many)
+            $syncData = collect($validator->validated()['equipment_ids'])->mapWithKeys(function ($id) use ($networkNodeId) {
+    return [(int) $id => [
+        'network_node_id' => $networkNodeId
+    ]];
+})->toArray();
+    $maintenance->equipments()->detach(); // Détacher les équipements existants
+// 3. On attache avec les données du pivot
+$maintenance->equipments()->attach($syncData);
         }
 
         // 2. Enregistrer les instructions (relation HasMany)

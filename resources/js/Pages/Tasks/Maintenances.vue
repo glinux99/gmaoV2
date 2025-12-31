@@ -38,6 +38,7 @@ const props = defineProps({
     spareParts: Array, // Requis pour la sélection de pièces
     networks: Array, // Ajout des réseaux
     equipmentTree: Array,
+    instructionTemplates: Array, // Prop pour les modèles
 
     // subcontractors: Array,
 });
@@ -115,6 +116,13 @@ const expandedInstructionGroups = ref({});
 
 // --- NOUVEAU : Cache pour les instructions ---
 const instructionsCache = ref({});
+
+// --- NOUVEAU : Logique pour les modèles d'instructions ---
+const templateDialog = ref(false);
+const templateForm = useForm({
+    name: '',
+    instructions: [],
+});
 
 // --- NOUVEAU : Logique pour la création d'activités ---
 const activityCreationDialog = ref(false);
@@ -482,6 +490,31 @@ const data = {
         }
     });
     }
+};
+
+const openSaveAsTemplateDialog = (equipmentId) => {
+    const instructionsToSave = form.node_instructions[equipmentId];
+    if (!instructionsToSave || instructionsToSave.length === 0) {
+        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Aucune instruction à sauvegarder pour cet équipement.', life: 3000 });
+        return;
+    }
+    templateForm.reset();
+    templateForm.instructions = instructionsToSave.map(({ id, maintenance_id, equipment_id, created_at, updated_at, ...rest }) => rest); // Nettoyer les instructions
+    templateDialog.value = true;
+};
+
+const saveAsTemplate = () => {
+    templateForm.post(route('instruction-templates.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            templateDialog.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Modèle sauvegardé.', life: 3000 });
+        },
+        onError: (errors) => {
+            const errorDetail = Object.values(errors).flat().join(' ; ');
+            toast.add({ severity: 'error', summary: 'Erreur', detail: errorDetail || 'Impossible de sauvegarder le modèle.', life: 5000 });
+        }
+    });
 };
 
 const deleteMaintenance = (maintenance) => {
@@ -1478,7 +1511,7 @@ watch(() => form.network_node_id, (newNodeId) => {
                     <div class="field">
                         <label for="title" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.interventionTitle') }}</label>
                         <InputText id="title" v-model.trim="form.title"
-                                  class="w-full quantum-input !bg-white"
+                                  class="w-full quantum-input "
                                   :class="{ 'p-invalid': submitted && !form.title }"
                                   :placeholder="t('maintenances.formDialog.interventionTitlePlaceholder')" />
                         <small class="p-error block mt-1" v-if="form.errors.title">{{ form.errors.title }}</small>
@@ -1521,7 +1554,7 @@ watch(() => form.network_node_id, (newNodeId) => {
         :filter="true"
         :showClear="true"
         filterPlaceholder="Rechercher un équipement, une zone..."
-        class="w-full quantum-input !bg-white"
+        class="w-full quantum-input "
         :disabled="!form.network_id"
     >
         <template #option="slotProps">
@@ -1591,6 +1624,10 @@ watch(() => form.network_node_id, (newNodeId) => {
                                                     icon="pi pi-copy" :label="t('maintenances.formDialog.clone')"
                                                     class="p-button-text p-button-sm text-[10px] font-bold"
                                                     @click="openCopyDialog(child.key)" />
+                                            <Button v-if="form.node_instructions[child.key]?.length"
+                                                    icon="pi pi-save" label="Modèle"
+                                                    class="p-button-text p-button-secondary p-button-sm text-[10px] font-bold"
+                                                    @click="openSaveAsTemplateDialog(child.key)" />
                                             <Button icon="pi pi-plus" :label="t('maintenances.formDialog.addInstruction')"
                                                     class="p-button-primary p-button-sm text-[10px] font-bold shadow-sm"
                                                     @click="addInstruction(child.key)" />
@@ -1598,6 +1635,17 @@ watch(() => form.network_node_id, (newNodeId) => {
                                     </div>
 
                                     <div class="space-y-3">
+                                        <div v-if="props.instructionTemplates && props.instructionTemplates.length > 0" class="flex justify-end">
+                                            <Dropdown
+                                                :options="props.instructionTemplates"
+                                                optionLabel="name"
+                                                placeholder="Appliquer un modèle"
+                                                class="p-dropdown-sm !w-auto text-xs"
+                                                @change="(event) => {
+                                                    form.node_instructions[child.key] = JSON.parse(JSON.stringify(event.value.instructions));
+                                                    toast.add({severity: 'info', summary: 'Modèle appliqué', detail: `Les instructions de '${event.value.name}' ont été chargées.`, life: 3000});
+                                                }" />
+                                        </div>
                                         <div v-for="(instruction, index) in form.node_instructions[child.key]" :key="index"
                                              class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative group">
 
@@ -1785,6 +1833,30 @@ watch(() => form.network_node_id, (newNodeId) => {
         </div>
     </template>
 </Dialog>
+
+<!-- Dialogue pour sauvegarder un modèle -->
+<Dialog v-model:visible="templateDialog" modal header="Sauvegarder comme modèle" :style="{ width: '30rem' }">
+    <div class="field">
+        <label for="template_name" class="font-semibold">Nom du modèle</label>
+        <InputText id="template_name" v-model="templateForm.name" class="w-full"
+                   :class="{ 'p-invalid': templateForm.errors.name }"
+                   placeholder="Ex: Contrôle standard Moteur" />
+        <small class="p-error">{{ templateForm.errors.name }}</small>
+    </div>
+    <div class="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200">
+        <p class="text-xs text-slate-600">
+            <i class="pi pi-info-circle mr-2"></i>
+            Vous êtes sur le point de sauvegarder
+            <strong>{{ templateForm.instructions.length }} instruction(s)</strong>
+            comme un modèle réutilisable.
+        </p>
+    </div>
+    <template #footer>
+        <Button label="Annuler" icon="pi pi-times" @click="templateDialog = false" class="p-button-text" />
+        <Button label="Sauvegarder le modèle" icon="pi pi-save" @click="saveAsTemplate" :loading="templateForm.processing" />
+    </template>
+</Dialog>
+
     </AppLayout>
 </template>
 
