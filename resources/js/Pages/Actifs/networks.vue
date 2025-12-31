@@ -36,6 +36,7 @@ const projectId = ref(null);
 const networkName = ref(t('networks.newProject'));
 const equipments = ref([]);
 const connections = ref([]);
+const labels = ref([]);
 const zoomLevel = ref(0.85);
 const showStats = ref(true);
 const mainContainer = ref(null);
@@ -85,6 +86,8 @@ const loadNetwork = (network) => {
         toSide: conn.to_side,
         color: conn.color || '#3b82f6'
     }));
+
+    labels.value = network.labels || [];
 
     toast.add({ severity: 'info', summary: t('networks.systemUpdated'), detail: t('networks.networkLoaded', { name: network.name }), life: 2000 });
 };
@@ -343,6 +346,13 @@ onMounted(() => {
                                 </g>
                             </g>
                         </svg>
+
+                        <div v-for="label in labels" :key="label.id"
+                             :style="{ left: label.x + 'px', top: label.y + 'px', color: label.color, fontSize: label.font_size + 'px', fontWeight: label.is_bold ? 'bold' : 'normal', transform: `rotate(${label.rotation || 0}deg)` }"
+                             class="absolute z-10 px-2 py-1 whitespace-nowrap pointer-events-none">
+                             {{ label.text }}
+                        </div>
+
 
                         <div v-for="node in equipments" :key="node.id"
                              :style="{ left: node.x + 'px', top: node.y + 'px', width: node.w + 'px', height: node.h + 'px' }"

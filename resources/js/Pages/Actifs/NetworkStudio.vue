@@ -92,7 +92,6 @@ const analysisPanel = ref(null);
 
 
 const showAddModal = ref(false);
-const showLabelModal = ref(false);
 
 const marquee = reactive({
     active: false,
@@ -103,7 +102,31 @@ const marquee = reactive({
 const marqueeRect = computed(() => getMarqueeRect(marquee));
 
 const newNodeData = reactive({ tag: '', designation: '', type: '', icon: '', isRoot: false });
-const newLabelData = reactive({ text: 'NOUVEAU LABEL', fontSize: 14, color: '#94a3b8', bold: false });
+
+// --- Gestion des Labels (Création/Édition) ---
+const showLabelModal = ref(false);
+const editingLabelId = ref(null); // null pour création, ID pour édition
+const labelFormData = reactive({ text: '', fontSize: 14, color: '#94a3b8', bold: false, rotation: 0 });
+
+const openNewLabelModal = () => {
+    editingLabelId.value = null;
+    labelFormData.text = 'NOUVEAU LABEL';
+    labelFormData.fontSize = 14;
+    labelFormData.color = '#94a3b8';
+    labelFormData.bold = false;
+    labelFormData.rotation = 0;
+    showLabelModal.value = true;
+};
+
+const openEditLabelModal = (label) => {
+    editingLabelId.value = label.id;
+    labelFormData.text = label.text;
+    labelFormData.fontSize = label.fontSize;
+    labelFormData.color = label.color;
+    labelFormData.bold = label.bold;
+    labelFormData.rotation = label.rotation || 0;
+    showLabelModal.value = true;
+};
 
 // --- GESTION DU CÂBLAGE ---
 const linking = reactive({
@@ -284,13 +307,20 @@ const createNode = () => {
     recordState();
 };
 
-const createLabel = () => {
-    const id = `label-${Date.now()}`;
-    labels.value.push({
-        id, ...newLabelData,
-        x: 500, y: 400
-    });
+const saveLabel = () => {
+    if (editingLabelId.value) {
+        // Mode édition
+        const label = labels.value.find(l => l.id === editingLabelId.value);
+        if (label) {
+            Object.assign(label, labelFormData);
+        }
+    } else {
+        // Mode création
+        const id = `label-${Date.now()}`;
+        labels.value.push({ id, ...labelFormData, x: 500, y: 400 });
+    }
     showLabelModal.value = false;
+    editingLabelId.value = null;
     recordState();
 };
 
@@ -377,7 +407,6 @@ const centerView = () => {
 
     zoomLevel.value = newZoom;
 
-    // Attendre que le DOM se mette à jour avec le nouveau zoom
     nextTick(() => {
         const centerX = minX + networkWidth / 2;
         const centerY = minY + networkHeight / 2;
@@ -817,6 +846,12 @@ const exportApiProject = () => {
             });
         });
 
+        originalData.labels.forEach((label, index) => {
+            Object.keys(label).forEach(prop => {
+                formData.append(`labels[${index}][${prop}]`, label[prop] ?? '');
+            });
+        });
+
         return formData;
     })
     // 3. Exécution de l'envoi
@@ -931,7 +966,7 @@ const exportApiProject = () => {
 
         <div class="flex items-center gap-1">
             <Button icon="pi pi-undo" @click="undo" class="p-button-text p-button-sm !text-slate-400 hover:!text-white" v-tooltip="'Annuler (Ctrl+Z)'" />
-            <Button icon="pi pi-tag" label="Label" @click="showLabelModal = true" class="p-button-text p-button-sm !text-slate-400" />
+            <Button icon="pi pi-tag" label="Label" @click="openNewLabelModal" class="p-button-text p-button-sm !text-slate-400" />
             <Button icon="pi pi-save" label="Enregistre" @click="exportApiProject" class="p-button-text p-button-sm !text-indigo-400" />
             <Button icon="pi pi-download" label="Export JSON" @click="exportProject" class="p-button-text p-button-sm !text-slate-400" />
            <input type="file" id="import-file" class="hidden" accept=".json" @change="importProject" />
@@ -1050,8 +1085,9 @@ const exportApiProject = () => {
           </svg>
 
           <div v-for="label in labels" :key="label.id"
-               :style="{ left: label.x + 'px', top: label.y + 'px', color: label.color, fontSize: label.fontSize + 'px', fontWeight: label.bold ? 'bold' : 'normal' }"
+               :style="{ left: label.x + 'px', top: label.y + 'px', color: label.color, fontSize: label.fontSize + 'px', fontWeight: label.bold ? 'bold' : 'normal', transform: `rotate(${label.rotation || 0}deg)` }"
                @mousedown.stop="startMove($event, label, 'label')"
+               @dblclick.stop="openEditLabelModal(label)"
                :class="['absolute z-10 px-2 py-1 cursor-move whitespace-nowrap border border-transparent hover:border-white/10 rounded', selectedLabelId === label.id ? '!border-indigo-500 bg-indigo-500/10' : '']">
                {{ label.text }}
           </div>
@@ -1194,26 +1230,30 @@ const exportApiProject = () => {
         </div>
     </Dialog>
 
-    <Dialog v-model:visible="showLabelModal" header="Ajouter une Annotation" modal :style="{ width: '350px' }" class="dark-dialog">
+    <Dialog v-model:visible="showLabelModal" :header="editingLabelId ? 'Modifier l\'Annotation' : 'Ajouter une Annotation'" modal :style="{ width: '350px' }" class="dark-dialog">
         <div class="flex flex-col gap-4 py-2">
             <div class="flex flex-col gap-2">
                 <label class="text-[10px] font-bold text-slate-500 uppercase">Texte</label>
-                <InputText v-model="newLabelData.text" class="w-full !bg-white/5 border-white/10" />
+                <InputText v-model="labelFormData.text" class="w-full !bg-white/5 border-white/10" />
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div class="flex flex-col gap-2">
                     <label class="text-[10px] font-bold text-slate-500 uppercase">Taille</label>
-                    <InputNumber v-model="newLabelData.fontSize" :min="8" :max="72" showButtons class="!bg-white/5" />
+                    <InputNumber v-model="labelFormData.fontSize" :min="8" :max="72" showButtons class="!bg-white/5" />
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-[10px] font-bold text-slate-500 uppercase">Couleur</label>
                     <div class="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/10">
-                        <ColorPicker v-model="newLabelData.color" />
-                        <span class="text-[10px] font-mono">{{ newLabelData.color }}</span>
+                        <ColorPicker v-model="labelFormData.color" />
+                        <span class="text-[10px] font-mono">{{ labelFormData.color }}</span>
                     </div>
                 </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Rotation (°)</label>
+                    <InputNumber v-model="labelFormData.rotation" :min="-180" :max="180" showButtons suffix="°" class="!bg-white/5" />
+                </div>
             </div>
-            <Button label="Ajouter le label" icon="pi pi-check" @click="createLabel" class="w-full !bg-indigo-600 border-none !rounded-xl py-3" />
+            <Button :label="editingLabelId ? 'Mettre à jour' : 'Ajouter le label'" icon="pi pi-check" @click="saveLabel" class="w-full !bg-indigo-600 border-none !rounded-xl py-3" />
         </div>
     </Dialog>
   </div>
@@ -1228,7 +1268,7 @@ const exportApiProject = () => {
 }
 
 /* SCROLLBARS */
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }

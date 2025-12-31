@@ -17,10 +17,10 @@ class NetworkController extends Controller
     public function index()
     {
         // On récupère tous les réseaux pour la liste latérale
-        $networks = Network::with(['nodes.equipment.equipmentType', 'connections'])->latest()->get();
+        $networks = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->get();
 
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
-        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections'])->latest()->first();
+        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->first();
 
         return Inertia::render('Actifs/Networks', [
             'networks' => $networks,
@@ -36,10 +36,10 @@ class NetworkController extends Controller
      */
        public function create(Network $network)
     {
-           $networks = Network::with(['nodes.equipment.equipmentType', 'connections'])->latest()->get();
+           $networks = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->get();
 
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
-        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections'])->where('id', $network->id)->latest()->first();
+        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->where('id', $network->id)->latest()->first();
 
         return Inertia::render('Actifs/NetworkStudio', [
             'networks' => $networks,
@@ -51,10 +51,10 @@ class NetworkController extends Controller
     }
     public function edit(Network $network)
     {
-           $networks = Network::with(['nodes.equipment.equipmentType', 'connections'])->latest()->get();
+           $networks = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->get();
 
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
-        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections'])->where('id', $network->id)->latest()->first();
+        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->where('id', $network->id)->latest()->first();
 
         return Inertia::render('Actifs/NetworkStudio', [
             'networks' => $networks,
@@ -147,6 +147,7 @@ public function store(Request $request)
                     'color'     => $labelData['color'] ?? '#94a3b8',
                     'font_size' => $labelData['fontSize'] ?? 14,
                     'is_bold'   => (bool)($labelData['bold'] ?? false),
+                    'rotation'  => $labelData['rotation'] ?? 0,
                 ]);
             }
 
@@ -245,6 +246,7 @@ public function store(Request $request)
                     'color' => $labelData['color'] ?? '#94a3b8',
                     'font_size' => $labelData['fontSize'] ?? 14,
                     'is_bold' => (bool)($labelData['bold'] ?? false),
+                    'rotation' => $labelData['rotation'] ?? 0,
                 ]);
             }
         }

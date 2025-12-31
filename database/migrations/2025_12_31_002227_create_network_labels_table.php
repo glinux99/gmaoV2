@@ -20,6 +20,7 @@ return new class extends Migration
             $table->boolean('is_bold')->default(false);
             $table->integer('x');
             $table->integer('y');
+            $table->integer('rotation')->nullable();
             $table->timestamps();
         });
     }
