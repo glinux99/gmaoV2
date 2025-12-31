@@ -15,10 +15,12 @@ return new class extends Migration
             $table->id();
     $table->foreignId('network_id')->constrained()->onDelete('cascade');
     $table->foreignId('equipment_id')->constrained()->onDelete('cascade');
+    $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
+    $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null');
 
     // État spécifique au réseau (peut différer de l'état réel de l'équipement)
-    $table->boolean('is_active')->default(true);
-    $table->boolean('is_root')->default(false); // Source d'énergie (G)
+    $table->integer('is_active')->default(1);
+    $table->integer('is_root')->default(0); // Source d'énergie (G)
 
     // Géométrie pour le Canvas Vue
     $table->integer('x')->default(100);

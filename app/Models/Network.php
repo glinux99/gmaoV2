@@ -18,6 +18,7 @@ class Network extends Model
         'user_id',
         'zoom_level',
         'grid_size',
+
         'is_active',
     ];
 
@@ -40,6 +41,8 @@ class Network extends Model
     {
         return $this->hasMany(NetworkLabel::class);
     }
+
+
 
 public function getStatsAttribute() {
     return [

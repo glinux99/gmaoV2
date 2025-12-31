@@ -8,6 +8,7 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Badge from 'primevue/badge';
 import ColorPicker from 'primevue/colorpicker';
+import SelectButton from 'primevue/selectbutton';
 import Dropdown from 'primevue/dropdown';
 import InputNumber from 'primevue/inputnumber';
 import { useForm } from '@inertiajs/vue3';
@@ -42,7 +43,9 @@ const props = defineProps({
                 {id: 'u4', tag: 'EV1', designation: 'ÉLECTROVANNE 24V DC', type: {icon: 'pi-filter', category: 'Charge'}}
             ]
         })
-    }
+    },
+    regions: Array,
+    zones: Array,
 });
 
 const toast = useToast();
@@ -92,6 +95,7 @@ const analysisPanel = ref(null);
 
 
 const showAddModal = ref(false);
+const showEditModal = ref(false);
 
 const marquee = reactive({
     active: false,
@@ -101,7 +105,27 @@ const marquee = reactive({
 
 const marqueeRect = computed(() => getMarqueeRect(marquee));
 
-const newNodeData = reactive({ tag: '', designation: '', type: '', icon: '', isRoot: false });
+const newNodeData = reactive({
+    tag: '',
+    designation: '',
+    type: '',
+    icon: '',
+    isRoot: false,
+    placementType: null, // 'region' or 'zone'
+    region_id: null,
+    zone_id: null,
+});
+
+const editingNodeData = reactive({
+    id: null,
+    tag: '',
+    designation: '',
+    isRoot: false,
+    placementType: null,
+    region_id: null,
+    zone_id: null,
+});
+
 
 // --- Gestion des Labels (Création/Édition) ---
 const showLabelModal = ref(false);
@@ -302,11 +326,20 @@ const openAddModal = (item) => {
     newNodeData.icon = item.type?.icon || 'pi-box';
     newNodeData.type = item.type?.category || 'Composant';
     newNodeData.isRoot = false;
+    newNodeData.placementType = null;
+    newNodeData.region_id = null;
+    newNodeData.zone_id = null;
     showAddModal.value = true;
 };
 
 const createNode = () => {
     const id = `node-${Date.now()}`;
+    const nodePayload = { ...newNodeData };
+
+    // Nettoyer les IDs non pertinents en fonction du type de placement
+    if (nodePayload.placementType === 'region') nodePayload.zone_id = null;
+    if (nodePayload.placementType === 'zone') nodePayload.region_id = null;
+
     equipments.value.push({
         id, ...newNodeData,
         x: 400, y: 300, w: NODE_WIDTH, h: NODE_HEIGHT, active: true
@@ -330,6 +363,39 @@ const saveLabel = () => {
     showLabelModal.value = false;
     editingLabelId.value = null;
     recordState();
+};
+
+const openEditModal = (node) => {
+    editingNodeData.id = node.id;
+    editingNodeData.tag = node.tag;
+    editingNodeData.designation = node.designation;
+    editingNodeData.isRoot = node.isRoot;
+    editingNodeData.region_id = node.region_id;
+    editingNodeData.zone_id = node.zone_id;
+    editingNodeData.active = node.active;
+    editingNodeData.placementType = node.region_id ? 'region' : (node.zone_id ? 'zone' : null);
+    showEditModal.value = true;
+};
+
+const saveNodeChanges = () => {
+    const node = equipments.value.find(e => e.id === editingNodeData.id);
+    if (node) {
+        node.tag = editingNodeData.tag;
+        node.designation = editingNodeData.designation;
+        node.isRoot = editingNodeData.isRoot;
+        node.region_id = editingNodeData.placementType === 'region' ? editingNodeData.region_id : null;
+        node.zone_id = editingNodeData.placementType === 'zone' ? editingNodeData.zone_id : null;
+        node.active = editingNodeData.active;
+
+        showEditModal.value = false;
+        recordState();
+        toast.add({
+            severity: 'success',
+            summary: 'Mise à jour réussie',
+            detail: 'Les informations du composant ont été enregistrées.',
+            life: 3000
+        });
+    }
 };
 
 const deleteSelected = () => {
@@ -635,8 +701,10 @@ const loadNetwork = (network) => {
             y: parseFloat(node.y),
             w: parseFloat(node.w) || NODE_WIDTH,
             h: parseFloat(node.h) || NODE_HEIGHT,
-            active: node.is_active !== undefined ? !!node.is_active : true,
-            isRoot: !!node.is_root
+            active: node.is_active !== undefined ? (node.is_active ? 1 : 0) : 1,
+            isRoot: !!node.is_root,
+            region_id: node.region_id,
+            zone_id: node.zone_id,
         };
     });
 
@@ -648,6 +716,12 @@ const loadNetwork = (network) => {
     }));
 
     labels.value = network.labels || [];
+};
+
+const getLocationName = (node) => {
+    if (node.region_id) return props.regions.find(r => r.id === node.region_id)?.designation;
+    if (node.zone_id) return props.zones.find(z => z.id === node.zone_id)?.name;
+    return null;
 };
 
 onMounted(() => {
@@ -860,6 +934,7 @@ const exportApiProject = () => {
         // Mais pour rester fidèle à votre modèle FormData :
 
         originalData.equipments.forEach((item, index) => {
+            console.log(item);
             Object.keys(item).forEach(prop => {
                 formData.append(`equipments[${index}][${prop}]`, item[prop] ?? '');
             });
@@ -1119,9 +1194,8 @@ const exportApiProject = () => {
 
           <div v-for="node in equipments" :key="node.id"
                :style="{ left: node.x + 'px', top: node.y + 'px', width: node.w + 'px', height: node.h + 'px' }"
-               @mousedown.stop="startMove($event, node, 'node')"
+               @mousedown.stop="startMove($event, node, 'node')" @dblclick="openEditModal(node)"
                class="absolute z-20 node-container group">
-
             <div :class="['relative w-full h-full bg-[#0f172a] border-2 rounded-2xl transition-all shadow-xl',
                           selectedIds.includes(node.id) ? 'border-indigo-500 shadow-indigo-500/20' : 'border-slate-800',
                           !node.active ? 'opacity-50' : '',
@@ -1147,6 +1221,11 @@ const exportApiProject = () => {
                         <span class="w-1 h-1 bg-green-500 rounded-full animate-ping"></span>
                         <span class="text-[8px] font-mono text-green-500/70">ACTIVE</span>
                     </div>
+                    <div v-if="getLocationName(node)" class="absolute bottom-2 left-2 flex items-center gap-1.5 bg-slate-900/50 border border-white/10 rounded-full px-2 py-0.5">
+                        <i class="pi pi-map-marker text-[8px] text-amber-400"></i>
+                        <span class="text-[8px] font-bold text-slate-300 uppercase tracking-wider">{{ getLocationName(node) }}</span>
+                    </div>
+
                 </div>
 
                 <div v-for="side in ['N', 'S', 'E', 'W']" :key="side"
@@ -1251,7 +1330,56 @@ const exportApiProject = () => {
                     <span class="text-[9px] text-slate-500">Source d'énergie principale</span>
                 </div>
             </div>
+
+            <div class="flex flex-col gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
+                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
+                 <SelectButton v-model="newNodeData.placementType" :options="[{label: 'Région', value: 'region'}, {label: 'Zone', value: 'zone'}]" optionLabel="label" optionValue="value" />
+                 <Dropdown v-if="newNodeData.placementType === 'region'"
+                           v-model="newNodeData.region_id"
+                           :options="props.regions"
+                           optionLabel="designation" optionValue="id"
+                           placeholder="Sélectionner une région" class="w-full" filter />
+                 <Dropdown v-if="newNodeData.placementType === 'zone'"
+                           v-model="newNodeData.zone_id"
+                           :options="props.zones"
+                           optionLabel="name" optionValue="id"
+                           placeholder="Sélectionner une zone" class="w-full" filter />
+            </div>
             <Button label="Insérer sur le schéma" icon="pi pi-plus" @click="createNode" class="w-full !bg-indigo-600 border-none !rounded-xl py-3 mt-2" />
+        </div>
+    </Dialog>
+
+    <Dialog v-model:visible="showEditModal" header="Modifier le Composant" modal :style="{ width: '380px' }" class="dark-dialog">
+        <div class="flex flex-col gap-5 py-2">
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Tag Identifiant</label>
+                <InputText v-model="editingNodeData.tag" class="w-full !bg-white/5 border-white/10" />
+            </div>
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Désignation Technique</label>
+                <InputText v-model="editingNodeData.designation" class="w-full !bg-white/5 border-white/10" />
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl">
+                <input type="checkbox" v-model="editingNodeData.isRoot" class="w-4 h-4 accent-indigo-500" />
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-indigo-300">Point d'injection</span>
+                    <span class="text-[9px] text-slate-500">Source d'énergie principale</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
+                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
+                 <SelectButton v-model="editingNodeData.placementType" :options="[{label: 'Région', value: 'region'}, {label: 'Zone', value: 'zone'}]" optionLabel="label" optionValue="value" />
+                 <Dropdown v-if="editingNodeData.placementType === 'region'"
+                           v-model="editingNodeData.region_id"
+                           :options="props.regions"
+                           optionLabel="designation" optionValue="id" placeholder="Sélectionner une région" class="w-full" filter />
+                 <Dropdown v-if="editingNodeData.placementType === 'zone'"
+                           v-model="editingNodeData.zone_id"
+                           :options="props.zones"
+                           optionLabel="name" optionValue="id" placeholder="Sélectionner une zone" class="w-full" filter />
+            </div>
+            <Button label="Enregistrer les modifications" icon="pi pi-save" @click="saveNodeChanges" class="w-full !bg-indigo-600 border-none !rounded-xl py-3 mt-2" />
         </div>
     </Dialog>
 

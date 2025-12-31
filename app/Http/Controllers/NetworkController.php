@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Network;
+use App\Models\Region;
+use App\Models\Zone;
 use App\Models\Equipment;
 use App\Models\EquipmentType;
 use Illuminate\Http\Request;
@@ -27,7 +29,9 @@ class NetworkController extends Controller
             'initialNetwork' => $lastNetwork,
             'library' => Equipment::with('equipmentType')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
-            })
+            }),
+            'regions' => Region::all(),
+            'zones' => Zone::all(),
         ]);
     }
 
@@ -46,7 +50,9 @@ class NetworkController extends Controller
             'initialNetwork' => $lastNetwork,
             'library' => Equipment::with('equipmentType')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
-            })
+            }),
+            'regions' => Region::all(),
+            'zones' => Zone::all(),
         ]);
     }
     public function edit(Network $network)
@@ -61,7 +67,9 @@ class NetworkController extends Controller
             'initialNetwork' => $lastNetwork,
             'library' => Equipment::with('equipmentType')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
-            })
+            }),
+            'regions' => Region::all(),
+            'zones' => Zone::all(),
         ]);
     }
 
@@ -116,8 +124,10 @@ public function store(Request $request)
                     'y' => $nodeData['y'],
                     'w' => $nodeData['w'] ?? 220,
                     'h' => $nodeData['h'] ?? 130,
-                    'is_active' => (bool)($nodeData['active'] ?? true),
-                    'is_root' => (bool)($nodeData['isRoot'] ?? false),
+                    'is_active' => (int) ($nodeData['active'] ?? false),
+                    'is_root'   => (int) ($nodeData['active'] ?? false),
+ 'region_id' => $nodeData['region_id'] ?? null,
+ 'zone_id' => $nodeData['zone_id'] ?? null,
                 ]);
 
                 // On stocke la correspondance entre l'ID JS (ex: "root-0") et l'ID SQL (ex: 42)
@@ -162,6 +172,7 @@ public function store(Request $request)
      */
  public function update(Request $request, Network $network)
 {
+
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'version' => 'nullable|string|max:255',
@@ -211,8 +222,10 @@ public function store(Request $request)
                     'y' => $nodeData['y'],
                     'w' => $nodeData['w'] ?? 220,
                     'h' => $nodeData['h'] ?? 130,
-                    'is_active' => (bool)($nodeData['active'] ?? true),
-                    'is_root' => (bool)($nodeData['isRoot'] ?? false),
+                    'is_active' => (int) ($nodeData['active'] ==="true" ?? false),
+                    'is_root'   => (int) ($nodeData['active'] ==="true" ?? false),
+                    'region_id' => $nodeData['region_id'] ?? null,
+                    'zone_id' => $nodeData['zone_id'] ?? null,
                 ]);
 
                 // On stocke la correspondance entre l'ID temporaire du front-end et le nouvel ID SQL

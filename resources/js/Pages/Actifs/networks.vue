@@ -17,7 +17,9 @@ import Tooltip from 'primevue/tooltip';
 const props = defineProps({
     networks: { type: Array, default: () => [] },
     initialNetwork: Object,
-    library: { type: Object, default: () => ({}) }
+    library: { type: Object, default: () => ({}) },
+    regions: Array,
+    zones: Array,
 });
 
 const toast = useToast();
@@ -73,7 +75,9 @@ const loadNetwork = (network) => {
             w: parseFloat(node.w) || NODE_WIDTH,
             h: parseFloat(node.h) || NODE_HEIGHT,
             active: node.is_active !== undefined ? !!node.is_active : true,
-            isRoot: !!node.is_root
+            isRoot: !!node.is_root,
+            region_id: node.region_id,
+            zone_id: node.zone_id,
         };
     });
 
@@ -108,6 +112,12 @@ const energizedNodes = computed(() => {
     equipments.value.filter(e => e.isRoot && e.active).forEach(s => traverse(s.id));
     return liveSet;
 });
+
+const getLocationName = (node) => {
+    if (node.region_id) return props.regions.find(r => r.id === node.region_id)?.designation;
+    if (node.zone_id) return props.zones.find(z => z.id === node.zone_id)?.name;
+    return null;
+};
 
 const isWireLive = (wire) => energizedNodes.value.has(wire.fromId);
 
@@ -386,6 +396,10 @@ onMounted(() => {
                                             <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce-3"></span>
                                               </div>
 
+                                    </div>
+                                     <div v-if="getLocationName(node)" class="absolute bottom-2 left-2 flex items-center gap-1.5 bg-slate-900/50 border border-white/10 rounded-full px-2 py-0.5">
+                                        <i class="pi pi-map-marker text-[8px] text-amber-400"></i>
+                                        <span class="text-[8px] font-bold text-slate-300 uppercase tracking-wider">{{ getLocationName(node) }}</span>
                                     </div>
                                 </div>
 

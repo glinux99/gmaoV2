@@ -193,6 +193,8 @@
         "typeDialog": {
             "title": "Nouveau Type d'Équipement",
             "name": "Nom du type",
+            "title": "Nouveau Type d'Équipement",
+            "name": "Nom du type",
             "description": "Description",
             "cancel": "Annuler",
             "create": "Créer"
@@ -217,6 +219,7 @@
             "createSuccess": "Équipement créé avec succès.",
             "deleteSuccess": "Équipement supprimé avec succès.",
             "insufficientQuantity": "Quantité insuffisante en stock.",
+            "parentQuantityUpdated": "La quantité du parent a été mise à jour.",
 
             "bulkDeleteSuccess": "Équipements supprimés avec succès.",
             "saveError": "Erreur de Sauvegarde",
@@ -224,7 +227,9 @@
             "deleteError": "Une erreur est survenue lors de la suppression.",
             "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse.",
             "typeCreateSuccess": "Type d'équipement créé avec succès.",
-            "typeSaveError": "Erreur lors de la sauvegarde du type d'équipement"
+            "typeSaveError": "Erreur lors de la sauvegarde du type d'équipement",
+            "parentQuantityUpdateError": "Erreur lors de la mise à jour de la quantité du parent.",
+            "error": "Erreur"
         },
         "confirm": {
             "deleteHeader": "Confirmation de suppression",
@@ -232,6 +237,10 @@
             "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?",
             "cancel": "Annuler",
             "delete": "Supprimer"
+        },
+        "validation": {
+            "quantityRequiredForChild": "La quantité est requise pour un équipement enfant.",
+            "insufficientParentQuantity": "La quantité du parent est insuffisante ou le parent n'est pas en stock."
         },
         "statusOptions": {
             "in_service": "En Service",
@@ -249,7 +258,8 @@
             "number": "Nombre",
             "date": "Date",
             "file": "Fichier",
-            "boolean": "Oui/Non"
+            "boolean": "Oui/Non",
+            "text": "Texte"
         }
     },
     "spareParts": {
@@ -1836,6 +1846,19 @@
             "optimal": "Optimal",
             "unstable": "Instable",
             "critical": "Critique"
+        },
+        "dialog": {
+            "editTitle": "Modifier le Composant",
+            "tag": "Tag Identifiant",
+            "designation": "Désignation Technique",
+            "injectionPoint": "Point d'injection",
+            "injectionPointSubtitle": "Source d'énergie principale",
+            "location": "Localisation",
+            "region": "Région",
+            "zone": "Zone",
+            "selectRegion": "Sélectionner une région",
+            "selectZone": "Sélectionner une zone",
+            "insertButton": "Insérer sur le schéma"
         }
     }
 

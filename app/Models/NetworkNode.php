@@ -15,6 +15,8 @@ class NetworkNode extends Model
         'equipment_id',
         'is_active',
         'is_root',
+            'region_id',
+        'zone_id',
         'x',
         'y',
         'w',
@@ -32,5 +34,14 @@ class NetworkNode extends Model
     }
     public function equipment(): BelongsTo {
         return $this->belongsTo(Equipment::class);
+    }
+       public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
     }
 }
