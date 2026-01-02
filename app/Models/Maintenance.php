@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 class Maintenance extends Model implements HasMedia
@@ -113,5 +114,13 @@ class Maintenance extends Model implements HasMedia
     public function instructions(): HasMany
     {
         return $this->hasMany(MaintenanceInstruction::class);
+    }
+
+    /**
+     * Get the activity associated with the maintenance.
+     */
+    public function activity(): HasOne
+    {
+        return $this->hasOne(Activity::class);
     }
 }

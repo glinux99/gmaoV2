@@ -18,6 +18,7 @@ class InstructionAnswer extends Model
     protected $fillable = [
         'activity_id',
         'task_instruction_id',
+        'maintenance_instruction_id', // Ajout de la clé étrangère
         'activity_instruction_id',
 
         'user_id',
@@ -38,6 +39,14 @@ class InstructionAnswer extends Model
     public function taskInstruction(): BelongsTo
     {
         return $this->belongsTo(TaskInstruction::class);
+    }
+
+    /**
+     * Get the maintenance instruction that this answer is for.
+     */
+    public function maintenanceInstruction(): BelongsTo
+    {
+        return $this->belongsTo(MaintenanceInstruction::class);
     }
      public function activityInstruction(): BelongsTo
     {

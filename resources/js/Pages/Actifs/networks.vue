@@ -291,9 +291,7 @@ onMounted(() => {
                         <Button icon="pi pi-image" @click="exportDiagram('png')" class="p-button-text p-button-sm !text-color-secondary" v-tooltip.bottom="'Exporter en PNG'" />
                         <Button icon="pi pi-file" @click="exportDiagram('svg')" class="p-button-text p-button-sm !text-color-secondary" v-tooltip.bottom="'Exporter en SVG'" />
                     </div>
-                    <div class="flex items-center gap-2">
-                        <Button icon="pi pi-save" :label="t('networks.save')" class="p-button-sm p-button-raised shadow-md" />
-                    </div>
+
                 </div>
             </header>
 
@@ -316,7 +314,8 @@ onMounted(() => {
                                 </div>
 
                                 <div class="z-10 flex items-center justify-between">
-                                    <span class="text-[8px] font-black text-color-secondary uppercase tracking-widest">{{ slotProps.data.nodes_count || 0 }} {{ t('networks.elements') }}</span>
+                                    <span class="text-[8px] font-black text-color-secondary uppercase tracking-widest">{{  slotProps.data.region?.designation  || t('networks.defaultRegion') }}</span>
+
                                 </div>
 
                                 <div class="absolute inset-0 bg-surface-card/90 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center gap-2 z-20">

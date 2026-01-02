@@ -1821,6 +1821,7 @@
         "defaultComponent": "Composant",
         "monitoringLive": "Monitoring en direct",
         "systemUpdated": "Système mis à jour",
+        "defaultRegion" : "Region non definie",
         "networkLoaded": "Réseau {name} chargé",
         "deleteConfirmMessage": "Supprimer définitivement ce réseau ? Les données ne pourront pas être récupérées.",
         "deleteConfirmHeader": "Confirmation de suppression",

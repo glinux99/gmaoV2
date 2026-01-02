@@ -20,6 +20,7 @@ class Network extends Model
         'grid_size',
         'is_active',
         'region_id',
+        "version"
     ];
 
     public function region(): BelongsTo

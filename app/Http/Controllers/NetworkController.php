@@ -19,7 +19,7 @@ class NetworkController extends Controller
     public function index()
     {
         // On récupère tous les réseaux pour la liste latérale
-        $networks = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->get();
+        $networks = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels', 'region'])->latest()->get();
 
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
         $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->first();
@@ -79,13 +79,17 @@ class NetworkController extends Controller
 public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'version' => 'nullable|string|max:255',
-            'date' => 'nullable',
-            'equipments' => 'nullable|array',
+            'name' => 'required|string|max:255', // Ex: "Réseau Usine Nord"
+            'description' => 'nullable|string',
+            'user_id' => 'nullable|exists:users,id', // Créateur du plan
+            'zoom_level' => 'nullable|numeric',
+            'version' => 'nullable|numeric',
+            'grid_size' => 'nullable|integer',
+            'is_active' => 'boolean',
+            'region_id' => 'nullable|exists:regions,id',
+            'equipments' => 'nullable|array', // Les équipements sont des noeuds du réseau
             'connections' => 'nullable|array',
             'labels' => 'nullable|array',
-            'zoom_level' => 'nullable|numeric'
         ]);
 
         $network = DB::transaction(function () use ($validated, $request) {
@@ -95,7 +99,10 @@ public function store(Request $request)
                 'user_id' => auth()->id() ?? 1,
                 'zoom_level' => $validated['zoom_level'] ?? 0.85,
                 'version' => $validated['version'] ?? null,
-                'date' => $validated['date'] ? \Carbon\Carbon::parse($validated['date']) : null,
+                'description' => $validated['description'] ?? null,
+                'grid_size' => $validated['grid_size'] ?? 20,
+                'is_active' => $validated['is_active'] ?? true,
+                'region_id' => $validated['region_id'] ?? null,
             ]);
 
             $tempToRealIdMap = [];
@@ -112,7 +119,9 @@ public function store(Request $request)
                         [
                             'designation' => $nodeData['designation'],
                             'equipment_type_id' => $type->id,
-                            'status' => 'en service'
+                            'status' => 'en service',
+                            'zone_id' => $nodeData['zone_id'] ?? null,
+
                         ]
                     );
                     $equipmentId = $equipment->id;
@@ -124,8 +133,8 @@ public function store(Request $request)
                     'y' => $nodeData['y'],
                     'w' => $nodeData['w'] ?? 220,
                     'h' => $nodeData['h'] ?? 130,
-                    'is_active' => (int) ($nodeData['active'] ?? false),
-                    'is_root'   => (int) ($nodeData['active'] ?? false),
+                     'is_active' => (int) ($nodeData['active'] ==="true" ?? false),
+                    'is_root'   => (int) ($nodeData['active'] ==="true" ?? false),
  'region_id' => $nodeData['region_id'] ?? null,
  'zone_id' => $nodeData['zone_id'] ?? null,
                 ]);
@@ -174,13 +183,17 @@ public function store(Request $request)
 {
 
     $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'version' => 'nullable|string|max:255',
-        'date' => 'nullable',
+        'name' => 'required|string|max:255', // Ex: "Réseau Usine Nord"
+        'description' => 'nullable|string',
+        'user_id' => 'nullable|exists:users,id', // Créateur du plan
+        'zoom_level' => 'nullable|numeric',
+        'version' => 'nullable|numeric',
+        'grid_size' => 'nullable|integer',
+        'is_active' => 'boolean',
+        'region_id' => 'nullable|exists:regions,id',
         'equipments' => 'nullable|array',
         'connections' => 'nullable|array',
         'labels' => 'nullable|array',
-        'zoom_level' => 'nullable|numeric'
     ]);
 
     DB::transaction(function () use ($validated, $network) {
@@ -188,6 +201,12 @@ public function store(Request $request)
         $network->update([
             'name' => $validated['name'],
             'zoom_level' => $validated['zoom_level'] ?? $network->zoom_level,
+            'version' => $validated['version'] ?? $network->version,
+            'region_id' => $validated['region_id'] ?? $network->region_id,
+            'description' => $validated['description'] ?? $network->description,
+            'grid_size' => $validated['grid_size'] ?? $network->grid_size,
+            'is_active' => $validated['is_active'] ?? $network->is_active,
+
         ]);
 
         // 2. Nettoyage complet

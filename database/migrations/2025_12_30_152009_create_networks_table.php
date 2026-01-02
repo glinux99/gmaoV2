@@ -17,6 +17,7 @@ return new class extends Migration
     $table->text('description')->nullable();
     $table->foreignId('user_id')->constrained(); // Créateur du plan
     $table->float('zoom_level')->default(0.85);
+    $table->float('version')->nullable()->default(1.0);
     $table->integer('grid_size')->default(20);
     $table->boolean('is_active')->default(true);
      $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');

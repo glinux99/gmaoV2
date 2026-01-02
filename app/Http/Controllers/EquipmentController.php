@@ -8,6 +8,7 @@ use App\Models\Label;
 use App\Models\EquipmentMovement;
 use App\Models\Region;
 use App\Models\User;
+use App\Models\EquipmentCharacteristic;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -134,10 +135,12 @@ class EquipmentController extends Controller
                     $equipmentChildData['quantity'] = 1; // Chaque enfant créé est une unité
 
                     // Traiter les caractéristiques (héritage des données soumises)
-                    $equipmentChildData['characteristics'] = $this->processCharacteristics($validated['characteristics'] ?? [], $request);
+                    // $equipmentChildData['characteristics'] = $this->processCharacteristics($validated['characteristics'] ?? [], $request);
 
                     $childEquipment = Equipment::create($equipmentChildData);
-
+                    if (isset($validated['characteristics'])) {
+                        $this->syncCharacteristics($childEquipment, $validated['characteristics'], $request);
+                    }
                     // Log creation movement
                     EquipmentMovement::create([
                         'equipment_id' => $childEquipment->id,
@@ -152,8 +155,12 @@ class EquipmentController extends Controller
 
             } else {
                 // Création d'un équipement parent (ou un équipement simple)
-                $equipmentData['characteristics'] = $this->processCharacteristics($validated['characteristics'] ?? [], $request);
+                // $equipmentData['characteristics'] = $this->processCharacteristics($validated['characteristics'] ?? [], $request);
                 $equipment = Equipment::create($equipmentData);
+
+                if (isset($validated['characteristics'])) {
+                    $this->syncCharacteristics($equipment, $validated['characteristics'], $request);
+                }
 
                 // Log creation movement
                 EquipmentMovement::create([
@@ -250,8 +257,10 @@ class EquipmentController extends Controller
             }
 
             // Traiter et mettre à jour les caractéristiques
-            $equipment->characteristics = $this->processCharacteristics($validated['characteristics'] ?? [], $request, $equipment->characteristics);
+            // $equipment->characteristics = $this->processCharacteristics($validated['characteristics'] ?? [], $request, $equipment->characteristics);
             $equipment->save();
+
+            $this->syncCharacteristics($equipment, $validated['characteristics'] ?? [], $request);
         });
 
         return redirect()->route('equipments.index')->with('success', 'Équipement mis à jour avec succès.');
@@ -374,6 +383,45 @@ class EquipmentController extends Controller
         });
 
         return redirect()->route('equipments.index')->with('success', 'Quantité de l\'équipement mise à jour avec succès.');
+    }
+
+    /**
+     * Synchronise les caractéristiques d'un équipement.
+     *
+     * @param Equipment $equipment
+     * @param array $characteristicsData
+     * @param Request $request
+     * @return void
+     */
+    private function syncCharacteristics(Equipment $equipment, array $characteristicsData, Request $request)
+    {
+        $existingCharacteristics = $equipment->characteristics()->get()->keyBy('name');
+        $incomingCharacteristicNames = collect($characteristicsData)->pluck('name')->filter()->all();
+
+        // Supprimer les caractéristiques qui ne sont plus dans la requête
+        $characteristicsToDelete = $existingCharacteristics->whereNotIn('name', $incomingCharacteristicNames);
+        foreach ($characteristicsToDelete as $charToDelete) {
+            if ($charToDelete->type === 'file' && $charToDelete->value) {
+                Storage::disk('public')->delete($charToDelete->value);
+            }
+            $charToDelete->delete();
+        }
+
+        // Mettre à jour ou créer les nouvelles caractéristiques
+        foreach ($characteristicsData as $index => $charData) {
+            if (empty($charData['name'])) continue;
+
+            $value = $charData['value'] ?? null;
+            if ($charData['type'] === 'file' && $request->hasFile("characteristics.{$index}.value")) {
+                $file = $request->file("characteristics.{$index}.value");
+                $value = $file->store('equipments_files', 'public');
+            }
+
+            EquipmentCharacteristic::updateOrCreate(
+                ['equipment_id' => $equipment->id, 'name' => $charData['name']],
+                ['type' => $charData['type'], 'value' => $value]
+            );
+        }
     }
 
     // --- Fonctions utilitaires ---

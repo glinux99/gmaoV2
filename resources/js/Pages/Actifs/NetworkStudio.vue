@@ -109,7 +109,6 @@ const newNodeData = reactive({
     tag: '',
     designation: '',
     type: '',
-    icon: '',
     isRoot: false,
     placementType: null, // 'region' or 'zone'
     region_id: null,
@@ -121,7 +120,6 @@ const editingNodeData = reactive({
     tag: '',
     designation: '',
     isRoot: false,
-    placementType: null,
     region_id: null,
     zone_id: null,
 });
@@ -323,10 +321,9 @@ const openAddModal = (item) => {
     newNodeData.tag = item.tag;
     newNodeData.libraryId = item.id; // Renamed for better clarity
     newNodeData.designation = item.designation;
-    newNodeData.icon = item.type?.icon || 'pi-box';
     newNodeData.type = item.type?.category || 'Composant';
-    newNodeData.isRoot = false;
-    newNodeData.placementType = null;
+    // Le premier équipement est un point d'injection par défaut.
+    newNodeData.isRoot = equipments.value.length === 0; // Définit isRoot à true si c'est le premier équipement.
     newNodeData.region_id = null;
     newNodeData.zone_id = null;
     showAddModal.value = true;
@@ -336,13 +333,10 @@ const createNode = () => {
     const id = `node-${Date.now()}`;
     const nodePayload = { ...newNodeData };
 
-    // Nettoyer les IDs non pertinents en fonction du type de placement
-    if (nodePayload.placementType === 'region') nodePayload.zone_id = null;
-    if (nodePayload.placementType === 'zone') nodePayload.region_id = null;
-
     equipments.value.push({
         id, ...newNodeData,
-        x: 400, y: 300, w: NODE_WIDTH, h: NODE_HEIGHT, active: true
+        x: 400, y: 300, w: NODE_WIDTH, h: NODE_HEIGHT,
+        active: true // Les équipements sont actifs par défaut.
     });
     showAddModal.value = false;
     recordState();
@@ -373,7 +367,6 @@ const openEditModal = (node) => {
     editingNodeData.region_id = node.region_id;
     editingNodeData.zone_id = node.zone_id;
     editingNodeData.active = node.active;
-    editingNodeData.placementType = node.region_id ? 'region' : (node.zone_id ? 'zone' : null);
     showEditModal.value = true;
 };
 
@@ -383,8 +376,8 @@ const saveNodeChanges = () => {
         node.tag = editingNodeData.tag;
         node.designation = editingNodeData.designation;
         node.isRoot = editingNodeData.isRoot;
-        node.region_id = editingNodeData.placementType === 'region' ? editingNodeData.region_id : null;
-        node.zone_id = editingNodeData.placementType === 'zone' ? editingNodeData.zone_id : null;
+        node.region_id = null; // La région est gérée au niveau du réseau
+        node.zone_id = editingNodeData.zone_id;
         node.active = editingNodeData.active;
 
         showEditModal.value = false;
@@ -813,7 +806,8 @@ const stats = computed(() => {
 const exportProject = () => {
     const projectData = {
         name: networkName.value,
-        version: "2.0",
+        region_id: form.region_id,
+        version: (parseFloat(network.version || "1.9") + 0.1).toFixed(1),
         date: new Date().toISOString(),
         equipments: equipments.value,
         connections: connections.value,
@@ -888,6 +882,7 @@ const importProject = (event) => {
 const form = useForm({
     id: null,
     name: networkName.value,
+    region_id: null, // Ajout de la région pour le réseau
     zoom_level: zoomLevel.value,
     version: "2.0",
     date: new Date(),
@@ -898,8 +893,10 @@ const form = useForm({
 const projectId = ref(null);
 
 const exportApiProject = () => {
+    console.log(form);
     // 1. Mise à jour des données du formulaire avant envoi
     form.name = networkName.value;
+    form.region_id = form.region_id; // Assurer que la région est dans le formulaire
     form.zoom_level = zoomLevel.value;
     form.equipments = equipments.value;
     form.connections = connections.value;
@@ -1060,6 +1057,13 @@ const exportApiProject = () => {
                 <span class="text-white font-bold text-xs tracking-tight">NEO<span class="text-indigo-400">CAD</span></span>
                 <input v-model="networkName" class="bg-transparent border-none text-[9px] text-slate-500 outline-none w-32" />
             </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <label class="text-[9px] font-bold text-slate-500 uppercase">Région:</label>
+            <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id"
+                      placeholder="Choisir Région"
+                      class="!w-48 dark-dropdown-header" />
         </div>
 
         <div class="h-6 w-px bg-white/10 mx-2"></div>
@@ -1333,14 +1337,7 @@ const exportApiProject = () => {
 
             <div class="flex flex-col gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
                  <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
-                 <SelectButton v-model="newNodeData.placementType" :options="[{label: 'Région', value: 'region'}, {label: 'Zone', value: 'zone'}]" optionLabel="label" optionValue="value" />
-                 <Dropdown v-if="newNodeData.placementType === 'region'"
-                           v-model="newNodeData.region_id"
-                           :options="props.regions"
-                           optionLabel="designation" optionValue="id"
-                           placeholder="Sélectionner une région" class="w-full" filter />
-                 <Dropdown v-if="newNodeData.placementType === 'zone'"
-                           v-model="newNodeData.zone_id"
+                 <Dropdown v-model="newNodeData.zone_id"
                            :options="props.zones"
                            optionLabel="name" optionValue="id"
                            placeholder="Sélectionner une zone" class="w-full" filter />
@@ -1369,13 +1366,7 @@ const exportApiProject = () => {
 
             <div class="flex flex-col gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
                  <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
-                 <SelectButton v-model="editingNodeData.placementType" :options="[{label: 'Région', value: 'region'}, {label: 'Zone', value: 'zone'}]" optionLabel="label" optionValue="value" />
-                 <Dropdown v-if="editingNodeData.placementType === 'region'"
-                           v-model="editingNodeData.region_id"
-                           :options="props.regions"
-                           optionLabel="designation" optionValue="id" placeholder="Sélectionner une région" class="w-full" filter />
-                 <Dropdown v-if="editingNodeData.placementType === 'zone'"
-                           v-model="editingNodeData.zone_id"
+                 <Dropdown v-model="editingNodeData.zone_id"
                            :options="props.zones"
                            optionLabel="name" optionValue="id" placeholder="Sélectionner une zone" class="w-full" filter />
             </div>
@@ -1450,6 +1441,13 @@ const exportApiProject = () => {
     border: 1px solid rgba(255,255,255,0.1) !important;
     color: white !important;
     font-size: 0.8rem !important;
+}
+.dark-dropdown-header .p-dropdown {
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
+    font-size: 0.8rem !important;
+    border-radius: 0.5rem;
 }
 .p-inputtext:focus {
     border-color: #6366f1 !important;
