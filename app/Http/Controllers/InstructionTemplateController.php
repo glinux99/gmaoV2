@@ -11,19 +11,7 @@ class InstructionTemplateController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
-    {
-        $query = InstructionTemplate::query();
 
-        if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
-        }
-
-        return Inertia::render('Configurations/InstructionTemplates', [
-            'instructionTemplates' => $query->paginate(10),
-            'filters' => $request->only(['search']),
-        ]);
-    }
 
     /**
      * Show the form for creating a new resource.
@@ -103,6 +91,6 @@ class InstructionTemplateController extends Controller
         //     return redirect()->back()->with('error', 'Ce modèle est utilisé et ne peut pas être supprimé.');
         // }
         $instructionTemplate->delete();
-        return redirect()->route('instruction-templates.index')->with('success', 'Modèle d\'instruction supprimé avec succès.');
+        return redirect()->back()->with('success', 'Modèle d\'instruction supprimé avec succès.');
     }
 }

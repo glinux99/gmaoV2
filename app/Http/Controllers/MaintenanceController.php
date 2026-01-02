@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ServiceOrder;
+use App\Models\Activity;
 use Inertia\Inertia;
 use App\Models\MaintenanceInstruction;
 use App\Models\InstructionTemplate;
@@ -141,6 +142,25 @@ class MaintenanceController extends Controller
         // Création de l'enregistrement principal
         $maintenance = Maintenance::create($validatedData);
 
+        // Créer une activité correspondante
+        $activity = Activity::create([
+            'maintenance_id' => $maintenance->id,
+            'title' => 'Activité pour: ' . $maintenance->title,
+            'assignable_type' => $maintenance->assignable_type,
+            'assignable_id' => $maintenance->assignable_id,
+            'status' => 'scheduled', // Statut par défaut
+            'actual_start_time' => $maintenance->scheduled_start_date,
+            'actual_end_time' => $maintenance->scheduled_end_date,
+            'priority' => $maintenance->priority,
+            'user_id' => Auth::id(),
+        ]);
+
+        // Attacher les équipements à l'activité
+        if (!empty($validatedData['equipment_ids'])) {
+            $activity->equipment()->attach($validatedData['equipment_ids']);
+        }
+
+
         // Attacher les équipements (relation Many-to-Many via table pivot)
         if (!empty($validatedData['equipment_ids'])) {
                 $networkNodeId = $validator->validated()['network_node_id'];
@@ -163,7 +183,14 @@ $maintenance->equipments()->attach($syncData);
                 $cleanEquipmentId = (int) $equipmentId;
                 foreach ($instructions as $instructionData) {
                     // Crée l'instruction et l'associe à la maintenance et à l'équipement
-                    $maintenance->instructions()->create(array_merge($instructionData, ['equipment_id' => $cleanEquipmentId]));
+                    $maintenanceInstruction = $maintenance->instructions()->create(array_merge($instructionData, ['equipment_id' => $cleanEquipmentId]));
+
+                    // Créer l'instruction correspondante pour l'activité
+                    $activity->activityInstructions()->create([
+                        'label' => $maintenanceInstruction->label,
+                        'type' => $maintenanceInstruction->type,
+                        'is_required' => $maintenanceInstruction->is_required,
+                    ]);
                 }
             }
         }
@@ -259,6 +286,24 @@ $maintenance->equipments()->attach($syncData);
 
             $maintenance->update($validator->validated());
 
+            // Mettre à jour ou créer l'activité correspondante
+            $activity = Activity::updateOrCreate(
+                ['maintenance_id' => $maintenance->id],
+                [
+                    'title' => 'Activité pour: ' . $maintenance->title,
+                    'assignable_type' => $maintenance->assignable_type,
+                    'assignable_id' => $maintenance->assignable_id,
+                    'status' => $maintenance->status === 'completed' ? 'completed' : 'scheduled',
+                    'actual_start_time' => $maintenance->scheduled_start_date,
+                    'actual_end_time' => $maintenance->scheduled_end_date,
+                    'priority' => $maintenance->priority,
+                    'user_id' => Auth::id(),
+                    'problem_resolution_description' => $maintenance->description,
+                    'proposals' => null,
+                    'additional_information' => null,
+                ]
+            );
+
             // Mettre à jour les équipements liés (synchronisation Many-to-Many)
             if (isset($validator->validated()['equipment_ids'])) {
                 $networkNodeId = $validator->validated()['network_node_id'];
@@ -272,19 +317,30 @@ $maintenance->equipments()->attach($syncData);
     $maintenance->equipments()->detach(); // Détacher les équipements existants
 // 3. On attache avec les données du pivot
 $maintenance->equipments()->attach($syncData);
+
+                // Mettre à jour les équipements de l'activité
+                $activity->equipment()->sync($validator->validated()['equipment_ids']);
             }
 
 
             // Mettre à jour les instructions
             $maintenance->instructions()->delete(); // Supprimer les anciennes instructions
+            $activity->activityInstructions()->delete(); // Supprimer les anciennes instructions de l'activité
+
             if ($request->has('node_instructions')) {
                 foreach ($request->input('node_instructions') as $equipmentId => $instructions) {
                     foreach ($instructions as $instructionData) {
-                        $maintenance->instructions()->create([
+                        $maintenanceInstruction = $maintenance->instructions()->create([
                             'equipment_id' => $equipmentId,
                             'label' => $instructionData['label'],
                             'type' => $instructionData['type'],
                             'is_required' => $instructionData['is_required'],
+                        ]);
+                        // Créer l'instruction correspondante pour l'activité
+                        $activity->activityInstructions()->create([
+                            'label' => $maintenanceInstruction->label,
+                            'type' => $maintenanceInstruction->type,
+                            'is_required' => $maintenanceInstruction->is_required,
                         ]);
                     }
                 }

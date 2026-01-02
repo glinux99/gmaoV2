@@ -122,6 +122,7 @@ const templateDialog = ref(false);
 const templateForm = useForm({
     name: '',
     instructions: [],
+    id: null, // Ajout de l'ID pour la mise à jour
 });
 
 // --- NOUVEAU : Logique pour la création d'activités ---
@@ -499,6 +500,7 @@ const openSaveAsTemplateDialog = (equipmentId) => {
         return;
     }
     templateForm.reset();
+    templateForm.id = null; // S'assurer que c'est une création
     templateForm.instructions = instructionsToSave.map(({ id, maintenance_id, equipment_id, created_at, updated_at, ...rest }) => rest); // Nettoyer les instructions
     templateDialog.value = true;
 };
@@ -514,6 +516,39 @@ const saveAsTemplate = () => {
             const errorDetail = Object.values(errors).flat().join(' ; ');
             toast.add({ severity: 'error', summary: 'Erreur', detail: errorDetail || 'Impossible de sauvegarder le modèle.', life: 5000 });
         }
+    });
+};
+
+const openEditTemplateDialog = (template) => {
+    if (!template) return;
+    templateForm.id = template.id;
+    templateForm.name = template.name;
+    templateForm.instructions = template.instructions;
+    templateDialog.value = true;
+};
+
+const saveOrUpdateTemplate = () => {
+    if (templateForm.id) {
+        // Mise à jour
+        templateForm.put(route('instruction-templates.update', templateForm.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                templateDialog.value = false;
+                toast.add({ severity: 'success', summary: 'Succès', detail: 'Modèle mis à jour.', life: 3000 });
+            },
+        });
+    } else {
+        // Création
+        saveAsTemplate();
+    }
+};
+
+const deleteTemplate = (template) => {
+    if (!template) return;
+    confirm.require({
+        message: `Êtes-vous sûr de vouloir supprimer le modèle "${template.name}" ?`,
+        header: 'Confirmation de suppression',
+        accept: () => router.delete(route('instruction-templates.destroy', template.id), { preserveScroll: true }),
     });
 };
 
@@ -1635,14 +1670,25 @@ watch(() => form.network_node_id, (newNodeId) => {
                                     </div>
 
                                     <div class="space-y-3">
-                                        <div v-if="props.instructionTemplates && props.instructionTemplates.length > 0" class="flex justify-end">
+                                        <div v-if="props.instructionTemplates && props.instructionTemplates.length > 0" class="flex justify-end items-center gap-2">
+                                            <template v-if="form.node_instructions[child.key]?.template_id">
+                                                <Button icon="pi pi-pencil" @click="openEditTemplateDialog(props.instructionTemplates.find(t => t.id === form.node_instructions[child.key].template_id))" text rounded severity="secondary" v-tooltip.top="'Modifier le modèle appliqué'" />
+                                                <Button icon="pi pi-trash" @click="deleteTemplate(props.instructionTemplates.find(t => t.id === form.node_instructions[child.key].template_id))" text rounded severity="danger" v-tooltip.top="'Supprimer le modèle appliqué'" />
+                                            </template>
                                             <Dropdown
                                                 :options="props.instructionTemplates"
                                                 optionLabel="name"
                                                 placeholder="Appliquer un modèle"
                                                 class="p-dropdown-sm !w-auto text-xs"
                                                 @change="(event) => {
-                                                    form.node_instructions[child.key] = JSON.parse(JSON.stringify(event.value.instructions));
+                                                    const selectedTemplate = event.value;
+                                                    // Copie profonde pour éviter les mutations inattendues
+                                                    const instructionsCopy = JSON.parse(JSON.stringify(selectedTemplate.instructions));
+
+                                                    // Appliquer les instructions et garder une trace du modèle appliqué
+                                                    form.node_instructions[child.key] = instructionsCopy;
+                                                    form.node_instructions[child.key].template_id = selectedTemplate.id;
+
                                                     toast.add({severity: 'info', summary: 'Modèle appliqué', detail: `Les instructions de '${event.value.name}' ont été chargées.`, life: 3000});
                                                 }" />
                                         </div>
@@ -1835,7 +1881,7 @@ watch(() => form.network_node_id, (newNodeId) => {
 </Dialog>
 
 <!-- Dialogue pour sauvegarder un modèle -->
-<Dialog v-model:visible="templateDialog" modal header="Sauvegarder comme modèle" :style="{ width: '30rem' }">
+<Dialog v-model:visible="templateDialog" modal :header="templateForm.id ? 'Modifier le modèle' : 'Sauvegarder comme modèle'" :style="{ width: '30rem' }">
     <div class="field">
         <label for="template_name" class="font-semibold">Nom du modèle</label>
         <InputText id="template_name" v-model="templateForm.name" class="w-full"
@@ -1853,7 +1899,7 @@ watch(() => form.network_node_id, (newNodeId) => {
     </div>
     <template #footer>
         <Button label="Annuler" icon="pi pi-times" @click="templateDialog = false" class="p-button-text" />
-        <Button label="Sauvegarder le modèle" icon="pi pi-save" @click="saveAsTemplate" :loading="templateForm.processing" />
+        <Button :label="templateForm.id ? 'Mettre à jour' : 'Sauvegarder'" icon="pi pi-save" @click="saveOrUpdateTemplate" :loading="templateForm.processing" />
     </template>
 </Dialog>
 

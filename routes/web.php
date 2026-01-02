@@ -99,10 +99,10 @@ Route::middleware('auth', 'verified')->group(function () {
     'connections' => ConnectionController::class,
     'interventions' => InterventionRequestController::class,
     'reports' => ReportController::class,
- 'instruction-templates' => InstructionTemplateController::class,
- 'report-templates' => ReportTemplateController::class,
- 'networks' => NetworkController::class,
- 'analytics' => AnalyticController::class,
+    'instruction-templates' => InstructionTemplateController::class, // Utilise maintenant les routes resource (index, store, update, destroy)
+    'report-templates' => ReportTemplateController::class,
+    'networks' => NetworkController::class,
+    'analytics' => AnalyticController::class,
 
   ]);
 
@@ -111,7 +111,6 @@ Route::middleware('auth', 'verified')->group(function () {
   Route::put('/expenses/group-status', [ExpensesController::class, 'updateGroupStatus'])->name('expenses.updateGroupStatus');
 
   Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
-// ... autres routes
 
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
 Route::put('/equipments/{equipment}/update-quantity', [EquipmentController::class, 'updateQuantity'])->name('equipments.update-quantity');
