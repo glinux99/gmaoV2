@@ -53,6 +53,9 @@ const searchFilter = ref(props.filters?.search || '');
 const dt = ref(); // Référence au DataTable pour l'export
 const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonnes
 
+// --- NOUVEAU : État pour les lignes étendues ---
+const expandedRows = ref([]);
+
 // --- SYSTÈME DE FILTRES AVANCÉS (V11 Custom) ---
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -1143,6 +1146,49 @@ const getNetworkLabel = (network) => {
 };
 </script>
 
+<script>
+// Logique de calcul des statuts de date (placée hors du <script setup> pour la clarté)
+const getStatusForDate = (dateString, reminderDays) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Ignorer l'heure pour la comparaison des jours
+
+    const eventDate = new Date(dateString);
+    eventDate.setHours(0, 0, 0, 0);
+
+    const diffTime = eventDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        return { label: 'Passée', severity: 'secondary' };
+    }
+    if (diffDays === 0) {
+        return { label: 'En cours', severity: 'danger' };
+    }
+    if (reminderDays && diffDays <= reminderDays) {
+        return { label: 'Approche', severity: 'warning' };
+    }
+    return { label: 'À venir', severity: 'info' };
+};
+
+const parseAndSortDates = (regeneratedDates) => {
+    if (!regeneratedDates) return [];
+    try {
+        const dates = JSON.parse(regeneratedDates);
+        if (!Array.isArray(dates)) return [];
+
+        // Trier les dates par ordre chronologique
+        return dates.sort((a, b) => new Date(a) - new Date(b));
+    } catch (e) {
+        console.error("Erreur d'analyse des dates régénérées:", e);
+        return [];
+    }
+};
+
+const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+};
+</script>
+
 <template>
     <AppLayout :title="t('maintenances.title')">
 
@@ -1188,7 +1234,7 @@ const getNetworkLabel = (network) => {
             </div>
 
             <div class="overflow-hidden rounded-[1rem] border border-white bg-white shadow-2xl shadow-slate-200/60">
-                <DataTable :value="maintenances.data" ref="dt" dataKey="id" :paginator="true" :rows="10"
+                <DataTable :value="maintenances.data" ref="dt" dataKey="id" v-model:expandedRows="expandedRows" :paginator="true" :rows="10"
                     scrollable scrollHeight="600px" class="v11-table"
                     v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['title', 'assignable.name', 'status', 'priority', 'type', 'region.designation']"
                     removableSort>
@@ -1210,6 +1256,7 @@ const getNetworkLabel = (network) => {
                             </div>
                         </div>
                     </template>
+                    <Column :expander="true" headerStyle="width: 3rem" />
                     <Column selectionMode="multiple" headerStyle="width: 4rem" class="pl-8"></Column>
 
   <Column v-if="visibleColumns.includes('title')" :header="t('maintenances.columns.title')" minWidth="300px">
@@ -1320,6 +1367,26 @@ const getNetworkLabel = (network) => {
                             </div>
                         </template>
                     </Column>
+
+                    <template #expansion="{ data }">
+                        <div class="p-6 bg-slate-50 border-t border-b border-slate-200">
+                            <h4 class="text-xs font-black uppercase tracking-widest text-slate-600 mb-4">
+                                <i class="pi pi-calendar-times mr-2"></i> Prochaines Occurrences Planifiées
+                            </h4>
+                            <div v-if="data.regenerated_dates && parseAndSortDates(data.regenerated_dates).length > 0" class="flex flex-wrap gap-3">
+                                <div v-for="date in parseAndSortDates(data.regenerated_dates)" :key="date"
+                                     class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                                    <Tag :value="getStatusForDate(date, data.reminder_days).label"
+                                         :severity="getStatusForDate(date, data.reminder_days).severity"
+                                         class="text-[9px] uppercase font-black" />
+                                    <span class="text-xs font-bold text-slate-700">{{ formatDate(date) }}</span>
+                                </div>
+                            </div>
+                            <div v-else class="text-center py-4 text-slate-400 italic text-sm">
+                                Aucune date de récurrence n'est configurée pour cette maintenance.
+                            </div>
+                        </div>
+                    </template>
                 </DataTable>
 
                 <OverlayPanel ref="op" appendTo="body" id="column_op" class="p-4">

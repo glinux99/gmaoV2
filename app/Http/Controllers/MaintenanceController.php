@@ -78,6 +78,70 @@ class MaintenanceController extends Controller
         });
     }
 
+    /**
+     * Génère les dates de récurrence pour une maintenance.
+     */
+private function generateRecurrenceDates(array $data): ?array
+{
+    $recurrenceType = $data['recurrence_type'] ?? null;
+    $startDate = isset($data['scheduled_start_date']) ? Carbon::parse($data['scheduled_start_date']) : null;
+    $endDate = isset($data['scheduled_end_date']) ? Carbon::parse($data['scheduled_end_date']) : null;
+
+    if (!$recurrenceType || !$startDate || !$endDate || $startDate->gt($endDate)) {
+        return null;
+    }
+
+    $dates = [];
+    $currentDate = $startDate->copy();
+    $interval = $data['recurrence_interval'] ?? 1;
+
+    // Utilisation d'une limite de sécurité pour éviter les boucles infinies (ex: 500 occurrences)
+    $maxOccurrences = 500;
+
+    while ($currentDate->lte($endDate) && count($dates) < $maxOccurrences) {
+        switch ($recurrenceType) {
+            case 'daily':
+                $dates[] = $currentDate->copy();
+                $currentDate->addDays($interval);
+                break;
+
+            case 'weekly':
+                $daysOfWeek = $data['recurrence_days'] ?? []; // Ex: [1, 3] pour Lundi, Mercredi
+                if (empty($daysOfWeek) || in_array($currentDate->dayOfWeek, $daysOfWeek)) {
+                    $dates[] = $currentDate->copy();
+                }
+                $currentDate->addDay();
+                break;
+
+            case 'monthly':
+            case 'quarterly':
+            case 'biannual':
+            case 'annual':
+                // Si on cherche un jour spécifique du mois (ex: le 15 du mois)
+                $dayOfMonth = $data['recurrence_day_of_month'] ?? $startDate->day;
+
+                // On s'assure que la date courante est bien fixée au jour voulu du mois
+                $currentDate->day($dayOfMonth);
+
+                // On vérifie si après ajustement on est toujours dans l'intervalle
+                if ($currentDate->gte($startDate) && $currentDate->lte($endDate)) {
+                    $dates[] = $currentDate->copy();
+                }
+
+                // Incrémentation selon le type
+                if ($recurrenceType === 'monthly') $currentDate->addMonths($interval);
+                elseif ($recurrenceType === 'quarterly') $currentDate->addMonths(3);
+                elseif ($recurrenceType === 'biannual') $currentDate->addMonths(6);
+                elseif ($recurrenceType === 'annual') $currentDate->addYears($interval);
+                break;
+
+            default:
+                return $dates;
+        }
+    }
+
+    return $dates;
+}
     // ------------------------------------------------------------------------------------------
 
     /**
@@ -139,6 +203,10 @@ return $validator->messages();
     DB::beginTransaction();
     try {
         $validatedData = $validator->validated();
+
+        // Générer les dates de récurrence et les ajouter aux données validées
+        $regeneratedDates = $this->generateRecurrenceDates($validatedData);
+        $validatedData['regenerated_dates'] = $regeneratedDates ? json_encode($regeneratedDates) : null;
 
         // Création de l'enregistrement principal
         $maintenance = Maintenance::create($validatedData);
@@ -294,7 +362,12 @@ $maintenance->equipments()->attach($syncData);
 
         try {
 
-            $maintenance->update($validator->validated());
+            $validatedData = $validator->validated();
+            // Générer les dates de récurrence et les ajouter aux données validées
+            $regeneratedDates = $this->generateRecurrenceDates($validatedData);
+            $validatedData['regenerated_dates'] = $regeneratedDates ? json_encode($regeneratedDates) : null;
+
+            $maintenance->update($validatedData);
 
             // Mettre à jour ou créer l'activité correspondante
             $activity = Activity::updateOrCreate(

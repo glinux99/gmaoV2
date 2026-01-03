@@ -38,6 +38,7 @@ return new class extends Migration
     $table->foreignId('maintenance_schedule_id')->nullable()->constrained('maintenance_schedules')->onDelete('set null');
     $table->foreignId('equipment_id')->nullable()->constrained('equipment')->onDelete('set null');
     $table->foreignId('intervention_request_id')->nullable()->constrained('intervention_requests')->onDelete('set null');
+    $table->json('regenerated_dates')->nullable()->comment('Liste des dates régénérées si la maintenance prend plusieurs fois');
 
     $table->timestamps();
 });
