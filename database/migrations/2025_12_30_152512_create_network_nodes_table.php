@@ -17,7 +17,7 @@ return new class extends Migration
     $table->foreignId('equipment_id')->constrained()->onDelete('cascade');
     $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
     $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null');
-
+    $table->string('status')->nullable()->default('en service');
     // État spécifique au réseau (peut différer de l'état réel de l'équipement)
     $table->integer('is_active')->default(1);
     $table->integer('is_root')->default(0); // Source d'énergie (G)

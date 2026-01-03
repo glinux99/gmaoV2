@@ -10,39 +10,15 @@ import Badge from 'primevue/badge';
 import ColorPicker from 'primevue/colorpicker';
 import SelectButton from 'primevue/selectbutton';
 import Dropdown from 'primevue/dropdown';
+import Calendar from 'primevue/calendar';
 import InputNumber from 'primevue/inputnumber';
 import { useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
     initialNetwork: Object,
     library: {
-        type: Object,
-        default: () => ({
-            'SOURCES ET ARRIVÉES': [
-                {id: 's1', tag: 'G1', designation: 'ARRIVÉE RÉSEAU TRI 400V', type: {icon: 'pi-bolt', category: 'Source'}},
-                {id: 's2', tag: 'G2', designation: 'ALIMENTATION DC 24V', type: {icon: 'pi-box', category: 'Source'}},
-                {id: 's3', tag: 'PV1', designation: 'ONDULEUR SOLAIRE', type: {icon: 'pi-sun', category: 'Source'}},
-                {id: 's4', tag: 'BAT1', designation: 'PARC BATTERIES', type: {icon: 'pi-database', category: 'Source'}}
-            ],
-            'APPAREILS DE PROTECTION': [
-                {id: 'p1', tag: 'Q1', designation: 'DISJONCTEUR MAGNÉTO-THERMIQUE', type: {icon: 'pi-shield', category: 'Protection'}},
-                {id: 'p2', tag: 'F1', designation: 'PORTE FUSIBLE SECTIONNABLE', type: {icon: 'pi-lock', category: 'Protection'}},
-                {id: 'p3', tag: 'KA1', designation: 'RELAIS DE PROTECTION THERMIQUE', type: {icon: 'pi-exclamation-triangle', category: 'Protection'}},
-                {id: 'p4', tag: 'SPD', designation: 'PARAFOUDRE TYPE 2', type: {icon: 'pi-cloud', category: 'Protection'}}
-            ],
-            'CONTRÔLE ET COMMANDE': [
-                {id: 'c1', tag: 'KM1', designation: 'CONTACTEUR DE PUISSANCE', type: {icon: 'pi-sync', category: 'Commande'}},
-                {id: 'c2', tag: 'KA1', designation: 'RELAIS AUXILIAIRE', type: {icon: 'pi-clone', category: 'Commande'}},
-                {id: 'c3', tag: 'AT1', designation: 'AUTO-TRANSFORMATEUR', type: {icon: 'pi-database', category: 'Commande'}},
-                {id: 'c4', tag: 'PLC', designation: 'AUTOMATE PROGRAMMABLE', type: {icon: 'pi-server', category: 'Commande'}}
-            ],
-            'RÉCEPTEURS / CHARGES': [
-                {id: 'u1', tag: 'M1', designation: 'MOTEUR ASYNCHRONE TRI', type: {icon: 'pi-cog', category: 'Charge'}},
-                {id: 'u2', tag: 'H1', designation: 'VOYANT SIGNALISATION LED', type: {icon: 'pi-eye', category: 'Signalisation'}},
-                {id: 'u3', tag: 'R1', designation: 'RÉSISTANCE DE CHAUFFAGE', type: {icon: 'pi-fire', category: 'Charge'}},
-                {id: 'u4', tag: 'EV1', designation: 'ÉLECTROVANNE 24V DC', type: {icon: 'pi-filter', category: 'Charge'}}
-            ]
-        })
+ type: Object,
+ default: () => ({})
     },
     regions: Array,
     zones: Array,
@@ -112,8 +88,10 @@ const newNodeData = reactive({
     isRoot: false,
     placementType: null, // 'region' or 'zone'
     region_id: null,
+    status: 'en service', // Statut par défaut
     zone_id: null,
 });
+const characteristicsData = ref({}); // Structure: { charId: { value: '...', date: '...' } }
 
 const editingNodeData = reactive({
     id: null,
@@ -122,6 +100,8 @@ const editingNodeData = reactive({
     isRoot: false,
     region_id: null,
     zone_id: null,
+    status: 'en service',
+    active: true,
 });
 
 
@@ -325,18 +305,28 @@ const openAddModal = (item) => {
     // Le premier équipement est un point d'injection par défaut.
     newNodeData.isRoot = equipments.value.length === 0; // Définit isRoot à true si c'est le premier équipement.
     newNodeData.region_id = null;
+    newNodeData.status = 'en service'; // Statut par défaut
     newNodeData.zone_id = null;
     showAddModal.value = true;
+    // Réinitialiser avec la structure objet pour les caractéristiques
+    const initialChars = {};
+    if (item.characteristics) {
+        item.characteristics.forEach(char => {
+            initialChars[char.id] = { value: null, date: new Date() };
+        });
+    }
+    characteristicsData.value = initialChars;
 };
 
 const createNode = () => {
     const id = `node-${Date.now()}`;
-    const nodePayload = { ...newNodeData };
 
     equipments.value.push({
         id, ...newNodeData,
         x: 400, y: 300, w: NODE_WIDTH, h: NODE_HEIGHT,
-        active: true // Les équipements sont actifs par défaut.
+        active: true, // Les équipements sont actifs par défaut.
+        // On attache une copie profonde des caractéristiques pour garantir l'isolation des données.
+        characteristics: JSON.parse(JSON.stringify(characteristicsData.value))
     });
     showAddModal.value = false;
     recordState();
@@ -366,20 +356,49 @@ const openEditModal = (node) => {
     editingNodeData.isRoot = node.isRoot;
     editingNodeData.region_id = node.region_id;
     editingNodeData.zone_id = node.zone_id;
-    editingNodeData.active = node.active;
+    editingNodeData.status = node.status || 'en service';
+    editingNodeData.active = node.active !== undefined ? node.active : true;
+    editingNodeData.libraryId = node.libraryId; // Important pour retrouver les caractéristiques
+
+    // Pré-remplir les caractéristiques existantes
+    const initialChars = {};
+    // Trouver l'équipement dans la bibliothèque pour obtenir ses caractéristiques par défaut
+    const libraryItem = Object.values(props.library).flat().find(item => item.id === node.libraryId);
+    if (libraryItem && libraryItem.characteristics) {
+        libraryItem.characteristics.forEach(char => {
+            initialChars[char.id] = { value: null, date: new Date() }; // Initialiser avec null ou une valeur par défaut
+        });
+    }
+
+    // 2. Remplacer avec les valeurs sauvegardées si elles existent
+    if (node.characteristics) {
+        // Si les données viennent du backend (après un chargement), elles sont dans un tableau
+        if (Array.isArray(node.characteristics)) {
+            node.characteristics.forEach(savedChar => {
+                initialChars[savedChar.characteristic_id] = { // Assurez-vous que c'est bien 'characteristic_id'
+                    value: savedChar.value,
+                    date: savedChar.date ? new Date(savedChar.date) : new Date()
+                };
+                initialChars[savedChar.characteristic_id].equipement_id = savedChar.equipement_id;
+            });
+        } else { // Sinon (après une création/modif en local), elles sont dans un objet
+            Object.keys(node.characteristics).forEach(charId => {
+                if (initialChars[charId]) {
+                    initialChars[charId] = { ...node.characteristics[charId] }; // Copier l'objet entier
+                }
+            });
+        }
+    }
+    characteristicsData.value = initialChars;
+
     showEditModal.value = true;
 };
 
 const saveNodeChanges = () => {
     const node = equipments.value.find(e => e.id === editingNodeData.id);
     if (node) {
-        node.tag = editingNodeData.tag;
-        node.designation = editingNodeData.designation;
-        node.isRoot = editingNodeData.isRoot;
-        node.region_id = null; // La région est gérée au niveau du réseau
-        node.zone_id = editingNodeData.zone_id;
-        node.active = editingNodeData.active;
-
+        Object.assign(node, editingNodeData); // Copie les propriétés de editingNodeData vers node
+        node.characteristics = { ...characteristicsData.value }; // Sauvegarder les caractéristiques modifiées
         showEditModal.value = false;
         recordState();
         toast.add({
@@ -387,6 +406,7 @@ const saveNodeChanges = () => {
             summary: 'Mise à jour réussie',
             detail: 'Les informations du composant ont été enregistrées.',
             life: 3000
+
         });
     }
 };
@@ -684,6 +704,7 @@ const loadNetwork = (network) => {
         const eq = node.equipment || {};
         const type = eq.equipment_type || {};
         return {
+            ...node,
             id: node.id,
             libraryId: eq.id,
             tag: eq.tag || `ID-${node.id}`,
@@ -697,7 +718,8 @@ const loadNetwork = (network) => {
             active: node.is_active !== undefined ? (node.is_active ? 1 : 0) : 1,
             isRoot: !!node.is_root,
             region_id: node.region_id,
-            zone_id: node.zone_id,
+            zone_id: node.zone_id, // Assurez-vous que zone_id est correctement mappé
+            characteristics: node.characteristics || {}, // Assurer que les caractéristiques sont là
         };
     });
 
@@ -706,7 +728,7 @@ const loadNetwork = (network) => {
         fromId: conn.from_node_id, fromSide: conn.from_side,
         toId: conn.to_node_id, toSide: conn.to_side,
         color: conn.color || '#3b82f6', dash: conn.dash_array || '0'
-    }));
+    })); // Assurez-vous que les IDs sont des strings si nécessaire
 
     labels.value = network.labels || [];
 };
@@ -714,7 +736,7 @@ const loadNetwork = (network) => {
 const getLocationName = (node) => {
     if (node.region_id) return props.regions.find(r => r.id === node.region_id)?.designation;
     if (node.zone_id) return props.zones.find(z => z.id === node.zone_id)?.name;
-    return null;
+    return 'N/A';
 };
 
 onMounted(() => {
@@ -726,7 +748,7 @@ onMounted(() => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
             if (e.target.tagName !== 'INPUT') deleteSelected();
         }
-        if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+        if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } // Empêche le comportement par défaut du navigateur
     });
 });
 
@@ -734,7 +756,7 @@ const filteredLibrary = computed(() => {
     if (!searchQuery.value) return props.library;
     const q = searchQuery.value.toLowerCase();
     const res = {};
-    for (const [cat, items] of Object.entries(props.library)) {
+    for (const [cat, items] of Object.entries(props.library)) { // Itérer sur les catégories de la bibliothèque
         const matches = items.filter(i => i.designation.toLowerCase().includes(q) || i.tag.toLowerCase().includes(q));
         if (matches.length) res[cat] = matches;
     }
@@ -806,7 +828,7 @@ const stats = computed(() => {
 const exportProject = () => {
     const projectData = {
         name: networkName.value,
-        region_id: form.region_id,
+        region_id: form.region_id, // Assurez-vous que form.region_id est défini
         version: (parseFloat(network.version || "1.9") + 0.1).toFixed(1),
         date: new Date().toISOString(),
         equipments: equipments.value,
@@ -830,7 +852,7 @@ const saveToDatabase = async () => {
     const payload = {
         name: networkName.value,
         data: {
-            equipments: equipments.value,
+            equipments: equipments.value, // Les équipements avec leurs caractéristiques
             connections: connections.value,
             labels: labels.value
         }
@@ -882,7 +904,7 @@ const importProject = (event) => {
 const form = useForm({
     id: null,
     name: networkName.value,
-    region_id: null, // Ajout de la région pour le réseau
+    region_id: null,
     zoom_level: zoomLevel.value,
     version: "2.0",
     date: new Date(),
@@ -895,7 +917,7 @@ const projectId = ref(null);
 const exportApiProject = () => {
     console.log(form);
     // 1. Mise à jour des données du formulaire avant envoi
-    form.name = networkName.value;
+    form.name = networkName.value; // Assurez-vous que networkName.value est à jour
     form.region_id = form.region_id; // Assurer que la région est dans le formulaire
     form.zoom_level = zoomLevel.value;
     form.equipments = equipments.value;
@@ -905,7 +927,7 @@ const exportApiProject = () => {
     const isUpdate = !!projectId.value;
     const url = isUpdate ? route('networks.update', projectId.value) : route('networks.store');
 
-    // 2. Transformation en FormData pour une sérialisation correcte des tableaux
+    // 2. Transformation en FormData pour une sérialisation correcte des tableaux et objets imbriqués
     form.transform((originalData) => {
         const formData = new FormData();
 
@@ -916,25 +938,40 @@ const exportApiProject = () => {
 
         // Ajout des champs simples et conversion des dates
         for (const key in originalData) {
-            if (['equipments', 'connections', 'labels'].includes(key)) continue;
+            if (['equipments', 'connections', 'labels'].includes(key)) continue; // Gérer ces clés séparément
 
             const value = originalData[key];
             if (value instanceof Date) {
                 formData.append(key, value.toISOString().split('T')[0]);
             } else if (value !== null && value !== undefined) {
-                formData.append(key, value);
+                formData.append(key, value); // Ajout des autres champs simples
             }
         }
 
         // Sérialisation des tableaux complexes (Equipements, Connexions, Labels)
-        // Utilisation de la syntaxe JSON stringify est souvent plus simple pour les schémas imbriqués
-        // Mais pour rester fidèle à votre modèle FormData :
-
         originalData.equipments.forEach((item, index) => {
-            console.log(item);
             Object.keys(item).forEach(prop => {
-                formData.append(`equipments[${index}][${prop}]`, item[prop] ?? '');
+                if (prop === 'characteristics') {
+                    // Sérialiser les caractéristiques comme un objet JSON
+                    const characteristics = item[prop] || {};
+                    // Convertir l'objet des caractéristiques en un tableau de la forme attendue par le backend
+                    const formattedCharacteristics = Object.keys(characteristics).map(charId => ({
+                        equipment_characteristic_id: charId, // Correction du nom de la clé
+                        equipment_id: item.libraryId, // Correction: Utiliser l'ID de l'équipement, pas l'ID du noeud
+                        value: characteristics[charId].value, // La valeur peut être une chaîne ou un nombre
+                        date: characteristics[charId].date ? new Date(characteristics[charId].date).toISOString().slice(0, 19).replace('T', ' '):null,
+                    }));
+                    // Ajouter chaque caractéristique individuellement au FormData
+                    formattedCharacteristics.forEach((char, charIndex) => {
+                        for (const charProp in char) {
+                            formData.append(`equipments[${index}][characteristics][${charIndex}][${charProp}]`, char[charProp] ?? '');
+                        }
+                    });
+                } else {
+                    formData.append(`equipments[${index}][${prop}]`, item[prop] ?? '');
+                }
             });
+
         });
 
         originalData.connections.forEach((conn, index) => {
@@ -951,7 +988,7 @@ const exportApiProject = () => {
 
         return formData;
     })
-    // 3. Exécution de l'envoi
+    // 3. Exécution de l'envoi avec Inertia
     .submit('post', url, {
         forceFormData: true,
         onSuccess: (page) => {
@@ -969,7 +1006,7 @@ const exportApiProject = () => {
         onError: (errors) => {
             const errorDetail = Object.values(errors).flat().join(' ; ');
             toast.add({
-                severity: 'error',
+                severity: 'error', // Afficher les erreurs
                 summary: 'Erreur de sauvegarde',
                 detail: errorDetail || 'Veuillez vérifier les champs',
                 life: 5000
@@ -977,6 +1014,19 @@ const exportApiProject = () => {
         }
     });
 };
+
+const getCharacteristicName = (charId) => {
+    // Parcourir la bibliothèque pour trouver le nom de la caractéristique
+    for (const category in props.library) {
+        for (const item of props.library[category]) {
+            // Utiliser l'ID numérique pour la comparaison
+            const char = item.characteristics?.find(c => c.id == charId);
+            if (char) return char.name;
+        }
+    }
+    return `Caractéristique ${charId}`;
+};
+
 </script>
 
 <template>
@@ -1327,6 +1377,20 @@ const exportApiProject = () => {
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Désignation Technique</label>
                 <InputText v-model="newNodeData.designation" class="w-full !bg-white/5 border-white/10" />
             </div>
+            <!-- Section pour les caractéristiques dynamiques -->
+            <div v-if="characteristicsData && Object.keys(characteristicsData).length > 0" class="flex flex-col gap-4 p-4 bg-slate-800/50 rounded-lg border border-white/10">
+                <label class="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Caractéristiques</label>
+                <div v-for="(charData, charId) in characteristicsData" :key="charId" class="space-y-2">
+                    <label class="text-[10px] font-medium text-slate-400 uppercase">{{ getCharacteristicName(charId) }}</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- On lie la valeur à notre ref `characteristicsData` -->
+                        <InputText v-model="charData.value" placeholder="Valeur" class="w-full !bg-white/5 border-white/10 text-xs" />
+                        <Calendar v-model="charData.date" placeholder="Date" class="w-full" inputClass="!bg-white/5 !border-white/10 !text-xs" showIcon />
+                    </div>
+                </div>
+            </div>
+
+
             <div class="flex items-center gap-3 p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl">
                 <input type="checkbox" v-model="newNodeData.isRoot" class="w-4 h-4 accent-indigo-500" />
                 <div class="flex flex-col">
@@ -1356,6 +1420,25 @@ const exportApiProject = () => {
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Désignation Technique</label>
                 <InputText v-model="editingNodeData.designation" class="w-full !bg-white/5 border-white/10" />
             </div>
+
+            <!-- Section pour les caractéristiques dynamiques en édition -->
+            <div v-if="characteristicsData && Object.keys(characteristicsData).length > 0" class="flex flex-col gap-4 p-4 bg-slate-800/50 rounded-lg border border-white/10">
+                <label class="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Caractéristiques</label>
+                <div v-for="(charData, charId) in characteristicsData" :key="charId" class="space-y-2">
+                    <label class="text-[10px] font-medium text-slate-400 uppercase">{{ getCharacteristicName(charId) }}</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <InputText v-model="charData.value" placeholder="Valeur" class="w-full !bg-white/5 border-white/10 text-xs" />
+                        <Calendar v-model="charData.date" placeholder="Date" class="w-full" inputClass="!bg-white/5 !border-white/10 !text-xs" showIcon />
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Statut</label>
+                <Dropdown v-model="editingNodeData.status" :options="['en service', 'en maintenance', 'en panne', 'hors service']"
+                          placeholder="Sélectionner un statut" class="w-full" />
+            </div>
+
             <div class="flex items-center gap-3 p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl">
                 <input type="checkbox" v-model="editingNodeData.isRoot" class="w-4 h-4 accent-indigo-500" />
                 <div class="flex flex-col">
@@ -1467,4 +1550,6 @@ const exportApiProject = () => {
     box-shadow: 0 0 10px #fff;
     opacity: 0.8;
 }
+
+
 </style>

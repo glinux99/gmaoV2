@@ -30,7 +30,7 @@ class EquipmentController extends Controller
     $search = $request->input('search');
 
     // 1. Query pour le Tableau (avec pagination et filtres temporels)
-    $tableQuery = Equipment::with(['equipmentType', 'region', 'user', 'parent'])
+    $tableQuery = Equipment::with(['equipmentType', 'region', 'user', 'parent', 'characteristics'])
         ->whereBetween('created_at', [$startDate, $endDate]);
 
     if ($search) {

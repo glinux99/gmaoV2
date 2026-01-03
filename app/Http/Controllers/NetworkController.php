@@ -6,6 +6,7 @@ use App\Models\Network;
 use App\Models\Region;
 use App\Models\Zone;
 use App\Models\Equipment;
+use App\Models\EquipmentCharacteristic;
 use App\Models\EquipmentType;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -27,7 +28,7 @@ class NetworkController extends Controller
         return Inertia::render('Actifs/Networks', [
             'networks' => $networks,
             'initialNetwork' => $lastNetwork,
-            'library' => Equipment::with('equipmentType')->get()->groupBy(function($item) {
+            'library' => Equipment::with('equipmentType', 'characteristics')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
             }),
             'regions' => Region::all(),
@@ -43,16 +44,25 @@ class NetworkController extends Controller
            $networks = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->get();
 
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
-        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->where('id', $network->id)->latest()->first();
+        $lastNetwork = Network::with([
+            'nodes.equipment.equipmentType',
+            'nodes.characteristics.equipmentCharacteristic', // MODIFICATION : On charge les détails de la caractéristique
+            'connections',
+            'labels'
+        ])->where('id', $network->id)->latest()->first();
 
         return Inertia::render('Actifs/NetworkStudio', [
             'networks' => $networks,
             'initialNetwork' => $lastNetwork,
-            'library' => Equipment::with('equipmentType')->get()->groupBy(function($item) {
+            'library' => Equipment::with('equipmentType', 'characteristics')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
             }),
             'regions' => Region::all(),
             'zones' => Zone::all(),
+            // On charge les caractéristiques par ID d'équipement pour un accès facile en front-end
+            'equipmentCharacteristics' => Equipment::with('characteristics')->get()->keyBy('id')->map(function ($equipment) {
+                return $equipment->characteristics;
+            }),
         ]);
     }
     public function edit(Network $network)
@@ -60,16 +70,25 @@ class NetworkController extends Controller
            $networks = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->latest()->get();
 
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
-        $lastNetwork = Network::with(['nodes.equipment.equipmentType', 'connections', 'labels'])->where('id', $network->id)->latest()->first();
+        $lastNetwork = Network::with([
+            'nodes.equipment.equipmentType',
+            'nodes.characteristics.equipmentCharacteristic', // MODIFICATION : On charge les détails de la caractéristique
+            'connections',
+            'labels'
+        ])->where('id', $network->id)->latest()->first();
 
         return Inertia::render('Actifs/NetworkStudio', [
             'networks' => $networks,
             'initialNetwork' => $lastNetwork,
-            'library' => Equipment::with('equipmentType')->get()->groupBy(function($item) {
+            'library' => Equipment::with('equipmentType', 'characteristics')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
             }),
             'regions' => Region::all(),
             'zones' => Zone::all(),
+            // On charge les caractéristiques par ID d'équipement pour un accès facile en front-end
+            'equipmentCharacteristics' => Equipment::with('characteristics')->get()->keyBy('id')->map(function ($equipment) {
+                return $equipment->characteristics;
+            }),
         ]);
     }
 
@@ -139,6 +158,22 @@ public function store(Request $request)
  'zone_id' => $nodeData['zone_id'] ?? null,
                 ]);
 
+                // 3.1 Sauvegarde des caractéristiques du noeud
+                if (isset($nodeData['characteristics']) && is_array($nodeData['characteristics'])) {
+                    foreach ($nodeData['characteristics'] as $charId => $charData) {
+                        // On s'assure que la caractéristique existe avant de l'insérer
+                        // Et que nous avons bien un tableau avec une valeur
+                        if (is_array($charData) && isset($charData['value']) && EquipmentCharacteristic::where('id', $charId)->exists()) {
+                            $node->characteristics()->create([
+                                'equipment_characteristic_id' => $charId,
+                                'equipment_id' => $node->equipment_id,
+                                'value' => $charData['value'],
+                                'date' => $charData['date'] ?? now()
+                            ]);
+                        }
+                    }
+                }
+
                 // On stocke la correspondance entre l'ID JS (ex: "root-0") et l'ID SQL (ex: 42)
                 $tempToRealIdMap[$nodeData['id']] = $node->id;
             }
@@ -182,6 +217,7 @@ public function store(Request $request)
  public function update(Request $request, Network $network)
 {
 
+
     $validated = $request->validate([
         'name' => 'required|string|max:255', // Ex: "Réseau Usine Nord"
         'description' => 'nullable|string',
@@ -196,7 +232,7 @@ public function store(Request $request)
         'labels' => 'nullable|array',
     ]);
 
-    DB::transaction(function () use ($validated, $network) {
+    DB::transaction(function () use ($request, $validated, $network) {
         // 1. Mise à jour des infos de base
         $network->update([
             'name' => $validated['name'],
@@ -241,12 +277,29 @@ public function store(Request $request)
                     'y' => $nodeData['y'],
                     'w' => $nodeData['w'] ?? 220,
                     'h' => $nodeData['h'] ?? 130,
-                    'is_active' => (int) ($nodeData['active'] ==="true" ?? false),
+                     'is_active' => (int) ($nodeData['active'] ==="true" ?? false),
                     'is_root'   => (int) ($nodeData['active'] ==="true" ?? false),
                     'region_id' => $nodeData['region_id'] ?? null,
                     'zone_id' => $nodeData['zone_id'] ?? null,
                 ]);
 
+                // 3.1 Sauvegarde des caractéristiques du noeud
+
+                if (isset($nodeData['characteristics']) && is_array($nodeData['characteristics'])) {
+                    foreach ($nodeData['characteristics'] as $charId => $charData) {
+                        // On s'assure que la caractéristique existe avant de l'insérer
+                        // et que nous avons bien une valeur à insérer.
+
+                        if (is_array($charData) && isset($charData['value']) && $charData['value'] !== null) {
+                            $node->characteristics()->create([
+                                'equipment_characteristic_id' => $charData['equipment_characteristic_id'],
+                                'equipment_id' => $equipmentId, // On utilise l'ID de l'équipement du noeud actuel
+                                'value' => $charData['value'],
+                                'date'  => $charData['date'] ?? now(),
+                            ]);
+                        }
+                    }
+                }
                 // On stocke la correspondance entre l'ID temporaire du front-end et le nouvel ID SQL
                 $tempToRealIdMap[$nodeData['id']] = $node->id;
             }

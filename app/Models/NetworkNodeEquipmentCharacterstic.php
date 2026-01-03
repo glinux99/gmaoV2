@@ -11,6 +11,8 @@ class NetworkNodeEquipmentCharacterstic extends Model
 {
     use HasFactory;
 
+    protected $table = 'node_equip_specs';
+
     protected $fillable = [
         'network_node_id',
         'equipment_id',

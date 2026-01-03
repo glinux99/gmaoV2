@@ -29,7 +29,6 @@ class Equipment extends Model implements HasMedia
         'parent_id',
         'quantity',
         'label_id',
-        'characteristics',
         'price',
         'puissance'
     ];
@@ -42,7 +41,6 @@ class Equipment extends Model implements HasMedia
     protected $casts = [
         'purchase_date' => 'date',
         'warranty_end_date' => 'date',
-        'characteristics'=> 'array'
     ];
 
     // --- RELATIONS BELONGS TO ---
@@ -127,5 +125,3 @@ public function maintenanceRecords() { return $this->hasMany(MaintenanceRecord::
         return $this->hasMany(Activity::class);
     }
 }
-
-
