@@ -184,8 +184,11 @@ const form = useForm({
     recurrence_interval: null, // Intervalle pour quotidienne, trimestrielle, semestrielle, annuelle
     recurrence_month_interval: null, // Intervalle en mois pour la récurrence mensuelle
     recurrence_days: [], // Nouvelle propriété pour les jours de la semaine (pour hebdomadaire)
+    recurrence_day: null,
     recurrence_day_of_month: null, // Nouvelle propriété pour le jour du mois (pour mensuel)
     recurrence_month: null, // Nouvelle propriété pour le mois (pour annuel)
+    monthly_recurrence_type: 'day_of_month', // 'day_of_month' ou 'day_of_week'
+    recurrence_week_of_month: 1, // 1ère, 2ème, 3ème, 4ème, dernière semaine
     reminder_days: null, // Jours de rappel avant exécution
     custom_recurrence_config: null, // Pour la récurrence personnalisée
     placementType: null, // 'region' or 'zone'
@@ -272,6 +275,14 @@ const months = ref([
     { label: 'Novembre', value: 11 },
     { label: 'Décembre', value: 12 },
 ]);
+const weeksOfMonth = ref([
+    { label: 'Première', value: 1 },
+    { label: 'Deuxième', value: 2 },
+    { label: 'Troisième', value: 3 },
+    { label: 'Quatrième', value: 4 },
+    { label: 'Dernière', value: -1 }, // -1 pour "dernière"
+]);
+
 
 // Réinitialiser l'assignable_id quand le type change
 // watch(() => form.assignable_type, (newValue) => { form.assignable_id = null; });
@@ -282,6 +293,16 @@ watch(() => form.recurrence_type, (newValue) => {
     // form.recurrence_month_interval = null; // Reset for monthly interval
     // form.recurrence_month = null;
 });
+
+// Réinitialiser recurrence_day_of_month ou recurrence_day quand monthly_recurrence_type change
+watch(() => form.monthly_recurrence_type, (newValue) => {
+    if (newValue === 'day_of_month') {
+        form.recurrence_day = null;
+    } else if (newValue === 'day_of_week') {
+        form.recurrence_day_of_month = null;
+    }
+});
+
 
 // Réinitialiser la région et les équipements si le réseau change
 watch(() => form.network_id, (newValue) => {
@@ -383,6 +404,7 @@ const editMaintenance = (maintenance) => {
     form.recurrence_interval = maintenance.recurrence_interval;
     form.recurrence_days = maintenance.recurrence_days || []; // Déjà un tableau grâce au cast Laravel
     form.recurrence_day_of_month = maintenance.recurrence_day_of_month;
+    form.recurrence_day = maintenance.recurrence_day;
     form.placementType = maintenance.region_id ? 'region' : (maintenance.zone_id ? 'zone' : null);
     form.network_id = maintenance.network_id;
     defaultNodeID.value =form.network_node_id;
@@ -1894,9 +1916,9 @@ const formatDate = (dateString) => {
                                       class="w-full quantum-input !bg-white shadow-none" />
                         </div>
 
-                        <div v-if="form.recurrence_type === 'daily'" class="field animate-fade-in">
-                            <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block">{{ t('maintenances.formDialog.dailyInterval') }}</label>
-                            <InputNumber v-model="form.recurrence_interval" :min="1" :max="365" suffix=" jours" class="w-full" />
+                        <div v-if="form.recurrence_type === 'daily'" class="field animate-fade-in p-4 bg-white rounded-2xl border border-primary-100">
+                            <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">Intervalle (en jours)</label>
+                            <InputNumber v-model="form.recurrence_interval" :min="1" :max="365" class="w-full" />
                         </div>
 
                         <div v-if="form.recurrence_type === 'weekly'" class="field animate-fade-in p-4 bg-white rounded-2xl border border-primary-100">
@@ -1904,45 +1926,52 @@ const formatDate = (dateString) => {
                             <MultiSelect v-model="form.recurrence_days" :options="daysOfWeek" optionLabel="label" optionValue="value"
                                          display="chip" class="w-full border-none p-0" />
                         </div>
-                         <div  v-if="form.recurrence_type === 'monthly'"  class="space-y-4 animate-fade-in">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.startMonth') }}</label>
-                                    <Dropdown v-model="form.recurrence_day_of_month" :options="months" optionLabel="label" optionValue="value" class="w-full bg-white" />
-                                </div>
-                                <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
-                                    <InputNumber v-model="form.recurrence_month_interval" :min="1" :max="31" class="w-full" />
-                                </div>
-                            </div>
-                            <div class="field p-4 bg-primary-600 rounded-2xl text-white">
-                                <label class="text-[9px] font-bold uppercase opacity-70 mb-2 block">{{ t('maintenances.formDialog.earlyReminder') }}</label>
-                                <div class="flex items-center gap-3">
-                                    <InputNumber v-model="form.reminder_days" :min="0" suffix=" jours" class="flex-1 quantum-input-dark" />
-                                    <i class="pi pi-bell animate-bounce text-primary-200"></i>
-                                </div>
-                            </div>
-                        </div>
+                        <div v-if="['monthly', 'quarterly', 'biannual', 'annual'].includes(form.recurrence_type)"
+     class="space-y-4 animate-fade-in p-4 bg-white rounded-2xl border border-primary-100 shadow-sm">
 
-                        <div v-if="['quarterly', 'biannual', 'annual'].includes(form.recurrence_type)" class="space-y-4 animate-fade-in">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.startMonth') }}</label>
-                                    <Dropdown v-model="form.recurrence_month" :options="months" optionLabel="label" optionValue="value" class="w-full bg-white" />
-                                </div>
-                                <div class="field">
-                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
-                                    <InputNumber v-model="form.recurrence_day_of_month" :min="1" :max="31" class="w-full" />
-                                </div>
-                            </div>
-                            <div class="field p-4 bg-primary-600 rounded-2xl text-white">
-                                <label class="text-[9px] font-bold uppercase opacity-70 mb-2 block">{{ t('maintenances.formDialog.earlyReminder') }}</label>
-                                <div class="flex items-center gap-3">
-                                    <InputNumber v-model="form.reminder_days" :min="0" suffix=" jours" class="flex-1 quantum-input-dark" />
-                                    <i class="pi pi-bell animate-bounce text-primary-200"></i>
-                                </div>
-                            </div>
-                        </div>
+    <div class="flex items-center gap-6 pb-2 border-b border-slate-50">
+        <div class="flex items-center">
+            <RadioButton v-model="form.monthly_recurrence_type" inputId="monthly_day_of_month" name="monthly_type" value="day_of_month" />
+            <label for="monthly_day_of_month" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Le jour du mois</label>
+        </div>
+        <div class="flex items-center">
+            <RadioButton v-model="form.monthly_recurrence_type" inputId="monthly_day_of_week" name="monthly_type" value="day_of_week" />
+            <label for="monthly_day_of_week" class="ml-2 text-xs font-bold text-slate-600 cursor-pointer">Le jour de la semaine</label>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div v-if="form.monthly_recurrence_type === 'day_of_month'" class="field animate-fade-in col-span-full md:col-span-1">
+            <label class="text-[9px] font-bold uppercase text-primary-400 mb-1 block ml-1">Le quantième du mois</label>
+            <InputNumber v-model="form.recurrence_day_of_month" :min="1" :max="31" placeholder="Ex: 15" class="w-full" inputClass="py-2" />
+        </div>
+
+        <div v-if="form.monthly_recurrence_type === 'day_of_week'" class="field animate-fade-in col-span-full md:col-span-1">
+            <label class="text-[9px] font-bold uppercase text-primary-400 mb-1 block ml-1">Quel jour ?</label>
+            <Dropdown v-model="form.recurrence_day" :options="daysOfWeek" optionLabel="label" optionValue="value" class="w-full bg-white" />
+        </div>
+
+        <!-- <div v-if="form.monthly_recurrence_type === 'day_of_month' && ['quarterly', 'biannual', 'annual'].includes(form.recurrence_type)" class="field animate-fade-in col-span-full md:col-span-1">
+            <label class="text-[9px] font-bold uppercase text-primary-400 mb-1 block ml-1">{{ t('maintenances.formDialog.startMonth') }}</label>
+            <Dropdown v-model="form.recurrence_month" :options="months" optionLabel="label" optionValue="value" class="w-full bg-white" />
+        </div> -->
+    </div>
+
+    <div class="field p-4 bg-primary-600 rounded-2xl text-white shadow-lg shadow-primary-100">
+        <label class="text-[9px] font-bold uppercase opacity-80 mb-2 block tracking-widest">
+            {{ t('maintenances.formDialog.earlyReminder') }}
+        </label>
+        <div class="flex items-center gap-3">
+            <div class="relative flex-1">
+                <InputNumber v-model="form.reminder_days" :min="0" suffix=" jours" class="w-full" inputClass="bg-primary-700/50 border-none text-white placeholder:text-primary-300 py-2.5 px-4 rounded-xl w-full" />
+            </div>
+            <div class="p-2.5 bg-primary-500 rounded-xl">
+                <i class="pi pi-bell animate-pulse text-white"></i>
+            </div>
+        </div>
+    </div>
+</div>
 
                         <div v-if="form.recurrence_type === 'custom'" class="field animate-fade-in">
                             <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block">{{ t('maintenances.formDialog.customRule') }}</label>

@@ -7,487 +7,183 @@ use App\Models\Maintenance;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Region;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
+use App\Models\NetworkNode;
 use App\Models\ServiceOrder;
 use App\Models\Activity;
-use Inertia\Inertia;
-use App\Models\MaintenanceInstruction;
 use App\Models\InstructionTemplate;
 use App\Models\Network;
 use App\Models\SparePart;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 
 class MaintenanceController extends Controller
 {
     /**
-     * Affiche la liste des maintenances.
+     * Affiche la liste des maintenances avec filtres.
      */
     public function index(Request $request)
     {
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->addDay()->toDateString());
-        $maintenancesQuery = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region','instructions'])
-            ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('scheduled_start_date', [Carbon::parse($startDate)->subDay(), Carbon::parse($endDate)->addDay()]);
-            })
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region'])
+            ->whereBetween('scheduled_start_date', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ])
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
-        // Transformer l'arbre d'équipements pour le TreeSelect
         $equipmentTree = Equipment::whereNull('parent_id')->with('children.children')->get();
-        $transformedEquipmentTree = $this->transformForTreeSelect($equipmentTree);
-            //  $maintenancesQuery=( Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode'])->latest()
-            // ->paginate(10));
+
         return Inertia::render('Tasks/Maintenances', [
-            'maintenances' => $maintenancesQuery,
-            'filters' => $request->only('search'),
-            'equipments' => Equipment::all(), // Assumant que les équipements sont disponibles pour lier les activités
-            'users' => User::all(), // Assumant que les utilisateurs sont disponibles pour lier les activités
-            'teams' => Team::all(), // Assumant que les équipes sont disponibles pour lier les activités
-            'regions' => Region::with('zones')->get(), //, // Assumant que les régions sont disponibles pour lier les activités
-            'tasks' => [], // Assumant que les tâches sont disponibles pour lier les activités
-            'spareParts' => SparePart::all(), // Requis pour la sélection de pièces
-            'networks' => Network::with('nodes', 'region')->get(), // Ajouté pour la sélection des réseaux
-            'equipmentTree' => $transformedEquipmentTree,
-            'instructionTemplates' => InstructionTemplate::all(), // Charger les modèles
+            'maintenances' => $maintenances,
+            'filters' => $request->only('search', 'start_date', 'end_date'),
+            'equipments' => Equipment::all(),
+            'users' => User::all(),
+            'teams' => Team::all(),
+            'regions' => Region::with('zones')->get(),
+            'spareParts' => SparePart::all(),
+            'networks' => Network::with('nodes', 'region')->get(),
+            'equipmentTree' => $this->transformForTreeSelect($equipmentTree),
+            'instructionTemplates' => InstructionTemplate::all(),
         ]);
     }
-
-    private function transformForTreeSelect($equipments)
-    {
-        return $equipments->map(function ($equipment) {
-            $children = [];
-            if ($equipment->children->isNotEmpty()) {
-                $children = $this->transformForTreeSelect($equipment->children);
-            }
-
-            return [
-                'id' => $equipment->id,
-                'key' => (string) $equipment->id,
-                'label' => $equipment->designation,
-                'children' => $children,
-            ];
-        });
-    }
-
-    /**
-     * Génère les dates de récurrence pour une maintenance.
-     */
-private function generateRecurrenceDates(array $data): ?array
-{
-    $recurrenceType = $data['recurrence_type'] ?? null;
-    $startDate = isset($data['scheduled_start_date']) ? Carbon::parse($data['scheduled_start_date']) : null;
-    $endDate = isset($data['scheduled_end_date']) ? Carbon::parse($data['scheduled_end_date']) : null;
-
-    if (!$recurrenceType || !$startDate || !$endDate || $startDate->gt($endDate)) {
-        return null;
-    }
-
-    $dates = [];
-    $currentDate = $startDate->copy();
-    $interval = $data['recurrence_interval'] ?? 1;
-
-    // Utilisation d'une limite de sécurité pour éviter les boucles infinies (ex: 500 occurrences)
-    $maxOccurrences = 500;
-
-    while ($currentDate->lte($endDate) && count($dates) < $maxOccurrences) {
-        switch ($recurrenceType) {
-            case 'daily':
-                $dates[] = $currentDate->copy();
-                $currentDate->addDays($interval);
-                break;
-
-            case 'weekly':
-                $daysOfWeek = $data['recurrence_days'] ?? []; // Ex: [1, 3] pour Lundi, Mercredi
-                if (empty($daysOfWeek) || in_array($currentDate->dayOfWeek, $daysOfWeek)) {
-                    $dates[] = $currentDate->copy();
-                }
-                $currentDate->addDay();
-                break;
-
-            case 'monthly':
-            case 'quarterly':
-            case 'biannual':
-            case 'annual':
-                // Si on cherche un jour spécifique du mois (ex: le 15 du mois)
-                $dayOfMonth = $data['recurrence_day_of_month'] ?? $startDate->day;
-
-                // On s'assure que la date courante est bien fixée au jour voulu du mois
-                $currentDate->day($dayOfMonth);
-
-                // On vérifie si après ajustement on est toujours dans l'intervalle
-                if ($currentDate->gte($startDate) && $currentDate->lte($endDate)) {
-                    $dates[] = $currentDate->copy();
-                }
-
-                // Incrémentation selon le type
-                if ($recurrenceType === 'monthly') $currentDate->addMonths($interval);
-                elseif ($recurrenceType === 'quarterly') $currentDate->addMonths(3);
-                elseif ($recurrenceType === 'biannual') $currentDate->addMonths(6);
-                elseif ($recurrenceType === 'annual') $currentDate->addYears($interval);
-                break;
-
-            default:
-                return $dates;
-        }
-    }
-
-    return $dates;
-}
-    // ------------------------------------------------------------------------------------------
 
     /**
      * Enregistre une nouvelle maintenance.
      */
-   public function store(Request $request)
-{
-    // Log::info('Requête reçue pour store:', $request->all()); // Décommenter pour debug
+    public function store(Request $request)
+    {
+        $validatedData = $this->validateMaintenance($request);
 
-//  $maintenance = Maintenance::create($request->all());
+        DB::beginTransaction();
+        try {
+            // 1. Calcul des dates de récurrence
+            $regeneratedDates = $this->generateRecurrenceDates($validatedData);
+            $validatedData['regenerated_dates'] = $regeneratedDates ? json_encode($regeneratedDates) : null;
 
-    $validator = Validator::make($request->all(), [
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'network_node_id' => 'nullable|exists:network_nodes,id',
-        'network_id' => 'nullable|exists:networks,id',
-        // Validation corrigée: permet des entiers ou des chaînes pour les IDs
-        'equipment_ids' => 'nullable|array',
-        'equipment_ids.*' => 'required|numeric|exists:equipment,id', // Assure que c'est un nombre ET qu'il existe
+            // 2. Création de la Maintenance
+            $maintenance = Maintenance::create($validatedData);
 
-        'assignable_type' => ['nullable', 'string', Rule::in(['App\Models\User', 'App\Models\Team'])],
-        'assignable_id' => 'nullable|integer',
-        'type' => 'nullable|string',
-        'status' => 'nullable|string',
-        'priority' => 'nullable|string',
-        // Utiliser 'date' seulement (Laravel est assez souple)
-        'scheduled_start_date' => 'nullable|date',
-        'scheduled_end_date' => 'nullable|date|after_or_equal:scheduled_start_date',
-        'estimated_duration' => 'nullable|integer',
-        'cost' => 'nullable|numeric',
-        'region_id' => 'nullable|exists:regions,id',
-
-        // Champs de récurrence
-        'recurrence_type' => 'nullable|string',
-        'recurrence_interval' => 'nullable|integer',
-        'recurrence_days' => 'nullable|array',
-        'recurrence_day_of_month' => 'nullable|integer',
-        'recurrence_month' => 'nullable|integer',
-        'reminder_days' => 'nullable|integer',
-
-        // Instructions
-        'node_instructions' => 'nullable|array',
-        'node_instructions.*.*.label' => 'required|string|max:255',
-        'node_instructions.*.*.type' => 'required|string',
-        'node_instructions.*.*.is_required' => 'boolean',
-
-        // Champs pour ServiceOrder
-        'service_order_cost' => 'nullable|numeric|min:0',
-        'service_order_description' => 'nullable|string|required_with:service_order_cost',
-    ]);
-        if ($validator->fails()) {
-
-return $validator->messages();
-
-        // Log::error('Erreur de validation:', $validator->errors()->toArray()); // Décommenter pour debug
-        return redirect()->back()->withErrors($validator)->withInput();
-    }
-
-    DB::beginTransaction();
-    try {
-        $validatedData = $validator->validated();
-
-        // Générer les dates de récurrence et les ajouter aux données validées
-        $regeneratedDates = $this->generateRecurrenceDates($validatedData);
-        $validatedData['regenerated_dates'] = $regeneratedDates ? json_encode($regeneratedDates) : null;
-
-        // Création de l'enregistrement principal
-        $maintenance = Maintenance::create($validatedData);
-
-        // Créer une activité correspondante
-        $activity = Activity::create([
-            'maintenance_id' => $maintenance->id,
-            'title' => 'Activité pour: ' . $maintenance->title,
-            'assignable_type' => $maintenance->assignable_type,
-            'assignable_id' => $maintenance->assignable_id,
-            'status' => 'scheduled', // Statut par défaut
-            'actual_start_time' => $maintenance->scheduled_start_date,
-            'actual_end_time' => $maintenance->scheduled_end_date,
-            'priority' => $maintenance->priority,
-            'user_id' => Auth::id(),
-        ]);
-
-        // Attacher les équipements à l'activité
-        if (!empty($validatedData['equipment_ids'])) {
-            $activity->equipment()->attach($validatedData['equipment_ids']);
-        }
-
-
-        // Attacher les équipements (relation Many-to-Many via table pivot)
-        if (!empty($validatedData['equipment_ids'])) {
-                $networkNodeId = $validator->validated()['network_node_id'];
-
-            // Mettre à jour les équipements liés (synchronisation Many-to-Many)
-            $syncData = collect($validator->validated()['equipment_ids'])->mapWithKeys(function ($id) use ($networkNodeId) {
-    return [(int) $id => [
-        'network_node_id' => $networkNodeId
-    ]];
-})->toArray();
-    $maintenance->equipments()->detach(); // Détacher les équipements existants
-// 3. On attache avec les données du pivot
-$maintenance->equipments()->attach($syncData);
-        }
-
-        // NOUVEAU : Mettre à jour la date de prochaine maintenance sur le NetworkNode
-        if (!empty($validatedData['network_node_id']) && !empty($validatedData['scheduled_start_date'])) {
-            $networkNode = \App\Models\NetworkNode::find($validatedData['network_node_id']);
-            if ($networkNode) {
-                $networkNode->next_maintenance_date = $validatedData['scheduled_start_date'];
-                $networkNode->save();
-            }
-        }
-
-        // 2. Enregistrer les instructions (relation HasMany)
-        if (isset($validatedData['node_instructions'])) {
-            foreach ($validatedData['node_instructions'] as $equipmentId => $instructions) {
-                // S'assurer que equipmentId est un entier pour l'enregistrement
-                $cleanEquipmentId = (int) $equipmentId;
-                foreach ($instructions as $instructionData) {
-                    // Crée l'instruction et l'associe à la maintenance et à l'équipement
-                    $maintenanceInstruction = $maintenance->instructions()->create(array_merge($instructionData, ['equipment_id' => $cleanEquipmentId]));
-
-                    // Créer l'instruction correspondante pour l'activité
-                    $activity->activityInstructions()->create([
-                        'label' => $maintenanceInstruction->label,
-                        'type' => $maintenanceInstruction->type,
-                        'is_required' => $maintenanceInstruction->is_required,
-                    ]);
-                }
-            }
-        }
-
-        // Créer une ServiceOrder si un coût est fourni
-        if (isset($validatedData['service_order_cost']) && $validatedData['service_order_cost'] > 0) {
-            $serviceOrder = ServiceOrder::create([
-                'task_id' => null, // Maintenance n'a pas de task_id direct, à adapter si nécessaire
-                'maintenance_id' => $maintenance->id, // Lier à la maintenance
-                'description' => $validatedData['service_order_description'] ?? 'Prestation liée à la maintenance #' . $maintenance->id,
-                'cost' => $validatedData['service_order_cost'],
-                'status' => 'completed',
-                'order_date' => now(),
-                'actual_completion_date' => now(),
-            ]);
-
-            $serviceOrder->expenses()->create([
-                'description' => 'Coût de la prestation: ' . $serviceOrder->description,
-                'amount' => $serviceOrder->cost,
-                'expense_date' => now(),
-                'category' => 'external_service',
+            // 3. Création de l'Activité correspondante
+            $activity = Activity::create([
+                'maintenance_id' => $maintenance->id,
+                'title' => 'Activité pour : ' . $maintenance->title,
+                'assignable_type' => $maintenance->assignable_type,
+                'assignable_id' => $maintenance->assignable_id,
+                'status' => 'scheduled',
+                'actual_start_time' => $maintenance->scheduled_start_date,
+                'actual_end_time' => $maintenance->scheduled_end_date,
+                'priority' => $maintenance->priority,
                 'user_id' => Auth::id(),
-                'notes' => 'Dépense générée automatiquement pour la prestation de service.',
-                'status' => 'pending',
             ]);
+
+            // 4. Gestion des équipements (Pivot avec NetworkNode)
+            if (!empty($validatedData['equipment_ids'])) {
+                $nodeId = $validatedData['network_node_id'] ?? null;
+                $syncData = collect($validatedData['equipment_ids'])->mapWithKeys(function ($id) use ($nodeId) {
+                    return [(int) $id => ['network_node_id' => $nodeId]];
+                })->toArray();
+
+                $maintenance->equipments()->sync($syncData);
+                $activity->equipment()->sync($validatedData['equipment_ids']);
+            }
+
+            // 5. Instructions & Service Order
+            $this->processInstructions($maintenance, $activity, $validatedData['node_instructions'] ?? []);
+            $this->processServiceOrder($maintenance, $validatedData);
+
+            // 6. Mise à jour de la date sur le NetworkNode
+            if (!empty($validatedData['network_node_id'])) {
+                NetworkNode::where('id', $validatedData['network_node_id'])
+                    ->update(['next_maintenance_date' => $validatedData['scheduled_start_date']]);
+            }
+
+            DB::commit();
+            return redirect()->route('maintenances.index')->with('success', 'Maintenance créée avec succès.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur Store Maintenance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la création : ' . $e->getMessage())->withInput();
         }
-
-        DB::commit();
-
-        // Log::info('Maintenance créée avec succès.', ['id' => $maintenance->id]); // Décommenter pour debug
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance créée avec succès.');
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return $e;
-        Log::error('Erreur lors de la création de la maintenance: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
-        return redirect()->back()->with('error', 'Une erreur est survenue lors de la création de la maintenance. ' . $e->getMessage()); // Retourner le message d'erreur en mode développement
     }
-}
-
-    // ------------------------------------------------------------------------------------------
 
     /**
      * Met à jour une maintenance existante.
      */
     public function update(Request $request, Maintenance $maintenance)
     {
-        $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'network_node_id' => 'nullable|exists:network_nodes,id',
-             'network_id' => 'nullable|exists:networks,id',
-            'equipment_ids' => 'nullable|array',
-            'equipment_ids.*' => 'exists:equipment,id',
-            'assignable_type' => ['nullable', 'string', Rule::in(['App\Models\User', 'App\Models\Team'])],
-            'assignable_id' => 'nullable|integer',
-            // On peut garder 'required' si ces champs doivent toujours être présents lors de la mise à jour
-            'type' => 'nullable|string',
-            'status' => 'nullable|string',
-            'priority' => 'nullable|string',
-            'scheduled_start_date' => 'nullable|date',
-            'scheduled_end_date' => 'nullable|date|after_or_equal:scheduled_start_date',
-            'estimated_duration' => 'nullable|integer',
-            'cost' => 'nullable|numeric',
-            'region_id' => 'nullable|exists:regions,id',
-
-            // Champs de récurrence
-            'recurrence_type' => 'nullable|string',
-            'recurrence_interval' => 'nullable|integer',
-            'recurrence_days' => 'nullable|array',
-            'recurrence_day_of_month' => 'nullable|integer',
-            'recurrence_month' => 'nullable|integer',
-            'reminder_days' => 'nullable|integer',
-
-            // Instructions
-            'node_instructions' => 'nullable|array',
-            'node_instructions.*.*.label' => 'required|string|max:255',
-            'node_instructions.*.*.type' => 'required|string',
-            'node_instructions.*.*.is_required' => 'boolean',
-
-            // Champs pour ServiceOrder
-            'service_order_cost' => 'nullable|numeric|min:0',
-            'service_order_description' => 'nullable|string|required_with:service_order_cost',
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+        $validatedData = $this->validateMaintenance($request);
 
         DB::beginTransaction();
-
         try {
+            $oldNodeId = $maintenance->network_node_id;
 
-            $validatedData = $validator->validated();
-            // Générer les dates de récurrence et les ajouter aux données validées
+            // 1. Mise à jour récurrence
             $regeneratedDates = $this->generateRecurrenceDates($validatedData);
             $validatedData['regenerated_dates'] = $regeneratedDates ? json_encode($regeneratedDates) : null;
 
+            // 2. Update Maintenance & Activité
             $maintenance->update($validatedData);
-
-            // Mettre à jour ou créer l'activité correspondante
             $activity = Activity::updateOrCreate(
                 ['maintenance_id' => $maintenance->id],
                 [
-                    'title' => 'Activité pour: ' . $maintenance->title,
+                    'title' => 'Activité pour : ' . $maintenance->title,
                     'assignable_type' => $maintenance->assignable_type,
                     'assignable_id' => $maintenance->assignable_id,
                     'status' => $maintenance->status === 'completed' ? 'completed' : 'scheduled',
                     'actual_start_time' => $maintenance->scheduled_start_date,
                     'actual_end_time' => $maintenance->scheduled_end_date,
                     'priority' => $maintenance->priority,
-                    'user_id' => Auth::id(),
-                    'problem_resolution_description' => $maintenance->description,
-                    'proposals' => null,
-                    'additional_information' => null,
                 ]
             );
 
-            // Mettre à jour les équipements liés (synchronisation Many-to-Many)
-            if (isset($validator->validated()['equipment_ids'])) {
-                $networkNodeId = $validator->validated()['network_node_id'];
-
-            // Mettre à jour les équipements liés (synchronisation Many-to-Many)
-            $syncData = collect($validator->validated()['equipment_ids'])->mapWithKeys(function ($id) use ($networkNodeId) {
-    return [(int) $id => [
-        'network_node_id' => $networkNodeId
-    ]];
-})->toArray();
-    $maintenance->equipments()->detach(); // Détacher les équipements existants
-// 3. On attache avec les données du pivot
-$maintenance->equipments()->attach($syncData);
-
-                // NOUVEAU : Mettre à jour la date de prochaine maintenance sur le NetworkNode
-                $validatedData = $validator->validated();
-                $oldNodeId = $maintenance->getOriginal('network_node_id');
-                $newNodeId = $validatedData['network_node_id'] ?? null;
-
-                // Si le noeud a changé, on efface la date sur l'ancien noeud
-                if ($oldNodeId && $oldNodeId != $newNodeId) {
-                    \App\Models\NetworkNode::where('id', $oldNodeId)->update(['next_maintenance_date' => null]);
-                }
-
-                // On met à jour le nouveau noeud
-                if ($newNodeId && !empty($validatedData['scheduled_start_date'])) {
-                    \App\Models\NetworkNode::where('id', $newNodeId)->update([
-                        'next_maintenance_date' => $validatedData['scheduled_start_date']
-                    ]);
-                }
-
-                // Mettre à jour les équipements de l'activité
-                $activity->equipment()->sync($validator->validated()['equipment_ids']);
+            // 3. Sync Équipements
+            if (isset($validatedData['equipment_ids'])) {
+                $syncData = collect($validatedData['equipment_ids'])->mapWithKeys(function ($id) use ($maintenance) {
+                    return [(int) $id => ['network_node_id' => $maintenance->network_node_id]];
+                })->toArray();
+                $maintenance->equipments()->sync($syncData);
+                $activity->equipment()->sync($validatedData['equipment_ids']);
             }
 
+            // 4. Instructions (Clean & Recreate)
+            $maintenance->instructions()->delete();
+            $activity->activityInstructions()->delete();
+            $this->processInstructions($maintenance, $activity, $validatedData['node_instructions'] ?? []);
 
-            // Mettre à jour les instructions
-            $maintenance->instructions()->delete(); // Supprimer les anciennes instructions
-            $activity->activityInstructions()->delete(); // Supprimer les anciennes instructions de l'activité
+            // 5. Service Order
+            $this->processServiceOrder($maintenance, $validatedData);
 
-            if ($request->has('node_instructions')) {
-                foreach ($request->input('node_instructions') as $equipmentId => $instructions) {
-                    foreach ($instructions as $instructionData) {
-                        $maintenanceInstruction = $maintenance->instructions()->create([
-                            'equipment_id' => $equipmentId,
-                            'label' => $instructionData['label'],
-                            'type' => $instructionData['type'],
-                            'is_required' => $instructionData['is_required'],
-                        ]);
-                        // Créer l'instruction correspondante pour l'activité
-                        $activity->activityInstructions()->create([
-                            'label' => $maintenanceInstruction->label,
-                            'type' => $maintenanceInstruction->type,
-                            'is_required' => $maintenanceInstruction->is_required,
-                        ]);
-                    }
-                }
+            // 6. NetworkNode Date Management
+            if ($oldNodeId && $oldNodeId != $maintenance->network_node_id) {
+                NetworkNode::where('id', $oldNodeId)->update(['next_maintenance_date' => null]);
             }
-
-            // Mettre à jour ou créer la ServiceOrder
-            $serviceOrder = ServiceOrder::where('maintenance_id', $maintenance->id)->first();
-            if (isset($validator->validated()['service_order_cost']) && $validator->validated()['service_order_cost'] > 0) {
-                $serviceOrderData = [
-                    'maintenance_id' => $maintenance->id,
-                    'description' => $validator->validated()['service_order_description'] ?? 'Prestation liée à la maintenance #' . $maintenance->id,
-                    'cost' => $validator->validated()['service_order_cost'],
-                    'status' => 'completed',
-                    'order_date' => now(),
-                    'actual_completion_date' => now(),
-                ];
-                $serviceOrder = ServiceOrder::updateOrCreate(['maintenance_id' => $maintenance->id], $serviceOrderData);
-
-                // Supprimer les anciennes dépenses liées à cette ServiceOrder pour éviter les doublons
-                $serviceOrder->expenses()->delete();
-                $serviceOrder->expenses()->create([
-                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
-                    'amount' => $serviceOrder->cost,
-                    'expense_date' => now(),
-                    'category' => 'external_service',
-                    'user_id' => Auth::id(),
-                    'notes' => 'Dépense générée automatiquement pour la prestation de service.',
-                    'status' => 'pending',
-                ]);
-            } else if ($serviceOrder) {
-                // Si le coût est à 0 ou non fourni et qu'une ServiceOrder existait, la supprimer
-                $serviceOrder->expenses()->delete();
-                $serviceOrder->delete();
+            if ($maintenance->network_node_id) {
+                NetworkNode::where('id', $maintenance->network_node_id)
+                    ->update(['next_maintenance_date' => $maintenance->scheduled_start_date]);
             }
 
             DB::commit();
+            return redirect()->route('maintenances.index')->with('success', 'Maintenance mise à jour.');
 
-            return redirect()->route('maintenances.index')->with('success', 'Maintenance mise à jour avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return $e;
-            Log::error('Erreur lors de la mise à jour de la maintenance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de la maintenance.');
+            Log::error('Erreur Update Maintenance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la mise à jour.');
         }
     }
-
-    // ------------------------------------------------------------------------------------------
 
     /**
      * Supprime une maintenance.
@@ -496,16 +192,337 @@ $maintenance->equipments()->attach($syncData);
     {
         DB::beginTransaction();
         try {
-            // $maintenance->expenses()->delete(); // Supprimer les dépenses associées
-            $maintenance->equipments()->detach(); // Détacher les équipements
-            $maintenance->instructions()->delete(); // Supprimer les instructions
+            $maintenance->equipments()->detach();
+            $maintenance->instructions()->delete();
+            Activity::where('maintenance_id', $maintenance->id)->delete();
+
             $maintenance->delete();
             DB::commit();
+            return redirect()->route('maintenances.index')->with('success', 'Maintenance supprimée.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return $e;
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de la maintenance: ' . $e->getMessage());
+            Log::error('Erreur Delete Maintenance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la suppression.');
         }
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance supprimée avec succès.');
     }
+
+    // --- HELPER METHODS ---
+
+    private function validateMaintenance(Request $request)
+    {
+        return $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'network_node_id' => 'nullable|exists:network_nodes,id',
+            'network_id' => 'nullable|exists:networks,id',
+            'equipment_ids' => 'nullable|array',
+            'equipment_ids.*' => 'exists:equipment,id',
+            'assignable_type' => ['nullable', 'string', Rule::in(['App\Models\User', 'App\Models\Team'])],
+            'assignable_id' => 'nullable|integer',
+            'type' => 'nullable|string',
+            'status' => 'nullable|string',
+            'priority' => 'nullable|string',
+            'scheduled_start_date' => 'nullable|date',
+            'scheduled_end_date' => 'nullable|date|after_or_equal:scheduled_start_date',
+            'estimated_duration' => 'nullable|integer',
+            'cost' => 'nullable|numeric',
+            'region_id' => 'nullable|exists:regions,id',
+            'recurrence_type' => 'nullable|string',
+            'recurrence_interval' => 'nullable|integer',
+            'recurrence_days' => 'nullable|array',
+            'recurrence_day_of_month' => 'nullable|integer',
+            'monthly_recurrence_type' => 'nullable|string|in:day_of_month,day_of_week',
+            'recurrence_day' => 'nullable|integer',
+            'node_instructions' => 'nullable|array',
+            'node_instructions.*.*.label' => 'required|string|max:255',
+            'node_instructions.*.*.type' => 'required|string',
+            'node_instructions.*.*.is_required' => 'boolean',
+            'service_order_cost' => 'nullable|numeric|min:0',
+            'service_order_description' => 'nullable|string|required_with:service_order_cost',
+        ]);
+    }
+
+    private function processInstructions($maintenance, $activity, $nodeInstructions)
+    {
+        foreach ($nodeInstructions as $equipmentId => $instructions) {
+            foreach ($instructions as $data) {
+                $mInst = $maintenance->instructions()->create([
+                    'equipment_id' => (int) $equipmentId,
+                    'label' => $data['label'],
+                    'type' => $data['type'],
+                    'is_required' => $data['is_required'] ?? false,
+                ]);
+
+                $activity->activityInstructions()->create([
+                    'label' => $mInst->label,
+                    'type' => $mInst->type,
+                    'is_required' => $mInst->is_required,
+                ]);
+            }
+        }
+    }
+
+    private function processServiceOrder($maintenance, $data)
+    {
+        if (isset($data['service_order_cost']) && $data['service_order_cost'] > 0) {
+            $serviceOrder = ServiceOrder::updateOrCreate(
+                ['maintenance_id' => $maintenance->id],
+                [
+                    'description' => $data['service_order_description'] ?? 'Prestation pour #' . $maintenance->id,
+                    'cost' => $data['service_order_cost'],
+                    'status' => 'completed',
+                    'order_date' => now(),
+                    'actual_completion_date' => now(),
+                ]
+            );
+
+            $serviceOrder->expenses()->updateOrCreate(
+                ['category' => 'external_service'],
+                [
+                    'description' => 'Coût prestation : ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'expense_date' => now(),
+                    'user_id' => Auth::id(),
+                    'status' => 'pending',
+                ]
+            );
+        } else {
+            $existingSO = ServiceOrder::where('maintenance_id', $maintenance->id)->first();
+            if ($existingSO) {
+                $existingSO->expenses()->delete();
+                $existingSO->delete();
+            }
+        }
+    }
+
+    private function transformForTreeSelect($equipments)
+    {
+        return $equipments->map(function ($equipment) {
+            return [
+                'id' => $equipment->id,
+                'key' => (string) $equipment->id,
+                'label' => $equipment->designation,
+                'children' => $equipment->children->isNotEmpty()
+                    ? $this->transformForTreeSelect($equipment->children)
+                    : [],
+            ];
+        });
+    }
+private function generateRecurrenceDates(array $data): ?array
+{
+    $recurrenceType = $data['recurrence_type'] ?? null;
+    $startDate = isset($data['scheduled_start_date']) ? Carbon::parse($data['scheduled_start_date'])->startOfDay() : null;
+    $endDate = isset($data['scheduled_end_date']) ? Carbon::parse($data['scheduled_end_date'])->endOfDay() : null;
+
+    if (!$recurrenceType || $recurrenceType === 'none' || !$startDate || !$endDate || $startDate->gt($endDate)) {
+        return null;
+    }
+
+    $dates = [];
+    $interval = max(1, (int)($data['recurrence_interval'] ?? 1));
+    $monthlyType = $data['monthly_recurrence_type'] ?? 'day_of_month';
+
+    // --- ÉTAPE 1 : TROUVER LA TOUTE PREMIÈRE DATE (L'ANCRE) ---
+    $anchorDate = $startDate->copy();
+
+    if ($monthlyType === 'day_of_month') {
+        // On cherche le jour X le plus proche (soit ce mois-ci, soit le suivant)
+        $targetDay = (int)($data['recurrence_day_of_month'] ?? $startDate->day);
+
+        // Si le jour cible est déjà passé ce mois-ci, on passe au mois suivant
+        if ($anchorDate->day > $targetDay) {
+            $anchorDate->addMonth()->day(1);
+        }
+        // On se positionne sur le jour cible (en gérant les mois courts comme février)
+        $anchorDate->day(min($targetDay, $anchorDate->daysInMonth));
+    }
+    else {
+        // On cherche le DIMANCHE le plus proche à partir de la date de début
+        $targetDayOfWeek = (int)($data['recurrence_day'] ?? 0); // 0 = Dimanche
+        while ($anchorDate->dayOfWeek !== $targetDayOfWeek) {
+            $anchorDate->addDay();
+        }
+    }
+
+    // Si l'ancre trouvée dépasse la date de fin, on s'arrête
+    if ($anchorDate->gt($endDate)) {
+        return [];
+    }
+
+    // --- ÉTAPE 2 : GÉNÉRER LA SUITE À PARTIR DE CETTE ANCRE ---
+    $currentDate = $anchorDate->copy();
+
+    // Pour le mode "day_of_week", on mémorise l'ordre (ex: 2ème dimanche)
+    // pour le reproduire les mois suivants
+    $ordinal = (int) ceil($currentDate->day / 7);
+    $dayOfWeek = $currentDate->dayOfWeek;
+
+    while ($currentDate->lte($endDate) && count($dates) < 500) {
+        $dates[] = $currentDate->copy();
+
+        // Calcul du saut de mois
+        $monthsToAdd = match($recurrenceType) {
+            'monthly'   => $interval,
+            'quarterly' => 3 * $interval,
+            'biannual'  => 6 * $interval,
+            'annual'    => 12 * $interval,
+            default     => 1
+        };
+
+        if ($monthlyType === 'day_of_month') {
+            $targetDay = (int)($data['recurrence_day_of_month'] ?? $anchorDate->day);
+            $currentDate->addMonths($monthsToAdd);
+            $currentDate->day(min($targetDay, $currentDate->daysInMonth));
+        } else {
+            // On saute de X mois et on recherche le même Dimanche (ex: le 2ème)
+            $currentDate->addMonths($monthsToAdd)->startOfMonth();
+            try {
+                $currentDate = $currentDate->nthOfMonth($ordinal, $dayOfWeek);
+            } catch (\Exception $e) {
+                // Si le 5ème dimanche n'existe pas, on prend le dernier
+                $currentDate = $currentDate->endOfMonth()->previous($dayOfWeek);
+            }
+        }
+    }
+
+    return collect($dates)
+        ->map(fn($d) => $d->toIso8601String())
+        ->toArray();
+}
+    // private function generateRecurrenceDates(array $data): ?array
+    // {
+    //     $recurrenceType = $data['recurrence_type'] ?? null;
+    //     $startDate = isset($data['scheduled_start_date']) ? Carbon::parse($data['scheduled_start_date'])->startOfDay() : null;
+    //     $endDate = isset($data['scheduled_end_date']) ? Carbon::parse($data['scheduled_end_date'])->endOfDay() : null;
+
+    //     if (!$recurrenceType || !$startDate || !$endDate || $startDate->gt($endDate)) {
+    //         return null;
+    //     }
+
+    //     $dates = [];
+    //     $maxOccurrences = 500;
+    //     $interval = max(1, (int)($data['recurrence_interval'] ?? 1));
+
+    //     $currentDate = $startDate->copy();
+
+    //     // Store the original start date to ensure we don't generate dates before it
+    //     $originalStartDate = $startDate->copy();
+
+
+    //     while ($currentDate->lte($endDate) && count($dates) < $maxOccurrences) {
+    //         switch ($recurrenceType) {
+    //             case 'daily':
+    //                 // Add the current date if it's within the range
+    //                 if ($currentDate->gte($startDate) && $currentDate->lte($endDate)) {
+    //                     $dates[] = $currentDate->copy();
+    //                 }
+    //                 // Move to the next occurrence based on the interval
+    //                 $currentDate->addDays($interval);
+    //                 break;
+
+    //             case 'weekly':
+    //                 $days = (array)($data['recurrence_days'] ?? []); // Days of the week (0 for Sunday, 1 for Monday, etc.)
+    //                 if (empty($days)) {
+    //                     // If no specific days are selected for weekly recurrence, break to avoid infinite loop
+    //                     break 2; // Break out of both the switch and the while loop
+    //                 }
+
+    //                 // Find the first day of the week that matches a selected day and is on or after the start date
+    //                 $startOfWeek = $currentDate->copy()->startOfWeek(); // Get the Sunday of the current week
+
+    //                 for ($i = 0; $i < 7; $i++) {
+    //                     $dayInWeek = $startOfWeek->copy()->addDays($i);
+
+    //                     // Check if this day is one of the selected recurrence days
+    //                     if (in_array($dayInWeek->dayOfWeek, $days)) {
+    //                         // Only add if it's within the overall scheduled range
+    //                         if ($dayInWeek->gte($startDate) && $dayInWeek->lte($endDate)) {
+    //                             $dates[] = $dayInWeek->copy();
+    //                         }
+    //                     }
+    //                 }
+    //                 // Move to the next week based on the interval
+    //                 $currentDate->addWeeks($interval);
+    //                 break;
+
+    //             case 'monthly':
+    //             case 'quarterly':
+    //             case 'biannual':
+    //             case 'annual':
+    //                 $monthlyType = $data['monthly_recurrence_type'] ?? 'day_of_month';
+    //                 $targetDayOfMonth = (int)($data['recurrence_day_of_month'] ?? 1); // Default to 1st day
+    //                 $targetDayOfWeek = (int)($data['recurrence_day'] ?? 2); // Default to Monday (1)
+
+    //                 // Determine the month to start checking from.
+    //                 // It should be the month of $currentDate, but not before $originalStartDate.
+    //                 $checkMonth = $currentDate->copy()->startOfMonth();
+    //                 if ($checkMonth->lt($originalStartDate->copy()->startOfMonth())) {
+    //                     $checkMonth = $originalStartDate->copy()->startOfMonth();
+    //                 }
+
+    //                 if ($monthlyType === 'day_of_month') {
+    //                     // Recur on a specific day of the month (e.g., 15th of every month)
+    //                     $targetDate = $checkMonth->copy()->day(min($targetDayOfMonth, $checkMonth->daysInMonth));
+
+    //                     // Only add if it's on or after the original start date and within the overall scheduled range
+    //                     if ($targetDate->gte($originalStartDate) && $targetDate->lte($endDate)) {
+    //                         $dates[] = $targetDate;
+    //                     }
+    //                 }
+    //                 elseif ($monthlyType === 'day_of_week') {
+    //                     // Recur on a specific day of the week (e.g., first Monday of the month)
+    //                     // $targetDayOfMonth here actually represents the Nth occurrence of the day of week (e.g., 1st, 2nd, 3rd, 4th, last)
+    //                     $occurrence = $targetDayOfMonth; // This is actually the 'recurrence_day_of_month' from validation
+
+    //                     $foundCount = 0;
+    //                     $lastFoundDate = null;
+    //                     $addedThisMonth = false;
+
+    //                     // Iterate through the month to find the Nth occurrence of the target day of week
+    //                     for ($i = 1; $i <= $checkMonth->daysInMonth; $i++) {
+    //                         $checkDate = $checkMonth->copy()->day($i);
+
+    //                         // Only consider dates on or after the original start date
+    //                         if ($checkDate->lt($originalStartDate)) {
+    //                             continue;
+    //                         }
+
+    //                         if ($checkDate->dayOfWeek === $targetDayOfWeek) {
+    //                             $foundCount++;
+    //                             $lastFoundDate = $checkDate->copy();
+    //                             if ($foundCount === $occurrence) {
+    //                                 if ($checkDate->lte($endDate)) {
+    //                                     $dates[] = $checkDate;
+    //                                     $addedThisMonth = true;
+    //                                 }
+    //                                 break; // Found the Nth occurrence
+    //                             }
+    //                         }
+    //                     }
+    //                     // Handle "last" occurrence if $occurrence is 5 or greater (or a specific value for "last")
+    //                     if (!$addedThisMonth && $occurrence >= 5 && $lastFoundDate) { // If user selected 5th but only 4 exist, use last
+    //                          if ($lastFoundDate->gte($originalStartDate) && $lastFoundDate->lte($endDate)) {
+    //                             $dates[] = $lastFoundDate;
+    //                         }
+    //                     }
+    //                 }
+
+    //                 // Advance to the next month for recurrence based on type
+    //                 $monthsToAdd = match($recurrenceType) {
+    //                     'monthly' => $interval,
+    //                     'quarterly' => 3 * $interval, // Quarterly means every 3 months, multiplied by interval
+    //                     'biannual' => 6 * $interval,  // Biannual means every 6 months, multiplied by interval
+    //                     'annual' => 12 * $interval,   // Annual means every 12 months, multiplied by interval
+    //                     default => $interval // Fallback, though should be covered
+    //                 };
+    //                 $currentDate->addMonths($monthsToAdd);
+    //                 break;
+
+    //             default:
+    //                 // If recurrence type is unknown, stop processing
+    //                 break 2; // Break out of both the switch and the while loop
+    //         }
+    //     }
+    //     return collect($dates)->unique(fn($d) => $d->format('Y-m-d'))->values()->map(fn($d) => $d->toIso8601String())->toArray();
+    // }
 }
