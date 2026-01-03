@@ -720,6 +720,7 @@ const loadNetwork = (network) => {
             region_id: node.region_id,
             zone_id: node.zone_id, // Assurez-vous que zone_id est correctement mappé
             characteristics: node.characteristics || {}, // Assurer que les caractéristiques sont là
+            next_maintenance_date: node.next_maintenance_date, // Ajout de la date de maintenance
         };
     });
 
@@ -1279,6 +1280,13 @@ const getCharacteristicName = (charId) => {
                           selectedIds.includes(node.id) ? 'border-indigo-500 shadow-indigo-500/20' : 'border-slate-800',
                           !node.active ? 'opacity-50' : '',
                           node.isGroup ? 'bg-indigo-900/20' : '']">
+
+                <!-- NOUVEAU : Indicateur de maintenance planifiée -->
+                <div v-if="node.next_maintenance_date"
+                     v-tooltip.top="`Maintenance planifiée le ${new Date(node.next_maintenance_date).toLocaleDateString('fr-FR')}`"
+                     class="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-[#0f172a] animate-pulse z-30">
+                    <i class="pi pi-calendar-clock text-white text-xs"></i>
+                </div>
 
                 <div class="h-9 px-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
                     <div class="flex items-center gap-2">

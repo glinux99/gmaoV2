@@ -273,11 +273,11 @@ const months = ref([
 // Réinitialiser l'assignable_id quand le type change
 // watch(() => form.assignable_type, (newValue) => { form.assignable_id = null; });
 watch(() => form.recurrence_type, (newValue) => {
-    form.recurrence_interval = null;
-    form.recurrence_days = [];
-    form.recurrence_day_of_month = null;
-    form.recurrence_month_interval = null; // Reset for monthly interval
-    form.recurrence_month = null;
+    // form.recurrence_interval = null;
+    // form.recurrence_days = [];
+    // form.recurrence_day_of_month = null;
+    // form.recurrence_month_interval = null; // Reset for monthly interval
+    // form.recurrence_month = null;
 });
 
 // Réinitialiser la région et les équipements si le réseau change
@@ -356,7 +356,7 @@ const hideDialog = () => {
 };
 
 const editMaintenance = (maintenance) => {
-    editing.value =true;
+
     form.id = maintenance.id;
     form.title = maintenance.title;
     form.description = maintenance.description;
@@ -367,6 +367,10 @@ const editMaintenance = (maintenance) => {
     form.network_node_id = maintenance.network_node_id;
     form.network_id = maintenance.network_id;
     form.priority = maintenance.priority;
+    form.recurrence_month_interval = maintenance.recurrence_month_interval;
+    form.recurrence_month = maintenance.recurrence_month;
+    form.reminder_days = maintenance.reminder_days;
+    form.custom_recurrence_config = maintenance.custom_recurrence_config;
     form.scheduled_start_date = maintenance.scheduled_start_date ? new Date(maintenance.scheduled_start_date) : null;
     form.scheduled_end_date = maintenance.scheduled_end_date ? new Date(maintenance.scheduled_end_date) : null;
     form.estimated_duration = maintenance.estimated_duration;
@@ -403,8 +407,11 @@ const editMaintenance = (maintenance) => {
     }
     form.node_instructions = groupedInstructions;
     instructionsCache.value = JSON.parse(JSON.stringify(groupedInstructions)); // Remplir le cache
-    console.log({...groupedInstructions})
+    console.log("XXXXXXXXXXXXXXXXXXXXXX345");
+    console.log(form.recurrence_month);
+    console.log(maintenance.recurrence_month);
       maintenanceDialog.value = true;
+        editing.value =true;
 };
 const defaultNodeID =ref(null);
 const saveMaintenance = () => {
@@ -1830,15 +1837,23 @@ const getNetworkLabel = (network) => {
                             <MultiSelect v-model="form.recurrence_days" :options="daysOfWeek" optionLabel="label" optionValue="value"
                                          display="chip" class="w-full border-none p-0" />
                         </div>
-
-                        <div v-if="form.recurrence_type === 'monthly'" class="grid grid-cols-2 gap-4 animate-fade-in">
-                            <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
-                                <InputNumber v-model="form.recurrence_day_of_month" :min="1" :max="31" class="w-full" />
+                         <div  v-if="form.recurrence_type === 'monthly'"  class="space-y-4 animate-fade-in">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="field">
+                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.startMonth') }}</label>
+                                    <Dropdown v-model="form.recurrence_day_of_month" :options="months" optionLabel="label" optionValue="value" class="w-full bg-white" />
+                                </div>
+                                <div class="field">
+                                    <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.dayOfMonth') }}</label>
+                                    <InputNumber v-model="form.recurrence_month_interval" :min="1" :max="31" class="w-full" />
+                                </div>
                             </div>
-                            <div class="field">
-                                <label class="text-[9px] font-bold uppercase text-primary-400 mb-2 block ml-1">{{ t('maintenances.formDialog.everyNMonths') }}</label>
-                                <InputNumber v-model="form.recurrence_month_interval" :min="1" :max="12" suffix=" mois" class="w-full" />
+                            <div class="field p-4 bg-primary-600 rounded-2xl text-white">
+                                <label class="text-[9px] font-bold uppercase opacity-70 mb-2 block">{{ t('maintenances.formDialog.earlyReminder') }}</label>
+                                <div class="flex items-center gap-3">
+                                    <InputNumber v-model="form.reminder_days" :min="0" suffix=" jours" class="flex-1 quantum-input-dark" />
+                                    <i class="pi pi-bell animate-bounce text-primary-200"></i>
+                                </div>
                             </div>
                         </div>
 

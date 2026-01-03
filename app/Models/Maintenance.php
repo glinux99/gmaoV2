@@ -47,6 +47,7 @@ class Maintenance extends Model implements HasMedia
         'recurrence_month',
         'reminder_days',
         'custom_recurrence_config',
+        'regenerated_dates'
     ];
 
     protected $casts = [

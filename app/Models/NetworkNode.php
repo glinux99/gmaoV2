@@ -22,6 +22,7 @@ class NetworkNode extends Model
         'y',
         'w',
         'h',
+        'next_maintenance_date',
     ];
 
     protected $casts = [
@@ -37,6 +38,11 @@ class NetworkNode extends Model
         return $this->belongsTo(Equipment::class);
     }
        public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    public function next_maintenance_date(): BelongsTo
     {
         return $this->belongsTo(Region::class);
     }

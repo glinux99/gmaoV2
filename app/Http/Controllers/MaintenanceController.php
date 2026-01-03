@@ -177,6 +177,15 @@ return $validator->messages();
 $maintenance->equipments()->attach($syncData);
         }
 
+        // NOUVEAU : Mettre à jour la date de prochaine maintenance sur le NetworkNode
+        if (!empty($validatedData['network_node_id']) && !empty($validatedData['scheduled_start_date'])) {
+            $networkNode = \App\Models\NetworkNode::find($validatedData['network_node_id']);
+            if ($networkNode) {
+                $networkNode->next_maintenance_date = $validatedData['scheduled_start_date'];
+                $networkNode->save();
+            }
+        }
+
         // 2. Enregistrer les instructions (relation HasMany)
         if (isset($validatedData['node_instructions'])) {
             foreach ($validatedData['node_instructions'] as $equipmentId => $instructions) {
@@ -318,6 +327,23 @@ $maintenance->equipments()->attach($syncData);
     $maintenance->equipments()->detach(); // Détacher les équipements existants
 // 3. On attache avec les données du pivot
 $maintenance->equipments()->attach($syncData);
+
+                // NOUVEAU : Mettre à jour la date de prochaine maintenance sur le NetworkNode
+                $validatedData = $validator->validated();
+                $oldNodeId = $maintenance->getOriginal('network_node_id');
+                $newNodeId = $validatedData['network_node_id'] ?? null;
+
+                // Si le noeud a changé, on efface la date sur l'ancien noeud
+                if ($oldNodeId && $oldNodeId != $newNodeId) {
+                    \App\Models\NetworkNode::where('id', $oldNodeId)->update(['next_maintenance_date' => null]);
+                }
+
+                // On met à jour le nouveau noeud
+                if ($newNodeId && !empty($validatedData['scheduled_start_date'])) {
+                    \App\Models\NetworkNode::where('id', $newNodeId)->update([
+                        'next_maintenance_date' => $validatedData['scheduled_start_date']
+                    ]);
+                }
 
                 // Mettre à jour les équipements de l'activité
                 $activity->equipment()->sync($validator->validated()['equipment_ids']);

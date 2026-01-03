@@ -27,6 +27,7 @@ return new class extends Migration
     $table->integer('y')->default(100);
     $table->integer('w')->default(200);
     $table->integer('h')->default(100);
+    $table->date('next_maintenance_date')->nullable();
 
     $table->timestamps();
         });

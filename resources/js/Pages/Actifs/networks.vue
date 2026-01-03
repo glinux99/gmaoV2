@@ -78,6 +78,7 @@ const loadNetwork = (network) => {
             isRoot: !!node.is_root,
             region_id: node.region_id,
             zone_id: node.zone_id,
+            next_maintenance_date: node.next_maintenance_date, // Ajout de la date de maintenance
         };
     });
 
@@ -387,6 +388,12 @@ onMounted(() => {
                                     <span class="text-[9px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full tracking-wider">{{ node.tag }}</span>
                                     <i @click.stop="node.active = !node.active"
                                        :class="['pi pi-power-off text-[10px] cursor-pointer transition-colors', node.active ? 'text-green-500' : 'text-surface-300']"></i>
+                                    <!-- NOUVEAU : Indicateur de maintenance planifiée -->
+                                    <div v-if="node.next_maintenance_date"
+                                         v-tooltip.top="`Maintenance planifiée le ${new Date(node.next_maintenance_date).toLocaleDateString('fr-FR')}`"
+                                         class="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-surface-card animate-pulse">
+                                        <i class="pi pi-calendar-clock text-white text-xs"></i>
+                                    </div>
                                 </div>
 
                                 <div class="p-4 flex flex-col items-center justify-center text-center flex-grow">
