@@ -43,6 +43,7 @@ class RegionController extends Controller
             'designation' => 'required|string|max:255|unique:regions',
             'type_centrale' => 'nullable|string|max:255',
             'puissance_centrale' => 'nullable|numeric|between:0,999999.99',
+            'code' => 'nullable|string|max:255,unique:regions',
         ]);
         $region = Region::create($validated);
 
@@ -76,6 +77,7 @@ class RegionController extends Controller
             'designation' => 'required|string|max:255|unique:regions,designation,' . $region->id,
             'type_centrale' => 'nullable|string|max:255',
             'puissance_centrale' => 'nullable|numeric|between:0,999999.99',
+              'code' => 'nullable|string|max:255,unique:regions',
         ]);
         $region->update($validated);
 

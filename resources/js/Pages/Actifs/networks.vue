@@ -114,9 +114,14 @@ const energizedNodes = computed(() => {
 });
 
 const getLocationName = (node) => {
+    // Priorité à la nomenclature de la zone si elle existe
+    if (node.zone_id) {
+        const zone = props.zones.find(z => z.id === node.zone_id);
+        if (zone) return zone.nomenclature || zone.name;
+    }
+    // Sinon, on affiche la région
     if (node.region_id) return props.regions.find(r => r.id === node.region_id)?.designation;
-    if (node.zone_id) return props.zones.find(z => z.id === node.zone_id)?.name;
-    return null;
+    return t('networks.defaultRegion'); // Fallback
 };
 
 const isWireLive = (wire) => energizedNodes.value.has(wire.fromId);
@@ -375,7 +380,7 @@ onMounted(() => {
                              @mousedown.stop="startMove($event, node)"
                              class="absolute z-20 node-card">
 
-                            <div :class="['w-full h-full bg-surface-card border-2 rounded-[1rem]  shadow-xl transition-all duration-300 flex flex-col overflow-hidden',
+                            <div :class="['w-full h-full bg-surface-card border-2 rounded-[0.7rem]  shadow-xl transition-all duration-300 flex flex-col overflow-hidden',
                                           node.active ? 'border-surface-100 shadow-surface-200 dark:shadow-surface-800' : 'border-danger-100 grayscale opacity-60']">
 
                                 <div class="h-9 bg-surface-50 dark:bg-surface-800 border-b border-surface-border flex items-center justify-between px-5">

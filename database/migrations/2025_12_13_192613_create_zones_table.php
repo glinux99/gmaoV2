@@ -17,6 +17,7 @@ return new class extends Migration
             $table->text('description')->nullable(); // Description de la zone
             $table->string('nomenclature')->nullable(); // Nomenclature de la zone (ex: Z024a)
             $table->string('number')->nullable(); // Numéro de la zone (ex: 024a)
+            $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
             $table->timestamps();
         });
     }

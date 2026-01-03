@@ -31,8 +31,9 @@ class NetworkController extends Controller
             'library' => Equipment::with('equipmentType', 'characteristics')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
             }),
-            'regions' => Region::all(),
+            'regions' => Region::with('zones')->get(),
             'zones' => Zone::all(),
+
         ]);
     }
 
@@ -46,7 +47,14 @@ class NetworkController extends Controller
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
         $lastNetwork = Network::with([
             'nodes.equipment.equipmentType',
-            'nodes.characteristics.equipmentCharacteristic', // MODIFICATION : On charge les détails de la caractéristique
+            // MODIFICATION : On ne charge que la DERNIÈRE caractéristique pour chaque type.
+            'nodes.characteristics' => function ($query) {
+                $query->whereIn('id', function ($subQuery) {
+                    $subQuery->select(DB::raw('MAX(id)'))
+                        ->from('node_equip_specs')
+                        ->groupBy('network_node_id', 'equipment_characteristic_id');
+                })->with('equipmentCharacteristic'); // On charge les détails de la caractéristique
+            },
             'connections',
             'labels'
         ])->where('id', $network->id)->latest()->first();
@@ -57,7 +65,7 @@ class NetworkController extends Controller
             'library' => Equipment::with('equipmentType', 'characteristics')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
             }),
-            'regions' => Region::all(),
+            'regions' => Region::with('zones')->get(),
             'zones' => Zone::all(),
             // On charge les caractéristiques par ID d'équipement pour un accès facile en front-end
             'equipmentCharacteristics' => Equipment::with('characteristics')->get()->keyBy('id')->map(function ($equipment) {
@@ -72,7 +80,14 @@ class NetworkController extends Controller
         // On récupère le dernier réseau modifié pour servir de "initialNetwork" par défaut
         $lastNetwork = Network::with([
             'nodes.equipment.equipmentType',
-            'nodes.characteristics.equipmentCharacteristic', // MODIFICATION : On charge les détails de la caractéristique
+            // MODIFICATION : On ne charge que la DERNIÈRE caractéristique pour chaque type.
+            'nodes.characteristics' => function ($query) {
+                $query->whereIn('id', function ($subQuery) {
+                    $subQuery->select(DB::raw('MAX(id)'))
+                        ->from('node_equip_specs')
+                        ->groupBy('network_node_id', 'equipment_characteristic_id');
+                })->with('equipmentCharacteristic'); // On charge les détails de la caractéristique
+            },
             'connections',
             'labels'
         ])->where('id', $network->id)->latest()->first();
@@ -83,7 +98,7 @@ class NetworkController extends Controller
             'library' => Equipment::with('equipmentType', 'characteristics')->get()->groupBy(function($item) {
                 return $item->equipmentType->name;
             }),
-            'regions' => Region::all(),
+            'regions' => Region::with('zones')->get(),
             'zones' => Zone::all(),
             // On charge les caractéristiques par ID d'équipement pour un accès facile en front-end
             'equipmentCharacteristics' => Equipment::with('characteristics')->get()->keyBy('id')->map(function ($equipment) {
@@ -160,16 +175,34 @@ public function store(Request $request)
 
                 // 3.1 Sauvegarde des caractéristiques du noeud
                 if (isset($nodeData['characteristics']) && is_array($nodeData['characteristics'])) {
-                    foreach ($nodeData['characteristics'] as $charId => $charData) {
-                        // On s'assure que la caractéristique existe avant de l'insérer
-                        // Et que nous avons bien un tableau avec une valeur
-                        if (is_array($charData) && isset($charData['value']) && EquipmentCharacteristic::where('id', $charId)->exists()) {
-                            $node->characteristics()->create([
-                                'equipment_characteristic_id' => $charId,
-                                'equipment_id' => $node->equipment_id,
-                                'value' => $charData['value'],
-                                'date' => $charData['date'] ?? now()
-                            ]);
+                    foreach ($nodeData['characteristics'] as $charData) {
+                        $charId = $charData['equipment_characteristic_id'] ?? null;
+                        $newValue = $charData['value'] ?? null;
+                        $newDate = isset($charData['date']) ? \Carbon\Carbon::parse($charData['date']) : now();
+
+                        // Validation : S'assurer que les IDs sont valides et que la valeur n'est pas nulle.
+                        if (!empty($charId) && !empty($equipmentId) && isset($charData['value']) && $charData['value'] !== null) {
+                            // On cherche la dernière caractéristique enregistrée pour ce noeud et ce type de caractéristique
+                            $latestChar = $node->characteristics()
+                                ->where('equipment_characteristic_id', $charId)
+                                ->where('equipment_id', $equipmentId)
+                                ->latest('date')
+                                ->first();
+
+                            // On compare la valeur et la date (jour/mois/année uniquement)
+                            $isDifferent = !$latestChar ||
+                                           $latestChar->value != $newValue ||
+                                           !\Carbon\Carbon::parse($latestChar->date)->isSameDay($newDate);
+
+                            // Si aucune caractéristique n'existe ou si les données sont différentes, on crée un nouvel enregistrement.
+                            if ($isDifferent) {
+                                $node->characteristics()->create([
+                                    'equipment_characteristic_id' => $charId,
+                                    'equipment_id' => $equipmentId,
+                                    'value' => $newValue,
+                                    'date' => $newDate,
+                                ]);
+                            }
                         }
                     }
                 }
@@ -214,18 +247,12 @@ public function store(Request $request)
     /**
      * Update : Reconstruction propre du schéma
      */
- public function update(Request $request, Network $network)
+public function update(Request $request, Network $network)
 {
-
-
     $validated = $request->validate([
-        'name' => 'required|string|max:255', // Ex: "Réseau Usine Nord"
+        'name' => 'required|string|max:255',
         'description' => 'nullable|string',
-        'user_id' => 'nullable|exists:users,id', // Créateur du plan
         'zoom_level' => 'nullable|numeric',
-        'version' => 'nullable|numeric',
-        'grid_size' => 'nullable|integer',
-        'is_active' => 'boolean',
         'region_id' => 'nullable|exists:regions,id',
         'equipments' => 'nullable|array',
         'connections' => 'nullable|array',
@@ -233,95 +260,111 @@ public function store(Request $request)
     ]);
 
     DB::transaction(function () use ($request, $validated, $network) {
-        // 1. Mise à jour des infos de base
+        // 1. Mise à jour du réseau
         $network->update([
             'name' => $validated['name'],
             'zoom_level' => $validated['zoom_level'] ?? $network->zoom_level,
-            'version' => $validated['version'] ?? $network->version,
             'region_id' => $validated['region_id'] ?? $network->region_id,
             'description' => $validated['description'] ?? $network->description,
-            'grid_size' => $validated['grid_size'] ?? $network->grid_size,
-            'is_active' => $validated['is_active'] ?? $network->is_active,
-
         ]);
 
-        // 2. Nettoyage complet
-        // Note: Assurez-vous que les relations sont bien définies dans le modèle Network.php
-        $network->connections()->delete();
-        $network->nodes()->delete();
-        $network->labels()->delete();
-
+        // 2. Gestion des NOEUDS (Equipments)
         $tempToRealIdMap = [];
+        $keptNodeIds = [];
 
-        // 3. Recréer les Noeuds (Equipments)
         if (!empty($validated['equipments'])) {
             foreach ($validated['equipments'] as $nodeData) {
+                // Déterminer l'ID de l'équipement (Library)
                 $equipmentId = $nodeData['libraryId'] ?? null;
 
-                if (!$equipmentId) {
+                // Si c'est un nouveau composant hors bibliothèque
+                if (!$equipmentId && isset($nodeData['tag'])) {
                     $type = EquipmentType::firstOrCreate(['name' => $nodeData['type'] ?? 'Composant']);
                     $equipment = Equipment::firstOrCreate(
                         ['tag' => $nodeData['tag']],
-                        [
-                            'designation' => $nodeData['designation'] ?? 'Sans nom',
-                            'equipment_type_id' => $type->id,
-                            'status' => 'en service'
-                        ]
+                        ['designation' => $nodeData['designation'] ?? 'Sans nom', 'equipment_type_id' => $type->id]
                     );
                     $equipmentId = $equipment->id;
                 }
 
-                $node = $network->nodes()->create([
-                    'equipment_id' => $equipmentId,
-                    'x' => $nodeData['x'],
-                    'y' => $nodeData['y'],
-                    'w' => $nodeData['w'] ?? 220,
-                    'h' => $nodeData['h'] ?? 130,
-                     'is_active' => (int) ($nodeData['active'] ==="true" ?? false),
-                    'is_root'   => (int) ($nodeData['active'] ==="true" ?? false),
-                    'region_id' => $nodeData['region_id'] ?? null,
-                    'zone_id' => $nodeData['zone_id'] ?? null,
-                ]);
 
-                // 3.1 Sauvegarde des caractéristiques du noeud
+                // UPDATE OR CREATE le noeud
+                // On utilise nodeData['id'] seulement s'il est numérique (ID réel SQL)
+                $nodeId = isset($nodeData['id']) && is_numeric($nodeData['id']) ? $nodeData['id'] : null;
 
-                if (isset($nodeData['characteristics']) && is_array($nodeData['characteristics'])) {
-                    foreach ($nodeData['characteristics'] as $charId => $charData) {
-                        // On s'assure que la caractéristique existe avant de l'insérer
-                        // et que nous avons bien une valeur à insérer.
+                $node = $network->nodes()->updateOrCreate(
+                    ['id' => $nodeId],
+                    [
+                        'equipment_id' => $equipmentId,
+                        'x' => $nodeData['x'],
+                        'y' => $nodeData['y'],
+                        'w' => $nodeData['w'] ?? 220,
+                        'h' => $nodeData['h'] ?? 130,
+                        'is_active' => filter_var($nodeData['active'], FILTER_VALIDATE_BOOLEAN),
+                        'is_root' => filter_var($nodeData['is_root'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                        'region_id' => $nodeData['region_id'] ?? null,
+                        'zone_id' => $nodeData['zone_id'] ?? null,
+                    ]
+                );
 
-                        if (is_array($charData) && isset($charData['value']) && $charData['value'] !== null) {
+                $keptNodeIds[] = $node->id;
+                $tempToRealIdMap[$nodeData['id']] = $node->id;
+
+                // 3. Gestion des CARACTÉRISTIQUES (Historisation)
+                if (!empty($nodeData['characteristics'])) {
+                    foreach ($nodeData['characteristics'] as $charData) {
+                        $charId = $charData['equipment_characteristic_id'] ?? null;
+                        $newValue = $charData['value'] ?? null;
+                        $newDate = isset($charData['date']) ? \Carbon\Carbon::parse($charData['date']) : now();
+
+                        if (!$charId || $newValue === null) continue;
+
+                        $latestChar = $node->characteristics()
+                            ->where('equipment_characteristic_id', $charId)
+                            ->latest('date')->first();
+
+                        // Comparer la valeur ET la date (jour/mois/année uniquement)
+                        $isDifferent = !$latestChar ||
+                                       $latestChar->value != $newValue ||
+                                       !\Carbon\Carbon::parse($latestChar->date)->isSameDay($newDate);
+
+                        if ($isDifferent) {
                             $node->characteristics()->create([
-                                'equipment_characteristic_id' => $charData['equipment_characteristic_id'],
-                                'equipment_id' => $equipmentId, // On utilise l'ID de l'équipement du noeud actuel
-                                'value' => $charData['value'],
-                                'date'  => $charData['date'] ?? now(),
+                                'equipment_characteristic_id' => $charId,
+                                'equipment_id' => $equipmentId,
+                                'value' => $newValue,
+                                'date' => $newDate,
                             ]);
                         }
                     }
                 }
-                // On stocke la correspondance entre l'ID temporaire du front-end et le nouvel ID SQL
-                $tempToRealIdMap[$nodeData['id']] = $node->id;
             }
         }
 
-        // 4. Recréer les Connections
+        // 4. NETTOYAGE : Supprimer les nœuds qui ne sont plus dans le JSON
+        $network->nodes()->whereNotIn('id', $keptNodeIds)->delete();
+
+        // 5. RECONSTRUCTION DES CONNECTIONS (Plus simple de Delete/Create pour les liens)
+        $network->connections()->delete();
         if (!empty($validated['connections'])) {
             foreach ($validated['connections'] as $connData) {
-                if (isset($tempToRealIdMap[$connData['fromId']]) && isset($tempToRealIdMap[$connData['toId']])) {
+                $from = $tempToRealIdMap[$connData['fromId']] ?? null;
+                $to = $tempToRealIdMap[$connData['toId']] ?? null;
+
+                if ($from && $to) {
                     $network->connections()->create([
-                        'from_node_id' => $tempToRealIdMap[$connData['fromId']],
-                        'from_side'    => $connData['fromSide'],
-                        'to_node_id'   => $tempToRealIdMap[$connData['toId']],
-                        'to_side'      => $connData['toSide'],
-                        'color'        => $connData['color'] ?? '#ef4444', // Rouge par défaut selon votre UI
-                        'dash_array'   => $connData['dash'] ?? '0',
+                        'from_node_id' => $from,
+                        'from_side' => $connData['fromSide'],
+                        'to_node_id' => $to,
+                        'to_side' => $connData['toSide'],
+                        'color' => $connData['color'] ?? '#ef4444',
                     ]);
                 }
             }
         }
 
-        // 5. Recréer les Labels
+        // 6. RECONSTRUCTION DES LABELS
+        $network->labels()->delete();
         if (!empty($validated['labels'])) {
             foreach ($validated['labels'] as $labelData) {
                 $network->labels()->create([
@@ -329,17 +372,13 @@ public function store(Request $request)
                     'x' => $labelData['x'],
                     'y' => $labelData['y'],
                     'color' => $labelData['color'] ?? '#94a3b8',
-                    'font_size' => $labelData['fontSize'] ?? 14,
-                    'is_bold' => (bool)($labelData['bold'] ?? false),
-                    'rotation' => $labelData['rotation'] ?? 0,
                 ]);
             }
         }
     });
 
-    return back()->with('success', 'Schéma réseau mis à jour avec succès.');
+    return back()->with('success', 'Schéma mis à jour (nœuds conservés).');
 }
-
     /**
      * Destroy : Suppression
      */

@@ -21,6 +21,10 @@ class NetworkNodeEquipmentCharacterstic extends Model
         'date',
     ];
 
+    protected $casts = [
+        'date' => 'date:Y-m-d',
+    ];
+
     public function networkNode(): BelongsTo
     {
         return $this->belongsTo(NetworkNode::class);

@@ -107,7 +107,12 @@ const model = ref([
             {
                 label: 'menu.systemConfiguration.regions',
                 icon: 'pi pi-fw pi-map',
-                to: '/regions'
+                to: '/regions',
+            },
+             {
+                label: 'menu.systemConfiguration.zones',
+                icon: 'pi pi-fw pi-map-marker',
+                to: '/zones'
             },
             { label: 'menu.systemConfiguration.rollingStock',
                 icon: 'pi pi-fw pi-car',

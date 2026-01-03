@@ -52,10 +52,10 @@ class MaintenanceController extends Controller
             'equipments' => Equipment::all(), // Assumant que les équipements sont disponibles pour lier les activités
             'users' => User::all(), // Assumant que les utilisateurs sont disponibles pour lier les activités
             'teams' => Team::all(), // Assumant que les équipes sont disponibles pour lier les activités
-            'regions' => Region::all(), // Assumant que les régions sont disponibles pour lier les activités
+            'regions' => Region::with('zones')->get(), //, // Assumant que les régions sont disponibles pour lier les activités
             'tasks' => [], // Assumant que les tâches sont disponibles pour lier les activités
             'spareParts' => SparePart::all(), // Requis pour la sélection de pièces
-            'networks' => Network::with('nodes')->get(), // Ajouté pour la sélection des réseaux
+            'networks' => Network::with('nodes', 'region')->get(), // Ajouté pour la sélection des réseaux
             'equipmentTree' => $transformedEquipmentTree,
             'instructionTemplates' => InstructionTemplate::all(), // Charger les modèles
         ]);
@@ -128,8 +128,9 @@ class MaintenanceController extends Controller
         'service_order_cost' => 'nullable|numeric|min:0',
         'service_order_description' => 'nullable|string|required_with:service_order_cost',
     ]);
+        if ($validator->fails()) {
 
-    if ($validator->fails()) {
+return $validator->messages();
 
         // Log::error('Erreur de validation:', $validator->errors()->toArray()); // Décommenter pour debug
         return redirect()->back()->withErrors($validator)->withInput();

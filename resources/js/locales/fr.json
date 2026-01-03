@@ -106,6 +106,7 @@
             "reports": "Rapports",
             "maps": "Cartes",
             "regions": "Régions",
+            "zones": "Zones",
             "rollingStock": "Matériel roulant",
             "units": "Unités",
             "labels": "Étiquettes",
@@ -1344,14 +1345,17 @@
       "thermique": "Thermique",
       "solaire": "Solaire",
       "hydraulique": "Hydraulique",
-      "eolienne": "Éolienne"
+      "eolienne": "Éolienne",
+      "reseauElectrique": "Réseau Électrique",
+      "autreSource": "Autre Source"
     },
     "fields": {
       "designation": "Désignation",
       "type": "Source",
       "power": "Capacité (MW)",
       "notes": "Notes Techniques",
-      "status": "Statut"
+      "status": "Statut",
+      "code" : "Code"
     },
     "dialog": {
       "createTitle": "Nouvelle Configuration de Région",
@@ -1361,7 +1365,8 @@
     },
     "placeholders": {
       "designation": "Ex: Centrale Nord-Est",
-      "notes": "Détails supplémentaires, consignes de sécurité..."
+      "notes": "Détails supplémentaires, consignes de sécurité...",
+      "code": "Code"
     },
     "status": {
         "active": "Actif",

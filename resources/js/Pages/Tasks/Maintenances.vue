@@ -1060,23 +1060,34 @@ const networkNodesOptions = computed(() => {
     const selectedNetwork = props.networks.find(n => n.id === form.network_id);
     if (!selectedNetwork || !selectedNetwork.nodes) return [];
 
+    // 1. Création des Maps pour un accès rapide
     const equipmentMap = new Map((props.equipments ?? []).map(e => [e.id, e]));
-    const regionMap = new Map((props.regions ?? []).map(r => [r.id, r]));
-    const zoneMap = new Map((props.zones ?? []).map(z => [z.id, z]));
 
-    // Utilisation d'un Set pour garantir l'unicité visuelle si nécessaire
+    // 2. Correction de la Map des zones (Syntaxe et Performance)
+    const zoneMap = new Map();
+    // Si props.zones existe directement, utilisez-le, sinon extrayez des régions
+    const allZones = props.zones ?? (props.regions ?? []).flatMap(r => r.zones ?? []);
+    allZones.forEach(zone => zoneMap.set(zone.id, zone));
+
+    // 3. Label de la région du réseau
+    const networkRegionLabel = selectedNetwork.region?.designation || 'Région Réseau Indéfinie';
+
+    // 4. Transformation des nœuds en options de Dropdown
     return selectedNetwork.nodes.map(node => {
         const equipment = equipmentMap.get(node.equipment_id);
-        const region = regionMap.get(node.region_id);
         const zone = zoneMap.get(node.zone_id);
 
-        const eqLabel = equipment?.designation || equipment?.tag || 'Équipement sans nom';
-        const zoneLabel = zone?.title || zone?.name || 'Zone indéfinie';
-        const regionLabel = region?.designation || region?.name || 'Région indéfinie';
+        const eqTag = equipment?.tag ? `[${equipment.tag}] ` : '';
+        const eqDesignation = equipment?.designation || 'Équipement sans nom';
+
+        // On utilise 'title' ou 'designation' selon votre structure de donnée Zone
+        const zoneNomenclature = zone?.nomenclature || zone?.title || 'Zone non définie';
 
         return {
             value: node.id,
-            label: `${eqLabel} / ${zoneLabel} / ${regionLabel}`
+            label: `${eqTag}${eqDesignation} / ${zoneNomenclature} / ${networkRegionLabel}`,
+            // Optionnel : on garde l'id de l'équipement pour la logique métier
+            equipment_id: node.equipment_id
         };
     }).sort((a, b) => a.label.localeCompare(b.label));
 });
@@ -1092,30 +1103,37 @@ watch(() => form.network_node_id, (newNodeId) => {
     // Si on désélectionne le nœud, on vide les équipements liés (ou on garde selon votre besoin)
     if (!newNodeId) {
         form.related_equipments = [];
+        form.region_id = null; // On réinitialise aussi la région
         return;
     }
 
     // 1. Trouver le réseau actif pour chercher dedans
     const selectedNetwork = props.networks.find(n => n.id === form.network_id);
 
-    if (selectedNetwork && selectedNetwork.nodes) {
-        // 2. Trouver le nœud correspondant à l'ID sélectionné
-        const activeNode = selectedNetwork.nodes.find(node => node.id === newNodeId);
+    if (!selectedNetwork || !selectedNetwork.nodes) return;
 
-        if (activeNode && activeNode.equipment_id) {
-            // 3. Mettre à jour le tableau related_equipments avec l'ID de l'équipement pur
-            // On utilise un tableau car vous avez précisé que c'est un Array au départ
-            form.related_equipments = [activeNode.equipment_id];
-            form.equipment_ids=[];
-            form.equipment_ids.push(activeNode.equipment_id);
-            form.region_id = activeNode.region_id;
+    // 2. Trouver le nœud correspondant à l'ID sélectionné
+    const activeNode = selectedNetwork.nodes.find(node => node.id === newNodeId);
 
-            console.log(`Équipement ID ${activeNode.equipment_id} lié automatiquement au nœud ${newNodeId}`);
-        }
+    if (activeNode) {
+        // 3. Mettre à jour la region_id du formulaire avec celle du nœud sélectionné.
+        form.region_id = selectedNetwork.region_id;
+
+        // 4. Mettre à jour l'équipement lié (logique existante)
+        form.related_equipments = activeNode.equipment_id ? [activeNode.equipment_id] : [];
+
+        console.log(`Région ID ${activeNode.region_id} et Équipement ID ${activeNode.equipment_id} liés automatiquement au nœud ${newNodeId}`);
+    } else {
+        form.region_id = null;
+        form.related_equipments = [];
     }
 }, { immediate: true });
 // Mettre à jour form.related_equipments lorsque network_node_id change
-
+const getNetworkLabel = (network) => {
+    if (!network) return '';
+    const regionSuffix = network.region?.designation ? ` (${network.region.designation})` : '';
+    return `${network.name}${regionSuffix}`;
+};
 </script>
 
 <template>
@@ -1552,28 +1570,31 @@ watch(() => form.network_node_id, (newNodeId) => {
                         <small class="p-error block mt-1" v-if="form.errors.title">{{ form.errors.title }}</small>
                     </div>
 
-                    <div class="field">
-                        <label for="network" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Réseau</label>
-                        <Dropdown id="network" v-model="form.network_id"
-                                  :options="props.networks" optionLabel="name" optionValue="id"
-                                  placeholder="Sélectionner un réseau" filter
-                                  class="w-full quantum-input !bg-white" />
-                    </div>
+                  <div class="field">
+    <label for="network" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">
+        Réseau
+    </label>
+    <Dropdown
+        id="network"
+        v-model="form.network_id"
+        :options="props.networks"
+        optionValue="id"
+        placeholder="Sélectionner un réseau"
+        filter
+        class="w-full quantum-input !bg-white"
+    >
+        <template #value="slotProps">
+            <div v-if="slotProps.value">
+                {{ getNetworkLabel(props.networks.find(n => n.id === slotProps.value)) }}
+            </div>
+            <span v-else>{{ slotProps.placeholder }}</span>
+        </template>
 
-                    <div class="field" v-if="form.network_id">
-                        <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Localisation</label>
-                        <div class="flex gap-2">
-                            <div class="flex items-center">
-                                <input type="radio" id="region" value="region" v-model="form.placementType" class="mr-2" />
-                                <label for="region">Région</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="radio" id="zone" value="zone" v-model="form.placementType" class="mr-2" />
-                                <label for="zone">Zone</label>
-                            </div>
-                        </div>
-                    </div>
-
+        <template #option="slotProps">
+            <div>{{ getNetworkLabel(slotProps.option) }}</div>
+        </template>
+    </Dropdown>
+</div>
                     <div class="field">
 
                         <label for="related_equipments" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.concernedEquipments') }}</label>
@@ -1779,8 +1800,9 @@ watch(() => form.network_node_id, (newNodeId) => {
                             </div>
                             <div class="field">
                                 <label class="text-[9px] font-bold uppercase text-slate-400 mb-2 block ml-1">{{ t('maintenances.formDialog.interventionRegion') }}</label>
-                                <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter
-                                          class="w-full bg-white/5 border-white/10 text-white rounded-xl" :disabled="!form.network_id" />
+
+                                <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" readonly
+                                          class="w-full bg-white/5 border-white/10 text-white rounded-xl" :disabled="true" />
                             </div>
                         </div>
                     </div>

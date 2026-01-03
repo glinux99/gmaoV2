@@ -57,6 +57,7 @@ const form = useForm({
     puissance_centrale: 0,
     description: ''
     ,
+    code: '', // Ajout du champ code
     status: 'active' // Ajout du statut
 });
 
@@ -85,6 +86,7 @@ const allColumns = ref([
  { field: 'type_centrale', header: 'Source', default: true },
  { field: 'puissance_centrale', header: 'Capacité', default: true },
  { field: 'description', header: 'Description', default: false },
+ { field: 'code', header: 'Code', default: false }, // Ajout de la colonne code
  { field: 'status', header: 'Statut', default: false },
 ]);
 const visibleColumns = ref(allColumns.value.filter(col => col.default).map(col => col.field));
@@ -117,6 +119,7 @@ const openNew = () => {
 const editRegion = (region) => {
     form.clearErrors();
     Object.assign(form, region);
+    form.code = region.code; // Assigner la valeur du code
     editing.value = true;
     labelDialog.value = true;
 };
@@ -173,8 +176,10 @@ const deleteSelectedRegions = () => {
 const typeOptions = computed(() => [
     { label: t('regions.types.thermique'), value: 'thermique', icon: 'pi pi-bolt', color: 'red' },
     { label: t('regions.types.solaire'), value: 'solaire', icon: 'pi pi-sun', color: 'orange' },
-    { label: t('regions.types.hydraulique'), value: 'hydraulique', icon: 'pi pi-cloud', color: 'primary' },
-    { label: t('regions.types.eolienne'), value: 'eolienne', icon: 'pi pi-directions', color: 'green' }
+    { label: t('regions.types.hydraulique'), value: 'hydraulique', icon: 'pi pi-cloud', color: 'blue' },
+    { label: t('regions.types.eolienne'), value: 'eolienne', icon: 'pi pi-directions', color: 'green' },
+    { label: t('regions.types.reseauElectrique'), value: 'reseau Electrique', icon: 'pi pi-share-alt', color: 'blue' },
+    { label: t('regions.types.autreSource'), value: 'autreSource', icon: 'pi pi-ellipsis-h', color: 'gray' }
 ]);
 
 const statusOptions = computed(() => [
@@ -190,7 +195,7 @@ const statLabels = computed(() => ({
 }));
 
 const getSeverity = (type) => {
-    const map = { solaire: 'warning', thermique: 'danger', hydraulique: 'info', eolienne: 'success' };
+    const map = { solaire: 'yellow', thermique: 'danger', hydraulique: 'info', eolienne: 'success', 'reseau Electrique': 'primary' };
     return map[type] || 'secondary';
 };
 </script>
@@ -278,7 +283,7 @@ const getSeverity = (type) => {
                         </template>
                     </Column>
 
-                    <Column field="type_centrale" header="Source" sortable :showFilterMatchModes="false" v-if="visibleColumns.includes('type_centrale')">
+                    <Column field="type_centrale" header="Source / Region" sortable :showFilterMatchModes="false" v-if="visibleColumns.includes('type_centrale')">
                         <template #body="{ data }">
                             <Tag :value="data.type_centrale" :severity="getSeverity(data.type_centrale)" class="rounded-lg px-3 uppercase text-[10px]" />
                         </template>
@@ -287,18 +292,21 @@ const getSeverity = (type) => {
                         </template>
                     </Column>
 
-                    <Column field="puissance_centrale" header="Capacité" sortable v-if="visibleColumns.includes('puissance_centrale')">
+                    <Column field="puissance_centrale" header="Capacité" sortable v-if="visibleColumns.includes('puissance_centrale')" class="w-40">
                         <template #body="{ data }">
-                            <div class="flex flex-col w-40">
-                                <div class="flex justify-between items-center mb-1">
+                            <div v-if="data.type_centrale !== 'reseau Electrique'" class="flex flex-col">
+                                <div class="flex justify-between items-center mb-1 w-full">
                                     <span class="text-sm font-black text-slate-700">{{ data.puissance_centrale }} <small>MW</small></span>
-                                    <span class="text-[10px] text-slate-400 font-bold">{{ ((data.puissance_centrale/1000)*100).toFixed(0) }}%</span>
+                                    <span class="text-[10px] text-slate-400 font-bold">{{ ((data.puissance_centrale / 1000) * 100).toFixed(0) }}%</span>
                                 </div>
-                                <ProgressBar :value="(data.puissance_centrale/1000)*100" :showValue="false" style="height: 7px" class="rounded-full overflow-hidden" />
+                                <ProgressBar :value="(data.puissance_centrale / 1000) * 100" :showValue="false" style="height: 7px" class="rounded-full overflow-hidden" />
+                            </div>
+                            <div v-else class="flex items-center justify-center h-full">
+                                <span class="text-red-500 font-bold text-lg">-</span>
                             </div>
                         </template>
                         <template #filter="{ filterModel }">
-                            <div class="px-3 pt-2 pb-4">
+                            <div class="px-3 pt-2 pb-4 w-full">
                                 <Slider v-model="filterModel.value" range :min="0" :max="1000" class="w-full" />
                                 <div class="flex justify-between mt-3 text-xs font-bold text-slate-500">
                                     <span>{{ filterModel.value[0] }}MW</span>
@@ -399,11 +407,19 @@ const getSeverity = (type) => {
                         </Dropdown>
                     </div>
 
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2" v-if="form.type_centrale !== 'reseau Electrique'">
                         <label class="text-xs font-black text-slate-500 uppercase">{{ t('regions.fields.power') }}</label>
                         <InputNumber v-model="form.puissance_centrale" showButtons :min="0" inputId="minmaxfraction" :minFractionDigits="2" :maxFractionDigits="5" suffix=" MW" class="w-full" inputClass="py-3.5 rounded-xl border-slate-200" />
                     </div>
 
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-black text-slate-500 uppercase">{{ t('regions.fields.code') }}</label>
+                        <IconField iconPosition="left">
+                            <InputIcon class="pi pi-qrcode" />
+                            <InputText v-model="form.code" class="w-full py-3.5 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary-50" :placeholder="t('regions.placeholders.code')" />
+                        </IconField>
+                        <small v-if="form.errors.code" class="text-red-500 font-bold italic">{{ form.errors.code }}</small>
+                    </div>
 
 
 

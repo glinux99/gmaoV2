@@ -39,6 +39,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTemplateController;
 use App\Http\Controllers\UnityController;
 use App\Http\Controllers\NetworkController;
+use App\Http\Controllers\ZoneController;
 
 /*
 |--------------------------------------------------------------------------
@@ -103,12 +104,14 @@ Route::middleware('auth', 'verified')->group(function () {
     'report-templates' => ReportTemplateController::class,
     'networks' => NetworkController::class,
     'analytics' => AnalyticController::class,
+    'zones'=> ZoneController::class,
 
   ]);
 
   Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
   Route::put('/expenses/{expense}/status', [ExpensesController::class, 'updateStatus'])->name('expenses.updateStatus');
   Route::put('/expenses/group-status', [ExpensesController::class, 'updateGroupStatus'])->name('expenses.updateGroupStatus');
+Route::post('zones/bulk-destroy', [ZoneController::class, 'bulkDestroy'])->name('zones.bulkDestroy');
 
   Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
 

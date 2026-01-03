@@ -302,8 +302,8 @@ const openAddModal = (item) => {
     newNodeData.libraryId = item.id; // Renamed for better clarity
     newNodeData.designation = item.designation;
     newNodeData.type = item.type?.category || 'Composant';
-    // Le premier équipement est un point d'injection par défaut.
-    newNodeData.isRoot = equipments.value.length === 0; // Définit isRoot à true si c'est le premier équipement.
+    // On prend la valeur de la base de données (is_root), sinon on le définit comme root si c'est le premier équipement.
+    newNodeData.isRoot = item.is_root !== undefined ? !!item.is_root : equipments.value.length === 0;
     newNodeData.region_id = null;
     newNodeData.status = 'en service'; // Statut par défaut
     newNodeData.zone_id = null;
@@ -360,37 +360,35 @@ const openEditModal = (node) => {
     editingNodeData.active = node.active !== undefined ? node.active : true;
     editingNodeData.libraryId = node.libraryId; // Important pour retrouver les caractéristiques
 
-    // Pré-remplir les caractéristiques existantes
+    // 1. Initialiser les caractéristiques attendues depuis la bibliothèque
     const initialChars = {};
-    // Trouver l'équipement dans la bibliothèque pour obtenir ses caractéristiques par défaut
     const libraryItem = Object.values(props.library).flat().find(item => item.id === node.libraryId);
     if (libraryItem && libraryItem.characteristics) {
         libraryItem.characteristics.forEach(char => {
-            initialChars[char.id] = { value: null, date: new Date() }; // Initialiser avec null ou une valeur par défaut
+            initialChars[char.id] = { value: null, date: new Date() };
         });
     }
 
-    // 2. Remplacer avec les valeurs sauvegardées si elles existent
+    // 2. Remplacer avec les valeurs sauvegardées venant du backend si elles existent
     if (node.characteristics) {
-        // Si les données viennent du backend (après un chargement), elles sont dans un tableau
         if (Array.isArray(node.characteristics)) {
             node.characteristics.forEach(savedChar => {
-                initialChars[savedChar.characteristic_id] = { // Assurez-vous que c'est bien 'characteristic_id'
+                // La clé est l'ID de la caractéristique de l'équipement (equipment_characteristic_id)
+                const charId = savedChar.equipment_characteristic_id;
+                initialChars[charId] = {
                     value: savedChar.value,
                     date: savedChar.date ? new Date(savedChar.date) : new Date()
                 };
-                initialChars[savedChar.characteristic_id].equipement_id = savedChar.equipement_id;
             });
-        } else { // Sinon (après une création/modif en local), elles sont dans un objet
+        } else { // Logique pour les caractéristiques modifiées localement (non-sauvegardées)
             Object.keys(node.characteristics).forEach(charId => {
                 if (initialChars[charId]) {
-                    initialChars[charId] = { ...node.characteristics[charId] }; // Copier l'objet entier
+                    initialChars[charId] = { ...node.characteristics[charId] };
                 }
             });
         }
     }
     characteristicsData.value = initialChars;
-
     showEditModal.value = true;
 };
 
@@ -686,6 +684,7 @@ const loadNetwork = (network) => {
     if (!network) {
         projectId.value = null;
         networkName.value = "Nouveau Projet";
+ form.region_id = null; // Initialize region_id for new projects
         equipments.value = [{
             id: 'root-0', tag: 'G1', designation: 'Arrivée réseau générale', icon: 'pi-bolt',
             type: 'Source', x: 200, y: 200, w: NODE_WIDTH, h: NODE_HEIGHT, active: true, isRoot: true
@@ -698,6 +697,7 @@ const loadNetwork = (network) => {
 
     projectId.value = network.id;
     networkName.value = network.name;
+ form.region_id = network.region_id; // Initialize region_id from existing network
     zoomLevel.value = parseFloat(network.zoom_level) || 0.85;
 
     equipments.value = (network.nodes || []).map(node => {
@@ -734,8 +734,8 @@ const loadNetwork = (network) => {
 };
 
 const getLocationName = (node) => {
-    if (node.region_id) return props.regions.find(r => r.id === node.region_id)?.designation;
-    if (node.zone_id) return props.zones.find(z => z.id === node.zone_id)?.name;
+
+    if (node.zone_id) return props.zones.find(z => z.id === node.zone_id)?.nomenclature;
     return 'N/A';
 };
 
@@ -951,6 +951,13 @@ const exportApiProject = () => {
         // Sérialisation des tableaux complexes (Equipements, Connexions, Labels)
         originalData.equipments.forEach((item, index) => {
             Object.keys(item).forEach(prop => {
+                // Ajout du nodeId si l'ID de l'item est numérique (ID de la BDD)
+                if (isUpdate && typeof item.id === 'number') {
+                    formData.append(`equipments[${index}][nodeId]`, item.id ?? '');
+                    formData.append(`equipments[${index}][zone_id]`, item.zone_id ?? '');
+                    formData.append(`equipments[${index}][is_root]`, item.isRoot ? 1 : 0);
+                }
+
                 if (prop === 'characteristics') {
                     // Sérialiser les caractéristiques comme un objet JSON
                     const characteristics = item[prop] || {};
@@ -960,6 +967,7 @@ const exportApiProject = () => {
                         equipment_id: item.libraryId, // Correction: Utiliser l'ID de l'équipement, pas l'ID du noeud
                         value: characteristics[charId].value, // La valeur peut être une chaîne ou un nombre
                         date: characteristics[charId].date ? new Date(characteristics[charId].date).toISOString().slice(0, 19).replace('T', ' '):null,
+                        // date: characteristics[charId].date ? new Date(characteristics[charId].date).toISOString().split('T')[0] : null,
                     }));
                     // Ajouter chaque caractéristique individuellement au FormData
                     formattedCharacteristics.forEach((char, charIndex) => {
@@ -968,7 +976,12 @@ const exportApiProject = () => {
                         }
                     });
                 } else {
-                    formData.append(`equipments[${index}][${prop}]`, item[prop] ?? '');
+                    // Correction pour s'assurer que les ID null ne sont pas envoyés comme "null"
+                    if ((prop === 'zone_id' || prop === 'region_id') && (item[prop] === null || item[prop] === undefined)) {
+                        formData.append(`equipments[${index}][${prop}]`, '');
+                    } else {
+                        formData.append(`equipments[${index}][${prop}]`, item[prop] ?? '');
+                    }
                 }
             });
 
@@ -1016,12 +1029,24 @@ const exportApiProject = () => {
 };
 
 const getCharacteristicName = (charId) => {
-    // Parcourir la bibliothèque pour trouver le nom de la caractéristique
+    // 1. Chercher dans la bibliothèque (plus rapide)
     for (const category in props.library) {
         for (const item of props.library[category]) {
-            // Utiliser l'ID numérique pour la comparaison
             const char = item.characteristics?.find(c => c.id == charId);
             if (char) return char.name;
+        }
+    }
+
+    // 2. Si non trouvé, chercher dans les données chargées du réseau initial (cas de l'édition)
+    if (props.initialNetwork?.nodes) {
+        for (const node of props.initialNetwork.nodes) {
+            if (node.characteristics) {
+                const savedChar = node.characteristics.find(c => c.equipment_characteristic_id == charId);
+                // La relation 'equipmentCharacteristic' a été chargée dans le contrôleur
+                if (savedChar && savedChar.equipment_characteristic) {
+                    return savedChar.equipment_characteristic.name;
+                }
+            }
         }
     }
     return `Caractéristique ${charId}`;
@@ -1400,11 +1425,20 @@ const getCharacteristicName = (charId) => {
             </div>
 
             <div class="flex flex-col gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
-                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
-                 <Dropdown v-model="newNodeData.zone_id"
-                           :options="props.zones"
-                           optionLabel="name" optionValue="id"
-                           placeholder="Sélectionner une zone" class="w-full" filter />
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
+                <div v-if="!form.region_id" class="text-center p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <p class="text-xs text-amber-400 font-semibold">
+                        Veuillez d'abord sélectionner une région pour le réseau en haut de la page.
+                    </p>
+                </div>
+                <Dropdown v-else
+                      v-model="newNodeData.zone_id"
+                      :options="props.regions.find(r => r.id === form.region_id)?.zones || []"
+                          optionLabel="nomenclature"
+                          optionValue="id"
+                          placeholder="Sélectionner une zone"
+                          class="w-full"
+                          filter />
             </div>
             <Button label="Insérer sur le schéma" icon="pi pi-plus" @click="createNode" class="w-full !bg-indigo-600 border-none !rounded-xl py-3 mt-2" />
         </div>
@@ -1448,11 +1482,22 @@ const getCharacteristicName = (charId) => {
             </div>
 
             <div class="flex flex-col gap-3 p-3 bg-white/5 border border-white/10 rounded-xl">
-                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
-                 <Dropdown v-model="editingNodeData.zone_id"
-                           :options="props.zones"
-                           optionLabel="name" optionValue="id" placeholder="Sélectionner une zone" class="w-full" filter />
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Localisation</label>
+                <div v-if="!form.region_id" class="text-center p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <p class="text-xs text-amber-400 font-semibold">
+                        Veuillez d'abord sélectionner une région pour le réseau en haut de la page.
+                    </p>
+                </div>
+                <Dropdown v-else
+                      v-model="editingNodeData.zone_id"
+                      :options="props.regions.find(r => r.id === form.region_id)?.zones || []"
+                          optionLabel="nomenclature"
+                          optionValue="id"
+                          placeholder="Sélectionner une zone"
+                          class="w-full"
+                          filter />
             </div>
+
             <Button label="Enregistrer les modifications" icon="pi pi-save" @click="saveNodeChanges" class="w-full !bg-indigo-600 border-none !rounded-xl py-3 mt-2" />
         </div>
     </Dialog>

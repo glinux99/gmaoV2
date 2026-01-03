@@ -14,7 +14,11 @@ class Region extends Model
         'type_centrale',
         'status',
         'puissance_centrale',
+        'code'
     ];
+    public function zones() {
+        return $this->hasMany(Zone::class);
+    }
     public function engins()
 {
     return $this->hasMany(Engin::class);
