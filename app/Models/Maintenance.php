@@ -68,6 +68,11 @@ class Maintenance extends Model implements HasMedia
         return $this->morphTo();
     }
 
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'assignable_id')->where('assignable_type', Team::class);
+    }
+
     // Correction: Relation Many-to-Many pour les équipements (utilisée dans le Controller)
     public function equipments(): BelongsToMany
     {
@@ -104,6 +109,11 @@ class Maintenance extends Model implements HasMedia
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function equipment(): BelongsTo
+    {
+        return $this->belongsTo(Equipment::class);
     }
  public function maintenaces(): HasMany
     {

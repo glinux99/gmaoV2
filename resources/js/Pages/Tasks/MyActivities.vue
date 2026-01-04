@@ -608,6 +608,32 @@ const removeInstruction = (index, instructionId) => {
         life: 2000
     });
 };
+const getStatusGradient = (status) => {
+    const maps = {
+        'completed': 'from-emerald-400 to-cyan-400',
+        'in_progress': 'from-blue-400 to-indigo-400',
+        'scheduled': 'from-slate-300 to-slate-400',
+        'suspended': 'from-orange-400 to-red-400',
+        'canceled': 'from-gray-400 to-gray-600'
+    };
+    return maps[status] || 'from-indigo-400 to-purple-400';
+};
+
+const getStatusBgClass = (status) => {
+    const maps = {
+        'completed': 'bg-emerald-500',
+        'in_progress': 'bg-blue-500',
+        'scheduled': 'bg-slate-400',
+        'suspended': 'bg-orange-500',
+        'canceled': 'bg-gray-500'
+    };
+    return maps[status] || 'bg-indigo-500';
+};
+
+// Formateurs de date pour l'ergonomie
+const formatTime = (date) => date ? new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+const formatDate = (date) => date ? new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '---';
+const formatDateShort = (date) => date ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'numeric', year: '2-digit' }) : 'N/A';
 </script>
 
 <template>
@@ -653,118 +679,125 @@ const removeInstruction = (index, instructionId) => {
                         <div v-if="currentActivities && currentActivities.length > 0">
 
                             <div v-if="viewMode === 'timeline'">
-                                <Timeline :value="currentActivities" align="left" class="timeline-left p-4">
+                                <Timeline :value="currentActivities" align="left" class="custom-timeline-pro">
 
-                                    <template #marker="slotProps">
-                                        <Avatar
-                                            :icon="getIconForActivity(slotProps.item.status)"
-                                            :style="{ backgroundColor: getColorForActivity(slotProps.item.status), color: '#ffffff' }"
-                                            shape="circle"
-                                            class="z-10 shadow-lg"
-                                            size="large"
-                                        />
-                                    </template>
+            <template #marker="slotProps">
+                <div class="flex flex-column align-items-center">
+                    <div
+                        class="flex align-items-center justify-content-center border-circle shadow-4 z-2 transition-transform duration-300 hover:scale-110"
+                        :class="getStatusBgClass(slotProps.item.status)"
+                        style="width: 3.5rem; height: 3.5rem; border: 0.3rem solid white;"
+                    >
+                        <i :class="[getIconForActivity(slotProps.item.status), 'text-white text-xl']"></i>
+                    </div>
+                    </div>
+            </template>
 
-                                    <template #opposite="slotProps">
-                                        <div class="p-0 text-sm font-medium text-400 mt-1 flex align-items-center">
-                                            <i class="pi pi-clock mr-1"></i>
-                                            <span>
-                                                {{ slotProps.item.actual_start_time ? new Date(slotProps.item.actual_start_time).toLocaleString('fr-FR') : (slotProps.item.scheduled_start_time ? new Date(slotProps.item.scheduled_start_time).toLocaleString('fr-FR') : t('myActivities.common.unspecifiedDate')) }}
-                                            </span>
-                                        </div>
-                                    </template>
+            <template #opposite="slotProps">
+                <div class="hidden md:flex flex-column align-items-end mt-3 pr-3">
+                    <span class="text-xl font-black text-slate-700 tracking-tighter">
+                        {{ formatTime(slotProps.item.actual_start_time) }}
+                    </span>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        {{ formatDate(slotProps.item.actual_start_time) }}
+                    </span>
+                </div>
+            </template>
 
-                                    <template #content="slotProps">
-                                        <Card class="mt-0 surface-card shadow-4 border-round-lg">
-                                            <template #title>
-                                                <div class="text-xl font-bold text-700 flex align-items-center justify-content-between">
-                                                    <span>
-                                                        {{ slotProps.item.task?.title || slotProps.item.maintenance?.title || t('myActivities.common.unnamedActivity') }}
-                                                        <span class="text-base font-normal text-500 ml-2">{{ t('myActivities.common.workOrderId', { id: slotProps.item.task?.id || slotProps.item.maintenance?.id }) }}</span>
-                                                    </span>
-                                                </div>
-                                            </template>
+            <template #content="slotProps">
+                <div class="relative mb-8 group">
+                    <div class="absolute -inset-1 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition duration-500 rounded-2xl blur-lg"
+                         :class="getStatusGradient(slotProps.item.status)"></div>
 
-                                            <template #subtitle>
-                                                <div class="mt-2">
-                                                    <Tag :value="getStatusLabel(slotProps.item.status)" :severity="getStatusSeverity(slotProps.item.status)" class="text-lg font-bold" />
-                                                </div>
-                                            </template>
+                    <Card class="relative border-none shadow-2 overflow-hidden bg-white/80 backdrop-blur-md rounded-2xl">
+                        <template #content>
+                            <div class="flex flex-column sm:flex-row justify-content-between align-items-start gap-3 mb-4">
+                                <div class="flex-1">
+                                    <div class="flex align-items-center gap-2 mb-1">
+                                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold uppercase">
+                                            OT #{{ slotProps.item.task?.id || slotProps.item.maintenance?.id || 'N/A' }}
+                                        </span>
+                                        <Tag :value="getStatusLabel(slotProps.item.status)"
+                                             :severity="getStatusSeverity(slotProps.item.status)"
+                                             class="text-xs uppercase font-bold px-3" />
+                                    </div>
+                                    <h3 class="text-2xl font-bold text-slate-800 m-0 tracking-tight leading-tight">
+                                        {{ slotProps.item.task?.title || slotProps.item.maintenance?.title || t('myActivities.common.unnamedActivity') }}
+                                    </h3>
+                                </div>
 
-                                            <template #content>
-                                                <div class="mt-2 text-600 line-height-3">
+                                <div class="flex align-items-center gap-2 bg-red-50 px-3 py-2 rounded-xl border-1 border-red-100"
+                                     v-if="slotProps.item.task?.priority === 'high' || slotProps.item.maintenance?.priority === 'high'">
+                                    <span class="relative flex h-3 w-3">
+                                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                      <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                    </span>
+                                    <span class="text-red-700 font-black text-xs uppercase">Urgente</span>
+                                </div>
+                            </div>
 
-                                                    <p v-if="slotProps.item.problem_resolution_description" class="mb-2">
-                                                        <strong>{{ t('myActivities.common.problemResolution') }}</strong> {{ slotProps.item.problem_resolution_description }}
-                                                    </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border-1 border-slate-100">
+                                    <div class="p-2 bg-white rounded-lg shadow-sm text-blue-500"><i class="pi pi-user"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400">Technicien</span>
+                                        <span class="text-sm font-semibold text-slate-700">{{ slotProps.item.jobber || 'Non assigné' }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border-1 border-slate-100">
+                                    <div class="p-2 bg-white rounded-lg shadow-sm text-orange-500"><i class="pi pi-map-marker"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400">Localisation</span>
+                                        <span class="text-sm font-semibold text-slate-700">{{ slotProps.item.location || 'Site Principal' }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border-1 border-slate-100">
+                                    <div class="p-2 bg-white rounded-lg shadow-sm text-emerald-500"><i class="pi pi-calendar"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400">Fin estimée</span>
+                                        <span class="text-sm font-semibold text-slate-700">{{ formatDateShort(slotProps.item.actual_end_time) }}</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                                                    <p v-if="slotProps.item.proposals" class="mb-2">
-                                                        <strong>{{ t('myActivities.common.proposals') }}</strong> {{ slotProps.item.proposals }}
-                                                    </p>
+                            <div v-if="slotProps.item.problem_resolution_description" class="relative p-4 rounded-2xl bg-slate-800 text-white mb-4 overflow-hidden">
+                                <i class="pi pi-quote-right absolute right-4 top-4 text-4xl opacity-10"></i>
+                                <h4 class="text-xs uppercase tracking-widest font-bold text-slate-400 mb-2">Rapport de résolution</h4>
+                                <p class="text-sm line-height-3 m-0 font-medium leading-relaxed">
+                                    {{ slotProps.item.problem_resolution_description }}
+                                </p>
+                            </div>
 
-                                                    <p v-if="slotProps.item.additional_information" class="mb-2">
-                                                        <strong>{{ t('myActivities.common.additionalInfo') }}</strong> {{ slotProps.item.additional_information }}
-                                                    </p>
+                            <div class="flex flex-wrap gap-4 mt-2">
+                                <div class="flex align-items-center gap-2">
+                                    <i class="pi pi-box text-slate-400"></i>
+                                    <span class="text-sm font-bold text-slate-600">
+                                        {{ slotProps.item.spare_parts_used?.length || 0 }} pièces
+                                    </span>
+                                </div>
+                                <div class="flex align-items-center gap-2">
+                                    <i class="pi pi-list text-slate-400"></i>
+                                    <span class="text-sm font-bold text-slate-600">
+                                        {{ slotProps.item.instruction_answers ? Object.keys(slotProps.item.instruction_answers).length : 0 }} points de contrôle
+                                    </span>
+                                </div>
+                            </div>
 
-                                                    <p v-if="slotProps.item.jobber" class="mt-3">
-                                                        <strong>{{ t('myActivities.common.technician') }}</strong> {{ slotProps.item.jobber }}
-                                                    </p>
+                            <div class="flex justify-end gap-2 mt-4 pt-4 border-t-1 border-slate-100">
+                                <Button label="Détails" icon="pi pi-eye" class="p-button-text p-button-secondary font-bold text-xs" />
+                                <Button :label="t('myActivities.common.complete')"
+                                        icon="pi pi-pencil"
+                                        @click="editActivity(slotProps.item)"
+                                        class="p-button-rounded bg-slate-900 border-none px-4 hover:bg-indigo-600 transition-colors duration-300 shadow-lg" />
+                            </div>
+                        </template>
+                    </Card>
+                </div>
+            </template>
+        </Timeline>
 
-                                                    <div v-if="slotProps.item.instruction_answers.length > 0" class="mt-3 p-3 bg-bluegray-50 border-round-md border-left-3 border-blue-500">
-                                                        <h5 class="font-bold text-blue-800 mb-2">{{ t('myActivities.common.instructionAnswers') }}</h5>
-                                                        <ul class="list-disc ml-4">
-                                                            <li v-for="(answer, ansIndex) in formatInstructionAnswer(slotProps.item)" :key="ansIndex" class="mb-1">
-                                                                <strong class="text-700">{{ answer.label }}:</strong> {{ answer.value }}
-                                                            </li>
-                                                        </ul>
-                                                    </div>
 
-                                                    <div v-if="displayFields.includes('spare_parts_used') && slotProps.item.spare_parts_used.length > 0" class="mt-3">
-                                                        <h5 class="font-bold text-700 mb-1">{{ t('myActivities.common.usedParts') }}</h5>
-                                                        <ul class="list-disc ml-4">
-                                                            <li v-for="(part, index) in slotProps.item.spare_parts_used" :key="index">
-                                                                {{ part.quantity }} x {{ getSparePartReference(part.id) }} ({{ part.price }} XOF)
-                                                            </li>
-                                                        </ul>
-                                                    </div>
 
-                                                    <div v-if="displayFields.includes('spare_parts_returned') && slotProps.item.spare_parts_returned.length > 0" class="mt-3">
-                                                        <h5 class="font-bold text-700 mb-1">{{ t('myActivities.common.returnedParts') }}</h5>
-                                                        <ul class="list-disc ml-4">
-                                                            <li v-for="(part, index) in slotProps.item.spare_parts_returned" :key="index">
-                                                                {{ part.quantity }} x {{ getSparePartReference(part.id) }}
-                                                            </li>
-                                                        </ul>
-                                                    </div>
-
-                                                    <p v-if="displayFields.includes('actual_end_time') && slotProps.item.actual_end_time" class="mt-3 text-sm text-700">
-                                                        <i class="pi pi-check-circle mr-1 text-green-600"></i>
-                                                        <strong>{{ t('myActivities.common.actualEndTime') }}</strong> {{ new Date(slotProps.item.actual_end_time).toLocaleString('fr-FR') }}
-                                                    </p>
-
-                                                    <div class="mt-4 pt-3 border-top-2 border-gray-200">
-                                                        <h4 class="font-semibold text-gray-700 mb-2">{{ t('myActivities.common.associatedTaskDetails') }}</h4>
-                                                        <p class="mb-1"><strong>{{ t('myActivities.common.priority') }}</strong> <Tag :value="slotProps.item.task?.priority || slotProps.item.maintenance?.priority" /></p>
-                                                        <p v-if="slotProps.item.task?.description" class="text-sm"><strong>{{ t('myActivities.common.description') }}</strong> {{ slotProps.item.task?.description || slotProps.item.maintenance?.description }}</p>
-                                                    </div>
-
-                                                </div>
-
-                                                <div class="flex justify-content-end mt-4">
-
-                                                    <Button
-                                                        icon="pi pi-plus-circle"
-                                                        :label="t('myActivities.common.createSubActivity')"
-                                                        class="p-button-text p-button-sm p-button-secondary mr-2"
-                                                        @click="createSubActivity(slotProps.item)"
-                                                    />
-                                                    <Button icon="pi pi-pencil" :label="t('myActivities.common.complete')" class="p-button-text p-button-info p-button-sm" @click="editActivity(slotProps.item)" />
-                                                </div>
-                                            </template>
-                                        </Card>
-                                    </template>
-
-                                </Timeline>
                             </div>
 
                             <div v-else-if="viewMode === 'table'">
@@ -1081,6 +1114,24 @@ const removeInstruction = (index, instructionId) => {
     </AppLayout>
 </template>
 <style scoped>
+    /* Correction de la ligne de timeline pour un look plus fin et moderne */
+:deep(.p-timeline-event-connector) {
+    width: 2px;
+    background-color: #e2e8f0; /* slate-200 */
+}
+
+:deep(.p-timeline-event-opposite) {
+    flex: 0 0 100px; /* Largeur fixe pour l'heure à gauche */
+}
+
+/* Suppression des bordures par défaut de PrimeVue Card */
+:deep(.p-card) {
+    border-radius: 1.25rem;
+}
+
+:deep(.p-card-body) {
+    padding: 1.5rem;
+}
     .quantum-calendar-dark :deep(.p-inputtext) {
     background: rgba(255, 255, 255, 0.1) !important;
     border: none;
