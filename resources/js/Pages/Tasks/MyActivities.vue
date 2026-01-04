@@ -33,7 +33,7 @@ const props = defineProps({
     tasks: Array,
 });
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const toast = useToast();
 
 // --- GESTION DES MODALES ET DE L'ACTION ---
@@ -48,16 +48,46 @@ const sparePartData = ref({
     index: -1,
     type: 'used'
 });
-const statusOptions = computed(() => Object.entries(t('myActivities.statusOptions', {}, { returnObjects: true })).map(([value, label]) => ({ label, value })));
+// ... à l'intérieur de <script setup> ...
 
-const instructionTypes = computed(() => Object.entries(t('myActivities.instructionTypes', {}, { returnObjects: true })).map(([value, label]) => ({ label, value })));
 
-const availableDisplayOptions = computed(() => Object.entries(t('myActivities.displayOptions', {}, { returnObjects: true })).map(([value, label]) => ({ label, value })));
+/**
+ * SOLUTION : Utiliser tm() (translation message) au lieu de t()
+ * tm() récupère l'objet brut du fichier JSON.
+ * rt() (render token) permet de s'assurer que le texte est bien rendu si c'est un lien.
+ */
 
-const getStatusLabel = (status) => {
-    return t(`myActivities.status.${status}`, status);
-};
+// 1. Pour les Dropdowns (Status, Types, etc.)
+const statusOptions = computed(() => {
+    const rawObject = tm('myActivities.statusOptions');
+    return Object.entries(rawObject).map(([value, label]) => ({
+        label: rt(label),
+        value: value
+    }));
+});
 
+const instructionTypes = computed(() => {
+    const rawObject = tm('myActivities.instructionTypes');
+    return Object.entries(rawObject).map(([value, label]) => ({
+        label: rt(label),
+        value: value
+    }));
+});
+
+const availableDisplayOptions = computed(() => {
+    const rawObject = tm('myActivities.displayOptions');
+    return Object.entries(rawObject).map(([value, label]) => ({
+        label: rt(label),
+        value: value
+    }));
+});
+
+// 2. Pour afficher un libellé simple à partir d'une valeur (ex: 'scheduled')
+// const getStatusLabel = (status) => {
+//     if (!status) return '';
+//     // On va chercher dans "myActivities.status" (pas statusOptions)
+//     return t(`myActivities.status.${status}`);
+// };
 
 // --- FORMULAIRE INERTIA ---
 const form = useForm({
@@ -142,6 +172,10 @@ const getStatusSeverity = (status) => {
     };
     return severities[status] || null;
 };
+const getStatusLabel = (status) => {
+    return statusOptions.value.find(s => s.value === status)?.label || status;
+};
+
 // Fonction nécessaire pour la DataTable
 const getPrioritySeverity = (priority) => {
     const severities = {
@@ -843,7 +877,7 @@ const removeInstruction = (index, instructionId) => {
             content: { class: 'p-0 rounded-3xl border-none shadow-2xl' }
         }"
     >
-        <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+        <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50 rounded-xl">
             <div class="flex items-center gap-4">
                 <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
                     <i :class="[isCreatingSubActivity ? 'pi pi-plus-circle' : 'pi pi-shield', 'text-blue-400 text-xl']"></i>
@@ -1013,7 +1047,7 @@ const removeInstruction = (index, instructionId) => {
             class="quantum-dialog w-full max-w-md shadow-2xl"
             :pt="{ mask: { style: 'backdrop-filter: blur(8px)' }, content: { class: 'p-0 rounded-[2rem] overflow-hidden' } }">
 
-        <div class="p-6 bg-slate-900 text-white flex items-center gap-4">
+        <div class="p-6 bg-slate-900 text-white flex items-center gap-4 rounded-xl">
             <i class="pi pi-box text-blue-400 text-xl"></i>
             <h2 class="text-xs font-black uppercase tracking-widest">
                 {{ sparePartData.type === 'used' ? t('myActivities.dialog.sparePartModalUsedTitle') : t('myActivities.dialog.sparePartModalReturnedTitle') }}

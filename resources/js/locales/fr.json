@@ -1526,50 +1526,15 @@
             "custom": "Personnalisée"
         }
     },
+
     "myActivities": {
         "title": "Mes Activités",
         "timelineTitle": "Chronologie de mes activités",
-        "timelineSubtitle": "Aperçu de l'évolution de vos tâches et interventions.",
-        "columnsPlaceholder": "Colonnes à afficher dans le tableau",
-        "noActivitiesTitle": "Aucune activité à afficher pour le moment.",
-        "noActivitiesSubtitle": "Revenez plus tard ou ajoutez une nouvelle tâche.",
-        "unknownReference": "Inconnu",
-        "subActivityFor": "Sous-activité pour {title} : ",
-        "unnamedActivity": "Activité",
-        "dialog": {
-            "subActivityInitialization": "Initialisation Sous-Activité",
-            "technicalInterventionReport": "Rapport Technique d'Intervention",
-            "gmaoAdminConsole": "Console d'administration GMAO v2025 • High-Performance System",
-            "resolutionTitle": "Resolution & Technical Actions",
-            "resolutionPlaceholder": "Décrivez précisément les interventions effectuées...",
-            "recommendationsLabel": "Recommandations",
-            "internalNotesLabel": "Notes Internes",
-            "checklistTitle": "Checklist de Conformité",
-            "checklistPoints": "{count} points",
-            "newInstructionPlaceholder": "Nouvelle consigne...",
-            "missionConfigTitle": "Configuration Mission",
-            "statusLabel": "Status",
-            "assignedTechnicianLabel": "Technicien Assigné",
-            "actualStartLabel": "Début Réel",
-            "actualEndLabel": "Fin Réelle",
-            "stockOutflowsTitle": "Sorties Stock",
-            "storeReturnsTitle": "Retours Magasin",
-            "financialImpactLabel": "Impact Financier Estimé",
-            "billingLabelPlaceholder": "Libellé facturation...",
-            "cancelButton": "Annuler",
-            "createSubActivityButton": "Créer Sous-Activité",
-            "publishReportButton": "Publier le Rapport",
-            "sparePartModalUsedTitle": "Sortie Matériel",
-            "sparePartModalReturnedTitle": "Réintégration Stock",
-            "referencesLabel": "Référence(s)",
-            "searchPartPlaceholder": "Rechercher une pièce...",
-            "unitQuantityLabel": "Quantité Unitaire",
-            "closeButton": "Fermer",
-            "validateButton": "Valider",
-            "instructionLabel": "Libellé (ex: Vérification niveau d'huile)",
-            "instructionRequired": "Requis",
-            "removeInstructionTitle": "Supprimer cette consigne"
-        },
+        "timelineSubtitle": "Suivez la progression de vos interventions et tâches assignées.",
+        "columnsPlaceholder": "Choisir les colonnes à afficher",
+        "noActivitiesTitle": "Aucune activité trouvée",
+        "noActivitiesSubtitle": "Il semble que vous n'ayez aucune tâche ou intervention planifiée pour le moment.",
+
         "status": {
             "scheduled": "Planifiée",
             "in_progress": "En cours",
@@ -1578,62 +1543,129 @@
             "suspended": "Suspendue",
             "canceled": "Annulée",
             "awaiting_resources": "En attente de ressources",
-            "to_be_reviewed_later": "À revoir plus tard",
-            "pending": "En attente"
+            "En attente": "En attente"
         },
+
         "statusOptions": {
-            "scheduled": "📅 Planifié",
-            "in_progress": "⚡ En cours",
-            "completed": "✅ Terminé",
-            "completed_with_issues": "⚠️ Terminé avec réserves",
-            "suspended": "⏸️ Suspendu",
-            "canceled": "🚫 Annulé",
-            "awaiting_resources": "⏳ Attente ressources"
+            "scheduled": "Planifiée",
+            "in_progress": "En cours",
+            "completed": "Terminée",
+            "completed_with_issues": "Terminée avec problèmes",
+            "suspended": "Suspendue",
+            "canceled": "Annulée",
+            "awaiting_resources": "En attente de ressources"
         },
-        "priority": {
-            "high": "Haute",
-            "medium": "Moyenne",
-            "low": "Basse",
-            "urgent": "Urgente"
-        },
-        "displayOptions": {
-            "actual_end_time": "Heure de fin réelle",
-            "proposals": "Propositions/Recommandations",
-            "jobber": "Intervenant",
-            "additional_information": "Informations Additionnelles",
-            "spare_parts_used": "Pièces Utilisées",
-            "spare_parts_returned": "Pièces Retournées"
-        },
+
         "instructionTypes": {
-            "text": "Texte court",
-            "textarea": "Zone de texte",
+            "text": "Texte",
             "number": "Nombre",
+            "boolean": "Oui/Non",
             "date": "Date",
-            "boolean": "Oui/Non (Binaire)"
+            "textarea": "Zone de texte"
         },
+
+        "displayOptions": {
+            "actual_end_time": "Date de fin réelle",
+            "proposals": "Propositions",
+            "jobber": "Technicien",
+            "additional_information": "Infos supplémentaires",
+            "spare_parts_used": "Pièces utilisées",
+            "spare_parts_returned": "Pièces retournées"
+        },
+
         "boolean": {
             "yes": "Oui",
             "no": "Non"
         },
 
+        "defaults": {
+            "sparePartPayment": "Règlement des pièces de rechange"
+        },
+
         "toast": {
+            "jsonParseError": "Erreur lors de l'analyse des données JSON.",
             "subActivityCreated": "Sous-activité créée avec succès.",
             "activityUpdated": "Activité mise à jour avec succès.",
             "success": "Succès",
             "error": "Erreur",
-            "saveError": "Une erreur est survenue lors de l'enregistrement. Voir la console pour plus de détails.",
-            "instructionLabelRequired": "Le libellé est obligatoire",
+            "saveError": "Une erreur est survenue lors de la sauvegarde.",
             "warning": "Attention",
-            "instructionAdded": "Instruction ajoutée à la liste",
+            "instructionLabelRequired": "Le libellé de la consigne est requis.",
             "added": "Ajouté",
-            "instructionRemoved": "Instruction retirée",
-            "info": "Info",
+            "instructionAdded": "Consigne ajoutée au formulaire.",
+            "instructionRemoved": "Consigne retirée",
             "listUpdated": "La liste a été mise à jour."
         },
-        "defaults": {
-            "sparePartPayment": "Paiement des pièces détachées et autres"
+
+        "common": {
+            "instructionNotFound": "Consigne introuvable (ID: {id})",
+            "invalidDate": "Date invalide",
+            "notSet": "Non défini",
+            "unspecifiedDate": "Date non spécifiée",
+            "unnamedActivity": "Activité sans nom",
+            "workOrderId": "OT #{id}",
+            "problemResolution": "Description de la résolution du problème :",
+            "proposals": "Propositions / Recommandations :",
+            "additionalInfo": "Informations additionnelles :",
+            "technician": "Technicien / Intervenant :",
+            "instructionAnswers": "Réponses aux consignes",
+            "usedParts": "Pièces de rechange utilisées",
+            "returnedParts": "Pièces de rechange retournées",
+            "actualEndTime": "Terminé le :",
+            "associatedTaskDetails": "Détails de la tâche associée",
+            "priority": "Priorité :",
+            "description": "Description :",
+            "createSubActivity": "Créer une sous-activité",
+            "complete": "Compléter / Modifier",
+            "taskTitle": "Tâche",
+            "status": "Statut",
+            "actualStart": "Début réel",
+            "notApplicable": "N/A",
+            "usedPartsCount": "{count} pièce(s) utilisée(s)",
+            "returnedPartsCount": "{count} pièce(s) retournée(s)",
+            "instructionsAndActions": "Consignes & Actions",
+            "answersCount": "{count} réponse(s)",
+            "completeActivityTooltip": "Compléter ou modifier l'activité"
+        },
+
+        "subActivityFor": "Sous-activité pour : {title}",
+        "unnamedActivity": "Activité sans nom",
+        "unknownReference": "Référence inconnue",
+
+        "dialog": {
+            "subActivityInitialization": "Initialisation d'une sous-activité",
+            "technicalInterventionReport": "Rapport d'intervention technique",
+            "gmaoAdminConsole": "Console d'administration GMAO",
+            "resolutionTitle": "Description de l'intervention et résolution",
+            "resolutionPlaceholder": "Décrivez en détail le problème rencontré, les étapes de diagnostic et la solution apportée...",
+            "recommendationsLabel": "Recommandations",
+            "internalNotesLabel": "Notes internes (non visible sur le rapport client)",
+            "checklistTitle": "Check-list de l'intervention",
+            "checklistPoints": "{count} points de contrôle",
+            "removeInstructionTitle": "Retirer cette consigne",
+            "missionConfigTitle": "Configuration de la mission",
+            "statusLabel": "Statut de l'activité",
+            "assignedTechnicianLabel": "Technicien assigné",
+            "actualStartLabel": "Début réel",
+            "actualEndLabel": "Fin réelle",
+            "stockOutflowsTitle": "Sorties de stock",
+            "storeReturnsTitle": "Retours en magasin",
+            "financialImpactLabel": "Impact financier",
+            "billingLabelPlaceholder": "Libellé pour la facturation...",
+            "cancelButton": "Annuler",
+            "createSubActivityButton": "Créer la sous-activité",
+            "publishReportButton": "Publier le rapport",
+            "sparePartModalUsedTitle": "Ajouter des pièces utilisées",
+            "sparePartModalReturnedTitle": "Ajouter des pièces retournées",
+            "referencesLabel": "Références des pièces",
+            "searchPartPlaceholder": "Rechercher une pièce...",
+            "unitQuantityLabel": "Quantité (par unité sélectionnée)",
+            "closeButton": "Fermer",
+            "validateButton": "Valider"
         }
-    },
+    }
+
+,
     "leaves": {
         "title": "Gestion des Congés",
         "subtitle": "{count} Demandes répertoriées",
@@ -1673,114 +1705,7 @@
     }
 
 ,
-    "myActivities": {
-        "title": "Mes Activités",
-        "timelineTitle": "Chronologie de mes activités",
-        "timelineSubtitle": "Aperçu de l'évolution de vos tâches et interventions.",
-        "columnsPlaceholder": "Colonnes à afficher dans le tableau",
-        "noActivitiesTitle": "Aucune activité à afficher pour le moment.",
-        "noActivitiesSubtitle": "Revenez plus tard ou ajoutez une nouvelle tâche.",
-        "unknownReference": "Inconnu",
-        "subActivityFor": "Sous-activité pour {title} : ",
-        "unnamedActivity": "Activité",
-        "dialog": {
-            "subActivityInitialization": "Initialisation Sous-Activité",
-            "technicalInterventionReport": "Rapport Technique d'Intervention",
-            "gmaoAdminConsole": "Console d'administration GMAO v2025 • High-Performance System",
-            "resolutionTitle": "Resolution & Technical Actions",
-            "resolutionPlaceholder": "Décrivez précisément les interventions effectuées...",
-            "recommendationsLabel": "Recommandations",
-            "internalNotesLabel": "Notes Internes",
-            "checklistTitle": "Checklist de Conformité",
-            "checklistPoints": "{count} points",
-            "newInstructionPlaceholder": "Nouvelle consigne...",
-            "missionConfigTitle": "Configuration Mission",
-            "statusLabel": "Status",
-            "assignedTechnicianLabel": "Technicien Assigné",
-            "actualStartLabel": "Début Réel",
-            "actualEndLabel": "Fin Réelle",
-            "stockOutflowsTitle": "Sorties Stock",
-            "storeReturnsTitle": "Retours Magasin",
-            "financialImpactLabel": "Impact Financier Estimé",
-            "billingLabelPlaceholder": "Libellé facturation...",
-            "cancelButton": "Annuler",
-            "createSubActivityButton": "Créer Sous-Activité",
-            "publishReportButton": "Publier le Rapport",
-            "sparePartModalUsedTitle": "Sortie Matériel",
-            "sparePartModalReturnedTitle": "Réintégration Stock",
-            "referencesLabel": "Référence(s)",
-            "searchPartPlaceholder": "Rechercher une pièce...",
-            "unitQuantityLabel": "Quantité Unitaire",
-            "closeButton": "Fermer",
-            "validateButton": "Valider",
-            "instructionLabel": "Libellé (ex: Vérification niveau d'huile)",
-            "instructionRequired": "Requis",
-            "removeInstructionTitle": "Supprimer cette consigne"
-        },
-        "status": {
-            "scheduled": "Planifiée",
-            "in_progress": "En cours",
-            "completed": "Terminée",
-            "completed_with_issues": "Terminée avec problèmes",
-            "suspended": "Suspendue",
-            "canceled": "Annulée",
-            "awaiting_resources": "En attente de ressources",
-            "to_be_reviewed_later": "À revoir plus tard",
-            "pending": "En attente"
-        },
-        "statusOptions": {
-            "scheduled": "📅 Planifié",
-            "in_progress": "⚡ En cours",
-            "completed": "✅ Terminé",
-            "completed_with_issues": "⚠️ Terminé avec réserves",
-            "suspended": "⏸️ Suspendu",
-            "canceled": "🚫 Annulé",
-            "awaiting_resources": "⏳ Attente ressources"
-        },
-        "priority": {
-            "high": "Haute",
-            "medium": "Moyenne",
-            "low": "Basse",
-            "urgent": "Urgente"
-        },
-        "displayOptions": {
-            "actual_end_time": "Heure de fin réelle",
-            "proposals": "Propositions/Recommandations",
-            "jobber": "Intervenant",
-            "additional_information": "Informations Additionnelles",
-            "spare_parts_used": "Pièces Utilisées",
-            "spare_parts_returned": "Pièces Retournées"
-        },
-        "instructionTypes": {
-            "text": "Texte court",
-            "textarea": "Zone de texte",
-            "number": "Nombre",
-            "date": "Date",
-            "boolean": "Oui/Non (Binaire)"
-        },
-        "boolean": {
-            "yes": "Oui",
-            "no": "Non"
-        },
 
-        "toast": {
-            "subActivityCreated": "Sous-activité créée avec succès.",
-            "activityUpdated": "Activité mise à jour avec succès.",
-            "success": "Succès",
-            "error": "Erreur",
-            "saveError": "Une erreur est survenue lors de l'enregistrement. Voir la console pour plus de détails.",
-            "instructionLabelRequired": "Le libellé est obligatoire",
-            "warning": "Attention",
-            "instructionAdded": "Instruction ajoutée à la liste",
-            "added": "Ajouté",
-            "instructionRemoved": "Instruction retirée",
-            "info": "Info",
-            "listUpdated": "La liste a été mise à jour."
-        },
-        "defaults": {
-            "sparePartPayment": "Paiement des pièces détachées et autres"
-        }
-    },
     "leaves": {
         "title": "Gestion des Congés",
         "subtitle": "{count} Demandes répertoriées",
