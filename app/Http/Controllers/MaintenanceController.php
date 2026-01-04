@@ -308,7 +308,7 @@ class MaintenanceController extends Controller
             ];
         });
     }
-private function generateRecurrenceDates(array $data): ?array
+    private function generateRecurrenceDates(array $data): ?array
 {
     $recurrenceType = $data['recurrence_type'] ?? null;
     $startDate = isset($data['scheduled_start_date']) ? Carbon::parse($data['scheduled_start_date'])->startOfDay() : null;
@@ -319,76 +319,193 @@ private function generateRecurrenceDates(array $data): ?array
     }
 
     $dates = [];
+    $maxOccurrences = 500;
     $interval = max(1, (int)($data['recurrence_interval'] ?? 1));
-    $monthlyType = $data['monthly_recurrence_type'] ?? 'day_of_month';
 
-    // --- ÉTAPE 1 : TROUVER LA TOUTE PREMIÈRE DATE (L'ANCRE) ---
-    $anchorDate = $startDate->copy();
-
-    if ($monthlyType === 'day_of_month') {
-        // On cherche le jour X le plus proche (soit ce mois-ci, soit le suivant)
-        $targetDay = (int)($data['recurrence_day_of_month'] ?? $startDate->day);
-
-        // Si le jour cible est déjà passé ce mois-ci, on passe au mois suivant
-        if ($anchorDate->day > $targetDay) {
-            $anchorDate->addMonth()->day(1);
-        }
-        // On se positionne sur le jour cible (en gérant les mois courts comme février)
-        $anchorDate->day(min($targetDay, $anchorDate->daysInMonth));
-    }
-    else {
-        // On cherche le DIMANCHE le plus proche à partir de la date de début
-        $targetDayOfWeek = (int)($data['recurrence_day'] ?? 0); // 0 = Dimanche
-        while ($anchorDate->dayOfWeek !== $targetDayOfWeek) {
-            $anchorDate->addDay();
+    // --- LOGIQUE DAILY (Journalière) ---
+    if ($recurrenceType === 'daily') {
+        $currentDate = $startDate->copy();
+        while ($currentDate->lte($endDate) && count($dates) < $maxOccurrences) {
+            $dates[] = $currentDate->copy();
+            $currentDate->addDays($interval);
         }
     }
 
-    // Si l'ancre trouvée dépasse la date de fin, on s'arrête
-    if ($anchorDate->gt($endDate)) {
-        return [];
+    // --- LOGIQUE WEEKLY (Hebdomadaire) ---
+  // --- CAS 2 : WEEKLY (HEBDOMADAIRE) ---
+  // --- CAS 2 : WEEKLY (HEBDOMADAIRE) ---
+    // --- CAS 2 : WEEKLY (HEBDOMADAIRE) ---
+// --- CAS 2 : WEEKLY (HEBDOMADAIRE) ---
+elseif ($recurrenceType === 'weekly') {
+    $targetDays = (array)($data['recurrence_days'] ?? []);
+    if (empty($targetDays)) return [];
+
+    // Sécurité : Si l'intervalle est 0 ou vide, on force à 1 pour ne rien sauter
+    $interval = 1;
+
+    // On commence l'analyse au lundi de la semaine de départ
+    $currentWeek = $startDate->copy()->startOfWeek(Carbon::MONDAY);
+
+    while ($currentWeek->lte($endDate) && count($dates) < $maxOccurrences) {
+
+        // On teste les 7 jours de la semaine courante
+        for ($i = 0; $i < 7; $i++) {
+            $checkDate = $currentWeek->copy()->addDays($i)->startOfDay();
+            $dayValue = $checkDate->dayOfWeek; // 0 (Dim) à 6 (Sam)
+
+            // Validation :
+            // 1. Le jour est-il coché dans Vue.js ?
+            // 2. Est-il compris entre la date de début et de fin ?
+            if (in_array($dayValue, $targetDays)
+                && $checkDate->gte($startDate)
+                && $checkDate->lte($endDate)) {
+                $dates[] = $checkDate->copy();
+            }
+        }
+
+        // Si intervalle est 1, on passe à la semaine suivante (0 devient 1)
+        $currentWeek->addWeeks($interval);
     }
-
-    // --- ÉTAPE 2 : GÉNÉRER LA SUITE À PARTIR DE CETTE ANCRE ---
-    $currentDate = $anchorDate->copy();
-
-    // Pour le mode "day_of_week", on mémorise l'ordre (ex: 2ème dimanche)
-    // pour le reproduire les mois suivants
-    $ordinal = (int) ceil($currentDate->day / 7);
-    $dayOfWeek = $currentDate->dayOfWeek;
-
-    while ($currentDate->lte($endDate) && count($dates) < 500) {
-        $dates[] = $currentDate->copy();
-
-        // Calcul du saut de mois
-        $monthsToAdd = match($recurrenceType) {
-            'monthly'   => $interval,
-            'quarterly' => 3 * $interval,
-            'biannual'  => 6 * $interval,
-            'annual'    => 12 * $interval,
-            default     => 1
-        };
+}
+    // --- LOGIQUE MENSUELLE / ANNUELLE (Votre code existant conservé) ---
+    elseif (in_array($recurrenceType, ['monthly', 'quarterly', 'biannual', 'annual'])) {
+        $monthlyType = $data['monthly_recurrence_type'] ?? 'day_of_month';
+        $anchorDate = $startDate->copy();
 
         if ($monthlyType === 'day_of_month') {
-            $targetDay = (int)($data['recurrence_day_of_month'] ?? $anchorDate->day);
-            $currentDate->addMonths($monthsToAdd);
-            $currentDate->day(min($targetDay, $currentDate->daysInMonth));
+            $targetDay = (int)($data['recurrence_day_of_month'] ?? $startDate->day);
+            if ($anchorDate->day > $targetDay) {
+                $anchorDate->addMonth()->day(1);
+            }
+            $anchorDate->day(min($targetDay, $anchorDate->daysInMonth));
         } else {
-            // On saute de X mois et on recherche le même Dimanche (ex: le 2ème)
-            $currentDate->addMonths($monthsToAdd)->startOfMonth();
-            try {
-                $currentDate = $currentDate->nthOfMonth($ordinal, $dayOfWeek);
-            } catch (\Exception $e) {
-                // Si le 5ème dimanche n'existe pas, on prend le dernier
-                $currentDate = $currentDate->endOfMonth()->previous($dayOfWeek);
+            $targetDayOfWeek = (int)($data['recurrence_day'] ?? 0);
+            while ($anchorDate->dayOfWeek !== $targetDayOfWeek) {
+                $anchorDate->addDay();
+            }
+        }
+
+        if ($anchorDate->gt($endDate)) return [];
+
+        $currentDate = $anchorDate->copy();
+        $ordinal = (int) ceil($currentDate->day / 7);
+        $dayOfWeek = $currentDate->dayOfWeek;
+
+        while ($currentDate->lte($endDate) && count($dates) < $maxOccurrences) {
+            $dates[] = $currentDate->copy();
+
+            $monthsToAdd = match($recurrenceType) {
+                'monthly'   => $interval,
+                'quarterly' => 3 * $interval,
+                'biannual'  => 6 * $interval,
+                'annual'    => 12 * $interval,
+                default     => 1
+            };
+
+            if ($monthlyType === 'day_of_month') {
+                $targetDay = (int)($data['recurrence_day_of_month'] ?? $anchorDate->day);
+                $currentDate->addMonths($monthsToAdd);
+                $currentDate->day(min($targetDay, $currentDate->daysInMonth));
+            } else {
+                $currentDate->addMonths($monthsToAdd)->startOfMonth();
+                try {
+                    $currentDate = $currentDate->nthOfMonth($ordinal, $dayOfWeek);
+                } catch (\Exception $e) {
+                    $currentDate = $currentDate->endOfMonth()->previous($dayOfWeek);
+                }
             }
         }
     }
 
+    // Tri pour garantir l'ordre chronologique (important pour le mode hebdomadaire)
     return collect($dates)
+        ->unique(fn($d) => $d->format('Y-m-d'))
+        ->sort()
+        ->values()
         ->map(fn($d) => $d->toIso8601String())
         ->toArray();
 }
+// private function generateRecurrenceDates(array $data): ?array
+// {
+//     $recurrenceType = $data['recurrence_type'] ?? null;
+//     $startDate = isset($data['scheduled_start_date']) ? Carbon::parse($data['scheduled_start_date'])->startOfDay() : null;
+//     $endDate = isset($data['scheduled_end_date']) ? Carbon::parse($data['scheduled_end_date'])->endOfDay() : null;
+
+//     if (!$recurrenceType || $recurrenceType === 'none' || !$startDate || !$endDate || $startDate->gt($endDate)) {
+//         return null;
+//     }
+
+//     $dates = [];
+//     $interval = max(1, (int)($data['recurrence_interval'] ?? 1));
+//     $monthlyType = $data['monthly_recurrence_type'] ?? 'day_of_month';
+
+//     // --- ÉTAPE 1 : TROUVER LA TOUTE PREMIÈRE DATE (L'ANCRE) ---
+//     $anchorDate = $startDate->copy();
+
+//     if ($monthlyType === 'day_of_month') {
+//         // On cherche le jour X le plus proche (soit ce mois-ci, soit le suivant)
+//         $targetDay = (int)($data['recurrence_day_of_month'] ?? $startDate->day);
+
+//         // Si le jour cible est déjà passé ce mois-ci, on passe au mois suivant
+//         if ($anchorDate->day > $targetDay) {
+//             $anchorDate->addMonth()->day(1);
+//         }
+//         // On se positionne sur le jour cible (en gérant les mois courts comme février)
+//         $anchorDate->day(min($targetDay, $anchorDate->daysInMonth));
+//     }
+//     else {
+//         // On cherche le DIMANCHE le plus proche à partir de la date de début
+//         $targetDayOfWeek = (int)($data['recurrence_day'] ?? 0); // 0 = Dimanche
+//         while ($anchorDate->dayOfWeek !== $targetDayOfWeek) {
+//             $anchorDate->addDay();
+//         }
+//     }
+
+//     // Si l'ancre trouvée dépasse la date de fin, on s'arrête
+//     if ($anchorDate->gt($endDate)) {
+//         return [];
+//     }
+
+//     // --- ÉTAPE 2 : GÉNÉRER LA SUITE À PARTIR DE CETTE ANCRE ---
+//     $currentDate = $anchorDate->copy();
+
+//     // Pour le mode "day_of_week", on mémorise l'ordre (ex: 2ème dimanche)
+//     // pour le reproduire les mois suivants
+//     $ordinal = (int) ceil($currentDate->day / 7);
+//     $dayOfWeek = $currentDate->dayOfWeek;
+
+//     while ($currentDate->lte($endDate) && count($dates) < 500) {
+//         $dates[] = $currentDate->copy();
+
+//         // Calcul du saut de mois
+//         $monthsToAdd = match($recurrenceType) {
+//             'monthly'   => $interval,
+//             'quarterly' => 3 * $interval,
+//             'biannual'  => 6 * $interval,
+//             'annual'    => 12 * $interval,
+//             default     => 1
+//         };
+
+//         if ($monthlyType === 'day_of_month') {
+//             $targetDay = (int)($data['recurrence_day_of_month'] ?? $anchorDate->day);
+//             $currentDate->addMonths($monthsToAdd);
+//             $currentDate->day(min($targetDay, $currentDate->daysInMonth));
+//         } else {
+//             // On saute de X mois et on recherche le même Dimanche (ex: le 2ème)
+//             $currentDate->addMonths($monthsToAdd)->startOfMonth();
+//             try {
+//                 $currentDate = $currentDate->nthOfMonth($ordinal, $dayOfWeek);
+//             } catch (\Exception $e) {
+//                 // Si le 5ème dimanche n'existe pas, on prend le dernier
+//                 $currentDate = $currentDate->endOfMonth()->previous($dayOfWeek);
+//             }
+//         }
+//     }
+
+//     return collect($dates)
+//         ->map(fn($d) => $d->toIso8601String())
+//         ->toArray();
+// }
     // private function generateRecurrenceDates(array $data): ?array
     // {
     //     $recurrenceType = $data['recurrence_type'] ?? null;
