@@ -6,6 +6,7 @@ use App\Models\Connection;
 use App\Models\Meter;
 use App\Models\Region;
 use App\Models\Zone;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -180,11 +181,32 @@ class MeterController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            Meter::whereIn('id', $validated['meter_ids'])->update([
-                'connection_id' => $validated['connection_id'] ?? null,
-                'region_id' => $validated['region_id'] ?? null,
-                'zone_id' => $validated['zone_id'] ?? null,
-            ]);
+            $meters = Meter::whereIn('id', $validated['meter_ids'])->get();
+            $destinationRegionId = $validated['region_id'] ?? null;
+
+            foreach ($meters as $meter) {
+                $sourceRegionId = $meter->region_id;
+
+                // Mettre à jour le compteur
+                $meter->update([
+                    'connection_id' => $validated['connection_id'] ?? $meter->connection_id,
+                    'region_id' => $destinationRegionId,
+                    'zone_id' => $validated['zone_id'] ?? $meter->zone_id,
+                ]);
+
+                // Enregistrer le mouvement de stock
+                StockMovement::create([
+                    'movable_type' => Meter::class,
+                    'movable_id' => $meter->id,
+                    'type' => 'transfer',
+                    'quantity' => 1, // Toujours 1 pour un article sérialisé
+                    'source_region_id' => $sourceRegionId,
+                    'destination_region_id' => $destinationRegionId,
+                    'user_id' => auth()->id(),
+                    'date' => now(),
+                    'notes' => 'Transfert en masse depuis la page des compteurs.',
+                ]);
+            }
         });
 
         return redirect()->route('meters.index')->with('success', 'Compteurs transférés avec succès.');

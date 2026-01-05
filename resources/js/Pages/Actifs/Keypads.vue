@@ -5,6 +5,7 @@ import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 import { useI18n } from 'vue-i18n';
+import { useTransfer } from '@/composables/useTransfer.js';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
 // --- COMPOSANTS PRIME VUE ---
@@ -44,11 +45,7 @@ const dt = ref();
 // --- ÉTATS ---
 const keypadDialog = ref(false);
 const editing = ref(false);
-const transferDialog = ref(false);
 const selectedKeypads = ref([]);
-const selectedRegionForStock = ref(null);
-const transferSearchQuery = ref('');
-const keypadsToTransfer = ref([]);
 
 const op = ref();
 
@@ -193,12 +190,6 @@ const form = useForm({
     meter_id: null,
     notes: '',
 });
-
-const transferForm = useForm({
-    keypad_ids: [],
-    region_id: null,
-});
-
 const openNew = () => {
     form.reset();
     editing.value = false;
@@ -277,59 +268,33 @@ const deleteSelectedKeypads = () => {
     });
 };
 
-const openTransferDialog = () => {
-    keypadsToTransfer.value = [...selectedKeypads.value];
-    transferForm.keypad_ids = keypadsToTransfer.value.map(k => k.id);
-    transferSearchQuery.value = '';
-    transferDialog.value = true;
-};
-
-const confirmTransfer = () => {
-    transferForm.keypad_ids = keypadsToTransfer.value.map(k => k.id);
-    if (!transferForm.region_id) {
-        toast.add({ severity: 'warn', summary: t('common.attention'), detail: t('keypads.toast.selectDestinationRegion'), life: 3000 });
-        return;
+// --- LOGIQUE DE TRANSFERT (Refactorisée) ---
+const allKeypads = computed(() => props.keypads.data);
+const {
+    transferDialog,
+    transferForm,
+    itemsToTransfer: keypadsToTransfer,
+    transferSearchQuery,
+    availableItemsForTransfer: availableKeypadsForTransfer,
+    openTransferDialog,
+    confirmTransfer,
+    searchItemsForTransfer: searchKeypadsForTransfer,
+    addItemToTransfer: addKeypadToTransfer,
+    removeItemFromTransfer: removeKeypadFromTransfer,
+} = useTransfer({
+    allItems: allKeypads,
+    selectedItems: selectedKeypads,
+    transferRouteName: route('keypads.bulk-transfer'),
+    idKey: 'keypad_ids',
+    stockStatus: 'available',
+    translations: {
+        attention: t('common.attention'),
+        selectDestinationRegion: t('keypads.toast.selectDestinationRegion'),
+        success: t('common.success'),
+        transferSuccess: (count) => t('keypads.toast.transferSuccess', { count }),
+        transferError: t('keypads.toast.transferError'),
     }
-    transferForm.post(route('keypads.bulk-transfer'), {
-        onSuccess: () => {
-            transferDialog.value = false;
-            selectedKeypads.value = [];
-            keypadsToTransfer.value = [];
-            toast.add({ severity: 'success', summary: t('common.success'), detail: t('keypads.toast.transferSuccess', { count: transferForm.keypad_ids.length }), life: 3000 });
-        },
-        onError: (errors) => {
-            const errorDetails = Object.values(errors).join(', ');
-            toast.add({ severity: 'error', summary: t('keypads.toast.transferError'), detail: errorDetails, life: 5000 });
-        }
-    });
-};
-
-const searchKeypadsForTransfer = (event) => {
-    transferSearchQuery.value = event.query;
-};
-
-const availableKeypadsForTransfer = computed(() => {
-    if (!transferSearchQuery.value) return [];
-    const query = transferSearchQuery.value.toLowerCase();
-    return props.keypads.data.filter(keypad => {
-        const isAlreadySelected = keypadsToTransfer.value.some(tk => tk.id === keypad.id);
-        return keypad.serial_number.toLowerCase().includes(query) && !isAlreadySelected && keypad.status === 'available';
-    });
 });
-
-const addKeypadToTransfer = (event) => {
-    const keypadToAdd = event.value;
-    if (keypadToAdd && !keypadsToTransfer.value.some(k => k.id === keypadToAdd.id)) {
-        keypadsToTransfer.value.push(keypadToAdd);
-    }
-    transferSearchQuery.value = '';
-    transferForm.keypad_ids = keypadsToTransfer.value.map(k => k.id);
-};
-
-const removeKeypadFromTransfer = (keypadId) => {
-    keypadsToTransfer.value = keypadsToTransfer.value.filter(k => k.id !== keypadId);
-    transferForm.keypad_ids = keypadsToTransfer.value.map(k => k.id);
-};
 
 const formattedKeypads = computed(() => {
     return props.keypads.data.map(keypad => ({
@@ -424,6 +389,7 @@ const selectedConnection = computed(() => {
     return null;
 });
 
+const selectedRegionForStock = ref(null);
 
 const selectRegionForStock = (regionName) => {
     if (selectedRegionForStock.value === regionName) {
@@ -882,15 +848,33 @@ const selectRegionForStock = (regionName) => {
         </div>
 
         <div class="p-8 bg-white max-h-[70vh] overflow-y-auto scroll-smooth space-y-6">
+                    <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('keypads.dialog.destination_region') }}</label>
+                <Dropdown v-model="transferForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter
+                          class="w-full" :placeholder="t('keypads.form.region_placeholder')" :invalid="transferForm.errors.region_id" />
+                <small class="p-error" v-if="transferForm.errors.region_id">{{ transferForm.errors.region_id }}</small>
+            </div>
             <div class="flex flex-col gap-2">
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('keypads.dialog.add_by_serial') }}</label>
-                <AutoComplete v-model="transferSearchQuery" :suggestions="availableKeypadsForTransfer" @complete="searchKeypadsForTransfer"
+                <AutoComplete v-model="transferSearchQuery" :suggestions="availableKeypadsForTransfer" @complete="searchKeypadsForTransfer($event)"
                               @item-select="addKeypadToTransfer" field="serial_number" placeholder="Rechercher et ajouter un clavier disponible..."
                               class="w-full" inputClass="p-inputtext-lg">
                     <template #option="slotProps">
-                        <div class="flex items-center justify-between">
-                            <span>{{ slotProps.option.serial_number }}</span>
-                            <Tag :value="t('keypads.status.available')" severity="info" />
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-sm">{{ slotProps.option.serial_number }}</span>
+                                <div class="flex items-center gap-2 text-xs text-slate-500">
+                                    <i class="pi pi-map-marker text-[10px]"></i>
+                                    <span class="font-semibold text-slate-600">{{ slotProps.option.region?.designation || t('common.notApplicable') }}</span>
+                                    <i class="pi pi-angle-right text-[8px] text-primary-500"></i>
+                                    <span class="font-black text-primary-600">
+                                        {{ transferForm.region_id ? regions.find(r => r.id === transferForm.region_id)?.designation : '...' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <Tag :value="t(`keypads.status.${slotProps.option.status}`)" :severity="getStatusSeverity(slotProps.option.status)" />
+                            </div>
                         </div>
                     </template>
                 </AutoComplete>
@@ -911,12 +895,7 @@ const selectRegionForStock = (regionName) => {
                 </div>
             </div>
 
-            <div class="flex flex-col gap-2">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('keypads.dialog.destination_region') }}</label>
-                <Dropdown v-model="transferForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter
-                          class="w-full" :placeholder="t('keypads.form.region_placeholder')" :invalid="transferForm.errors.region_id" />
-                <small class="p-error" v-if="transferForm.errors.region_id">{{ transferForm.errors.region_id }}</small>
-            </div>
+
         </div>
 
         <template #footer>

@@ -6,9 +6,11 @@ use App\Models\Connection ;
 use App\Models\Keypad;
 use App\Models\Meter;
 use App\Models\Region;
+use App\Models\StockMovement;
 use App\Models\Zone;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class KeypadController extends Controller
@@ -144,5 +146,52 @@ class KeypadController extends Controller
     {
         $keypad->delete();
         return redirect()->route('keypads.index')->with('success', 'Clavier supprimé avec succès.');
+    }
+
+    /**
+     * Bulk transfer keypads to a new connection, region, zone, or meter.
+     */
+    public function bulkTransfer(Request $request)
+    {
+        $validated = $request->validate([
+            'keypad_ids' => 'required|array',
+            'keypad_ids.*' => 'exists:keypads,id',
+            'connection_id' => 'nullable|exists:connections,id',
+            'region_id' => 'nullable|exists:regions,id',
+            'zone_id' => 'nullable|exists:zones,id',
+            'meter_id' => 'nullable|exists:meters,id',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $keypads = Keypad::whereIn('id', $validated['keypad_ids'])->get();
+            $destinationRegionId = $validated['region_id'] ?? null;
+
+            foreach ($keypads as $keypad) {
+                $sourceRegionId = $keypad->region_id;
+
+                // Mettre à jour le clavier
+                $keypad->update([
+                    'connection_id' => $validated['connection_id'] ?? $keypad->connection_id,
+                    'region_id' => $destinationRegionId,
+                    'zone_id' => $validated['zone_id'] ?? $keypad->zone_id,
+                    'meter_id' => $validated['meter_id'] ?? $keypad->meter_id,
+                ]);
+
+                // Enregistrer le mouvement de stock
+                StockMovement::create([
+                    'movable_type' => Keypad::class,
+                    'movable_id' => $keypad->id,
+                    'type' => 'transfer',
+                    'quantity' => 1, // Toujours 1 pour un article sérialisé
+                    'source_region_id' => $sourceRegionId,
+                    'destination_region_id' => $destinationRegionId,
+                    'user_id' => auth()->id(),
+                    'date' => now(),
+                    'notes' => 'Transfert en masse depuis la page des claviers.',
+                ]);
+            }
+        });
+
+        return redirect()->route('keypads.index')->with('success', 'Claviers transférés avec succès.');
     }
 }

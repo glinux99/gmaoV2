@@ -11,6 +11,7 @@ use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\EquipmentMovementController;
 use App\Http\Controllers\EquipmentTypeController;
 use App\Http\Controllers\SparePartController;
+use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PaymentController;
@@ -97,6 +98,7 @@ Route::middleware('auth', 'verified')->group(function () {
     'dashboard'=> DashboardController::class,
     'employees' => EmployeeController::class,
     'leaves' => LeaveController::class,
+    'stock-movements' => StockMovementController::class,
     'payroll' => PaymentController::class,
     'expenses' => ExpensesController::class,
     'connections' => ConnectionController::class,
@@ -119,6 +121,7 @@ Route::post('zones/bulk-destroy', [ZoneController::class, 'bulkDestroy'])->name(
 
   Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
   Route::post('/meters/bulk-transfer', [MeterController::class, 'bulkTransfer'])->name('meters.bulk-transfer');
+  Route::post('/keypads/bulk-transfer', [KeypadController::class, 'bulkTransfer'])->name('keypads.bulk-transfer');
   Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
 
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');

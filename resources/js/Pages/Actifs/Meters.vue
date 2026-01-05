@@ -5,6 +5,7 @@ import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 import { useI18n } from 'vue-i18n';
+import { useTransfer } from '@/composables/useTransfer.js';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
 // --- COMPOSANTS PRIME VUE ---
@@ -46,13 +47,7 @@ const dt = ref();
 const meterDialog = ref(false);
 const deleteMetersDialog = ref(false);
 const editing = ref(false);
-const transferDialog = ref(false);
-const selectedMeters = ref([]);
 const expandedRows = ref([]);
-const selectedRegionForStock = ref(null);
-
-const transferSearchQuery = ref('');
-const metersToTransfer = ref([]);
 
 const op = ref();
 
@@ -220,11 +215,6 @@ const form = useForm({
     notes: '',
 });
 
-const transferForm = useForm({
-    meter_ids: [],
-    region_id: null,
-});
-
 const openNew = () => {
     form.reset();
     editing.value = false;
@@ -328,36 +318,6 @@ const importMeters = (event) => {
     });
 };
 
-const openTransferDialog = () => {
-    // Initialise la liste des compteurs à transférer avec la sélection actuelle
-    metersToTransfer.value = [...selectedMeters.value];
-    // Met à jour les IDs dans le formulaire
-    transferForm.meter_ids = metersToTransfer.value.map(m => m.id);
-    transferSearchQuery.value = ''; // Réinitialise la recherche
-    transferDialog.value = true;
-};
-
-const confirmTransfer = () => {
-    // S'assurer que les IDs du formulaire sont à jour avant l'envoi
-    transferForm.meter_ids = metersToTransfer.value.map(m => m.id);
-    if (!transferForm.region_id) {
-        toast.add({ severity: 'warn', summary: t('common.attention'), detail: t('meters.toast.selectDestinationRegion'), life: 3000 });
-        return;
-    }
-    transferForm.post(route('meters.bulk-transfer'), {
-        onSuccess: () => {
-            transferDialog.value = false;
-            selectedMeters.value = [];
-            metersToTransfer.value = [];
-            toast.add({ severity: 'success', summary: t('common.success'), detail: t('meters.toast.transferSuccess', { count: transferForm.meter_ids.length }), life: 3000 });
-        },
-        onError: (errors) => {
-            const errorDetails = Object.values(errors).join(', ');
-            toast.add({ severity: 'error', summary: t('meters.toast.transferError'), detail: errorDetails, life: 5000 });
-        }
-    });
-};
-
 const formattedMeters = computed(() => {
     return props.meters.data.map(meter => ({
         ...meter,
@@ -365,6 +325,35 @@ const formattedMeters = computed(() => {
         region_name: meter.region?.designation || t('common.notApplicable'),
         zone_name: meter.zone?.nomenclature || t('common.notApplicable'),
     }));
+});
+
+const selectedMeters = ref([]);
+const allMeters = computed(() => props.meters.data);
+
+const {
+    transferDialog,
+    transferForm,
+    itemsToTransfer: metersToTransfer,
+    transferSearchQuery,
+    availableItemsForTransfer: availableMetersForTransfer,
+    openTransferDialog,
+    confirmTransfer,
+    searchItemsForTransfer: searchMetersForTransfer,
+    addItemToTransfer: addMeterToTransfer,
+    removeItemFromTransfer: removeMeterFromTransfer,
+} = useTransfer({
+    allItems: allMeters,
+    selectedItems: selectedMeters,
+    transferRouteName: route('meters.bulk-transfer'),
+    idKey: 'meter_ids',
+    stockStatus: ['in_stock', 'available'] ,
+    translations: {
+        attention: t('common.attention'),
+        selectDestinationRegion: t('myActivities.dialog.selectDestinationRegion'),
+        success: t('common.success'),
+        transferSuccess: (count) => t('myActivities.dialog.transferSuccess', { count }),
+        transferError: t('myActivities.dialog.transferError'),
+    }
 });
 
 const filteredZones = computed(() => {
@@ -378,6 +367,8 @@ watch(() => form.region_id, (newRegionId) => {
     form.zone_id = null;
 });
 
+const selectedRegionForStock = ref(null);
+
 const selectRegionForStock = (regionName) => {
     if (selectedRegionForStock.value === regionName) {
         selectedRegionForStock.value = null; // Toggle off
@@ -386,34 +377,6 @@ const selectRegionForStock = (regionName) => {
     }
 };
 
-const searchMetersForTransfer = (event) => {
-    transferSearchQuery.value = event.query;
-};
-
-const availableMetersForTransfer = computed(() => {
-    if (!transferSearchQuery.value) return [];
-    const query = transferSearchQuery.value.toLowerCase();
-    return props.meters.data.filter(meter => {
-        const isAlreadySelected = metersToTransfer.value.some(tm => tm.id === meter.id);
-        return meter.serial_number.toLowerCase().includes(query) && !isAlreadySelected && meter.status === 'in_stock';
-    });
-});
-
-const addMeterToTransfer = (event) => {
-    const meterToAdd = event.value;
-    if (meterToAdd && !metersToTransfer.value.some(m => m.id === meterToAdd.id)) {
-        metersToTransfer.value.push(meterToAdd);
-    }
-    transferSearchQuery.value = ''; // Réinitialiser le champ de recherche
-    // Mettre à jour les IDs dans le formulaire
-    transferForm.meter_ids = metersToTransfer.value.map(m => m.id);
-};
-
-const removeMeterFromTransfer = (meterId) => {
-    metersToTransfer.value = metersToTransfer.value.filter(m => m.id !== meterId);
-    // Mettre à jour les IDs dans le formulaire
-    transferForm.meter_ids = metersToTransfer.value.map(m => m.id);
-};
 watch(() => form.connection_id, (newConnectionId) => {
       form.region_id = null;
             form.zone_id = null;
@@ -878,15 +841,34 @@ watch(() => form.connection_id, (newConnectionId) => {
         </div>
 
         <div class="p-8 bg-white max-h-[70vh] overflow-y-auto scroll-smooth space-y-6">
+             <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.dialog.destination_region') }}</label>
+                <Dropdown v-model="transferForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter
+                          class="w-full" :placeholder="t('meters.form.region_placeholder')" :invalid="transferForm.errors.region_id" />
+                <small class="p-error" v-if="transferForm.errors.region_id">{{ transferForm.errors.region_id }}</small>
+            </div>
             <div class="flex flex-col gap-2">
+
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.dialog.add_by_serial') }}</label>
-                <AutoComplete v-model="transferSearchQuery" :suggestions="availableMetersForTransfer" @complete="searchMetersForTransfer"
+                 <AutoComplete v-model="transferSearchQuery" :suggestions="availableMetersForTransfer" @complete="searchMetersForTransfer($event)"
                               @item-select="addMeterToTransfer" field="serial_number" placeholder="Rechercher et ajouter un compteur en stock..."
                               class="w-full" inputClass="p-inputtext-lg">
                     <template #option="slotProps">
-                        <div class="flex items-center justify-between">
-                            <span>{{ slotProps.option.serial_number }}</span>
-                            <Tag :value="t('meters.status.in_stock')" severity="info" />
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-sm">{{ slotProps.option.serial_number }}</span>
+                                <div class="flex items-center gap-2 text-xs text-slate-500">
+                                    <i class="pi pi-map-marker text-[10px]"></i>
+                                    <span class="font-semibold text-slate-600">{{ slotProps.option.region?.designation || t('common.notApplicable') }}</span>
+                                    <i class="pi pi-angle-right text-[8px] text-primary-500"></i>
+                                    <span class="font-black text-primary-600">
+                                        {{ transferForm.region_id ? regions.find(r => r.id === transferForm.region_id)?.designation : '...' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <Tag :value="t(`meters.status.${slotProps.option.status}`)" :severity="getStatusSeverity(slotProps.option.status)" />
+                            </div>
                         </div>
                     </template>
                 </AutoComplete>
@@ -907,12 +889,7 @@ watch(() => form.connection_id, (newConnectionId) => {
                 </div>
             </div>
 
-            <div class="flex flex-col gap-2">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.dialog.destination_region') }}</label>
-                <Dropdown v-model="transferForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter
-                          class="w-full" :placeholder="t('meters.form.region_placeholder')" :invalid="transferForm.errors.region_id" />
-                <small class="p-error" v-if="transferForm.errors.region_id">{{ transferForm.errors.region_id }}</small>
-            </div>
+
         </div>
 
         <template #footer>

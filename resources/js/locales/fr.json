@@ -74,6 +74,10 @@
         "title": "Gestion des Compteurs",
         "titleHtml": "Gestion des <span class='text-primary-600'>Compteurs</span>",
         "subtitle": "Actifs de Mesure & Facturation",
+        "status":{
+            "in_stock":"En Stock",
+            "available":"Disponible"
+        },
         "actions": {
             "transfer": "Transférer",
             "delete": "Supprimer",
@@ -245,7 +249,10 @@
             "notes_placeholder": "Ajoutez des notes ici"
         },
         "status": {
-            "available": "Disponible"
+            "available": "Disponible",
+            "installed":"Installés",
+            "faulty": "Défectueux",
+            "in_stock": "En Stock"
         },
         "messages": {
             "no_stock": "Aucun clavier disponible en stock.",
@@ -294,6 +301,11 @@
             "transfer_title": "Transfert de Stock",
             "transfer_subtitle": "Mouvement inter-régional",
             "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} compteurs sélectionnés ?",
+            "status": {
+                "active": "Actif",
+                "faulty": "Défectueux",
+                "in_stock": "En Stock"
+            },
             "add_by_serial": "Ajouter un compteur par N° de série",
             "to_transfer_count": "Compteurs à transférer ({count})",
             "destination_region": "Région de Destination"
@@ -655,12 +667,7 @@
             "unityPlaceholder": "Sélectionner l'unité",
             "notes": "Notes complémentaires"
         },
-        "stats": {
-            "total": "Mouvements Totaux",
-            "entries": "Entrées",
-            "exits": "Sorties",
-            "uniqueParts": "Pièces Uniques"
-        },
+
         "movementTypes": {
             "entry": "Entrée",
             "exit": "Sortie"
@@ -679,6 +686,117 @@
             "saveError": "Erreur lors de l'enregistrement du mouvement.",
             "error": "Erreur",
             "deleteError": "Impossible de supprimer ce mouvement."
+        }
+    },
+    "stockMovements": {
+        "title": "Mouvements de Stock",
+        "headTitle": "Gestion des Mouvements de Stock",
+        "subtitle": "Traçabilité complète des actifs",
+        "toolbar": {
+            "addMovement": "Nouveau Mouvement",
+            "searchPlaceholder": "Rechercher un item, un utilisateur..."
+        },
+        "table": {
+            "itemType": "Type d'item",
+            "item": "Item",
+            "type": "Type de Mouvement",
+            "quantity": "Quantité",
+            "source": "Source",
+            "destination": "Destination",
+            "user": "Utilisateur",
+            "date": "Date"
+        },
+            "stats": {
+            "total": "Mouvements Totaux",
+            "entries": "Entrées",
+            "exits": "Sorties",
+            "transfers": "Transferts",
+            "total": "Mouvements Totaux",
+            "entries": "Entrées",
+            "exits": "Sorties",
+            "transfers": "Transferts",
+            "uniqueParts": "Pièces Uniques"
+        },
+        "filter":{
+            "byType":"Filtrer par type",
+            "byUser":"Filtrer par utilisateur",
+            "byRegion":"Filtrer par région...",
+            "byItemType": "Par type d'item",
+            "byItem":"Filtrer par item"
+        },
+        "dialog": {
+            "createTitle": "Enregistrer un Mouvement de Stock",
+            "editTitle": "Modifier le Mouvement",
+            "createSubtitle": "Remplissez les informations pour un nouveau mouvement.",
+            "editSubtitle": "Mettez à jour les détails du mouvement.",
+            "itemIdentification": "Identification de l'Item",
+            "detailsValidation": "Détails & Validation",
+            "itemsInMovement": "Items dans le mouvement",
+            "noItems":"Aucun item sélectionné",
+            "itemSelection": "Sélection de l'Item",
+            "addItem": "Ajouter un item",
+            "deleteSelectedMessage":  "Voulez-vous supprimé les {count} items sélectionnés ?"
+        },
+        "form": {
+            "itemType": "Type d'item",
+            "itemTypePlaceholder": "Choisir le type d'item...",
+            "item": "Item Spécifique",
+            "itemPlaceholder": "Rechercher ou sélectionner un item...",
+            "movementType": "Type de Mouvement",
+            "quantity": "Quantité",
+            "sourceRegion": "Région Source",
+            "sourceRegionPlaceholder": "Sélectionner la région de départ",
+            "destinationRegion": "Région de Destination",
+            "destinationRegionPlaceholder": "Sélectionner la région d'arrivée",
+            "addItem": "Ajouter un item",
+            "user": "Opéré par",
+            "responsibleUser": "Utilisateur Responsable",
+            "intendedForUser": "Destiné à l'utilisateur",
+            "userPlaceholder": "Sélectionner l'utilisateur",
+            "itemSelection": "Sélection de l'Item",
+            "itemsInMovement": "Items dans le mouvement",
+            "itemsInMovement": "Items dans le mouvement",
+            "total": "Total Mouvements",
+            "entries": "Entrées",
+            "exits": "Sorties",
+            "transfers": "Transferts",
+
+            "noItems": "Aucun item sélectionné",
+
+            "notes": "Notes complémentaires"
+        },
+        "movableTypes": {
+            "spare_part": "Pièce Détachée",
+            "equipment": "Équipement",
+            "meter": "Compteur",
+            "keypad": "Clavier",
+            "engin": "Engin"
+        },
+        "movementTypes": {
+            "entry": "Entrée",
+            "exit": "Sortie",
+            "transfer": "Transfert",
+            "entree": "Entrée",
+            "sortie": "Sortie",
+            "movableTypeOptions": [
+                { "label": "Pièce Détachée", "value": "App\\Models\\SparePart" },
+                { "label": "Équipement", "value": "App\\Models\\Equipment" },
+                { "label": "Compteur", "value": "App\\Models\\Meter" },
+                { "label": "Clavier", "value": "App\\Models\\Keypad" },
+                { "label": "Engin", "value": "App\\Models\\Engin" }
+            ],
+
+            "transfert": "Transfert"
+        },
+        "confirm": {
+            "deleteMessage": "Êtes-vous sûr de vouloir supprimer le mouvement N°{id} ?"
+        },
+        "toast": {
+            "createSuccess": "Le mouvement a été enregistré avec succès.",
+            "updateSuccess": "Le mouvement a été mis à jour avec succès.",
+            "deleteSuccess": "Le mouvement a été supprimé.", "noItems": "Veuillez ajouter au moins un item au mouvement.",
+
+            "saveError": "Erreur lors de l'enregistrement du mouvement."
         }
     },
 
@@ -828,6 +946,8 @@
         "save": "Sauvegarder",
         "update": "Mettre à jour",
          "create":"Créer",
+         "selectedCount": "Vous avez selectionné {count} items",
+         "deleteSelection": "Supprimer",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "import": "Importer",
