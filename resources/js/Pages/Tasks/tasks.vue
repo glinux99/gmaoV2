@@ -7,6 +7,7 @@ import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { useConfirm } from 'primevue/useconfirm';
 const activeStep = ref(1)
 const props = defineProps({ // Changed from maintenances to tasks
@@ -32,6 +33,7 @@ const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
 const dt = ref(); // Référence au DataTable pour l'export
+const selectedTasks = ref([]);
 const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonnes
 
 // Colonnes pour la sélection
@@ -44,6 +46,25 @@ const allColumns = ref([
     { field: 'planned_start_date', header: 'Début Planifié' },
 ]);
 const visibleColumns = ref(allColumns.value.map(col => col.field)); // Affiche toutes les colonnes par défaut
+
+const filters = ref({
+    'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
+    'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'assignable.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'status': { value: null, matchMode: FilterMatchMode.EQUALS },
+    'priority': { value: null, matchMode: FilterMatchMode.EQUALS },
+});
+
+const initFilters = () => {
+    filters.value = {
+        'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
+        'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'assignable.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'status': { value: null, matchMode: FilterMatchMode.EQUALS },
+        'priority': { value: null, matchMode: FilterMatchMode.EQUALS },
+    };
+    search.value = ''; // Also reset the old search ref if it's still used by performSearch
+};
 
 // Pour les lignes étendues dans le DataTable
 const expandedRows = ref([]);
@@ -369,6 +390,25 @@ const deleteTask = (task) => { // Changed from deleteTask to deleteTask
     });
 };
 
+const deleteSelectedTasks = () => {
+    confirm.require({
+        message: `Êtes-vous sûr de vouloir supprimer les ${selectedTasks.value.length} tâches sélectionnées ?`,
+        header: 'Confirmation de suppression',
+        icon: 'pi pi-info-circle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            router.post(route('tasks.bulkDestroy'), {
+                ids: selectedTasks.value.map(t => t.id)
+            }, {
+                onSuccess: () => {
+                    toast.add({ severity: 'success', summary: 'Succès', detail: 'Tâches supprimées avec succès.', life: 3000 });
+                    selectedTasks.value = [];
+                }
+            });
+        },
+    });
+};
+
 let timeoutId = null;
 const performSearch = () => {
     clearTimeout(timeoutId);
@@ -395,6 +435,14 @@ const getPrioritySeverity = (priority) => {
 };
 
 const dialogTitle = computed(() => editing.value ? 'Modifier la Ordre de Travail' : 'Créer une nouvelle Ordre de Travail'); // Changed from Maintenance to Ordre de Travail
+const bulkDeleteButtonIsDisabled = computed(() => !selectedTasks.value || selectedTasks.value.length < 2);
+
+const taskStats = computed(() => {
+    const total = props.tasks.data.length;
+    const inProgress = props.tasks.data.filter(t => t.status === 'En cours').length;
+    const completed = props.tasks.data.filter(t => t.status === 'Terminée').length;
+    return { total, inProgress, completed };
+});
 
 // Récupère les nœuds pour lesquels on peut configurer des instructions.
 // Si un parent est sélectionné, on prend ses enfants.
@@ -793,29 +841,55 @@ const updateInstructions = (taskId, instructions) => {
                 </div>
             </div>
 
-            <div class="bg-white/70 backdrop-blur-md border border-white shadow-sm rounded-2xl p-4 mb-6">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex gap-2">
-                        <IconField iconPosition="left">
-                            <InputIcon class="pi pi-search" />
-                            <InputText v-model="search" placeholder="Rechercher une tâche..."
-                                       class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="performSearch" />
-                        </IconField>
+            <!-- Section des statistiques -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-briefcase text-2xl text-slate-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ taskStats.total }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tâches Totales</div>
                     </div>
-
-                    <div class="flex items-center gap-2">
-                        <Button icon="pi pi-download" label="Exporter"
-                                class="p-button-text p-button-secondary p-button-sm font-bold" @click="exportCSV" />
-                        <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-amber-50 flex items-center justify-center"><i class="pi pi-spin pi-spinner text-2xl text-amber-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ taskStats.inProgress }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Cours</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-green-50 flex items-center justify-center"><i class="pi pi-check-circle text-2xl text-green-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ taskStats.completed }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Terminées</div>
                     </div>
                 </div>
             </div>
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable :value="props.tasks.data" ref="dt" dataKey="id" :paginator="true" :rows="10"
+                <DataTable :value="props.tasks.data" ref="dt" dataKey="id" v-model:selection="selectedTasks" :paginator="true" :rows="10"
+                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['title', 'assignable.name', 'status', 'priority']"
                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
                            currentPageReportTemplate="{first} à {last} sur {totalRecords}"
                            class="p-datatable-sm quantum-table">
+
+                    <template #header>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters['global'].value" placeholder="Rechercher une tâche..."
+                                           class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                            </IconField>
+                            <div class="flex items-center gap-2">
+                                <Button v-if="!bulkDeleteButtonIsDisabled" :label="`Supprimer (${selectedTasks.length})`" icon="pi pi-trash" severity="danger" @click="deleteSelectedTasks" />
+                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="'Réinitialiser les filtres'" />
+                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" v-tooltip.bottom="'Exporter'" />
+                                <Button icon="pi pi-columns" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="'Colonnes'" />
+                            </div>
+                        </div>
+                    </template>
+
+                    <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
                     <Column v-if="visibleColumns.includes('title')" header="Titre de la tâche" minWidth="300px">
                         <template #body="{ data }">
@@ -839,11 +913,17 @@ const updateInstructions = (taskId, instructions) => {
                             </div>
                              <span v-else class="text-slate-400 text-xs italic">Non assigné</span>
                         </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.constraints[0].value" type="text" class="p-column-filter" placeholder="Filtrer par assigné" />
+                        </template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('status')" field="status" header="Statut" minWidth="150px">
                         <template #body="slotProps">
                             <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" class="uppercase text-[9px] px-2" />
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="taskStatuses" placeholder="Filtrer par statut" class="p-column-filter" showClear />
                         </template>
                     </Column>
 

@@ -24,11 +24,29 @@ class Keypad extends Model
         'status',
         'installation_date',
         'connection_id',
+        'region_id',
+        'zone_id',
+        'meter_id',
         'notes',
     ];
 
     public function connection(): BelongsTo
     {
         return $this->belongsTo(Connection::class);
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    public function meter(): BelongsTo
+    {
+        return $this->belongsTo(Meter::class);
     }
 }

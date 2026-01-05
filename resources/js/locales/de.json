@@ -1048,7 +1048,39 @@
             "gpsLatitude": "Latitude GPS",
             "gpsLongitude": "Longitude GPS",
             "cancel": "Annuler",
-            "save": "Enregistrer"
+            "save": "Enregistrer",
+            "customerCode": "Kundencode",
+            "firstName": "Vorname",
+            "lastName": "Nachname",
+            "phone": "Telefon",
+            "region": "Region",
+            "zone": "Zone",
+            "status": "Status"
+        },
+        "table": {
+            "customerCode": "Kundencode",
+            "fullName": "Vollständiger Name",
+            "region": "Region",
+            "zone": "Zone",
+            "status": "Status",
+            "phone": "Telefon",
+            "latitude": "Breitengrad",
+            "longitude": "Längengrad",
+            "verified": "Verifiziert",
+            "amountPaid": "Bezahlter Betrag",
+            "connectionDate": "Anschlussdatum",
+            "meterNumber": "Zählernr.",
+            "keypadNumber": "Tastaturnr."
+        },
+        "stats": {
+            "total": "Gesamte Verbindungen",
+            "active": "Aktiv",
+            "verified": "Verifiziert",
+            "pending": "Ausstehend"
+        },
+        "confirm": {
+            "deleteHeader": "Löschbestätigung",
+            "bulkDeleteMessage": "Sind Sie sicher, dass Sie die {count} ausgewählten Verbindungen löschen möchten?"
         }
     },
     "expenses": {

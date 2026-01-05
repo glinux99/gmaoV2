@@ -16,6 +16,8 @@ use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ConnectionController;
 use App\Models\User;
+use App\Http\Controllers\MeterController;
+use App\Http\Controllers\KeypadController;
 use App\Http\Controllers\InterventionRequestController;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -104,6 +106,8 @@ Route::middleware('auth', 'verified')->group(function () {
     'report-templates' => ReportTemplateController::class,
     'networks' => NetworkController::class,
     'analytics' => AnalyticController::class,
+    'meters' => MeterController::class,
+    'keypads' => KeypadController::class,
     'zones'=> ZoneController::class,
 
   ]);
@@ -114,6 +118,8 @@ Route::middleware('auth', 'verified')->group(function () {
 Route::post('zones/bulk-destroy', [ZoneController::class, 'bulkDestroy'])->name('zones.bulkDestroy');
 
   Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
+  Route::post('/meters/bulk-transfer', [MeterController::class, 'bulkTransfer'])->name('meters.bulk-transfer');
+  Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
 
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
 Route::put('/equipments/{equipment}/update-quantity', [EquipmentController::class, 'updateQuantity'])->name('equipments.update-quantity');

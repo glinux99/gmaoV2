@@ -1048,7 +1048,39 @@
             "gpsLatitude": "Latitude GPS",
             "gpsLongitude": "Longitude GPS",
             "cancel": "Annuler",
-            "save": "Enregistrer"
+            "save": "Enregistrer",
+            "customerCode": "Nambari ya Mteja",
+            "firstName": "Jina la Kwanza",
+            "lastName": "Jina la Ukoo",
+            "phone": "Simu",
+            "region": "Mkoa",
+            "zone": "Kanda",
+            "status": "Hali"
+        },
+        "table": {
+            "customerCode": "Nambari ya Mteja",
+            "fullName": "Jina Kamili",
+            "region": "Mkoa",
+            "zone": "Kanda",
+            "status": "Hali",
+            "phone": "Simu",
+            "latitude": "Latitudo",
+            "longitude": "Longitudo",
+            "verified": "Imethibitishwa",
+            "amountPaid": "Kiasi Kilicholipwa",
+            "connectionDate": "Tarehe ya Kuunganishwa",
+            "meterNumber": "Nambari ya Mita",
+            "keypadNumber": "Nambari ya Kitufe"
+        },
+        "stats": {
+            "total": "Jumla ya Viunganisho",
+            "active": "Vinavyotumika",
+            "verified": "Vilivyothibitishwa",
+            "pending": "Vinasubiri"
+        },
+        "confirm": {
+            "deleteHeader": "Thibitisha Kufuta",
+            "bulkDeleteMessage": "Una uhakika unataka kufuta viunganisho {count} vilivyochaguliwa?"
         }
     },
     "expenses": {

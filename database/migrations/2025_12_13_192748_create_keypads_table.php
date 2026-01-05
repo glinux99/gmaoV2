@@ -20,6 +20,9 @@ return new class extends Migration
             $table->string('status')->default('available'); // Statut (ex: disponible, installé, en panne)
             $table->date('installation_date')->nullable(); // Date d'installation
             $table->foreignId('connection_id')->nullable()->constrained('connections')->onDelete('set null'); // Lien vers le raccordement
+            $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null');
+            $table->foreignId('meter_id')->nullable()->constrained('meters')->onDelete('set null'); // Lien vers le compteur
             $table->text('notes')->nullable(); // Notes additionnelles
             $table->timestamps();
         });

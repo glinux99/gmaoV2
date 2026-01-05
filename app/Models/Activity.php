@@ -35,6 +35,7 @@ class Activity extends Model implements HasMedia
         'proposals',
            'additional_information',
         'equipment_id',
+        'title'
     ];
         protected $casts = [
         'actual_start_time' => 'datetime',

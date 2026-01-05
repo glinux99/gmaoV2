@@ -35,7 +35,273 @@
         "status": "statut",
         "priority": "priorité"
     },
+    "meters": {
+        "active_tasks": "Tâches Actives",
+        "time_spent_h": "Temps Passé (h)",
+        "avg_intervention_time": "Tps Moyen Interv.",
+        "by_status": "Par Statut",
+        "by_priority": "Par Priorité",
+        "incoming_parts": "Pièces entrantes",
+        "outgoing_parts": "Pièces sortantes",
+        "interventions_count": "Nombre d'interventions",
+        "stopped": "Stoppée",
+        "degraded": "Dégradée",
+        "improvement": "Amélioration",
+        "avg_resolution_time": "Délai de résolution moyen",
+        "delay_hours": "Délai (Heures)",
+        "financial_tracking": "Suivi Financier",
+        "total_budget": "Budget Total",
+        "service_expenses": "Dépenses de prestation",
+        "total_validated_expenses": "Total Dépense validée",
+        "key_metrics_overview": "Aperçu des Métriques Clés",
+        "from_last_period": "depuis la dernière période",
+        "detailed_visualizations": "Visualisations Détaillées",
+        "monthly_intervention_volume_title": "Volume mensuel des interventions et délai moyen de résolution",
+        "monthly_intervention_volume_subtitle": "Statut et temps de résolution sur la période",
+        "spare_parts_movement_title": "Mouvements des Pièces Détachées",
+        "spare_parts_movement_subtitle": "Entrées et sorties sur la période sélectionnée",
+        "failures_by_type_title": "Pannes par type de défaut",
+        "failures_by_type_subtitle": "Répartition des causes de défauts",
+        "interventions_by_type_title": "Interventions par type",
+        "interventions_by_type_subtitle": "Total des actions menées : {count}",
+        "tasks_distribution_title": "Répartition des Tâches",
+        "filter_by": "Filtrer par",
+        "view_by": "Vue par {type}",
+        "status": "statut",
+        "priority": "priorité"
+    },
+    "meters": {
+        "title": "Gestion des Compteurs",
+        "titleHtml": "Gestion des <span class='text-primary-600'>Compteurs</span>",
+        "subtitle": "Actifs de Mesure & Facturation",
+        "actions": {
+            "transfer": "Transférer",
+            "delete": "Supprimer",
+            "import": "Importer",
+            "add": "Ajouter Compteur",
+            "close_details": "Fermer les détails",
+            "confirm_transfer": "Confirmer le transfert"
+        },
+        "stats": {
+            "total": "Total Compteurs",
+            "active": "Actifs",
+            "faulty": "Défectueux",
+            "in_stock": "En Stock",
+            "stock_by_region": "Stock par Région",
+            "stock_detail_for": "Détail du Stock pour :",
+            "distribution_by_status": "Répartition par Statut"
+        },
+        "table": {
+            "report": "Affichage de {first} à {last} sur {totalRecords} compteurs",
+            "search_placeholder": "Rechercher (N° série multiples avec virgule)",
+            "serial_number": "N° de Série",
+            "type": "Type",
+            "status": "Statut",
+            "connection_full_name": "Client Associé",
+            "installation_date": "Date d'Installation",
+            "region_name": "Région",
+            "zone_name": "Zone",
+            "is_additional": "Supplémentaire",
+            "notes": "Notes",
+            "unassigned": "Non assigné",
+            "filter": {
+                "by_serial": "Filtrer par N° de série",
+                "by_type": "Filtrer par type",
+                "by_status": "Filtrer par statut",
+                "by_client": "Filtrer par client"
+            }
+        },
+        "dialog": {
+            "transfer_title": "Transfert de Stock",
+            "transfer_subtitle": "Mouvement inter-régional",
+            "add_by_serial": "Ajouter un compteur par N° de série",
+            "to_transfer_count": "Compteurs à transférer ({count})",
+            "destination_region": "Région de Destination",
+            "editTitle": "Modifier le Compteur",
+            "createTitle": "Ajouter un Compteur",
+            "subtitle": "Gestion des informations du compteur"
+        },
+        "messages": {
+            "no_stock": "Aucun compteur en stock.",
+            "no_meter_selected": "Aucun compteur sélectionné pour le transfert."
+        },
+        "form": {
+            "serial_number": "Numéro de Série",
+            "serial_number_placeholder": "Entrez le numéro de série",
+            "manufacturer": "Fabricant",
+            "manufacturer_placeholder": "Entrez le fabricant",
+            "model": "Modèle",
+            "model_placeholder": "Entrez le modèle",
+            "type": "Type",
+            "type_placeholder": "Sélectionnez le type",
+            "status": "Statut",
+            "status_placeholder": "Sélectionnez le statut",
+            "connection": "Raccordement",
+            "connection_placeholder": "Sélectionnez un raccordement",
+            "installation_date": "Date d'Installation",
+            "region": "Région",
+            "region_placeholder": "Sélectionnez une région",
+            "zone": "Zone",
+            "zone_placeholder": "Sélectionnez une zone",
+            "is_additional": "Compteur supplémentaire",
+            "notes": "Notes",
+            "notes_placeholder": "Ajoutez des notes ici"
+        },
+        "history": {
+            "title": "Historique des Transferts",
+            "by_user": "Par : {user}",
+            "none": "Aucun historique de transfert pour ce compteur."
+        },
+        "confirm": {
+            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} compteurs sélectionnés ?",
+            "bulkDeleteHeader": "Confirmation de suppression en masse",
+            "delete": "Supprimer"
+        },
+        "filter" :{
+            "by_client":"Filtrer par client",
+            "by_status":"Filtrer par statut",
+            "by_serial":"Filtrer par N° de série",
+            "by_type":"Filtrer par type",
+            "byType":"Filtrer par type",
+            "brand":"Filtrer par marque",
+            "byUser":"Filtrer par utilisateur"
+        }
+    },
+    "keypads": {
+        "title": "Gestion des Claviers",
+        "titleHtml": "Gestion des <span class='text-primary-600'>Claviers</span>",
+        "subtitle": "Actifs de contrôle & d'interface",
+        "actions": {
+            "transfer": "Transférer",
+            "delete": "Supprimer",
+            "add": "Ajouter Clavier",
+            "close_details": "Fermer les détails",
+            "confirm_transfer": "Confirmer le transfert"
+        },
+        "stats": {
+            "total": "Total Claviers",
+            "installed": "Installés",
+            "available": "Disponibles",
+            "faulty": "Défectueux",
+            "stock_by_region": "Stock par Région",
+            "stock_detail_for": "Détail du Stock pour :",
+            "distribution_by_status": "Répartition par Statut"
+        },
+        "table": {
+            "report": "Affichage de {first} à {last} sur {totalRecords} claviers",
+            "search_placeholder": "Rechercher par N° de série...",
+            "serial_number": "N° de Série",
+            "model": "Modèle",
+            "manufacturer": "Fabricant",
+            "type": "Type",
+            "status": "Statut",
+            "connection_full_name": "Client Associé",
+            "meter_serial_number": "Compteur Associé",
+            "installation_date": "Date d'Installation",
+            "region_name": "Région",
+            "zone_name": "Zone",
+            "notes": "Notes",
+            "unassigned": "Non assigné"
+        },
+        "filter": {
+            "by_serial": "Filtrer par N° de série",
+            "by_status": "Filtrer par statut",
+            "by_client": "Filtrer par client",
+            "by_meter": "Filtrer par compteur",
+            "by_type": "Filtrer par type"
+        },
+        "dialog": {
+            "editTitle": "Modifier le Clavier",
+            "createTitle": "Ajouter un Clavier",
+            "subtitle": "Gestion des informations du clavier",
+            "transfer_title": "Transfert de Stock de Claviers",
+            "add_by_serial": "Ajouter un clavier par N° de série",
+            "to_transfer_count": "Claviers à transférer ({count})",
+            "destination_region": "Région de Destination"
+        },
+        "form": {
+            "serial_number": "Numéro de Série",
+            "serial_number_placeholder": "Entrez le numéro de série",
+            "manufacturer": "Fabricant",
+            "manufacturer_placeholder": "Entrez le fabricant",
+            "model": "Modèle",
+            "model_placeholder": "Entrez le modèle",
+            "type": "Type",
+            "type_placeholder": "Sélectionnez le type",
+            "status": "Statut",
+            "status_placeholder": "Sélectionnez le statut",
+            "connection": "Raccordement",
+            "connection_placeholder": "Sélectionnez un raccordement",
+            "meter": "Compteur",
+            "meter_placeholder": "Sélectionnez un compteur",
+            "installation_date": "Date d'Installation",
+            "region": "Région",
+            "region_placeholder": "Sélectionnez une région",
+            "zone": "Zone",
+            "connection_has_keypad": "Le raccordement possède un clavier",
+            "zone_placeholder": "Sélectionnez une zone",
+            "has_keypad": "Possède un clavier",
+            "notes": "Notes",
+            "notes_placeholder": "Ajoutez des notes ici"
+        },
+        "status": {
+            "available": "Disponible"
+        },
+        "messages": {
+            "no_stock": "Aucun clavier disponible en stock.",
+            "no_keypad_selected": "Aucun clavier sélectionné pour le transfert."
+        },
+        "confirm": {
+            "deleteMessage": "Êtes-vous sûr de vouloir supprimer le clavier n°{serial_number} ?",
+            "deleteHeader": "Confirmation de suppression",
+            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} claviers sélectionnés ?",
+            "bulkDeleteHeader": "Confirmation de suppression en masse"
+        },
+        "toast": {
+            "deleteSuccess": "Clavier supprimé avec succès.",
+            "bulkDeleteSuccess": "{count} claviers supprimés avec succès.",
+            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse.",
+            "selectDestinationRegion": "Veuillez sélectionner une région de destination.",
+            "transferSuccess": "{count} clavier(s) transféré(s) avec succès.",
+            "transferError": "Une erreur est survenue lors du transfert des claviers."
+        }
+    },
     "topbar": {
+        "meters": {
+        "title": "Gestion des Compteurs",
+        "subtitle": "Actifs de Mesure & Facturation",
+        "actions": {
+            "transfer": "Transférer",
+            "delete": "Supprimer",
+            "import": "Importer",
+            "add": "Ajouter Compteur",
+            "close_details": "Fermer les détails"
+        },
+        "stats": {
+            "total": "Total Compteurs",
+            "active": "Actifs",
+            "faulty": "Défectueux",
+            "in_stock": "En Stock",
+            "stock_by_region": "Stock par Région",
+            "stock_detail_for": "Détail du Stock pour :",
+            "distribution_by_status": "Répartition par Statut"
+        },
+        "table": {
+            "report": "Affichage de {first} à {last} sur {totalRecords} compteurs",
+            "search_placeholder": "Rechercher (N° série multiples avec virgule)"
+        },
+        "dialog": {
+            "transfer_title": "Transfert de Stock",
+            "transfer_subtitle": "Mouvement inter-régional",
+            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} compteurs sélectionnés ?",
+            "add_by_serial": "Ajouter un compteur par N° de série",
+            "to_transfer_count": "Compteurs à transférer ({count})",
+            "destination_region": "Région de Destination"
+        },
+        "messages": {
+            "no_stock": "Aucun compteur en stock."
+        }
+    },
         "menuModes": {
             "static": "Statique",
             "overlay": "Overlay"
@@ -110,6 +376,10 @@
             "rollingStock": "Matériel roulant",
             "units": "Unités",
             "labels": "Étiquettes",
+            "meters": "Compteurs",
+            "keyboards": "Claviers",
+
+
             "systemPriority": "Priorité du système"
         },
         "dateFilter": {
@@ -365,8 +635,10 @@
         "dialog": {
             "createTitle": "Enregistrer un mouvement",
             "editTitle": "Modifier le mouvement",
-            "createSubtitle": "Remplissez les informations ci-dessous pour ajouter un mouvement de stock.",
-            "editSubtitle": "Modifier les détails du mouvement sélectionné."
+            "createSubtitle": "Remplissez les informations pour un nouveau mouvement.",
+            "editSubtitle": "Mettez à jour les détails du mouvement sélectionné.",
+            "fluxIdentification": "Identification du Flux",
+            "detailsValidation": "Détails & Validation"
         },
         "form": {
             "region": "Région",
@@ -383,12 +655,22 @@
             "unityPlaceholder": "Sélectionner l'unité",
             "notes": "Notes complémentaires"
         },
+        "stats": {
+            "total": "Mouvements Totaux",
+            "entries": "Entrées",
+            "exits": "Sorties",
+            "uniqueParts": "Pièces Uniques"
+        },
         "movementTypes": {
             "entry": "Entrée",
             "exit": "Sortie"
         },
         "confirm": {
             "deleteMessage": "Êtes-vous sûr de vouloir supprimer le mouvement pour la pièce {reference} ?"
+        },
+        "filter": {
+            "byType": "Filtrer par type",
+            "byUser": "Filtrer par utilisateur"
         },
         "toast": {
             "createSuccess": "Le mouvement a été enregistré avec succès.",
@@ -413,6 +695,8 @@
     "confirm": {
         "deleteHeader": "Confirmation de suppression",
         "cancel": "Annuler",
+ "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} compteurs sélectionnés ?",
+ "bulkDeleteHeader": "Confirmation de suppression en masse",
     "delete": "Supprimer",
     "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer cet élément ?"
     }
@@ -558,6 +842,8 @@
     "chooseFile": "Choisir un fichier",
     "paginationReport": "Affichage de {first} à {last} sur {total} régions",
     "errorOccurred": "Une erreur est survenue.",
+    "selectColumns": "Choisir les colonnes",
+    "customize_columns": "Personnaliser les colonnes",
      "types": {
             "annual": "Annuel",
             "sick": "Maladie",
@@ -598,6 +884,7 @@
             "invalidDate": "Date invalide",
             "notSet": "Non renseigné",
             "instructionNotFound": "Instruction ID {id} (Introuvable)"
+            ,"date_format_placeholder": "JJ/MM/AAAA"
   },
   "payments": {
     "title": "Gestion des Paiements",
@@ -639,13 +926,18 @@
     "toast": {
       "saved": "La transaction a été enregistrée avec succès.",
       "deleted": "Transaction supprimée.",
-      "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer le paiement de {amount} pour {beneficiary} ?"
+            "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer le paiement de {amount} pour {beneficiary} ?",
+            "message": "Êtes-vous sûr de vouloir supprimer les {count} compteurs sélectionnés ?",
+            "header": "Confirmation de suppression en masse"
+
+
     }
   },
     "columnSelector": {
       "title": "Sélectionner les colonnes",
       "placeholder": "Choisir les colonnes"
 ,
+
     "yes": "Oui",
     "no": "Non",
 
@@ -661,6 +953,7 @@
     "delete": "Supprimer",
     "import": "Importer",
     "export": "Exporter",
+    "import": "Importer",
     "search": "Rechercher...",
     "success": "Succès",
     "error": "Erreur",
@@ -673,7 +966,8 @@
     "errorOccurred": "Une erreur est survenue.",
     "saveChanges": "Valider les modifications",
     "create": "Créer le profil",
-    "total": "Total {item}"
+    "total": "Total {item}",
+    "customize_columns": "Personnaliser les colonnes"
   },
 
   "unities": {
@@ -859,39 +1153,64 @@
         "editTitle": "Modifier le Raccordement",
         "createTitle": "Nouveau Raccordement"
     },
-    "connections": {
-        "title": "Gestion des Raccordements",
-        "headTitle": "Raccordements",
-        "subtitle": "Clients & Points de connexion",
-        "addNew": "Nouveau Raccordement",
-        "import": "Importer",
-        "delete": "Supprimer",
-        "closest": "Plus proches",
-        "exportCSV": "Exporter en CSV",
-        "selectColumns": "Choisir les colonnes",
-        "searchPlaceholder": "Rechercher...",
-        "actions": "Actions",
-        "importDialog": {
-            "title": "Importer depuis Excel/CSV",
-            "chooseFile": "Choisir un fichier",
-            "startImport": "Lancer l'import"
-        },
-        "dialog": {
-            "editTitle": "Modifier le Raccordement",
-            "createTitle": "Nouveau Raccordement",
-            "customerCode": "Code Client",
-            "firstName": "Prénom",
-            "lastName": "Nom",
-            "phone": "Téléphone",
-            "region": "Région",
-            "zone": "Zone",
-            "status": "Statut",
-            "gpsLatitude": "Latitude GPS",
-            "gpsLongitude": "Longitude GPS",
-            "cancel": "Annuler",
-            "save": "Enregistrer"
-        }
+  "connections": {
+    "title": "Gestion des Raccordements",
+    "headTitle": "Raccordements",
+    "subtitle": "Clients & Points de connexion",
+    "addNew": "Nouveau Raccordement",
+    "import": "Importer",
+    "delete": "Supprimer",
+    "closest": "Plus proches",
+    "exportCSV": "Exporter en CSV",
+    "selectColumns": "Choisir les colonnes",
+    "searchPlaceholder": "Rechercher...",
+    "actions": "Actions",
+    "importDialog": {
+        "title": "Importer depuis Excel/CSV",
+        "chooseFile": "Choisir un fichier",
+        "startImport": "Lancer l'import"
     },
+    "dialog": {
+        "editTitle": "Modifier le Raccordement",
+        "createTitle": "Nouveau Raccordement",
+        "customerCode": "Code Client",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "phone": "Téléphone",
+        "region": "Région",
+        "zone": "Zone",
+        "status": "Statut",
+        "gpsLatitude": "Latitude GPS",
+        "gpsLongitude": "Longitude GPS",
+        "cancel": "Annuler",
+        "save": "Enregistrer"
+    },
+    "table": {
+        "customerCode": "Code Client",
+        "fullName": "Nom Complet",
+        "region": "Région",
+        "zone": "Zone",
+        "status": "Statut",
+        "phone": "Téléphone",
+        "latitude": "Lat.",
+        "longitude": "Long.",
+        "verified": "Vérifié",
+        "amountPaid": "Montant Payé",
+        "connectionDate": "Date Raccordement",
+        "meterNumber": "N° Compteur",
+        "keypadNumber": "N° Clavier"
+    },
+    "stats": {
+        "total": "Total Raccordements",
+        "active": "Actifs",
+        "verified": "Vérifiés",
+        "pending": "En attente"
+    },
+    "confirm": {
+        "deleteHeader": "Confirmation de suppression",
+        "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} raccordements sélectionnés ?"
+    }
+},
     "expenses": {
             "title": "Gestion des Dépenses",
         "headTitle": "Dépenses",
@@ -1158,39 +1477,7 @@
         "createTitle": "Nouveau Raccordement"
     },
 
-    "connections": {
-        "title": "Gestion des Raccordements",
-        "headTitle": "Raccordements",
-        "subtitle": "Clients & Points de connexion",
-        "addNew": "Nouveau Raccordement",
-        "import": "Importer",
-        "delete": "Supprimer",
-        "closest": "Plus proches",
-        "exportCSV": "Exporter en CSV",
-        "selectColumns": "Choisir les colonnes",
-        "searchPlaceholder": "Rechercher...",
-        "actions": "Actions",
-        "importDialog": {
-            "title": "Importer depuis Excel/CSV",
-            "chooseFile": "Choisir un fichier",
-            "startImport": "Lancer l'import"
-        },
-        "dialog": {
-            "editTitle": "Modifier le Raccordement",
-            "createTitle": "Nouveau Raccordement",
-            "customerCode": "Code Client",
-            "firstName": "Prénom",
-            "lastName": "Nom",
-            "phone": "Téléphone",
-            "region": "Région",
-            "zone": "Zone",
-            "status": "Statut",
-            "gpsLatitude": "Latitude GPS",
-            "gpsLongitude": "Longitude GPS",
-            "cancel": "Annuler",
-            "save": "Enregistrer"
-        }
-    },
+
 
     "interventions": {
          "title": "Gestion des Interventions",
@@ -1661,7 +1948,11 @@
             "searchPartPlaceholder": "Rechercher une pièce...",
             "unitQuantityLabel": "Quantité (par unité sélectionnée)",
             "closeButton": "Fermer",
-            "validateButton": "Valider"
+            "validateButton": "Valider",
+            "selectDestinationRegion": "Veuillez sélectionner une région de destination.",
+            "transferSuccess": "{count} compteur(s) transféré(s) avec succès.",
+            "transferError": "Une erreur est survenue lors du transfert des compteurs.",
+            "fileInvalid": "Le fichier d'importation est invalide."
         }
     }
 
@@ -1786,11 +2077,17 @@
             "injectionPointSubtitle": "Source d'énergie principale",
             "location": "Localisation",
             "region": "Région",
+            "meter": "Compteur",
+            "meter_placeholder": "Sélectionner un compteur",
+            "manufacturer": "Fabricant",
+            "model": "Modèle",
             "zone": "Zone",
             "selectRegion": "Sélectionner une région",
             "selectZone": "Sélectionner une zone",
             "insertButton": "Insérer sur le schéma"
         }
     }
+
+
 
 }

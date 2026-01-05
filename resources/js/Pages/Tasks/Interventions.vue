@@ -17,12 +17,14 @@ import RadioButton from 'primevue/radiobutton';
 import MultiSelect from 'primevue/multiselect';
 import SplitButton from 'primevue/splitbutton';
 import OverlayPanel from 'primevue/overlaypanel';
+import { useConfirm } from 'primevue/useconfirm';
 import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
 import InputNumber from 'primevue/inputnumber';
 import Checkbox from 'primevue/checkbox';
 import { useToast } from "primevue/usetoast";
 import { useI18n } from 'vue-i18n';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
 const props = defineProps({
     interventionRequests: Object,
@@ -63,6 +65,7 @@ const REASONS_CONFIG = {
 };
 const { t } = useI18n();
 const toast = useToast();
+const confirm = useConfirm();
 const opFilters = ref();
 const isModalOpen = ref(false);
 const deleteDialog = ref(false);
@@ -85,13 +88,6 @@ const stats = computed(() => {
     };
 });
 
-const statLabels = computed(() => ({
-    total: t('interventions.stats.total'),
-    pending: t('interventions.stats.pending'),
-    in_progress: t('interventions.stats.in_progress'),
-    completed: t('interventions.stats.completed'),
-}));
-
 // --- CONFIGURATION V11 ---
 const allColumns = computed(() => [
     { field: 'title', header: t('interventions.table.reference'), sortable: true },
@@ -113,19 +109,28 @@ const selectedColumnFields = ref(['title', 'status', 'client_name', 'priority', 
 const displayedColumns = computed(() => allColumns.value.filter(col => selectedColumnFields.value.includes(col.field)));
 
 // --- LOGIQUE FILTRES ---
-const search = ref(props.filters?.search || '');
-const filterForm = ref({
-    status: props.filters?.status || null,
-    region_id: props.filters?.region_id || null,
-    priority: props.filters?.priority || null,
+const filters = ref({
+    'global': { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
+    'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'status': { value: props.filters?.status || null, matchMode: FilterMatchMode.EQUALS },
+    'priority': { value: props.filters?.priority || null, matchMode: FilterMatchMode.EQUALS },
+    'region_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'client_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
 });
 
 const resetFilters = () => {
-    Object.keys(filterForm.value).forEach(key => filterForm.value[key] = null);
-    applyFilters();
+    filters.value = {
+        'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
+        'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'status': { value: null, matchMode: FilterMatchMode.EQUALS },
+        'priority': { value: null, matchMode: FilterMatchMode.EQUALS },
+        'region_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'client_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    };
 };
 
 const applyFilters = () => {
+    const search = filters.value.global.value;
     router.get(route('interventions.index'), {
         search: search.value,
         ...filterForm.value
@@ -133,7 +138,7 @@ const applyFilters = () => {
 };
 
 const activeFiltersCount = computed(() => {
-    return Object.values(filterForm.value).filter(value => value !== null).length;
+    return Object.values(filters.value).filter(f => f.value !== null && f.value !== '').length - 1; // Exclude global
 });
 
 // --- STYLISATION DES BADGES (V11 Design) ---
@@ -267,6 +272,10 @@ watch(() => form.intervention_reason, (newReason) => {
     }
 });
 const interventionStatuses = ref( ['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'Non validé']);
+
+const exportCSV = () => {
+    dt.value.exportCSV();
+};
 </script>
 
 <template>
@@ -289,58 +298,66 @@ const interventionStatuses = ref( ['pending', 'assigned', 'in_progress', 'comple
                 </div>
                 <div class="flex gap-2">
                     <Button :label="t('interventions.addNew')" icon="pi pi-plus"
+
                             class=" shadow-lg shadow-primary-200" @click="openCreate" />
                 </div>
             </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div v-for="(val, key) in stats" :key="key" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
-                    <div class="flex flex-column gap-2">
-                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ statLabels[key] }}</span>
-                        <div class="flex items-center justify-between">
-                            <span class="text-3xl font-black text-slate-800">{{ val }}</span>
-                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
-                                <i :class="key === 'totalMW' ? 'pi pi-bolt' : 'pi pi-database'" class="text-slate-400"></i>
-                            </div>
-                        </div>
+            <!-- Section des statistiques -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-box text-2xl text-slate-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ stats.total }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('interventions.stats.total') }}</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-amber-50 flex items-center justify-center"><i class="pi pi-clock text-2xl text-amber-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ stats.pending }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('interventions.stats.pending') }}</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-sky-50 flex items-center justify-center"><i class="pi pi-spin pi-spinner text-2xl text-sky-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ stats.in_progress }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('interventions.stats.in_progress') }}</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-green-50 flex items-center justify-center"><i class="pi pi-check-circle text-2xl text-green-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ stats.completed }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('interventions.stats.completed') }}</div>
                     </div>
                 </div>
             </div>
+
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
                 <DataTable :value="formattedList" v-model:selection="selectedItems" dataKey="id"
-                           :rows="10" paginator class="p-datatable-sm quantum-table"
-                           :paginatorTemplate="t('dataTable.paginatorTemplate')"
+                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['title', 'client_name', 'status', 'priority', 'region_name']"
+                           :rows="10" paginator class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
                            :currentPageReportTemplate="t('interventions.table.report')">
                     <template #header>
 
-                        <div class="flex flex-wrap justify-between items-center gap-4 p-2 w-full">
-                             <div class="flex gap-2">
-                        <IconField iconPosition="left">
-                            <InputIcon class="pi pi-search" />
-                            <InputText v-model="search" :placeholder="t('interventions.searchPlaceholder')"
-                                       class="p-inputtext-sm border-none bg-slate-100 rounded-xl w-64" @input="applyFilters" />
-                        </IconField>
-                        <Button icon="pi pi-filter" :label="activeFiltersCount > 0 ? activeFiltersCount.toString() : t('interventions.filters')" badgeClass="p-badge-danger" :badge="activeFiltersCount > 0 ? activeFiltersCount.toString() : null"
-                                class="p-button-text p-button-secondary p-button-sm font-bold" @click="opFilters.toggle($event)" />
-                    </div>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('interventions.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                            </IconField>
                             <div class="flex items-center gap-2">
-                                <div class="flex items-center gap-2">
-                        <Button v-if="selectedItems.length" icon="pi pi-trash" :label="t('interventions.deleteSelected')"
-                                class="p-button-danger p-button-text p-button-sm animate-fadein" @click="deleteDialog = true" />
-                        <Button icon="pi pi-columns" class="p-button-text p-button-secondary" @click="op.toggle($event)" />
-                    </div>
-                                <MultiSelect v-model="selectedColumnFields" :options="allColumns" optionLabel="header" optionValue="field"
-                             display="chip" class="w-64 quantum-multiselect" />
+                                <Button v-if="selectedItems.length" icon="pi pi-trash" :label="t('interventions.deleteSelected')" class="p-button-danger p-button-text p-button-sm animate-fadein" @click="deleteDialog = true" />
+                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="resetFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
+                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" />
+                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="'Colonnes'" />
                             </div>
                         </div>
                     </template>
                     <Column selectionMode="multiple" headerStyle="width: 3rem" />
 
-                    <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable" :pt="{ header: { class: 'whitespace-nowrap' } }">
-                        <template #header>
-                            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">{{ col.header }}</span>
-                        </template>
-
+                    <Column v-for="col in displayedColumns" :key="col.field" :field="col.field" :header="col.header" :sortable="col.sortable" :pt="{ header: { class: 'whitespace-nowrap' } }" :filterField="col.field">
                         <template #body="{ data, field }">
                             <span v-if="field === 'title'" class="font-bold text-slate-800 tracking-tight">{{ data.title }}</span>
 
@@ -366,6 +383,17 @@ const interventionStatuses = ref( ['pending', 'assigned', 'in_progress', 'comple
 
                             <span v-else class="text-slate-600 text-sm truncate" :title="data[field]">{{ data[field] }}</span>
                         </template>
+
+                        <template #filter="{ filterModel, filterCallback }" v-if="['title', 'client_name', 'region_name'].includes(col.field)">
+                            <InputText v-model="filterModel.constraints[0].value" type="text" @input="filterCallback()" class="p-column-filter" :placeholder="`Filtrer par ${col.header}`" />
+                        </template>
+                        <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'status'">
+                            <Dropdown v-model="filterModel.value" @change="filterCallback()" :options="props.statuses" placeholder="Statut" class="p-column-filter" showClear />
+                        </template>
+                        <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'priority'">
+                            <Dropdown v-model="filterModel.value" @change="filterCallback()" :options="props.priorities" placeholder="Priorité" class="p-column-filter" showClear />
+                        </template>
+
                     </Column>
 
                     <Column :header="t('interventions.table.actions')" headerStyle="width: 5rem">
@@ -377,6 +405,18 @@ const interventionStatuses = ref( ['pending', 'assigned', 'in_progress', 'comple
                 </DataTable>
             </div>
         </div>
+
+        <OverlayPanel ref="op" class="p-4">
+            <div class="font-semibold mb-3">{{ t('common.columnSelector.title') }}</div>
+            <MultiSelect
+                v-model="selectedColumnFields"
+                :options="allColumns"
+                optionLabel="header"
+                optionValue="field"
+                display="chip"
+                :placeholder="t('common.columnSelector.placeholder')"
+                class="w-full max-w-xs"  />
+        </OverlayPanel>
 
         <Dialog v-model:visible="isModalOpen" modal :header="false" :closable="false"
                 class="quantum-dialog w-full max-w-6xl" :pt="{ mask: { style: 'backdrop-filter: blur(4px)' } }">
@@ -547,30 +587,6 @@ const interventionStatuses = ref( ['pending', 'assigned', 'in_progress', 'comple
             </template>
         </Dialog>
 
-
-
-
-        <OverlayPanel ref="opFilters" class="p-4">
-            <div class="space-y-4">
-                <h4 class="text-xs font-black uppercase text-slate-500">{{ t('interventions.filtersPanel.title') }}</h4>
-                <div class="field">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">{{ t('interventions.filtersPanel.status') }}</label>
-                    <Dropdown v-model="filterForm.status" :options="props.statuses" :placeholder="t('interventions.filtersPanel.statusPlaceholder')" showClear class="w-full" @change="applyFilters" />
-                </div>
-                <div class="field">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">{{ t('interventions.filtersPanel.region') }}</label>
-                    <Dropdown v-model="filterForm.region_id" :options="props.regions" optionLabel="designation" optionValue="id" :placeholder="t('interventions.filtersPanel.regionPlaceholder')" showClear filter class="w-full" @change="applyFilters" />
-                </div>
-                <div class="field">
-                    <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block">{{ t('interventions.filtersPanel.priority') }}</label>
-                    <Dropdown v-model="filterForm.priority" :options="props.priorities" :placeholder="t('interventions.filtersPanel.priorityPlaceholder')" showClear class="w-full" @change="applyFilters" />
-                </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <Button :label="t('interventions.filtersPanel.reset')" text severity="secondary" @click="resetFilters" />
-                    <Button :label="t('interventions.filtersPanel.apply')" @click="applyFilters" />
-                </div>
-            </div>
-        </OverlayPanel>
 
     </AppLayout>
 </template>

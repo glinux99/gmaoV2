@@ -6,6 +6,17 @@ import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 import { useI18n } from 'vue-i18n';
 import InputNumber from 'primevue/inputnumber'; // Import nécessaire pour InputNumber
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import OverlayPanel from 'primevue/overlaypanel';
+import MultiSelect from 'primevue/multiselect';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import Tag from 'primevue/tag';
 
 const props = defineProps({
     spareParts: Object, // Changed from labels to spareParts
@@ -34,6 +45,7 @@ const sparePartDialog = ref(false); // Changed from labelDialog to sparePartDial
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
+const selectedSpareParts = ref([]);
 
 const form = useForm({
     id: null,
@@ -49,6 +61,42 @@ const form = useForm({
     label_id: null, // To link to a label
     characteristic_values: {}, // To store values for label characteristics
     user_id: null, // Default to current user
+});
+
+const filters = ref({
+    'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
+    'reference': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'label.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'location': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+});
+
+const initFilters = () => {
+    filters.value.global.value = null;
+    filters.value.reference.constraints[0].value = null;
+    filters.value['label.designation'].constraints[0].value = null;
+    filters.value.location.constraints[0].value = null;
+    filters.value['region.designation'].constraints[0].value = null;
+};
+
+const op = ref();
+
+const allColumns = ref([
+    { field: 'reference', header: 'REF' },
+    { field: 'label.designation', header: 'Composant' },
+    { field: 'quantity', header: 'Stock / Alerte' },
+    { field: 'price', header: 'Prix' },
+    { field: 'location', header: 'Emplacement' },
+    { field: 'region.designation', header: 'Région' },
+    { field: 'user.name', header: 'Responsable' },
+]);
+const visibleColumns = ref(allColumns.value.slice(0, 5).map(col => col.field));
+
+const sparePartStats = computed(() => {
+    const total = props.spareParts.data.length;
+    const lowStock = props.spareParts.data.filter(p => p.quantity <= p.min_quantity).length;
+    const totalValue = props.spareParts.data.reduce((sum, p) => sum + (p.quantity * p.price), 0);
+    return { total, lowStock, totalValue };
 });
 
 const openNew = () => {
@@ -147,6 +195,23 @@ const deleteSparePart = (sparePart) => { // Changed from deleteLabel to deleteSp
     });
 };
 
+const deleteSelectedSpareParts = () => {
+    confirm.require({
+        message: t('spareParts.confirm.bulkDeleteMessage'),
+        header: t('confirm.deleteHeader'),
+        accept: () => {
+            router.post(route('spare-parts.bulkDestroy'), {
+                ids: selectedSpareParts.value.map(p => p.id)
+            }, {
+                onSuccess: () => {
+                    toast.add({ severity: 'success', summary: t('toast.success'), detail: t('spareParts.toast.bulkDeleteSuccess'), life: 3000 });
+                    selectedSpareParts.value = [];
+                }
+            });
+        }
+    });
+};
+
 // Computed property to get characteristics of the selected label
 const selectedLabelCharacteristics = computed(() => {
     if (form.label_id) {
@@ -181,6 +246,7 @@ const formatCurrency = (value) => {
 };
 
 const dialogTitle = computed(() => editing.value ? t('spareParts.dialog.editTitle') : t('spareParts.dialog.createTitle'));
+const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || selectedSpareParts.value.length < 2);
 
 </script>
 <template>
@@ -190,37 +256,79 @@ const dialogTitle = computed(() => editing.value ? t('spareParts.dialog.editTitl
         <div class="p-6 max-w-[1600px] mx-auto">
             <Toast />
             <ConfirmDialog />
-
-            <div class="flex flex-wrap items-center justify-between bg-white/80 backdrop-blur-md p-5 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8 gap-4">
-                <div class="flex items-center gap-5">
-                    <div class="w-14 h-14 bg-primary-500 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-200">
-                        <i class="pi pi-box text-white text-2xl"></i>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                 <div class="flex items-center gap-4">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-[1rem] bg-primary-600 shadow-xl shadow-primary-200 text-white text-2xl">
+                         <i class="pi pi-box"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-black text-slate-800 tracking-tighter leading-none">{{ t('spareParts.title') }}</h1>
-                        <p class="text-[10px] uppercase font-bold text-slate-400 mt-2 tracking-[0.2em]">Asset Stock Management v16</p>
+                        <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
+                            {{ t('spareParts.title') }} <span class="text-primary-600">GMAO</span>
+                        </h1>
+                        <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">{{ t('spareParts.headTitle') }}</p>
                     </div>
                 </div>
-
-                <div class="flex items-center gap-3">
-                    <IconField class="hidden md:block">
-                        <InputIcon><i class="pi pi-search" /></InputIcon>
-                        <InputText v-model="search" :placeholder="t('spareParts.toolbar.searchPlaceholder')"
-                            @input="performSearch" class="!rounded-2xl border-none bg-slate-100/50 w-64 focus:w-80 transition-all font-medium" />
-                    </IconField>
+                <div class="flex gap-2">
                     <Button :label="t('spareParts.toolbar.add')" icon="pi pi-plus"
-                        class="!rounded-2xl !bg-slate-900 !border-none !px-6 !py-3 shadow-xl hover:scale-105 transition-transform" @click="openNew" />
-                    <Button icon="pi pi-upload" severity="secondary" text class="!rounded-2xl" @click="exportCSV" />
+                            class=" shadow-lg shadow-primary-200" @click="openNew" />
                 </div>
             </div>
 
-            <div class="bg-white rounded-[3rem] shadow-xl border border-slate-50 overflow-hidden p-2">
-                <DataTable :value="spareParts.data" dataKey="id" :paginator="true" :rows="10"
-                    class="p-datatable-sm" responsiveLayout="scroll" :rowHover="true">
+            <!-- Section des statistiques -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-box text-2xl text-slate-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ sparePartStats.total }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pièces Uniques</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-red-50 flex items-center justify-center"><i class="pi pi-exclamation-triangle text-2xl text-red-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ sparePartStats.lowStock }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Stock Faible</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-green-50 flex items-center justify-center"><i class="pi pi-wallet text-2xl text-green-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ formatCurrency(sparePartStats.totalValue) }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Valeur Totale Stock</div>
+                    </div>
+                </div>
+            </div>
 
-                    <Column field="reference" header="REF" class="font-mono font-bold text-slate-600"></Column>
+            <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
+                <DataTable :value="spareParts.data" ref="dt" dataKey="id" v-model:selection="selectedSpareParts" :paginator="true" :rows="10"
+                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['reference', 'label.designation', 'location', 'region.designation']" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                           :currentPageReportTemplate="t('spareParts.table.report')"
+                           class="p-datatable-sm quantum-table">
 
-                    <Column header="Composant">
+                    <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+
+                    <template #header>
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-search text-slate-400" />
+                                <InputText v-model="filters['global'].value" :placeholder="t('spareParts.toolbar.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                            </IconField>
+                            <div class="flex items-center gap-2">
+                                <Button v-if="!bulkDeleteButtonIsDisabled" :label="`Supprimer (${selectedSpareParts.length})`" icon="pi pi-trash" severity="danger" @click="deleteSelectedSpareParts" />
+                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
+                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" v-tooltip.bottom="t('common.export')" />
+                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="'Colonnes'" />
+                            </div>
+                        </div>
+                    </template>
+
+                    <Column v-if="visibleColumns.includes('reference')" field="reference" header="REF" :sortable="true" style="min-width: 8rem;">
+                        <template #body="{ data }">
+                            <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{{ data.reference }}</span>
+                        </template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('label.designation')" field="label.designation" header="Composant" :sortable="true" style="min-width: 12rem;">
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">
                                 <div class="w-2 h-8 rounded-full" :style="{ background: data.label?.color }"></div>
@@ -232,7 +340,7 @@ const dialogTitle = computed(() => editing.value ? t('spareParts.dialog.editTitl
                         </template>
                     </Column>
 
-                    <Column header="Stock / Alerte">
+                    <Column v-if="visibleColumns.includes('quantity')" field="quantity" header="Stock / Alerte" :sortable="true" style="min-width: 10rem;">
                         <template #body="{ data }">
                             <div class="flex items-center gap-4">
                                 <span :class="['text-base font-black', data.quantity <= data.min_quantity ? 'text-rose-500' : 'text-primary-600']">
@@ -245,27 +353,45 @@ const dialogTitle = computed(() => editing.value ? t('spareParts.dialog.editTitl
                         </template>
                     </Column>
 
-                    <Column header="Prix">
+                    <Column v-if="visibleColumns.includes('price')" field="price" header="Prix" :sortable="true" style="min-width: 8rem;">
                         <template #body="{ data }">
                             <span class="font-bold text-slate-500">{{ formatCurrency(data.price) }}</span>
                         </template>
                     </Column>
 
+                    <Column v-if="visibleColumns.includes('location')" field="location" header="Emplacement" :sortable="true" style="min-width: 10rem;"></Column>
+
+                    <Column v-if="visibleColumns.includes('region.designation')" field="region.designation" header="Région" :sortable="true" style="min-width: 10rem;">
+                        <template #body="{ data }">{{ data.region?.designation }}</template>
+                    </Column>
+
+                    <Column v-if="visibleColumns.includes('user.name')" field="user.name" header="Responsable" :sortable="true" style="min-width: 10rem;">
+                        <template #body="{ data }">{{ data.user?.name }}</template>
+                    </Column>
+
                     <Column header="Actions" alignFrozen="right" frozen>
                         <template #body="{ data }">
-                            <div class="flex gap-1">
-                                <Button icon="pi pi-pencil" text rounded severity="info" @click="editSparePart(data)" />
-                                <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteSparePart(data)" />
+                            <div class="flex justify-end gap-2">
+                                <Button icon="pi pi-pencil" text rounded @click="editSparePart(data)" class="!text-slate-400 hover:!bg-primary-50 hover:!text-primary-600 transition-all" v-tooltip.top="'Modifier'" />
+                                <Button icon="pi pi-trash" text rounded @click="deleteSparePart(data)" class="!text-slate-400 hover:!bg-red-50 hover:!text-red-500 transition-all" v-tooltip.top="'Supprimer'" />
                             </div>
                         </template>
                     </Column>
                 </DataTable>
             </div>
+            <OverlayPanel ref="op" class="quantum-overlay">
+                <div class="p-2 space-y-3">
+                    <span class="text-[10px] font-black uppercase text-slate-400 block border-b pb-2">Colonnes actives</span>
+                    <MultiSelect v-model="visibleColumns" :options="allColumns" optionLabel="header" optionValue="field"
+                                 display="chip" class="w-64 quantum-multiselect" />
+                </div>
+            </OverlayPanel>
 
         <Dialog
     v-model:visible="sparePartDialog"
     modal
     :header="false"
+    :closable="false"
     :style="{ width: '65rem' }"
     class="p-0 overflow-hidden shadow-2xl"
     :pt="{
@@ -273,7 +399,7 @@ const dialogTitle = computed(() => editing.value ? t('spareParts.dialog.editTitl
         mask: { style: 'backdrop-filter: blur(8px)' }
     }"
 >
-    <div class="bg-slate-900 p-6 flex justify-between items-center text-white">
+    <div class="bg-slate-900 p-6 flex justify-between items-center text-white rounded-xl">
         <div class="flex items-center gap-4">
             <div class="p-3 bg-primary-500 rounded-2xl shadow-lg shadow-primary-500/20">
                 <i class="pi pi-box text-2xl"></i>

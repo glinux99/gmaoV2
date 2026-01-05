@@ -75,18 +75,74 @@ class MaintenanceController extends Controller
             // 2. Création de la Maintenance
             $maintenance = Maintenance::create($validatedData);
 
-            // 3. Création de l'Activité correspondante
-            $activity = Activity::create([
-                'maintenance_id' => $maintenance->id,
-                'title' => 'Activité pour : ' . $maintenance->title,
-                'assignable_type' => $maintenance->assignable_type,
-                'assignable_id' => $maintenance->assignable_id,
-                'status' => 'scheduled',
-                'actual_start_time' => $maintenance->scheduled_start_date,
-                'actual_end_time' => $maintenance->scheduled_end_date,
-                'priority' => $maintenance->priority,
-                'user_id' => Auth::id(),
-            ]);
+            // 3. Création des activités
+            $startTime = Carbon::parse($maintenance->scheduled_start_date)->format('H:i:s');
+            $endTime = Carbon::parse($maintenance->scheduled_end_date)->format('H:i:s');
+            $activities = [];
+
+            if ($regeneratedDates) {
+                foreach ($regeneratedDates as $date) {
+                    $activityDate = Carbon::parse($date)->startOfDay();
+
+                    // Construction du titre de l'activité
+                    $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                    if ($maintenance->equipments()->count() > 0) {
+                        if ($maintenance->equipments()->count() == 1) {
+                            $equipment = $maintenance->equipments()->first();
+ $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
+ $zoneName = $maintenance->networkNode->network->nomenclature ?? 'N/A';
+                            $activityTitle = 'Maintenance sur ' . $equipment->designation . ' (' . $regionName . ' / ' . $zoneName . ')';
+                        } else {
+                            $regionName = $maintenance->region->designation ?? 'N/A';
+                            $activityTitle = 'Maintenance sur ' . $maintenance->equipments()->count() . ' équipements (' . $regionName . ')';
+                        }
+                    } elseif ($maintenance->title) {
+                        $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                    }
+
+                    $activities[] = Activity::create([
+                        'maintenance_id' => $maintenance->id,
+                        'title' => $activityTitle,
+                        'assignable_type' => $maintenance->assignable_type,
+                        'assignable_id' => $maintenance->assignable_id,
+                        'status' => 'scheduled',
+                        'actual_start_time' => $activityDate->copy()->setTimeFromTimeString($startTime),
+                        'actual_end_time' => $activityDate->copy()->setTimeFromTimeString($endTime),
+                        'priority' => $maintenance->priority,
+                        'user_id' => Auth::id(),
+                    ]);
+                }
+            } else {
+                // Comportement par défaut : une seule activité
+                $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                if ($maintenance->equipments()->count() > 0) {
+                    if ($maintenance->equipments()->count() == 1) {
+                        $equipment = $maintenance->equipments()->first();
+
+  $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
+ $zoneName = $maintenance->networkNode->network->nomenclature ?? 'N/A';
+
+                        $activityTitle = 'Maintenance sur ' . $equipment->designation . ' (' . $regionName . ' / ' . $zoneName . ')';
+                    } else {
+                        $regionName = $maintenance->region->designation ?? 'N/A';
+                        $activityTitle = 'Maintenance sur ' . $maintenance->equipments()->count() . ' équipements (' . $regionName . ')';
+                    }
+                } elseif ($maintenance->title) {
+                    $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                }
+
+                $activities[] = Activity::create([
+                    'maintenance_id' => $maintenance->id,
+                    'title' => $activityTitle,
+                    'assignable_type' => $maintenance->assignable_type,
+                    'assignable_id' => $maintenance->assignable_id,
+                    'status' => 'scheduled',
+                    'actual_start_time' => $maintenance->scheduled_start_date,
+                    'actual_end_time' => $maintenance->scheduled_end_date,
+                    'priority' => $maintenance->priority,
+                    'user_id' => Auth::id(),
+                ]);
+            }
 
             // 4. Gestion des équipements (Pivot avec NetworkNode)
             if (!empty($validatedData['equipment_ids'])) {
@@ -96,11 +152,15 @@ class MaintenanceController extends Controller
                 })->toArray();
 
                 $maintenance->equipments()->sync($syncData);
-                $activity->equipment()->sync($validatedData['equipment_ids']);
+                foreach ($activities as $activity) {
+                    $activity->equipment()->sync($validatedData['equipment_ids']);
+                }
             }
 
             // 5. Instructions & Service Order
-            $this->processInstructions($maintenance, $activity, $validatedData['node_instructions'] ?? []);
+            foreach ($activities as $activity) {
+                $this->processInstructions($maintenance, $activity, $validatedData['node_instructions'] ?? []);
+            }
             $this->processServiceOrder($maintenance, $validatedData);
 
             // 6. Mise à jour de la date sur le NetworkNode
@@ -136,18 +196,74 @@ class MaintenanceController extends Controller
 
             // 2. Update Maintenance & Activité
             $maintenance->update($validatedData);
-            $activity = Activity::updateOrCreate(
-                ['maintenance_id' => $maintenance->id],
-                [
-                    'title' => 'Activité pour : ' . $maintenance->title,
+
+            // Supprimer les anciennes activités pour les recréer proprement
+            Activity::where('maintenance_id', $maintenance->id)->delete();
+            $activities = [];
+            $startTime = Carbon::parse($maintenance->scheduled_start_date)->format('H:i:s');
+            $endTime = Carbon::parse($maintenance->scheduled_end_date)->format('H:i:s');
+
+            if ($regeneratedDates) {
+                foreach ($regeneratedDates as $date) {
+                    $activityDate = Carbon::parse($date)->startOfDay();
+                    $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                    if ($maintenance->equipments()->count() > 0) {
+                        if ($maintenance->equipments()->count() == 1) {
+                            $equipment = $maintenance->equipments()->first();
+ $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
+ $zoneName = $maintenance->networkNode->zone->title ?? 'N/A';
+                            $activityTitle = 'Maintenance sur ' . $equipment->designation . ' (' . $regionName . ' / ' . $zoneName . ')';
+                        } else {
+                            $regionName = $maintenance->region->designation ?? 'N/A';
+                            $activityTitle = 'Maintenance sur ' . $maintenance->equipments()->count() . ' équipements (' . $regionName . ')';
+                        }
+                    } elseif ($maintenance->title) {
+                        $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                    }
+
+                    $activities[] = Activity::create([
+                        'maintenance_id' => $maintenance->id,
+                        'title' => $activityTitle,
+                        'assignable_type' => $maintenance->assignable_type,
+                        'assignable_id' => $maintenance->assignable_id,
+                        'status' => $maintenance->status === 'completed' ? 'completed' : 'scheduled',
+                        'actual_start_time' => $activityDate->copy()->setTimeFromTimeString($startTime),
+                        'actual_end_time' => $activityDate->copy()->setTimeFromTimeString($endTime),
+                        'priority' => $maintenance->priority,
+                        'user_id' => Auth::id(),
+                    ]);
+                }
+            } else {
+                // Comportement par défaut : une seule activité
+                $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                if ($maintenance->equipments()->count() > 0) {
+                    if ($maintenance->equipments()->count() == 1) {
+                        $equipment = $maintenance->equipments()->first();
+
+   $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
+ $zoneName = $maintenance->networkNode->network->nomenclature ?? 'N/A';
+ dd($zoneName);
+                        $activityTitle = 'Maintenance sur ' . $equipment->designation . ' (' . $regionName . ' / ' . $zoneName . ')';
+                    } else {
+                        $regionName = $maintenance->region->designation ?? 'N/A';
+                        $activityTitle = 'Maintenance sur ' . $maintenance->equipments()->count() . ' équipements (' . $regionName . ')';
+                    }
+                } elseif ($maintenance->title) {
+                    $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                }
+
+                $activities[] = Activity::create([
+                    'maintenance_id' => $maintenance->id,
+                    'title' => $activityTitle,
                     'assignable_type' => $maintenance->assignable_type,
                     'assignable_id' => $maintenance->assignable_id,
                     'status' => $maintenance->status === 'completed' ? 'completed' : 'scheduled',
                     'actual_start_time' => $maintenance->scheduled_start_date,
                     'actual_end_time' => $maintenance->scheduled_end_date,
                     'priority' => $maintenance->priority,
-                ]
-            );
+                    'user_id' => Auth::id(),
+                ]);
+            }
 
             // 3. Sync Équipements
             if (isset($validatedData['equipment_ids'])) {
@@ -155,13 +271,16 @@ class MaintenanceController extends Controller
                     return [(int) $id => ['network_node_id' => $maintenance->network_node_id]];
                 })->toArray();
                 $maintenance->equipments()->sync($syncData);
-                $activity->equipment()->sync($validatedData['equipment_ids']);
+                foreach ($activities as $activity) {
+                    $activity->equipment()->sync($validatedData['equipment_ids']);
+                }
             }
 
             // 4. Instructions (Clean & Recreate)
             $maintenance->instructions()->delete();
-            $activity->activityInstructions()->delete();
-            $this->processInstructions($maintenance, $activity, $validatedData['node_instructions'] ?? []);
+            foreach ($activities as $activity) {
+                $this->processInstructions($maintenance, $activity, $validatedData['node_instructions'] ?? []);
+            }
 
             // 5. Service Order
             $this->processServiceOrder($maintenance, $validatedData);

@@ -24,6 +24,9 @@ class Meter extends Model
         'status',
         'installation_date',
         'connection_id',
+        'region_id',
+        'zone_id',
+        'is_additional',
         'notes',
     ];
 
@@ -41,5 +44,14 @@ class Meter extends Model
     public function seals(): HasMany
     {
         return $this->hasMany(Seal::class);
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
     }
 }

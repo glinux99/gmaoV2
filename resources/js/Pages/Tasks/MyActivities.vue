@@ -683,7 +683,7 @@ const formatDateShort = (date) => date ? new Date(date).toLocaleDateString('fr-F
 
             <template #marker="slotProps">
                 <div class="flex flex-column align-items-center">
-                    <div
+ <div
                         class="flex align-items-center justify-content-center border-circle shadow-4 z-2 transition-transform duration-300 hover:scale-110"
                         :class="getStatusBgClass(slotProps.item.status)"
                         style="width: 3.5rem; height: 3.5rem; border: 0.3rem solid white;"
@@ -694,7 +694,7 @@ const formatDateShort = (date) => date ? new Date(date).toLocaleDateString('fr-F
             </template>
 
             <template #opposite="slotProps">
-                <div class="hidden md:flex flex-column align-items-end mt-3 pr-3">
+ <div class="hidden md:flex flex-column align-items-center mt-3 pr-3">
                     <span class="text-xl font-black text-slate-700 tracking-tighter">
                         {{ formatTime(slotProps.item.actual_start_time) }}
                     </span>
@@ -789,6 +789,12 @@ const formatDateShort = (date) => date ? new Date(date).toLocaleDateString('fr-F
                                         icon="pi pi-pencil"
                                         @click="editActivity(slotProps.item)"
                                         class="p-button-rounded bg-slate-900 border-none px-4 hover:bg-indigo-600 transition-colors duration-300 shadow-lg" />
+                            </div>
+                            <div class="flex justify-end gap-2 mt-4 pt-4 border-t-1 border-slate-100">
+                                <Button :label="t('myActivities.common.createSubActivity')"
+                                        icon="pi pi-plus"
+                                        @click="createSubActivity(slotProps.item)"
+                                        class="p-button-rounded p-button-secondary p-button-sm" />
                             </div>
                         </template>
                     </Card>

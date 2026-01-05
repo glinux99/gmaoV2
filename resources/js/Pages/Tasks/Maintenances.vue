@@ -222,6 +222,14 @@ const assignableTypes = ref([
     // { label: 'Sous-traitant', value: 'App\\Models\\Subcontractor' },
 ]);
 
+const maintenanceStats = computed(() => {
+    const total = props.maintenances.data.length;
+    const inProgress = props.maintenances.data.filter(t => t.status === 'in_progress').length;
+    const completed = props.maintenances.data.filter(t => t.status === 'completed').length;
+    return { total, inProgress, completed };
+});
+
+
 // Liste dynamique des personnes/équipes à assigner
 const assignables = computed(() => {
     if (form.assignable_type === 'App\\Models\\User') {
@@ -1242,17 +1250,29 @@ const formatDate = (dateString) => {
                 </div>
             </div>
 
-            <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[1rem] border border-white bg-white/50 p-4 shadow-sm backdrop-blur-md">
-                <!-- <div class="relative flex-1 min-w-[280px]">
-                    <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input v-model="searchFilter" type="text" :placeholder="t('maintenances.searchPlaceholder')" @input="applyFilters"
-                           class="w-full rounded-2xl border-none bg-white py-3 pl-12 text-sm font-semibold shadow-inner focus:ring-2 focus:ring-primary-500/20" />
+            <!-- Section des statistiques -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-wrench text-2xl text-slate-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ maintenanceStats.total }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Maintenances Totales</div>
+                    </div>
                 </div>
-
-                <div class="flex items-center gap-2">
-                    <Button icon="pi pi-filter-slash" text @click="applyFilters" class="h-12 w-12 !text-slate-400 hover:!text-red-500" v-tooltip.bottom="t('maintenances.resetTooltip')" />
-                    <Button icon="pi pi-columns" text @click="toggleColumnSelection" class="h-12 w-12 !text-slate-400 hover:!text-primary-500" v-tooltip.bottom="t('maintenances.columnsTooltip')" />
-                </div> -->
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-amber-50 flex items-center justify-center"><i class="pi pi-spin pi-spinner text-2xl text-amber-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ maintenanceStats.inProgress }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Cours</div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-xl bg-green-50 flex items-center justify-center"><i class="pi pi-check-circle text-2xl text-green-500"></i></div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800">{{ maintenanceStats.completed }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Terminées</div>
+                    </div>
+                </div>
             </div>
 
             <div class="overflow-hidden rounded-[1rem] border border-white bg-white shadow-2xl shadow-slate-200/60">

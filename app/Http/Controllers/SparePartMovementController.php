@@ -36,7 +36,7 @@ class SparePartMovementController extends Controller
                 });
         }
         return Inertia::render('Actifs/SparePartMovements', [
-            'sparePartMovements' => $query->paginate(10),
+            'sparePartMovements' => $query->paginate(1000),
             'filters' => request()->only(['search']), // Changed from spareParts to sparePartMovements
             'spareParts' => SparePart::with('characteristics')->get(), // To select a spare part for the movement,
             'regions' => Region::get(), // To select a region for the spare part,

@@ -18,7 +18,17 @@ const model = ref([
             // { label: 'Entrée', icon: 'pi pi-fw pi-arrow-circle-down', to: '/entries', /*can: 'entries'*/ },
             { label: 'menu.assetManagement.spareParts', icon: 'pi pi-fw pi-book', to: '/spare-parts', /*can: 'categories'*/ },
             { label: 'menu.assetManagement.equipments', icon: 'pi pi-fw pi-cog', to: '/equipments', /*can: 'equipment'*/ },
-            { label: 'menu.assetManagement.networks', icon: 'pi pi-fw pi-sitemap', to: '/networks', /*can: 'equipment'*/ }
+            { label: 'menu.assetManagement.networks', icon: 'pi pi-fw pi-sitemap', to: '/networks', /*can: 'equipment'*/ },
+                   {
+                label: 'menu.systemConfiguration.meters',
+                icon: 'pi pi-fw pi-bolt',
+                to: '/meters',
+            },
+            {
+                label: 'menu.systemConfiguration.keyboards',
+                icon: 'pi pi-fw pi-key',
+                to: '/keypads',
+            },
 
         ]
     },
@@ -130,6 +140,7 @@ const model = ref([
                 to: '/priorities',
                 /*can: 'priority'*/
             },
+
 
         ]
     }
