@@ -24,6 +24,7 @@ import Avatar from 'primevue/avatar';
 import AutoComplete from 'primevue/autocomplete';
 import OverlayPanel from 'primevue/overlaypanel';
 import MultiSelect from 'primevue/multiselect';
+import debounce from 'lodash/debounce';
 
 const props = defineProps({
     stockMovements: Object,
@@ -32,6 +33,7 @@ const props = defineProps({
     users: Array,
     // On passe tous les types d'items "déplaçables"
     movableItems: Object, // Ex: { spare_parts: [...], equipments: [...], meters: [...], keypads: [...] }
+    queryParams: Object,
 });
 
 const { t } = useI18n();
@@ -44,6 +46,7 @@ const editing = ref(false);
 const dt = ref();
 const op = ref();
 const selectedMovements = ref([]);
+const loading = ref(false);
 
 // --- GESTION DES FILTRES ---
 const filters = ref();
@@ -56,7 +59,22 @@ const initFilters = () => {
     };
 };
 initFilters();
+const lazyParams = ref({
+    first: props.stockMovements.from - 1,
+    rows: props.stockMovements.per_page,
+    sortField: props.queryParams.sortField || 'date',
+    sortOrder: props.queryParams.sortOrder === 'desc' ? -1 : 1,
+    filters: filters.value
+});
 
+const onPage = (event) => {
+    loading.value = true;
+    lazyParams.value = event;
+    router.get(route('stock-movements.index'), { ...event, page: event.page + 1 }, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
 
 
 const form = useForm({
@@ -219,8 +237,21 @@ const saveMovement = () => {
         return;
     }
     console.log(form);
-    // La logique d'édition n'est pas supportée pour les mouvements multiples.
-    form.submit(method, url, {
+
+    // On transforme les données pour correspondre à la validation backend
+    const dataToSend = {
+        ...form.data(),
+        items: form.items.map(item => ({
+            movable_type: item.movable_type,
+            movable_id: item.movable_id,
+            quantity: item.quantity,
+        })),
+        date: form.date.toISOString().slice(0, 10), // Format YYYY-MM-DD
+    };
+
+    router.visit(url, {
+        method: method,
+        data: dataToSend,
         onSuccess: () => {
             movementDialog.value = false;
             toast.add({ severity: 'success', summary: t('common.success'), detail: editing.value ? t('stockMovements.toast.updateSuccess') : t('stockMovements.toast.createSuccess'), life: 4000 });
@@ -373,8 +404,12 @@ const movementStats = computed(() => {
 
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable :value="stockMovements.data" ref="dt" dataKey="id" :rows="10" paginator
+                <DataTable :value="stockMovements.data" ref="dt" dataKey="id" :rows="stockMovements.per_page" paginator
                         v-model:selection="selectedMovements"
+                        :lazy="true" @page="onPage($event)" @sort="onPage($event)"
+                        :totalRecords="stockMovements.total" :loading="loading"
+                        v-model:first="lazyParams.first"
+                        :sortField="lazyParams.sortField" :sortOrder="lazyParams.sortOrder"
                         class="p-datatable-sm quantum-table"
                         v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['movable.serial_number', 'movable.reference', 'movable.tag', 'user.name']"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
@@ -384,7 +419,7 @@ const movementStats = computed(() => {
                         <div v-if="!selectedMovements.length" class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="filters['global'].value" :placeholder="t('stockMovements.toolbar.searchPlaceholder')" class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
+                                <InputText v-model="filters['global'].value" @input="debounce(() => onPage(lazyParams), 500)()" :placeholder="t('stockMovements.toolbar.searchPlaceholder')" class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
                             </IconField>
                             <div class="flex items-center gap-2">
                                 <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
@@ -402,7 +437,7 @@ const movementStats = computed(() => {
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem" frozen></Column>
 
-                    <Column v-if="visibleColumns.includes('movable_type')" field="movable_type" :header="t('stockMovements.table.itemType')" filterField="movable_type" :showFilterMatchModes="false" style="min-width: 12rem;">
+                    <Column v-if="visibleColumns.includes('movable_type')" field="movable_type" :header="t('stockMovements.table.itemType')" sortable filterField="movable_type" :showFilterMatchModes="false" style="min-width: 12rem;">
                         <template #body="{ data }">
                             <Tag :value="getMovableTypeLabel(data.movable_type)" severity="secondary" class="font-bold" />
                         </template>
@@ -411,13 +446,13 @@ const movementStats = computed(() => {
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('movable')" field="movable" :header="t('stockMovements.table.item')" style="min-width: 15rem;">
+                    <Column v-if="visibleColumns.includes('movable')" field="movable" :header="t('stockMovements.table.item')" sortable style="min-width: 15rem;">
                         <template #body="{ data }">
                             <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{{ getMovableItemDisplay(data.movable) }}</span>
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('type')" field="type" :header="t('stockMovements.table.type')" filterField="type" :showFilterMatchModes="false" style="min-width: 10rem;">
+                    <Column v-if="visibleColumns.includes('type')" field="type" :header="t('stockMovements.table.type')" sortable filterField="type" :showFilterMatchModes="false" style="min-width: 10rem;">
                         <template #body="{ data }">
                             <Tag :value="t(`stockMovements.movementTypes.${data.type.toLowerCase()}`)"
                                  :severity="getMovementTypeSeverity(data.type)"
@@ -429,13 +464,13 @@ const movementStats = computed(() => {
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('quantity')" field="quantity" :header="t('stockMovements.table.quantity')" sortable style="min-width: 8rem;">
+                    <Column v-if="visibleColumns.includes('quantity')" field="quantity" :header="t('stockMovements.table.quantity')" sortable style="min-width: 8rem;" class="text-center">
                         <template #body="{ data }">
                             <span class="font-mono font-black text-lg">{{ data.quantity }}</span>
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('date')" field="date" :header="t('stockMovements.table.date')" sortable dataType="date" style="min-width: 10rem;">
+                    <Column v-if="visibleColumns.includes('date')" field="date" :header="t('stockMovements.table.date')" sortable dataType="date" style="min-width: 10rem;" class="text-center">
                         <template #body="{ data }">
                             <span class="text-xs font-medium text-slate-500">
                                 {{ new Date(data.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) }}
@@ -462,7 +497,7 @@ const movementStats = computed(() => {
                         </template>
                     </Column>
 
-                    <Column v-if="visibleColumns.includes('user')" field="user.name" :header="t('stockMovements.table.user')" filterField="user.name" :showFilterMatchModes="false" style="min-width: 12rem;">
+                    <Column v-if="visibleColumns.includes('user')" field="user.name" :header="t('stockMovements.table.user')" sortable filterField="user.name" :showFilterMatchModes="false" style="min-width: 12rem;">
                         <template #body="{ data }">
                             <div v-if="data.user" class="flex w-fit items-center gap-3 rounded-full bg-slate-50 p-1 pr-4 border border-slate-100">
                                 <Avatar :label="data.user.name[0]" shape="circle" class="!bg-slate-900 !text-white !font-black" />

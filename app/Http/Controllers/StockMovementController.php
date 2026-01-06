@@ -14,40 +14,60 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Validation\ValidationException;
 
 class StockMovementController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $stockMovements = StockMovement::with(['movable', 'sourceRegion', 'destinationRegion', 'user'])
-            ->latest('created_at')
-            ->paginate(10);
+        // Utilisation de select explicite pour éviter les conflits d'IDs avec les jointures
+        $query = StockMovement::query()
+            ->with(['movable', 'sourceRegion', 'destinationRegion', 'user'])
+            ->select('stock_movements.*');
+
+        // --- Gestion du Tri ---
+        if ($sortField = $request->input('sortField')) {
+            $sortOrder = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
+
+            if (str_contains($sortField, '.')) {
+                $parts = explode('.', $sortField);
+                if ($parts[0] === 'user') {
+                    $query->join('users', 'stock_movements.user_id', '=', 'users.id')
+                          ->orderBy('users.name', $sortOrder);
+                }
+                // Ajouter d'autres relations ici si nécessaire
+            } else {
+                $query->orderBy($sortField, $sortOrder);
+            }
+        } else {
+            $query->latest();
+        }
+
+        // --- Gestion du Filtre Global ---
+        if ($globalFilter = $request->input('filters.global.value')) {
+            $query->where(function ($q) use ($globalFilter) {
+                $q->where('type', 'like', "%{$globalFilter}%")
+                  ->orWhere('notes', 'like', "%{$globalFilter}%")
+                  ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$globalFilter}%"));
+            });
+        }
 
         return Inertia::render('Actifs/Movements', [
-            'stockMovements' => $stockMovements,
-            'regions' => Region::all(),
-            'users' => User::all(), // Used for responsible_user_id and intended_for_user_id
+            'stockMovements' => $query->paginate($request->input('rows', 10))->withQueryString(),
+            'regions' => Region::select('id', 'designation')->get(),
+            'users' => User::select('id', 'name')->get(),
             'movableItems' => [
                 'spare_parts' => SparePart::all(),
                 'equipments' => Equipment::all(),
-                'meters' => Meter::all(),
-                'keypads' => Keypad::all(),
-                'engins' => Engin::all(),
+                'meters'    => Meter::all(),
+                'keypads'   => Keypad::all(),
+                'engins'    => Engin::all(),
             ],
+            'queryParams' => $request->all(['sortField', 'sortOrder', 'filters']),
         ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        // Le formulaire est généralement géré via un dialogue dans Inertia, donc cette méthode peut ne pas être nécessaire.
-        // Si une page dédiée est requise, vous pouvez la retourner ici.
-        return redirect()->route('stock-movements.index');
     }
 
     /**
@@ -61,18 +81,109 @@ class StockMovementController extends Controller
             'items.*.movable_id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
             'type' => 'required|in:entry,exit,transfer',
-            'source_region_id' => 'nullable|exists:regions,id',
-            'destination_region_id' => 'nullable|exists:regions,id',
+            'source_region_id' => 'required_if:type,transfer,exit|nullable|exists:regions,id',
+            'destination_region_id' => 'required_if:type,transfer,entry|nullable|exists:regions,id',
             'date' => 'required|date',
             'notes' => 'nullable|string',
             'responsible_user_id' => 'nullable|exists:users,id',
             'intended_for_user_id' => 'nullable|exists:users,id',
         ]);
 
-        DB::transaction(function () use ($validated) {
-            foreach ($validated['items'] as $item) {
-                $movable = $item['movable_type']::findOrFail($item['movable_id']);
+        try {
+            DB::transaction(function () use ($validated) {
+                foreach ($validated['items'] as $item) {
+                    $movable = $item['movable_type']::lockForUpdate()->findOrFail($item['movable_id']);
+                    $qty = $item['quantity'];
 
+                    // 1. Validation de la logique de stock (Sortie/Transfert)
+                    if (in_array($validated['type'], ['exit', 'transfer'])) {
+                        if (isset($movable->quantity) && $movable->quantity < $qty) {
+                            throw ValidationException::withMessages([
+                                'items' => "Stock insuffisant pour {$movable->designation} (Disponible: {$movable->quantity})"
+                            ]);
+                        }
+                    }
+
+                    // 2. Création du mouvement
+                    StockMovement::create([
+                        'movable_type' => $item['movable_type'],
+                        'movable_id' => $item['movable_id'],
+                        'quantity' => $qty,
+                        'type' => $validated['type'],
+                        'source_region_id' => $validated['source_region_id'],
+                        'destination_region_id' => $validated['destination_region_id'],
+                        'date' => $validated['date'],
+                        'notes' => $validated['notes'],
+                        'user_id' => Auth::id(),
+                        'responsible_user_id' => $validated['responsible_user_id'],
+                        'intended_for_user_id' => $validated['intended_for_user_id'],
+                    ]);
+
+                    // 3. Mise à jour de l'inventaire selon le type de modèle
+                    $this->updateInventory($movable, $item, $validated);
+                }
+            });
+
+            return redirect()->back()->with('success', 'Mouvements enregistrés avec succès.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+/**
+     * Update the specified resource in storage.
+     */
+public function update(Request $request, $id)
+{
+    // 1. Validation rigoureuse
+    $validated = $request->validate([
+        'items' => 'required|array|min:1',
+        'items.*.movable_type' => 'required|string',
+        'items.*.movable_id' => 'required|integer',
+        'items.*.quantity' => 'required|integer|min:1',
+        'type' => 'required|in:entry,exit,transfer',
+        'source_region_id' => 'nullable|exists:regions,id',
+        'destination_region_id' => 'nullable|exists:regions,id',
+        'date' => 'required|date',
+        'notes' => 'nullable|string',
+        'responsible_user_id' => 'nullable|exists:users,id',
+        'intended_for_user_id' => 'nullable|exists:users,id',
+    ]);
+
+    try {
+        DB::transaction(function () use ($validated, $id) {
+            // 2. Récupérer les anciens mouvements liés à cette transaction/ID
+            // Note: Si vos mouvements sont groupés par un identifiant de transaction (ex: reference_group)
+            // Adaptez la requête ci-dessous. Ici, on suppose qu'on remplace le mouvement spécifique.
+            $oldMovements = StockMovement::where('id', $id)->lockForUpdate()->get();
+
+            // 3. Rétablir le stock (Annulation de l'ancien état)
+            foreach ($oldMovements as $old) {
+                $oldMovable = $old->movable()->lockForUpdate()->first();
+                if ($oldMovable && !in_array($old->movable_type, [Meter::class, Keypad::class, Engin::class])) {
+                    if ($old->type === 'entry') {
+                        $oldMovable->decrement('quantity', $old->quantity);
+                    } elseif ($old->type === 'exit') {
+                        $oldMovable->increment('quantity', $old->quantity);
+                    }
+                }
+            }
+
+            // 4. Supprimer les anciens enregistrements pour repartir à neuf
+            StockMovement::where('id', $id)->delete();
+
+            // 5. Créer les nouveaux mouvements et valider le nouveau stock
+            foreach ($validated['items'] as $item) {
+                $movable = $item['movable_type']::lockForUpdate()->findOrFail($item['movable_id']);
+
+                // Vérification de sécurité pour les sorties
+                if (in_array($validated['type'], ['exit', 'transfer'])) {
+                    if (isset($movable->quantity) && $movable->quantity < $item['quantity']) {
+                        throw new \Exception("Stock insuffisant pour {$movable->designation} après modification.");
+                    }
+                }
+
+                // Création du nouveau mouvement
                 StockMovement::create([
                     'movable_type' => $item['movable_type'],
                     'movable_id' => $item['movable_id'],
@@ -87,109 +198,79 @@ class StockMovementController extends Controller
                     'intended_for_user_id' => $validated['intended_for_user_id'],
                 ]);
 
-                // --- Logique de mise à jour de l'inventaire ---
-                $serializedModels = [Meter::class, Keypad::class, Engin::class];
-
-                if (in_array($item['movable_type'], $serializedModels)) {
-                    // Pour les articles sérialisés (Compteurs, Claviers, Engins)
-                    if ($validated['type'] === 'transfer') {
-                        // En cas de transfert, on met à jour la région de l'article lui-même.
-                        $movable->region_id = $validated['destination_region_id'];
-                        $movable->save();
-                    }
-                    // Pour une 'sortie', on pourrait changer le statut de l'article (ex: 'assigned')
-                    // Pour une 'entrée', on pourrait le changer en 'in_stock'
-                    // Cette logique peut être ajoutée ici au besoin.
-
-                } else {
-                    // Pour les articles avec quantité (Pièces détachées, Equipements non sérialisés)
-                    if ($validated['type'] === 'entry') {
-                        $movable->increment('quantity', $item['quantity']);
-                    } elseif ($validated['type'] === 'exit') {
-                        $movable->decrement('quantity', $item['quantity']);
-                    }
-                }
+                // Mise à jour finale du stock
+                $this->updateInventory($movable, $item, $validated);
             }
         });
 
-        return redirect()->route('stock-movements.index')->with('success', 'Mouvement de stock créé avec succès.');
-    }
+        return redirect()->back()->with('success', 'Mise à jour réussie et stock synchronisé.');
 
+    } catch (\Exception $e) {
+        return redirect()->back()->withErrors(['error' => "Échec de la mise à jour : " . $e->getMessage()]);
+    }
+}
     /**
-     * Display the specified resource.
+     * Logique de mise à jour robuste de l'inventaire
      */
-    public function show(StockMovement $stockMovement)
+    private function updateInventory($movable, $item, $validated)
     {
-        // Généralement pas utilisé avec Inertia, les détails sont chargés dans l'index ou via un dialogue.
-        return redirect()->route('stock-movements.index');
+        $serializedTypes = [Meter::class, Keypad::class, Engin::class];
+        $isSerialized = in_array($item['movable_type'], $serializedTypes);
+
+        if ($isSerialized) {
+            // Pour les objets sérialisés (1 seul ID unique)
+            if ($validated['type'] === 'transfer' || $validated['type'] === 'entry') {
+                $movable->update(['region_id' => $validated['destination_region_id']]);
+            }
+            // Optionnel: changer le statut (ex: 'en service', 'perdu', etc.)
+        } else {
+            // Pour les stocks quantitatifs (Pièces, petits équipements)
+            if ($validated['type'] === 'entry') {
+                $movable->increment('quantity', $item['quantity']);
+            } elseif ($validated['type'] === 'exit') {
+                $movable->decrement('quantity', $item['quantity']);
+            } elseif ($validated['type'] === 'transfer') {
+                // Si votre système gère les stocks par région, il faudrait décrémenter
+                // la source et incrémenter la destination ici.
+                // Si la quantité est globale, le transfert ne change pas le total.
+            }
+        }
     }
 
     /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(StockMovement $stockMovement)
-    {
-        // Le formulaire est géré via un dialogue dans Inertia.
-        return redirect()->route('stock-movements.index');
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, StockMovement $stockMovement)
-    {
-        // La mise à jour d'un mouvement multiple n'est pas standard.
-        // On garde la logique de mise à jour pour un mouvement unique.
-        $validated = $request->validate([
-            'movable_type' => 'required|string',
-            'movable_id' => 'required|integer',
-            'type' => 'required|in:entry,exit,transfer',
-            'quantity' => 'required|integer|min:1',
-            'source_region_id' => 'nullable|exists:regions,id',
-            'destination_region_id' => 'nullable|exists:regions,id',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-            'responsible_user_id' => 'nullable|exists:users,id',
-            'intended_for_user_id' => 'nullable|exists:users,id',
-        ]);
-
-        // La modification d'un mouvement de stock peut être complexe
-        // car elle implique d'annuler l'ancien mouvement sur le stock et d'appliquer le nouveau.
-        // Pour l'instant, nous mettons simplement à jour les informations du mouvement sans ajuster le stock.
-        // Une logique plus robuste serait nécessaire pour un cas d'utilisation réel.
-
-        $stockMovement->update($validated);
-
-        return redirect()->route('stock-movements.index')->with('success', 'Mouvement de stock mis à jour avec succès.');
-    }
-
-    /**
-     * Remove the specified resource from storage.
+     * Suppression avec Rollback de stock (Annulation)
      */
     public function destroy(StockMovement $stockMovement)
     {
-        // Comme pour la mise à jour, la suppression devrait idéalement "annuler" l'effet du mouvement sur le stock.
-        // Par exemple, si c'était une 'sortie', la suppression devrait ré-incrémenter le stock.
-        // Pour simplifier, nous supprimons juste l'enregistrement.
+        DB::transaction(function () use ($stockMovement) {
+            $movable = $stockMovement->movable()->lockForUpdate()->first();
 
-        $stockMovement->delete();
+            if ($movable) {
+                // On inverse la logique initiale
+                if ($stockMovement->type === 'entry') {
+                    $movable->decrement('quantity', $stockMovement->quantity);
+                } elseif ($stockMovement->type === 'exit') {
+                    $movable->increment('quantity', $stockMovement->quantity);
+                } elseif ($stockMovement->type === 'transfer' && isset($movable->region_id)) {
+                    $movable->update(['region_id' => $stockMovement->source_region_id]);
+                }
+            }
 
-        return redirect()->route('stock-movements.index')->with('success', 'Mouvement de stock supprimé avec succès.');
+            $stockMovement->delete();
+        });
+
+        return redirect()->back()->with('success', 'Mouvement annulé et stock rétabli.');
     }
-      public function bulkDestroy(Request $request)
+
+    public function bulkDestroy(Request $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:stock_movements,id',
-        ]);
+        $request->validate(['ids' => 'required|array']);
 
-        StockMovement::whereIn('id', $validated['ids'])->delete();
+        foreach($request->ids as $id) {
+            $movement = StockMovement::find($id);
+            if($movement) $this->destroy($movement);
+        }
 
-        return redirect()->route('stock-movements.index')->with('success', 'Mouvements de stock sélectionnés supprimés avec succès.');
+        return redirect()->back()->with('success', 'Sélection annulée avec succès.');
     }
 }
-
-    /**
-     * Remove the specified resources from storage.
-     */
-
