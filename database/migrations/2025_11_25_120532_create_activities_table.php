@@ -25,6 +25,8 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('activities')->onDelete('cascade'); // ID de l'activité parente
             $table->nullableMorphs('assignable'); // Crée assignable_id et assignable_type
              $table->integer('jobber')->nullable(); // Nombre de techniciens
+            $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null'); // Ajout de la région
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null'); // Ajout de la zone
 
             // Pièces détachées
             $table->json('spare_parts_used')->nullable(); // Pièces détachées utilisées (JSON pour stocker id, quantité)

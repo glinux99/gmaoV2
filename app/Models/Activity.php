@@ -15,6 +15,8 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class Activity extends Model implements HasMedia
 {
     use HasFactory,InteractsWithMedia;
+    use HasFactory, InteractsWithMedia;
+
 
     protected $fillable = [
 
@@ -35,7 +37,9 @@ class Activity extends Model implements HasMedia
         'proposals',
            'additional_information',
         'equipment_id',
-        'title'
+        'title',
+        'region_id', // Ajout de la région
+        'zone_id', // Ajout de la zone
     ];
         protected $casts = [
         'actual_start_time' => 'datetime',
@@ -81,6 +85,15 @@ class Activity extends Model implements HasMedia
     public function interventionRequest(): BelongsTo
     {
         return $this->belongsTo(InterventionRequest::class);
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
     }
     public function equipment(): BelongsToMany
     {

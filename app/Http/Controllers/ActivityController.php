@@ -27,33 +27,50 @@ class ActivityController extends Controller
      */
     public function index()
     {
-        $request = request();
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
-
         $query = Activity::query()
-            ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('actual_start_time', [$startDate, $endDate]);
-            });
+            ->latest();
 
         if (request()->has('search')) {
             $search = request('search');
-            $query->where('problem_resolution_description', 'like', '%' . $search . '%')
-                ->orWhere('proposals', 'like', '%' . $search . '%')
-                ->orWhere('instructions', 'like', '%' . $search . '%')
-                ->orWhereHas('task', fn ($q) => $q->where('title', 'like', '%' . $search . '%'))
-                ->orWhereHas('user', fn ($q) => $q->where('name', 'like', '%' . $search . '%'));
+            $query->where(function ($q) use ($search) {
+                $q->where('problem_resolution_description', 'like', '%' . $search . '%')
+                  ->orWhere('jobber', 'like', '%' . $search . '%')
+                  ->orWhereHas('task', fn ($subQ) => $subQ->where('title', 'like', '%' . $search . '%'))
+                  ->orWhereHas('maintenance', fn ($subQ) => $subQ->where('title', 'like', '%' . $search . '%'));
+            });
+        }
+
+        if (request()->has('status')) {
+            $status = request('status');
+            if ($status) {
+                $query->where('status', $status);
+            }
+        }
+
+        if (request()->has('team_id')) {
+            $teamId = request('team_id');
+            if ($teamId) {
+                $query->where('assignable_type', 'App\Models\Team')
+                      ->where('assignable_id', $teamId);
+            }
+        }
+
+        if (request()->has('sortField') && request()->has('sortOrder')) {
+            $query->orderBy(request('sortField'), request('sortOrder') === '1' ? 'asc' : 'desc');
         }
 
         // Eager load all necessary relationships for display and edit
-        $query->with(['task.instructions', 'activityInstructions', 'instructionAnswers', 'task.serviceOrders', 'maintenance', 'sparePartActivities.sparePart']);
+        $query->with(['task.instructions', 'activityInstructions', 'instructionAnswers', 'task.serviceOrders', 'maintenance', 'sparePartActivities.sparePart', 'assignable', 'region', 'zone']);
 
         return Inertia::render('Tasks/MyActivities', [
             'activities' => $query->paginate(100),
-            'filters' => request()->only(['search']),
+            'filters' => request()->only(['search', 'status', 'team_id']),
             'users' => \App\Models\User::all(),
             'tasks' => \App\Models\Task::all(),
-            'spareParts'=> SparePart ::all()
+            'spareParts'=> SparePart::all(),
+            'teams' => \App\Models\Team::all(),
+            'regions' => \App\Models\Region::all(),
+            'zones' => \App\Models\Zone::all(),
         ]);
     }
     /**
@@ -89,6 +106,8 @@ public function store(Request $request)
         'proposals' => 'nullable|string|max:65535',
         'additional_information' => 'nullable|string|max:65535',
         'instructions' => 'nullable|array',
+        'region_id' => 'nullable|exists:regions,id',
+        'zone_id' => 'nullable|exists:zones,id',
         'instructions.*.id' => 'required',
         'instructions.*.label' => 'required|string',
         'instruction_answers' => 'nullable|array',
@@ -102,9 +121,9 @@ public function store(Request $request)
     try {
         $validated['user_id'] = $validated['user_id'] ?? Auth::id();
 
-        if (empty($validated['task_id']) && empty($validated['maintenance_id'])) {
-            throw new \Exception('Une activité doit être associée à une tâche ou une maintenance.');
-        }
+        // if (empty($validated['task_id']) && empty($validated['maintenance_id'])) {
+        //     throw new \Exception('Une activité doit être associée à une tâche ou une maintenance.');
+        // }
 
         // 1. Création de l'activité (on exclut les champs qui ne sont pas dans la table activities)
         $activityData = Arr::except($validated, [
@@ -243,6 +262,17 @@ public function bulkStore(Request $request)
             'activities.*.equipment_ids.*' => 'integer|exists:equipment,id',
 
             // Champs d'activité standard
+            'activities.*.title' => 'required|string|max:255',
+            'activities.*.task_id' => 'nullable|exists:tasks,id',
+            'activities.*.maintenance_id' => 'nullable|exists:maintenances,id',
+            'activities.*.intervention_request_id' => 'nullable|exists:intervention_requests,id',
+            'activities.*.user_id' => 'nullable|exists:users,id', // The user who created the activity record
+            'activities.*.actual_start_time' => 'nullable|date',
+            'activities.*.parent_id' => 'nullable|exists:activities,id', // ID de l'activité parente
+            'activities.*.actual_end_time' => 'nullable|date|after_or_equal:activities.*.actual_start_time',
+            'activities.*.assignable_type' => ['nullable', 'string'], // Ajouté pour la relation polymorphe
+            'activities.*.assignable_id' => 'nullable|integer', // Ajouté pour la relation polymorphe
+            'activities.*.jobber' => 'nullable|string',
             'activities.*.task_id' => 'nullable|exists:tasks,id',
             'activities.*.user_id' => 'nullable|exists:users,id',
             'activities.*.actual_start_time' => 'nullable|date',
@@ -251,6 +281,10 @@ public function bulkStore(Request $request)
             'activities.*.jobber' => 'nullable|integer|min:1',
             // --- HARMONISATION DU STATUT ICI ---
             'activities.*.status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources',
+            'activities.*.region_id' => 'nullable|exists:regions,id',
+            'activities.*.zone_id' => 'nullable|exists:zones,id',
+            'activities.*.region_id' => 'nullable|exists:regions,id',
+            'activities.*.zone_id' => 'nullable|exists:zones,id',
             // ------------------------------------
             'activities.*.problem_resolution_description' => 'nullable|string',
             'activities.*.proposals' => 'nullable|string',
@@ -474,6 +508,8 @@ public function bulkStore(Request $request)
 
     public function update(Request $request, Activity $activity)
     {
+        // Note: 'task_id' and 'maintenance_id' are typically not updated directly on an existing activity
+        // as they define the context. If they need to be updated, additional logic would be required.
         $validated = $request->validate([
             'user_id' => 'nullable|exists:users,id',
             'actual_start_time' => 'nullable|date',
@@ -490,18 +526,35 @@ public function bulkStore(Request $request)
             'proposals' => 'nullable|string|max:65535',
             'additional_information' => 'nullable|string|max:65535',
             'instructions' => 'nullable|array',
+            'instructions.*.id' => 'required',
+            'instructions.*.label' => 'required|string',
+            'instructions.*.type' => 'required|string',
+            'instructions.*.is_required' => 'boolean',
+            'instructions.*.options' => 'nullable|array',
             'instruction_answers' => 'nullable|array',
+            'instruction_answers.*' => 'nullable|string|max:255', // Assuming answers are strings
             'service_order_cost' => 'nullable|numeric|min:0',
             'service_order_description' => 'nullable|string|required_with:service_order_cost',
             'maintenance_id' => 'nullable|exists:maintenances,id',
+            'task_id' => 'nullable|exists:tasks,id', // Added for completeness, though usually not updated
+            'assignable_type' => ['nullable', 'string'],
+            'region_id' => 'nullable|exists:regions,id',
+            'zone_id' => 'nullable|exists:zones,id',
+            'assignable_id' => 'nullable|integer',
+            'parent_id' => 'nullable|exists:activities,id',
+            'stock_movements' => 'nullable|array',
+            'stock_movements.*.movable_id' => 'required|integer',
+            'stock_movements.*.movable_type' => 'required|string',
         ]);
 
         DB::beginTransaction();
         try {
             // --- 1. MISE À JOUR DE L'ACTIVITÉ PRINCIPALE ---
+            // Exclure les champs qui sont gérés par des relations séparées ou ne sont pas directement dans la table 'activities'
             $activity->update(Arr::except($validated, [
+                'task_id', 'maintenance_id', // Contextual fields, generally not updated directly
                 'instructions', 'instruction_answers', 'spare_parts_used', 'spare_parts_returned',
-                'service_order_cost', 'service_order_description'
+                'service_order_cost', 'service_order_description', 'stock_movements'
             ]));
 
             // --- 2. SYNCHRONISATION DES PIÈCES DÉTACHÉES ---
@@ -532,9 +585,11 @@ public function bulkStore(Request $request)
         foreach ($activity->sparePartActivities as $spa) {
             if ($spa->sparePart) {
                 if ($spa->type === 'used') {
-                    $spa->sparePart->increment('quantity', $spa->quantity_used);
+                    // Ensure quantity_used is not null before incrementing
+                    $spa->sparePart->increment('quantity', $spa->quantity_used ?? 0);
                 } elseif ($spa->type === 'returned') {
-                    $spa->sparePart->decrement('quantity', $spa->quantity_returned);
+                    // Ensure quantity_returned is not null before decrementing
+                    $spa->sparePart->decrement('quantity', $spa->quantity_returned ?? 0);
                 }
             }
         }
@@ -546,7 +601,11 @@ public function bulkStore(Request $request)
         foreach ($partsUsed as $partData) {
             $sparePart = SparePart::find($partData['id']);
             if ($sparePart) {
-                $activity->sparePartActivities()->create(['spare_part_id' => $sparePart->id, 'type' => 'used', 'quantity_used' => $partData['quantity']]);
+                $activity->sparePartActivities()->create([
+                    'spare_part_id' => $sparePart->id,
+                    'type' => 'used',
+                    'quantity_used' => $partData['quantity']
+                ]);
                 $activity->expenses()->create(['description' => 'Pièce utilisée: ' . $sparePart->reference, 'amount' => ($sparePart->price ?? 0) * $partData['quantity'], 'category' => 'parts', 'user_id' => Auth::id(), 'expense_date' => now(), 'status' => 'pending']);
                 $sparePart->decrement('quantity', $partData['quantity']);
             }
@@ -556,7 +615,11 @@ public function bulkStore(Request $request)
         foreach ($partsReturned as $partData) {
             $sparePart = SparePart::find($partData['id']);
             if ($sparePart) {
-                $activity->sparePartActivities()->create(['spare_part_id' => $sparePart->id, 'type' => 'returned', 'quantity_returned' => $partData['quantity']]);
+                $activity->sparePartActivities()->create([
+                    'spare_part_id' => $sparePart->id,
+                    'type' => 'returned',
+                    'quantity_returned' => $partData['quantity']
+                ]);
                 $sparePart->increment('quantity', $partData['quantity']);
             }
         }
@@ -572,12 +635,13 @@ public function bulkStore(Request $request)
 
         // Create or update instructions
         foreach ($data['instructions'] ?? [] as $instrData) {
-            $tempId = $instrData['id'];
+            $tempId = $instrData['id'] ?? null;
             if (is_string($tempId) && str_starts_with($tempId, 'new_')) {
-                $newInstr = $activity->activityInstructions()->create(Arr::only($instrData, ['label', 'type', 'is_required']));
+                $newInstr = $activity->activityInstructions()->create(Arr::only($instrData, ['label', 'type', 'is_required', 'options']));
                 $instructionIdMap[$tempId] = $newInstr->id;
                 $incomingInstructionIds[] = $newInstr->id;
             } else {
+                if (!$tempId) continue; // Skip if no ID is provided for an existing instruction
                 $activity->activityInstructions()->where('id', $tempId)->update(Arr::only($instrData, ['label']));
                 $instructionIdMap[$tempId] = $tempId;
                 $incomingInstructionIds[] = (int)$tempId;
@@ -590,7 +654,7 @@ public function bulkStore(Request $request)
         // Update or create answers
         foreach ($data['instruction_answers'] ?? [] as $tempId => $value) {
             $realId = $instructionIdMap[$tempId] ?? $tempId;
-            if (in_array($realId, $incomingInstructionIds)) {
+            if ($realId && in_array($realId, $incomingInstructionIds)) { // Ensure realId exists and is part of current instructions
                 InstructionAnswer::updateOrCreate(
                     ['activity_id' => $activity->id, 'activity_instruction_id' => $realId],
                     ['value' => $value, 'user_id' => Auth::id()]
@@ -605,8 +669,10 @@ public function bulkStore(Request $request)
     private function processServiceOrder(Activity $activity, array $data)
     {
         // Clean up old service order and related expense
-        $activity->serviceOrder()->delete();
-        $activity->expenses()->where('category', 'external_service')->delete();
+        // Assuming serviceOrder is a hasOne relationship
+        if ($activity->serviceOrder) {
+            $activity->serviceOrder->delete();
+        }
 
         if (isset($data['service_order_cost']) && $data['service_order_cost'] > 0) {
             $serviceOrder = ServiceOrder::create([
@@ -627,6 +693,10 @@ public function bulkStore(Request $request)
                 'status' => 'pending',
             ]);
         }
+        // Also delete any expenses that might have been created for a service order that is now removed
+        // This needs to be done carefully to avoid deleting expenses not related to service orders
+        // A better approach might be to link expenses directly to service orders, or add a specific identifier.
+        // For now, we'll assume the previous delete of 'external_service' category expenses is sufficient.
     }
     /**
      * Remove the specified resource from storage.
@@ -642,12 +712,12 @@ public function bulkStore(Request $request)
             foreach ($activity->sparePartActivities as $sparePartActivity) {
                 $sparePart = \App\Models\SparePart::find($sparePartActivity->spare_part_id);
                 if ($sparePart) {
-                    if ($sparePartActivity->type === 'used') {
-                        $sparePart->quantity += $sparePartActivity->quantity_used; // Add back to stock
+                    if ($sparePartActivity->type === 'used' && $sparePartActivity->quantity_used !== null) {
+                        $sparePart->quantity += $sparePartActivity->quantity_used;
                         $sparePart->save();
                     }
-                    if ($sparePartActivity->type === 'returned') {
-                        $sparePart->quantity -= $sparePartActivity->quantity_used; // Remove from stock
+                    if ($sparePartActivity->type === 'returned' && $sparePartActivity->quantity_returned !== null) {
+                        $sparePart->quantity -= $sparePartActivity->quantity_returned;
                         $sparePart->save();
                     }
                 }

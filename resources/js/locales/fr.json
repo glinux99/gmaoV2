@@ -952,6 +952,7 @@
     "delete": "Supprimer",
     "import": "Importer",
     "export": "Exporter",
+    "exportCSV": "Exporter en CSV",
     "search": "Rechercher...",
     "success": "Succès",
     "error": "Erreur",
@@ -1939,6 +1940,13 @@
         "timelineTitle": "Chronologie de mes activités",
         "timelineSubtitle": "Suivez la progression de vos interventions et tâches assignées.",
         "columnsPlaceholder": "Choisir les colonnes à afficher",
+        "stats": {
+            "total": "Total Activités",
+            "in_progress": "En Cours",
+            "completed": "Terminées",
+            "scheduled": "Planifiées"
+        },
+
         "noActivitiesTitle": "Aucune activité trouvée",
         "noActivitiesSubtitle": "Il semble que vous n'ayez aucune tâche ou intervention planifiée pour le moment.",
 
@@ -2034,7 +2042,13 @@
             "answersCount": "{count} réponse(s)",
             "completeActivityTooltip": "Compléter ou modifier l'activité"
         },
-
+        "table": {
+            "task": "Tâche",
+            "status": "Statut",
+            "start_time": "Heure de début",
+            "end_time": "Heure de fin",
+            "technician": "Technicien"
+        },
         "subActivityFor": "Sous-activité pour : {title}",
         "unnamedActivity": "Activité sans nom",
         "unknownReference": "Référence inconnue",
@@ -2047,6 +2061,8 @@
             "resolutionPlaceholder": "Décrivez en détail le problème rencontré, les étapes de diagnostic et la solution apportée...",
             "recommendationsLabel": "Recommandations",
             "internalNotesLabel": "Notes internes (non visible sur le rapport client)",
+            "addInstructionPlaceholder": "Libellé de la nouvelle consigne...",
+            "selectTypePlaceholder": "Type de valeur",
             "checklistTitle": "Check-list de l'intervention",
             "checklistPoints": "{count} points de contrôle",
             "removeInstructionTitle": "Retirer cette consigne",
@@ -2112,48 +2128,22 @@
         },
         "toast": {
             "success": "Opération réussie"
+        },
+        "types":{
+            "annual":"Annuel",
+            "sick":"Maladie",
+            "rtt":"RTT",
+            "exceptional":"Exceptionnel"
+        },
+        "status": {
+            "pending": "En attente",
+            "approved": "Approuvé",
+            "rejected": "Rejeté"
         }
     }
 
 ,
 
-    "leaves": {
-        "title": "Gestion des Congés",
-        "subtitle": "{count} Demandes répertoriées",
-        "newRequest": "Nouvelle Demande",
-        "stats": {
-            "total": "Total Demandes",
-            "pending": "En Attente",
-            "approved": "Approuvées",
-            "rejected": "Rejetées"
-        },
-        "table": {
-            "applicant": "Demandeur",
-            "type": "Type",
-            "period": "Période",
-            "status": "État",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Mise à jour Congé",
-            "createTitle": "Nouvelle Demande de Congé",
-            "headerTitle": "Planification d'Absence",
-            "headerSubtitle": "Veuillez renseigner les détails de votre demande",
-            "applicant": "Collaborateur",
-            "applicantPlaceholder": "Sélectionner le demandeur",
-            "startDate": "Date de début",
-            "endDate": "Date de fin",
-            "leaveType": "Type de congé",
-            "reason": "Motif de la demande",
-            "reasonPlaceholder": "Expliquez brièvement le motif...",
-            "attachment": "Justificatif (PDF, Image)",
-            "attachmentChoose": "Choisir un fichier",
-            "sendRequest": "Envoyer la demande"
-        },
-        "toast": {
-            "success": "Opération réussie"
-        }
-    },
     "networks": {
         "title": "Superviseur Réseau",
         "newProject": "NOUVEAU_PROJET",
