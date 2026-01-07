@@ -81,8 +81,8 @@ class StockMovementController extends Controller
             'items.*.movable_id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
             'type' => 'required|in:entry,exit,transfer',
-            'source_region_id' => 'required_if:type,transfer,exit|nullable|exists:regions,id',
-            'destination_region_id' => 'required_if:type,transfer,entry|nullable|exists:regions,id',
+            'source_region_id' => 'required_if:type,transfer|nullable|exists:regions,id',
+            'destination_region_id' => 'required_if:type,transfer|nullable|exists:regions,id',
             'date' => 'required|date',
             'notes' => 'nullable|string',
             'responsible_user_id' => 'nullable|exists:users,id',
@@ -214,25 +214,40 @@ public function update(Request $request, $id)
      */
     private function updateInventory($movable, $item, $validated)
     {
-        $serializedTypes = [Meter::class, Keypad::class, Engin::class];
-        $isSerialized = in_array($item['movable_type'], $serializedTypes);
+        // --- ANCIENNE LOGIQUE : Mise à jour locale ---
+        // if ($validated['type'] === 'entry') {
+        //     $movable->increment('quantity', $item['quantity']);
+        // } elseif ($validated['type'] === 'exit') {
+        //     $movable->decrement('quantity', $item['quantity']);
+        // }
 
-        if ($isSerialized) {
-            // Pour les objets sérialisés (1 seul ID unique)
-            if ($validated['type'] === 'transfer' || $validated['type'] === 'entry') {
-                $movable->update(['region_id' => $validated['destination_region_id']]);
-            }
-            // Optionnel: changer le statut (ex: 'en service', 'perdu', etc.)
-        } else {
-            // Pour les stocks quantitatifs (Pièces, petits équipements)
+        // --- NOUVELLE LOGIQUE : Mise à jour globale de la quantité totale ---
+
+        // On ne procède à cette logique que pour les SparePart
+        if ($item['movable_type'] === SparePart::class) {
+            $sparePart = $movable;
+
+            // 1. Appliquer le changement localement sur la pièce concernée par le mouvement
             if ($validated['type'] === 'entry') {
+                $sparePart->increment('quantity', $item['quantity']);
+            } elseif ($validated['type'] === 'exit') {
+                $sparePart->decrement('quantity', $item['quantity']);
+            }
+            // Pour un 'transfer', la quantité locale change de région, mais le total ne change pas.
+            // La logique de transfert de région doit être gérée séparément si nécessaire.
+
+            // 2. Calculer la quantité totale pour cette référence dans toutes les régions
+            $totalQuantity = SparePart::where('reference', $sparePart->reference)->sum('quantity');
+
+            // 3. Mettre à jour la quantité sur TOUTES les pièces ayant la même référence
+            SparePart::where('reference', $sparePart->reference)->update(['quantity' => $totalQuantity]);
+
+        } else {
+             // Logique pour les autres types de modèles (Equipments, Meters, etc.)
+             if ($validated['type'] === 'entry') {
                 $movable->increment('quantity', $item['quantity']);
             } elseif ($validated['type'] === 'exit') {
                 $movable->decrement('quantity', $item['quantity']);
-            } elseif ($validated['type'] === 'transfer') {
-                // Si votre système gère les stocks par région, il faudrait décrémenter
-                // la source et incrémenter la destination ici.
-                // Si la quantité est globale, le transfert ne change pas le total.
             }
         }
     }

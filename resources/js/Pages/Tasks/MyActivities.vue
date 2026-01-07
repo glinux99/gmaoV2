@@ -85,6 +85,7 @@ const availableDisplayOptions = computed(() => {
 // --- FORMULAIRE INERTIA ---
 const form = useForm({
     id: null,
+    title: '', // Champ ajouté pour le titre de l'activité
     problem_resolution_description: '',
     proposals: '',
     instructions: [], // Sera un tableau d'objets
@@ -109,26 +110,73 @@ const form = useForm({
     stock_movements: [], // Nouveau système de gestion de stock
 });
 
+// --- GESTION RÉACTIVE DU STOCK LOCAL ---
+// On crée une copie locale et réactive des pièces détachées.
+// C'est cette copie que nous allons manipuler pour simuler les mises à jour en temps réel.
+const localSpareParts = ref([]);
+
+// On initialise notre copie locale avec les données reçues du serveur.
+onMounted(() => {
+    localSpareParts.value = JSON.parse(JSON.stringify(props.spareParts || []));
+});
+
+// Si jamais les props changent (ex: après une sauvegarde et rechargement), on met à jour notre copie.
+watch(() => props.spareParts, (newParts) => {
+    localSpareParts.value = JSON.parse(JSON.stringify(newParts || []));
+}, { deep: true });
+
 // --- COMPOSABLE SPARE PARTS ---
+// On passe maintenant notre état local `localSpareParts` au composable.
 const {
     sparePartDialogVisible,
     sparePartData,
     serviceOrderCost,
-    sparePartOptions,
-    openSparePartDialog,
-    saveSparePart,
-    removeSparePart,
     getSparePartReference,
-} = useSpareParts(form, computed(() => props.spareParts));
+    openSparePartDialog,
+    saveSparePart, // Cette fonction va être modifiée pour mettre à jour `localSpareParts`
+    removeSparePart, // Idem pour celle-ci
+} = useSpareParts(form, localSpareParts); // On utilise la copie locale réactive
+
+const sparePartOptions = computed(() => {
+    // La liste déroulante se base maintenant sur notre copie locale `localSpareParts`.
+    let parts = localSpareParts.value || [];
+
+    // Filtrer par région si une région est sélectionnée dans le formulaire
+    // Cette logique est déjà correcte et reste inchangée.
+    if (form.region_id) {
+        parts = parts.filter(part => part.region_id === form.region_id);
+    }
+
+    // Formater pour le dropdown en ajoutant la quantité en stock
+    // Cette logique est également correcte. Le `t()` vient de i18n pour la traduction.
+    return parts.map(part => ({ label: `${part.reference} (${t('sparePartMovements.stockLabel')}: ${part.quantity})`, value: part.id }));
+});
 
 
 // --- FILTRES & COLONNES DATATABLE ---
-const filters = ref({
-    'global': { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
-    'status': { value: props.filters?.status || null, matchMode: FilterMatchMode.EQUALS },
-    'team_id': { value: props.filters?.team_id || null, matchMode: FilterMatchMode.EQUALS },
-    'task.title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+const lazyParams = ref({
+    first: props.activities.from - 1,
+    rows: props.activities.per_page,
+    sortField: 'created_at',
+    sortOrder: -1,
+    filters: {
+        'global': { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
+        'status': { value: props.filters?.status || null, matchMode: FilterMatchMode.EQUALS },
+        'team_id': { value: props.filters?.team_id || null, matchMode: FilterMatchMode.EQUALS },
+        'task.title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    }
 });
+
+const onPage = (event) => {
+    lazyParams.value = event;
+    loadLazyData();
+};
+
+const onSort = (event) => {
+    lazyParams.value = event;
+    loadLazyData();
+};
+
 
 const resetFilters = () => {
     filters.value = {
@@ -140,13 +188,21 @@ const resetFilters = () => {
     applyFilters();
 };
 
-const applyFilters = () => {
+const loadLazyData = () => {
     router.get(route('activities.index'), {
-        search: filters.value.global.value,
-        status: filters.value.status.value,
-        team_id: filters.value.team_id.value,
+        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+        rows: lazyParams.value.rows,
+        sortField: lazyParams.value.sortField,
+        sortOrder: lazyParams.value.sortOrder,
+        search: lazyParams.value.filters.global.value,
+        status: lazyParams.value.filters.status.value,
+        team_id: lazyParams.value.filters.team_id.value,
     }, { preserveState: true, replace: true });
 };
+
+watch(() => lazyParams.value.filters, () => {
+    loadLazyData();
+});
 
 const allColumns = computed(() => [
     { field: 'task.title', header: t('myActivities.table.task') },
@@ -154,8 +210,8 @@ const allColumns = computed(() => [
     { field: 'actual_start_time', header: t('myActivities.table.start_time') },
     { field: 'actual_end_time', header: t('myActivities.table.end_time') },
     { field: 'jobber', header: t('myActivities.table.technician') },
-    { field: 'region.designation', header: 'Région' },
-    { field: 'zone.title', header: 'Zone' },
+    { field: 'region.designation', header: t('myActivities.table.region') },
+    { field: 'zone.title', header: t('myActivities.table.zone') },
 ]);
 const visibleColumns = ref(['task.title', 'status', 'actual_start_time', 'jobber', 'region.designation']);
 
@@ -304,6 +360,7 @@ const editActivity = (activity) => {
 
     // Remplir le formulaire avec les données existantes
     form.id = activity.id;
+    form.title = activity.task?.title || activity.maintenance?.title || t('myActivities.common.unnamedActivity');
     form.problem_resolution_description = activity.problem_resolution_description || '';
     form.proposals = activity.proposals || '';
 
@@ -367,6 +424,7 @@ const createSubActivity = (parentActivity) => {
     form.reset(); // 1. Réinitialiser tout
 
     // Champs de contexte hérités
+    form.title = t('myActivities.subActivityFor', { title: parentActivity.task?.title || parentActivity.maintenance?.title || t('myActivities.unnamedActivity') });
 
     form.parent_id = parentActivity.id;
     form.assignable_type = parentActivity.assignable_type;
@@ -389,7 +447,7 @@ const createSubActivity = (parentActivity) => {
 
     // Reste du formulaire (valeurs propres à la nouvelle sous-activité)
     form.status = 'scheduled'; // Default status for new activities
-    form.problem_resolution_description = t('myActivities.subActivityFor', { title: parentActivity.task?.title || parentActivity.maintenance?.title || t('myActivities.unnamedActivity') });
+    form.problem_resolution_description = ''; // La description est maintenant dans le titre
     form.proposals = '';
     form.additional_information = ''; // Empty for new sub-activity
     form.service_order_cost = 0;
@@ -575,8 +633,12 @@ const exportCSV = () => {
             </div>
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable ref="dt" :value="currentActivities" dataKey="id" v-model:filters="filters" filterDisplay="menu"
-                    :globalFilterFields="['task.title', 'jobber', 'status']" :rows="10" paginator
+                <DataTable ref="dt" :value="currentActivities" dataKey="id"
+                    lazy paginator :totalRecords="activities.total"
+                    :rows="activities.per_page"
+                    @page="onPage($event)" @sort="onSort($event)"
+                    v-model:filters="lazyParams.filters" filterDisplay="menu"
+                    :globalFilterFields="['task.title', 'jobber', 'status']"
                     class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
                     :currentPageReportTemplate="t('myActivities.table.report')">
 
@@ -584,9 +646,9 @@ const exportCSV = () => {
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="filters['global'].value" :placeholder="t('myActivities.table.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                                <InputText v-model="lazyParams.filters['global'].value" :placeholder="t('myActivities.table.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
-                            <Dropdown v-model="filters['team_id'].value" @change="applyFilters"
+                            <Dropdown v-model="lazyParams.filters['team_id'].value"
                                 :options="props.teams" optionLabel="name" optionValue="id"
                                 :placeholder="t('myActivities.table.filterByTeam')"
                                 showClear class="w-full md:w-60 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!bg-white"
@@ -618,7 +680,7 @@ const exportCSV = () => {
                         </template>
 
                         <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'status'">
-                            <Dropdown v-model="filterModel.value" @change="filterCallback()" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('myActivities.table.filterByStatus')" class="p-column-filter" showClear />
+                            <Dropdown v-model="lazyParams.filters['status'].value" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('myActivities.table.filterByStatus')" class="p-column-filter" showClear />
                         </template>
                         <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'task.title'">
                             <InputText v-model="filterModel.constraints[0].value" type="text" @input="filterCallback()" class="p-column-filter" :placeholder="t('myActivities.table.filterByTask')" />
@@ -662,7 +724,7 @@ const exportCSV = () => {
                     <h2 class="text-xs font-bold uppercase tracking-widest text-white leading-none">
                         {{ isCreatingSubActivity ? t('myActivities.dialog.subActivityInitialization') : t('myActivities.dialog.technicalInterventionReport') }}
                     </h2>
-                    <span class="text-[10px] text-slate-400 font-medium mt-1 block uppercase tracking-tighter italic">Console Administration GMAO</span>
+                    <span class="text-[10px] text-slate-400 font-medium mt-1 block uppercase tracking-tighter italic">{{ t('myActivities.dialog.gmaoAdminConsole') }}</span>
                 </div>
             </div>
             <Button icon="pi pi-times" text severity="secondary" @click="hideDialog" class="!text-white opacity-50 hover:opacity-100 transition-transform hover:rotate-90" />
@@ -673,14 +735,14 @@ const exportCSV = () => {
 
         <div class="col-span-12 lg:col-span-3 p-6 bg-slate-50/50 border-r border-slate-100 space-y-6">
             <div class="space-y-4">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Paramètres Mission</h3>
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">{{ t('myActivities.dialog.missionSettings') }}</h3>
 
                 <div class="space-y-4">
                     <div class="flex flex-col gap-2">
-                        <label class="text-[10px] font-bold text-slate-600 ml-1 uppercase tracking-tighter">Type d'affectation</label>
+                        <label class="text-[10px] font-bold text-slate-600 ml-1 uppercase tracking-tighter">{{ t('myActivities.dialog.assignationType') }}</label>
                         <SelectButton
                             v-model="form.assignable_type"
-                            :options="[{label: 'Seul', value: 'App\\Models\\User'}, {label: 'Équipe', value: 'App\\Models\\Team'}]"
+                            :options="[{label: t('myActivities.dialog.assignationTypes.user'), value: 'App\\Models\\User'}, {label: t('myActivities.dialog.assignationTypes.team'), value: 'App\\Models\\Team'}]"
                             optionLabel="label" optionValue="value"
                             class="quantum-sb-small"
                         />
@@ -688,32 +750,32 @@ const exportCSV = () => {
 
                     <div class="flex flex-col gap-1.5" v-if="form.assignable_type === 'App\\Models\\User'">
                         <label class="text-[10px] font-bold text-slate-600 ml-1 italic">
-                            Technicien responsable
+                            {{ t('myActivities.dialog.responsibleTechnician') }}
                         </label>
                         <Dropdown v-model="form.assignable_id" :options="props.users" optionLabel="name" optionValue="id" filter class="w-full !rounded-xl !border-slate-200 shadow-sm" />
                     </div>
 
                     <div class="flex flex-col gap-1.5" v-if="form.assignable_type === 'App\\Models\\Team'">
                         <label class="text-[10px] font-bold text-slate-600 ml-1 italic">
-                            Équipe responsable
+                            {{ t('myActivities.dialog.responsibleTeam') }}
                         </label>
                         <Dropdown v-model="form.assignable_id" :options="props.teams" optionLabel="name" optionValue="id" filter class="w-full !rounded-xl !border-slate-200 shadow-sm" />
                     </div>
 
                     <div class="flex flex-col gap-1.5 pt-2">
-                        <label class="text-[10px] font-bold text-slate-600 ml-1 italic">Statut Actuel</label>
+                        <label class="text-[10px] font-bold text-slate-600 ml-1 italic">{{ t('myActivities.dialog.currentStatus') }}</label>
                         <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full !rounded-xl !border-slate-200 shadow-sm" />
                     </div>
 
                     <div class="flex flex-col gap-1.5 pt-2">
-                        <label class="text-[10px] font-bold text-slate-600 ml-1 italic">Région</label>
+                        <label class="text-[10px] font-bold text-slate-600 ml-1 italic">{{ t('myActivities.dialog.region') }}</label>
                         <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter
                                   :disabled="isCreatingSubActivity"
                                   class="w-full !rounded-xl !border-slate-200 shadow-sm" />
                     </div>
 
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-[10px] font-bold text-slate-600 ml-1 italic">Zone</label>
+                        <label class="text-[10px] font-bold text-slate-600 ml-1 italic">{{ t('myActivities.dialog.zone') }}</label>
                         <Dropdown v-model="form.zone_id" :options="props.zones" optionLabel="title" optionValue="id" filter
                                   :disabled="!form.region_id"
                                   class="w-full !rounded-xl !border-slate-200 shadow-sm" />
@@ -722,14 +784,14 @@ const exportCSV = () => {
             </div>
 
             <div class="space-y-4 pt-4 border-t border-slate-200">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Horodatage</h3>
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('myActivities.dialog.timestamps') }}</h3>
                 <div class="grid gap-3">
                     <div class="flex flex-col gap-1">
-                        <span class="text-[9px] font-bold text-blue-600 uppercase">Début</span>
+                        <span class="text-[9px] font-bold text-blue-600 uppercase">{{ t('myActivities.dialog.start') }}</span>
                         <Calendar v-model="form.actual_start_time" showTime hourFormat="24" class="quantum-calendar-simple" />
                     </div>
                     <div class="flex flex-col gap-1">
-                        <span class="text-[9px] font-bold text-orange-600 uppercase">Fin</span>
+                        <span class="text-[9px] font-bold text-orange-600 uppercase">{{ t('myActivities.dialog.end') }}</span>
                         <Calendar v-model="form.actual_end_time" showTime hourFormat="24" class="quantum-calendar-simple" />
                     </div>
                 </div>
@@ -737,40 +799,46 @@ const exportCSV = () => {
         </div>
 
         <div class="col-span-12 lg:col-span-5 p-6 space-y-6 max-h-[72vh] overflow-y-auto custom-scrollbar bg-white">
+            <div class="space-y-2">
+                <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <i class="pi pi-tag text-blue-500"></i> {{ t('myActivities.dialog.activityTitle') }}
+                </h3>
+                <InputText v-model="form.title" class="w-full !p-3 !rounded-xl !bg-slate-50 !border-slate-200 !text-sm focus:!bg-white focus:!ring-1 focus:!ring-blue-200 shadow-inner" :placeholder="t('myActivities.dialog.activityTitle')" />
+            </div>
 
             <div class="space-y-2">
                 <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <i class="pi pi-align-left text-blue-500"></i> Description des travaux
+                    <i class="pi pi-align-left text-blue-500"></i> {{ t('myActivities.dialog.resolutionTitle') }}
                 </h3>
                 <Textarea v-model="form.problem_resolution_description" rows="3"
                     class="w-full !p-3 !rounded-xl !bg-slate-50 !border-slate-200 !text-sm focus:!bg-white focus:!ring-1 focus:!ring-blue-200 shadow-inner"
-                    :placeholder="t('myActivities.dialog.resolutionPlaceholder')" />
+                    :placeholder="t('myActivities.dialog.resolutionPlaceholder')" autoResize />
             </div>
 
             <div class="space-y-2">
                 <label class="flex items-center gap-2 text-[9px] font-black text-slate-600 uppercase tracking-wider ml-1">
-                    <i class="pi pi-lightbulb text-amber-500"></i> Recommandations Client
+                    <i class="pi pi-lightbulb text-amber-500"></i> {{ t('myActivities.dialog.recommendationsLabel') }}
                 </label>
                 <Textarea v-model="form.proposals" rows="2"
                     class="w-full !p-3 !text-xs !rounded-xl !bg-white !border-slate-200 focus:!border-blue-400 shadow-sm"
-                    placeholder="Conseils et préconisations..." />
+                    :placeholder="t('myActivities.dialog.clientRecommendationsPlaceholder')" />
             </div>
 
             <div class="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2">
                 <label class="flex items-center justify-between text-[9px] font-black text-slate-500 uppercase tracking-wider">
-                    <span class="flex items-center gap-2 italic"><i class="pi pi-lock text-[10px]"></i> Notes Internes</span>
-                    <Tag value="ADMIN ONLY" severity="secondary" class="!text-[7px] !px-1.5 !rounded-md" />
+                    <span class="flex items-center gap-2 italic"><i class="pi pi-lock text-[10px]"></i> {{ t('myActivities.dialog.internalNotes') }}</span>
+                    <Tag :value="t('myActivities.dialog.adminOnly')" severity="secondary" class="!text-[7px] !px-1.5 !rounded-md" />
                 </label>
                 <Textarea v-model="form.additional_information" rows="2"
                     class="w-full !p-2 !text-xs !rounded-lg !bg-white !border-none shadow-inner focus:!ring-1 focus:!ring-slate-300"
-                    placeholder="Détails non visibles par le client..." />
+                    :placeholder="t('myActivities.dialog.internalNotesPlaceholder')" />
             </div>
 
             <div class="space-y-4 pt-4 border-t border-slate-100">
                 <div class="flex justify-between items-center bg-slate-100/50 p-2 rounded-xl border border-slate-200/60">
-                    <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest px-2 italic">Checklist Technique</h3>
+                    <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest px-2 italic">{{ t('myActivities.dialog.checklistTitle') }}</h3>
                     <div class="flex gap-2">
-                        <InputText v-model="newInstruction.label" placeholder="Libellé..." class="!border-none !bg-white !text-[10px] !w-32 !h-7 shadow-sm !rounded-md" />
+                        <InputText v-model="newInstruction.label" :placeholder="t('myActivities.dialog.addInstructionPlaceholder')" class="!border-none !bg-white !text-[10px] !w-32 !h-7 shadow-sm !rounded-md" />
                         <Dropdown v-model="newInstruction.type" :options="instructionTypes" optionLabel="label" optionValue="value" class="!border-none !bg-white !rounded-md !text-[9px] !h-7 shadow-sm" />
                         <Button icon="pi pi-plus" severity="info" size="small" @click="addNewInstructionToForm" class="!h-7 !w-7 !rounded-md" />
                     </div>
@@ -797,7 +865,7 @@ const exportCSV = () => {
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <i class="pi pi-box text-blue-500"></i> Stock Utilisé
+                        <i class="pi pi-box text-blue-500"></i> {{ t('myActivities.dialog.usedStock') }}
                     </span>
                     <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('used')" class="!h-7 !w-7" />
                 </div>
@@ -813,7 +881,7 @@ const exportCSV = () => {
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <i class="pi pi-refresh text-emerald-500"></i> Retour Stock
+                        <i class="pi pi-refresh text-emerald-500"></i> {{ t('myActivities.dialog.returnedStock') }}
                     </span>
                     <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('returned')" class="!h-7 !w-7"/>
                 </div>
@@ -828,12 +896,12 @@ const exportCSV = () => {
 
             <div class="p-5 bg-slate-900 rounded-xl text-white shadow-lg border border-white/5 relative overflow-hidden">
                 <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl"></div>
-                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2 italic">Valorisation HT</span>
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2 italic">{{ t('myActivities.dialog.htValuation') }}</span>
                 <div class="flex items-baseline gap-2">
                     <span class="text-3xl font-black text-blue-400 tabular-nums">{{ serviceOrderCost.toLocaleString() }}</span>
                     <span class="text-[10px] font-bold opacity-40 uppercase ml-1">Xof</span>
                 </div>
-                <InputText v-model="form.service_order_description" placeholder="Notes facturation..."
+                <InputText v-model="form.service_order_description" :placeholder="t('myActivities.dialog.billingNotesPlaceholder')"
                     class="w-full !mt-4 !bg-white/10 !border-none !text-[11px] !text-white !rounded-lg focus:!ring-1 focus:!ring-blue-500/50" />
             </div>
         </div>
@@ -862,7 +930,7 @@ const exportCSV = () => {
                     {{ sparePartData.type === 'used' ? t('myActivities.dialog.sparePartModalUsedTitle') : t('myActivities.dialog.sparePartModalReturnedTitle') }}
                 </h2>
                 <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-                    {{ form.problem_resolution_description || 'Nouvelle activité' }}
+                    {{ form.title || 'Nouvelle activité' }}
                 </p>
             </div>
         </div>

@@ -1093,7 +1093,7 @@
 
   "unities": {
         "title": "Gestion des Unités",
-        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
+        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etca.)",
         "fields": {
             "name": "Désignation",
             "symbol": "Symbole / Abréviation"
@@ -1939,6 +1939,7 @@
         "title": "Mes Activités",
         "timelineTitle": "Chronologie de mes activités",
         "timelineSubtitle": "Suivez la progression de vos interventions et tâches assignées.",
+        "table.report": "Affichage de {first} à {last} sur {totalRecords} activités",
         "columnsPlaceholder": "Choisir les colonnes à afficher",
         "stats": {
             "total": "Total Activités",
@@ -2056,6 +2057,21 @@
         "dialog": {
             "subActivityInitialization": "Initialisation d'une sous-activité",
             "technicalInterventionReport": "Rapport d'intervention technique",
+            "missionSettings": "Paramètres Mission",
+            "assignationType": "Type d'affectation",
+            "assignationTypes": {
+                "user": "Seul",
+                "team": "Équipe"
+            },
+            "responsibleTechnician": "Technicien responsable",
+            "responsibleTeam": "Équipe responsable",
+            "currentStatus": "Statut Actuel",
+            "region": "Région",
+            "zone": "Zone",
+            "timestamps": "Horodatage",
+            "start": "Début",
+            "end": "Fin",
+            "activityTitle": "Titre de l'activité",
             "gmaoAdminConsole": "Console d'administration GMAO",
             "resolutionTitle": "Description de l'intervention et résolution",
             "resolutionPlaceholder": "Décrivez en détail le problème rencontré, les étapes de diagnostic et la solution apportée...",
@@ -2064,6 +2080,10 @@
             "addInstructionPlaceholder": "Libellé de la nouvelle consigne...",
             "selectTypePlaceholder": "Type de valeur",
             "checklistTitle": "Check-list de l'intervention",
+            "internalNotes": "Notes Internes",
+            "adminOnly": "ADMIN ONLY",
+            "internalNotesPlaceholder": "Détails non visibles par le client...",
+            "clientRecommendationsPlaceholder": "Conseils et préconisations...",
             "checklistPoints": "{count} points de contrôle",
             "removeInstructionTitle": "Retirer cette consigne",
             "missionConfigTitle": "Configuration de la mission",
@@ -2073,6 +2093,10 @@
             "actualEndLabel": "Fin réelle",
             "stockOutflowsTitle": "Sorties de stock",
             "storeReturnsTitle": "Retours en magasin",
+            "usedStock": "Stock Utilisé",
+            "returnedStock": "Retour Stock",
+            "htValuation": "Valorisation HT",
+            "billingNotesPlaceholder": "Notes facturation...",
             "financialImpactLabel": "Impact financier",
             "billingLabelPlaceholder": "Libellé pour la facturation...",
             "cancelButton": "Annuler",
@@ -2089,10 +2113,9 @@
             "transferSuccess": "{count} compteur(s) transféré(s) avec succès.",
             "transferError": "Une erreur est survenue lors du transfert des compteurs.",
             "fileInvalid": "Le fichier d'importation est invalide."
-        }
-    }
-
-,
+        },
+        "addNew": "Nouvelle Activité"
+    },
     "leaves": {
         "title": "Gestion des Congés",
         "subtitle": "{count} Demandes répertoriées",

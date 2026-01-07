@@ -27,6 +27,13 @@ class ActivityController extends Controller
      */
     public function index()
     {
+        // Requête pour les statistiques globales (avant la pagination)
+        $statsQuery = Activity::query();
+        $activityStats = $statsQuery
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $query = Activity::query()
             ->latest();
 
@@ -65,6 +72,7 @@ class ActivityController extends Controller
         return Inertia::render('Tasks/MyActivities', [
             'activities' => $query->paginate(100),
             'filters' => request()->only(['search', 'status', 'team_id']),
+            'activityStats' => $activityStats,
             'users' => \App\Models\User::all(),
             'tasks' => \App\Models\Task::all(),
             'spareParts'=> SparePart::all(),
@@ -87,6 +95,9 @@ class ActivityController extends Controller
 public function store(Request $request)
 {
     $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'equipment_ids' => 'nullable|array',
+        'equipment_ids.*' => 'nullable|exists:equipment,id',
         'task_id' => 'nullable|exists:tasks,id',
         'user_id' => 'nullable|exists:users,id',
         'actual_start_time' => 'nullable|date',
@@ -251,7 +262,11 @@ public function bulkStore(Request $request)
         $validator = Validator::make($request->all(), [
             // Validation au niveau racine
             'maintenance_id' => 'required|exists:maintenances,id',
-
+              'title' => 'required|string|max:255',
+            'equipment_ids' => 'nullable|array',
+            'equipment_ids.*' => 'nullable|exists:equipment,id',
+                'task_id' => 'nullable|exists:tasks,id',
+                'user_id' => 'nullable|exists:users,id',
             // Validation du tableau d'activités
             'activities' => 'required|array',
             'activities.*' => 'required|array',
