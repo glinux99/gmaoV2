@@ -139,17 +139,19 @@ const {
 
 const sparePartOptions = computed(() => {
     // La liste déroulante se base maintenant sur notre copie locale `localSpareParts`.
-    let parts = localSpareParts.value || [];
-
-    // Filtrer par région si une région est sélectionnée dans le formulaire
-    // Cette logique est déjà correcte et reste inchangée.
-    if (form.region_id) {
-        parts = parts.filter(part => part.region_id === form.region_id);
-    }
+    const regionId = form.region_id;
+    if (!regionId) return [];
 
     // Formater pour le dropdown en ajoutant la quantité en stock
-    // Cette logique est également correcte. Le `t()` vient de i18n pour la traduction.
-    return parts.map(part => ({ label: `${part.reference} (${t('sparePartMovements.stockLabel')}: ${part.quantity})`, value: part.id }));
+    return (localSpareParts.value || [])
+        .map(part => {
+            const stockInRegion = part.stocks_by_region?.[regionId] || 0;
+            return {
+                label: `${part.reference} (${t('sparePartMovements.stockLabel')}: ${stockInRegion})`,
+                value: part.id, // On utilise l'ID de référence
+            };
+        })
+        .filter(part => part.label.includes(`Stock actuel:`) && !part.label.includes(`Stock actuel: 0`)); // Optionnel: ne montrer que les pièces en stock
 });
 
 

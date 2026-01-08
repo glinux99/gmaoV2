@@ -69,13 +69,28 @@ class ActivityController extends Controller
         // Eager load all necessary relationships for display and edit
         $query->with(['task.instructions', 'activityInstructions', 'instructionAnswers', 'task.serviceOrders', 'maintenance', 'sparePartActivities.sparePart', 'assignable', 'region', 'zone']);
 
+        // Préparer les pièces détachées avec le stock par région
+        $allParts = SparePart::with('region:id,designation')->get();
+        $sparePartsByRef = $allParts->groupBy('reference')->map(function ($parts, $ref) {
+            $firstPart = $parts->first();
+            $stocks = $parts->mapWithKeys(function ($part) {
+                return [$part->region_id => $part->quantity];
+            });
+
+            return [
+                'id' => $firstPart->id, // ID de la première occurrence, pour référence
+                'reference' => $ref,
+                'stocks_by_region' => $stocks,
+            ];
+        })->values();
+
         return Inertia::render('Tasks/MyActivities', [
             'activities' => $query->paginate(100),
             'filters' => request()->only(['search', 'status', 'team_id']),
             'activityStats' => $activityStats,
             'users' => \App\Models\User::all(),
             'tasks' => \App\Models\Task::all(),
-            'spareParts'=> SparePart::all(),
+            'spareParts'=> $sparePartsByRef,
             'teams' => \App\Models\Team::all(),
             'regions' => \App\Models\Region::all(),
             'zones' => \App\Models\Zone::all(),

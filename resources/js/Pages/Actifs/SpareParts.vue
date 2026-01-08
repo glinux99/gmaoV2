@@ -45,6 +45,7 @@ const sparePartDialog = ref(false); // Changed from labelDialog to sparePartDial
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
+const selectedRegion = ref(props.filters?.region_id || null);
 const selectedSpareParts = ref([]);
 
 const form = useForm({
@@ -230,7 +231,7 @@ let timeoutId = null;
 const performSearch = () => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
-        router.get(route('spare-parts.index'), { search: search.value }, { // Changed route
+        router.get(route('spare-parts.index'), { search: search.value, region_id: selectedRegion.value }, {
             preserveState: true,
             replace: true,
         });
@@ -313,6 +314,12 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
                                 <InputIcon class="pi pi-search text-slate-400" />
                                 <InputText v-model="filters['global'].value" :placeholder="t('spareParts.toolbar.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
+                            <Dropdown v-model="selectedRegion"
+                                      :options="props.regions" optionLabel="designation" optionValue="id"
+                                      placeholder="Filtrer par région"
+                                      showClear class="w-full md:w-60 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!bg-white"
+                                      @change="performSearch"
+                            />
                             <div class="flex items-center gap-2">
                                 <Button v-if="!bulkDeleteButtonIsDisabled" :label="`Supprimer (${selectedSpareParts.length})`" icon="pi pi-trash" severity="danger" @click="deleteSelectedSpareParts" />
                                 <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />

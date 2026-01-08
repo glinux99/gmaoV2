@@ -214,34 +214,39 @@ public function update(Request $request, $id)
      */
     private function updateInventory($movable, $item, $validated)
     {
-        // --- ANCIENNE LOGIQUE : Mise à jour locale ---
-        // if ($validated['type'] === 'entry') {
-        //     $movable->increment('quantity', $item['quantity']);
-        // } elseif ($validated['type'] === 'exit') {
-        //     $movable->decrement('quantity', $item['quantity']);
-        // }
-
-        // --- NOUVELLE LOGIQUE : Mise à jour globale de la quantité totale ---
-
-        // On ne procède à cette logique que pour les SparePart
+        // On ne procède à cette logique que pour les SparePart qui ont une quantité.
         if ($item['movable_type'] === SparePart::class) {
-            $sparePart = $movable;
+            $quantity = $item['quantity'];
 
-            // 1. Appliquer le changement localement sur la pièce concernée par le mouvement
-            if ($validated['type'] === 'entry') {
-                $sparePart->increment('quantity', $item['quantity']);
-            } elseif ($validated['type'] === 'exit') {
-                $sparePart->decrement('quantity', $item['quantity']);
+            if ($validated['type'] === 'entry' && isset($validated['destination_region_id'])) {
+                // Incrémente le stock de la pièce dans la région de destination.
+                // Crée la pièce dans cette région si elle n'existe pas.
+                $part = SparePart::firstOrCreate(
+                    ['reference' => $movable->reference, 'region_id' => $validated['destination_region_id']],
+                    ['label_id' => $movable->label_id, 'price' => $movable->price, 'min_quantity' => $movable->min_quantity, 'quantity' => 0]
+                );
+                $part->increment('quantity', $quantity);
+
+            } elseif ($validated['type'] === 'exit' && isset($validated['source_region_id'])) {
+                // Décrémente le stock de la pièce dans la région source.
+                $part = SparePart::where('reference', $movable->reference)
+                                 ->where('region_id', $validated['source_region_id'])->first();
+                if ($part) {
+                    $part->decrement('quantity', $quantity);
+                }
+
+            } elseif ($validated['type'] === 'transfer') {
+                // Décrémente la source
+                SparePart::where('reference', $movable->reference)
+                         ->where('region_id', $validated['source_region_id'])
+                         ->decrement('quantity', $quantity);
+                // Incrémente la destination (en la créant si besoin)
+                $destPart = SparePart::firstOrCreate(
+                    ['reference' => $movable->reference, 'region_id' => $validated['destination_region_id']],
+                    ['label_id' => $movable->label_id, 'price' => $movable->price, 'min_quantity' => $movable->min_quantity, 'quantity' => 0]
+                );
+                $destPart->increment('quantity', $quantity);
             }
-            // Pour un 'transfer', la quantité locale change de région, mais le total ne change pas.
-            // La logique de transfert de région doit être gérée séparément si nécessaire.
-
-            // 2. Calculer la quantité totale pour cette référence dans toutes les régions
-            $totalQuantity = SparePart::where('reference', $sparePart->reference)->sum('quantity');
-
-            // 3. Mettre à jour la quantité sur TOUTES les pièces ayant la même référence
-            SparePart::where('reference', $sparePart->reference)->update(['quantity' => $totalQuantity]);
-
         } else {
              // Logique pour les autres types de modèles (Equipments, Meters, etc.)
              if ($validated['type'] === 'entry') {
