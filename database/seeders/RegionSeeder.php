@@ -44,36 +44,8 @@ class RegionSeeder extends Seeder
                 'puissance_centrale' => null,
                 'code' => 'RUT',
             ],
-            [
-                'designation' => 'Réseau de Beni',
-                'type_centrale' => 'Réseau de distribution',
-                'puissance_centrale' => null,
-                'code' => 'BEN',
-            ],
-            [
-                'designation' => 'Bureau Central Goma',
-                'type_centrale' => 'Administration',
-                'puissance_centrale' => null,
-                'code' => 'BCG',
-            ],
-            [
-                'designation' => 'Atelier Central Goma',
-                'type_centrale' => 'Maintenance',
-                'puissance_centrale' => null,
-                'code' => 'ACG',
-            ],
-            [
-                'designation' => 'Magasin Central Goma',
-                'type_centrale' => 'Logistique',
-                'puissance_centrale' => null,
-                'code' => 'MCG',
-            ],
-            [
-                'designation' => 'Site de Rumangabo',
-                'type_centrale' => 'Site militaire/opérationnel',
-                'puissance_centrale' => null,
-                'code' => 'RUM',
-            ],
+
+
         ];
 
         foreach ($regionsData as $region) {

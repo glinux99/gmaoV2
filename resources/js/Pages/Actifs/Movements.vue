@@ -23,6 +23,7 @@ import Tag from 'primevue/tag';
 import Avatar from 'primevue/avatar';
 import AutoComplete from 'primevue/autocomplete';
 import OverlayPanel from 'primevue/overlaypanel';
+import Calendar from 'primevue/calendar';
 import MultiSelect from 'primevue/multiselect';
 import debounce from 'lodash/debounce';
 
@@ -34,6 +35,7 @@ const props = defineProps({
     users: Array,
     // On passe tous les types d'items "déplaçables"
     movableItems: Object, // Ex: { spare_parts: [...], equipments: [...], meters: [...], keypads: [...] }
+    masterMovableItems: Object, // NOUVEAU: Liste complète pour les entrées
     queryParams: Object,
 });
 
@@ -56,6 +58,8 @@ const initFilters = () => {
         'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
         'type': { operator: FilterOperator.OR, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
         'movable_type': { operator: FilterOperator.OR, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+        'region': { value: null, matchMode: FilterMatchMode.EQUALS },
+        'date': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.DATE_IS }] },
         'user.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     };
 };
@@ -71,7 +75,14 @@ const lazyParams = ref({
 const onPage = (event) => {
     loading.value = true;
     lazyParams.value = event;
-    router.get(route('stock-movements.index'), { ...event, page: event.page + 1 }, {
+    const queryParams = {
+        ...event,
+        page: event.page + 1,
+        'filters[region][value]': filters.value.region.value,
+        per_page: event.rows,
+    };
+
+    router.get(route('stock-movements.index'), queryParams, {
         preserveState: true,
         onFinish: () => { loading.value = false; }
     });
@@ -99,6 +110,7 @@ const allColumns = ref([
     { field: 'source_region', header: t('stockMovements.table.source') },
     { field: 'destination_region', header: t('stockMovements.table.destination') },
     { field: 'user', header: t('stockMovements.table.user') },
+    { field: 'stock_at_movement', header: 'Stock au Mvt.' }, // NOUVELLE COLONNE
     { field: 'date', header: t('stockMovements.table.date') },
 ]);
 const visibleColumns = ref(['movable_type', 'movable', 'type', 'quantity', 'user', 'date']);
@@ -123,25 +135,19 @@ const movementTypeOptions = ref([
 
 const availableItems = computed(() => {
     if (!newItem.value.movable_type) return [];
-    const type = newItem.value.movable_type;
 
-    // Utiliser les listes dynamiques pour les types concernés
-    if (type === 'App\\Models\\SparePart' && (form.type === 'exit' || form.type === 'transfer')) {
-        return props.movableItems.spare_parts;
-    }
-    if (type === 'App\\Models\\Equipment' && (form.type === 'exit' || form.type === 'transfer')) {
-        return props.movableItems.equipments;
-    }
+    // NOUVELLE LOGIQUE :
+    // Si le mouvement est une 'entrée', on utilise la liste "maîtresse" complète.
+    // Sinon (sortie/transfert), on utilise la liste filtrée par région.
+    const sourceList = form.type === 'entry' ? props.masterMovableItems : props.movableItems;
 
-    // Utiliser les props pour tous les cas
     switch (newItem.value.movable_type) {
-        case 'App\\Models\\SparePart': return props.movableItems.spare_parts || [];
-        case 'App\\Models\\Equipment': return props.movableItems.equipments || [];
-        case 'App\\Models\\Meter': return props.movableItems.meters || [];
-        case 'App\\Models\\Keypad': return props.movableItems.keypads || [];
-        case 'App\\Models\\Engin': return props.movableItems.engins || [];
-        default:
-            return [];
+        case 'App\\Models\\SparePart': return sourceList.spare_parts || [];
+        case 'App\\Models\\Equipment': return sourceList.equipments || [];
+        case 'App\\Models\\Meter': return sourceList.meters || [];
+        case 'App\\Models\\Keypad': return sourceList.keypads || [];
+        case 'App\\Models\\Engin': return sourceList.engins || [];
+        default: return [];
     }
 });
 
@@ -154,7 +160,15 @@ const newItem = ref({
 
 const addItemToCart = () => {
     if (!newItem.value.movable_type || !newItem.value.movable_id) return;
-    const itemToAdd = availableItems.value.find(i => i.id === newItem.value.movable_id);
+
+    // On cherche dans la liste d'origine pour avoir les détails complets
+    let sourceList;
+    if (form.type === 'entry') sourceList = props.masterMovableItems;
+    else sourceList = props.movableItems;
+
+    const itemTypeKey = Object.keys(sourceList).find(key => newItem.value.movable_type.toLowerCase().includes(key.slice(0, -1)));
+    const itemToAdd = sourceList[itemTypeKey]?.find(i => i.id === newItem.value.movable_id);
+
     if (!itemToAdd) return;
 
     form.items.push({ ...newItem.value, item_details: itemToAdd });
@@ -183,28 +197,68 @@ watch(() => newItem.value.movable_type, () => {
     newItem.value.movable_id = null; // Réinitialiser l'item sélectionné quand le type change
 });
 
-watch(() => form.type, (newType) => {
-    // Réinitialiser les régions et les articles dynamiques lors du changement de type
+watch(() => form.type, () => {
+    // Réinitialiser les régions lors du changement de type
     form.source_region_id = null;
     form.destination_region_id = null;
     form.items = []; // Vider le panier
 });
 
-watch(() => form.source_region_id, (newRegionId) => {
+watch(() => form.source_region_id, (newRegionId, oldRegionId) => {
     form.items = [];
     newItem.value.movable_id = null;
 
-    if (form.type === 'exit' || form.type === 'transfer') {
+    console.log('Source region changed. New region ID:', newRegionId, 'Old region ID:', oldRegionId);
+    // Pour les sorties/transferts, on recharge les articles filtrés par la région source.
+    if ((form.type === 'exit' || form.type === 'transfer') && newRegionId !== oldRegionId) {
         // On recharge la page avec le filtre de région pour obtenir les bons articles
         router.get(route('stock-movements.index'), {
             ...lazyParams.value,
-            'filters[region_id][value]': newRegionId
+            'filters[region_id][value]': newRegionId,
+            'filters[type][value]': form.type, // Ajouter le type de mouvement
+
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+ console.log('Props loaded after region change:', props.movableItems);
     }
 });
+
+// --- NOUVEAU : Watcher pour la mise à jour du stock en temps réel ---
+watch(() => form.items, (newItems, oldItems) => {
+    if (form.type === 'entry') return; // Pas de gestion de stock pour les entrées
+
+    const getListAndId = (item) => {
+        const typeKey = Object.keys(localMovableItems.value).find(key => item.movable_type.toLowerCase().includes(key.slice(0, -1)));
+        if (!typeKey) return { list: null, id: null };
+        return { list: localMovableItems.value[typeKey], id: item.movable_id };
+    };
+
+    // Rétablir le stock des anciens items
+    oldItems.forEach(oldItem => {
+        const { list, id } = getListAndId(oldItem);
+        if (list) {
+            const itemInStock = list.find(i => i.id === id);
+            if (itemInStock && typeof itemInStock.stock_in_region !== 'undefined') {
+                itemInStock.stock_in_region += oldItem.quantity;
+            }
+        }
+    });
+
+    // Déduire le stock des nouveaux items
+    newItems.forEach(newItem => {
+        const { list, id } = getListAndId(newItem);
+        if (list) {
+            const itemInStock = list.find(i => i.id === id);
+            if (itemInStock && typeof itemInStock.stock_in_region !== 'undefined') {
+                itemInStock.stock_in_region -= newItem.quantity;
+            }
+        }
+    });
+
+}, { deep: true });
+
 
 const isQuantityDisabled = computed(() => {
     if (!newItem.value.movable_type) return true;
@@ -438,14 +492,24 @@ const movementStats = computed(() => {
                         :totalRecords="stockMovements.total" :loading="loading"
                         v-model:first="lazyParams.first"
                         :sortField="lazyParams.sortField" :sortOrder="lazyParams.sortOrder"
+                        :rowsPerPageOptions="[10, 25, 50, 100]"
                         class="p-datatable-sm quantum-table"
-                        v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['movable.serial_number', 'movable.reference', 'movable.tag', 'user.name']"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                        v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['movable.serial_number', 'movable.reference', 'movable.tag', 'user.name', 'notes']"
+                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                         :currentPageReportTemplate="t('common.paginationReport')">
 
                     <template #header>
                         <div v-if="!selectedMovements.length" class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
+                                <Dropdown v-model="filters['region'].value" :options="regions" optionLabel="designation" optionValue="id"
+                                          :placeholder="t('stockMovements.filter.byRegion')" showClear
+                                          @change="onPage(lazyParams)"
+                                          class="w-full md:w-56 mr-4" />
+
+
+
+
+
                                 <InputIcon class="pi pi-search text-slate-400" />
                                 <InputText v-model="filters['global'].value" @input="debounce(() => onPage(lazyParams), 500)()" :placeholder="t('stockMovements.toolbar.searchPlaceholder')" class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
                             </IconField>
@@ -498,11 +562,23 @@ const movementStats = computed(() => {
                         </template>
                     </Column>
 
+                    <Column v-if="visibleColumns.includes('stock_at_movement')" field="stock_at_movement" header="Stock au Mvt." sortable style="min-width: 8rem;" class="text-center">
+                        <template #body="{ data }">
+                            <span class="font-mono font-bold text-sm" :class="data.stock_at_movement > 0 ? 'text-slate-700' : 'text-red-500'">{{ data.stock_at_movement ?? 'N/A' }}</span>
+                        </template>
+                    </Column>
+
                     <Column v-if="visibleColumns.includes('date')" field="date" :header="t('stockMovements.table.date')" sortable dataType="date" style="min-width: 10rem;" class="text-center">
                         <template #body="{ data }">
                             <span class="text-xs font-medium text-slate-500">
                                 {{ new Date(data.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) }}
                             </span>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Calendar v-model="filterModel.value" dateFormat="yy-mm-dd" :placeholder="t('stockMovements.filter.byDate')"
+                                      showIcon iconDisplay="input"
+                                      selectionMode="range" :manualInput="false"
+                                      class="p-column-filter" />
                         </template>
                     </Column>
 
@@ -576,6 +652,39 @@ const movementStats = computed(() => {
                 <div class="p-8 bg-white max-h-[70vh] overflow-y-auto scroll-smooth">
                     <!-- Colonne de gauche : Identification de l'item et du flux -->
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <!-- Colonne de droite : Détails et validation -->
+                        <div class="md:col-span-5 space-y-6 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                            <h4 class="text-xs font-black uppercase text-primary-600 tracking-widest flex items-center gap-2"><i class="pi pi-list-check"></i> {{ t('stockMovements.dialog.detailsValidation') }}</h4>
+
+                            <div class="field">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.movementType') }}</label>
+                                <SelectButton v-model="form.type" :options="movementTypeOptions" optionLabel="label" optionValue="value" class="v16-select-button" />
+                            </div>
+
+                            <div class="space-y-6">
+                                <div class="field" v-if="form.type === 'exit' || form.type === 'transfer'">
+                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.sourceRegion') }}</label>
+                                    <Dropdown v-model="form.source_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.sourceRegionPlaceholder')" class="w-full quantum-input-v16" />
+                                </div>
+                                <div class="field" v-if="form.type === 'entry' || form.type === 'transfer'">
+                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.destinationRegion') }}</label>
+                                    <Dropdown v-model="form.destination_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.destinationRegionPlaceholder')" class="w-full quantum-input-v16" />
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.responsibleUser') }}</label>
+                                <Dropdown v-model="form.responsible_user_id" :options="users" optionLabel="name" optionValue="id" :placeholder="t('stockMovements.form.userPlaceholder')" class="w-full quantum-input-v16" filter />
+                            </div>
+                            <div class="field">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.intendedForUser') }}</label>
+                                <Dropdown v-model="form.intended_for_user_id" :options="users" optionLabel="name" optionValue="id" :placeholder="t('stockMovements.form.userPlaceholder')" class="w-full quantum-input-v16" filter />
+                            </div>
+                            <div class="field">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.notes') }}</label>
+                                <Textarea v-model="form.notes" rows="2" class="w-full text-sm quantum-input-v16" />
+                            </div>
+                        </div>
                         <div class="md:col-span-7 space-y-6">
                             <h4 class="text-xs font-black uppercase text-primary-600 tracking-widest flex items-center gap-2"><i class="pi pi-box"></i> {{ t('stockMovements.dialog.itemSelection') }}</h4>
                             <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
@@ -614,39 +723,7 @@ const movementStats = computed(() => {
                             </div>
                         </div>
 
-                        <!-- Colonne de droite : Détails et validation -->
-                        <div class="md:col-span-5 space-y-6 p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                            <h4 class="text-xs font-black uppercase text-primary-600 tracking-widest flex items-center gap-2"><i class="pi pi-list-check"></i> {{ t('stockMovements.dialog.detailsValidation') }}</h4>
 
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.movementType') }}</label>
-                                <SelectButton v-model="form.type" :options="movementTypeOptions" optionLabel="label" optionValue="value" class="v16-select-button" />
-                            </div>
-
-                            <div class="space-y-6">
-                                <div class="field" v-if="form.type === 'exit' || form.type === 'transfer'">
-                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.sourceRegion') }}</label>
-                                    <Dropdown v-model="form.source_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.sourceRegionPlaceholder')" class="w-full quantum-input-v16" />
-                                </div>
-                                <div class="field" v-if="form.type === 'entry' || form.type === 'transfer'">
-                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.destinationRegion') }}</label>
-                                    <Dropdown v-model="form.destination_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.destinationRegionPlaceholder')" class="w-full quantum-input-v16" />
-                                </div>
-                            </div>
-
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.responsibleUser') }}</label>
-                                <Dropdown v-model="form.responsible_user_id" :options="users" optionLabel="name" optionValue="id" :placeholder="t('stockMovements.form.userPlaceholder')" class="w-full quantum-input-v16" filter />
-                            </div>
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.intendedForUser') }}</label>
-                                <Dropdown v-model="form.intended_for_user_id" :options="users" optionLabel="name" optionValue="id" :placeholder="t('stockMovements.form.userPlaceholder')" class="w-full quantum-input-v16" filter />
-                            </div>
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.notes') }}</label>
-                                <Textarea v-model="form.notes" rows="2" class="w-full text-sm quantum-input-v16" />
-                            </div>
-                        </div>
                     </div>
                 </div>
 

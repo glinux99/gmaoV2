@@ -2,7 +2,9 @@
 
 namespace App\Models\Concerns;
 
+use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\DB;
 
 trait HasStock
@@ -50,9 +52,9 @@ trait HasStock
         return $query->where(function ($q) use ($regionId) {
             $q->whereRaw(
                 '(
-                    (SELECT SUM(quantity) FROM stock_movements WHERE movable_type = ? AND movable_id = ' . $this->getTable() . '.id AND destination_region_id = ? AND type IN (?, ?))
+                    COALESCE((SELECT SUM(quantity) FROM stock_movements WHERE movable_type = ? AND movable_id = ' . $this->getTable() . '.id AND destination_region_id = ? AND type IN (?, ?)), 0)
                     -
-                    (SELECT SUM(quantity) FROM stock_movements WHERE movable_type = ? AND movable_id = ' . $this->getTable() . '.id AND source_region_id = ? AND type IN (?, ?))
+                    COALESCE((SELECT SUM(quantity) FROM stock_movements WHERE movable_type = ? AND movable_id = ' . $this->getTable() . '.id AND source_region_id = ? AND type IN (?, ?)), 0)
                 ) > 0',
                 [
                     // Bindings pour la première sous-requête (entrées)
@@ -89,20 +91,31 @@ trait HasStock
      */
     public function scopeWithStockInRegion(Builder $query, ?int $regionId): Builder
     {
-        if (is_null($regionId)) {
-            return $query->addSelect(DB::raw('NULL as stock_in_region'));
-        }
+         if (is_null($regionId)) {
+             return $query->addSelect(DB::raw('NULL as stock_in_region'));
+         }
 
-        $movableType = $this->getMorphClass();
-        $tableName = $this->getTable();
+         $movableType = $this->getMorphClass();
 
-        $stockSubQuery = DB::table('stock_movements as sm')
-            ->selectRaw('COALESCE(SUM(CASE WHEN sm.destination_region_id = ? AND sm.type IN (?, ?) THEN sm.quantity ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN sm.source_region_id = ? AND sm.type IN (?, ?) THEN sm.quantity ELSE 0 END), 0)', [
-                $regionId, 'entry', 'transfer',
-                $regionId, 'exit', 'transfer'
-            ])
-            ->where('sm.movable_type', $movableType)
-            ->whereColumn('sm.movable_id', "{$tableName}.id");
+         // Sous-requête optimisée pour calculer le stock net
+         $stockSubQuery = StockMovement::query()
+             ->select(DB::raw('SUM(CASE
+                 WHEN type = \'entry\' THEN quantity
+                 WHEN type = \'transfer\' AND destination_region_id = ? THEN quantity
+                 WHEN type = \'exit\' THEN -quantity
+                 WHEN type = \'transfer\' AND source_region_id = ? THEN -quantity
+                 ELSE 0
+             END)'))
+             ->where('movable_type', $movableType)
+             ->whereColumn('movable_id', $this->getTable() . '.id')
+             ->where(function ($q) use ($regionId) {
+                 $q->where('destination_region_id', $regionId)
+                   ->orWhere('source_region_id', $regionId);
+             })
+             ->groupBy('movable_id');
+
+         // Application des bindings pour la sous-requête
+         $stockSubQuery->addBinding([$regionId, $regionId], 'select');
 
         return $query->addSelect([
             'stock_in_region' => $stockSubQuery
@@ -112,5 +125,33 @@ trait HasStock
     protected function initializeHasStock()
     {
         $this->append('stock_in_region');
+    }
+
+    /**
+     * Scope pour filtrer les mouvements par région (source ou destination).
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param int|null $regionId
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeFilterByRegion(Builder $query, ?int $regionId): Builder
+    {
+        if (is_null($regionId)) return $query;
+        return $query->where('source_region_id', $regionId)->orWhere('destination_region_id', $regionId);
+    }
+       public function stockInRegion(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value, $attributes) {
+                if (!isset($attributes['region_id'])) {
+                    return null;
+                }
+
+                return StockMovement::where('movable_type', self::class)
+                    ->where('movable_id', $attributes['id'])
+                    ->where('destination_region_id', $attributes['region_id'])
+                    ->sum('quantity');
+            }
+        );
     }
 }

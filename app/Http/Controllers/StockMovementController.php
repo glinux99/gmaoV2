@@ -28,15 +28,12 @@ class StockMovementController extends Controller
             ->with(['movable', 'sourceRegion', 'destinationRegion', 'user'])
             ->select('stock_movements.*');
 
-        // --- NOUVEAU : Gestion du filtre par région pour les articles déplaçables ---
-        $regionId = null;
-        if ($request->has('filters')) {
-            $filters = $request->input('filters');
-            // On vérifie si un filtre de région est appliqué (ex: depuis un Dropdown)
-            if (isset($filters['region_id']['value'])) {
-                $regionId = $filters['region_id']['value'];
-            }
-        }
+        // --- Gestion des filtres de la requête ---
+        $filters = $request->input('filters', []);
+        $regionId = $filters['region_id']['value'] ?? null;
+        $movementType = $filters['type']['value'] ?? $request->input('movementType'); // ajouter ici ou recuprer le mouvement type
+        $globalFilter = $filters['global']['value'] ?? null;
+        $sortField = $request->input('sortField');
 
 
         // --- Gestion du Tri ---
@@ -58,7 +55,7 @@ class StockMovementController extends Controller
         }
 
         // --- Gestion du Filtre Global ---
-        if ($globalFilter = $request->input('filters.global.value')) {
+        if ($globalFilter) {
             $query->where(function ($q) use ($globalFilter) {
                 $q->where('type', 'like', "%{$globalFilter}%")
                   ->orWhere('notes', 'like', "%{$globalFilter}%")
@@ -66,19 +63,45 @@ class StockMovementController extends Controller
             });
         }
 
+        // --- NOUVEAU : Liste "maîtresse" de tous les articles pour les entrées ---
+        // Charge tous les articles uniques, sans filtre de région, pour les mouvements d'entrée.
+        // Cela évite de recharger la page et optimise la sélection.
+        $masterMovableItems = [
+            'spare_parts' => SparePart::select('id', 'reference', 'label_id')->distinct('reference')->get(),
+            'equipments'  => Equipment::select('id', 'tag', 'designation')->get(),
+            'meters'      => Meter::select('id', 'serial_number', 'model')->get(),
+            'keypads'     => Keypad::select('id', 'serial_number', 'model')->get(),
+            'engins'      => Engin::select('id', 'designation', 'immatriculation')->get(),
+        ];
+
+        // --- Chargement conditionnel des articles déplaçables ---
+        $movableItems = [
+            'spare_parts' => collect(),
+            'equipments'  => collect(),
+            'meters'      => collect(),
+            'keypads'     => collect(),
+            'engins'      => collect(),
+        ];
+
+
+        // dd(SparePart::whereHasStockInRegion(1)->withStockInRegion(1)->get());
+        // On charge les articles d'une région seulement si c'est une sortie ou un transfert.
+        if ($regionId && in_array($movementType, ['exit', 'transfer'])) {
+            $movableItems['spare_parts'] = SparePart::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get();
+            $movableItems['equipments'] = Equipment::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get();
+            $movableItems['meters'] = Meter::where('region_id', $regionId)->orWhereNull('region_id')->get();
+            $movableItems['keypads'] = Keypad::where('region_id', $regionId)->orWhereNull('region_id')->get();
+            $movableItems['engins'] = Engin::where('region_id', $regionId)->orWhereNull('region_id')->get();
+        }
+        // dd($movableItems, $regionId, $movementType);
         return Inertia::render('Actifs/Movements', [
             'stockMovements' => $query->paginate($request->input('rows', 10))->withQueryString(),
             'regions' => Region::select('id', 'designation')->get(),
             'users' => User::select('id', 'name')->get(),
-            // Les articles sont maintenant chargés en fonction du filtre de région
-            'movableItems' => [
-                'spare_parts' => SparePart::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get(),
-                'equipments' => Equipment::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get(),
-                'meters'    => Meter::where('region_id', $regionId)->orWhereNull('region_id')->get(),
-                'keypads'   => Keypad::where('region_id', $regionId)->orWhereNull('region_id')->get(),
-                'engins'    => Engin::where('region_id', $regionId)->orWhereNull('region_id')->get(),
-            ],
-            'queryParams' => $request->all(['sortField', 'sortOrder', 'filters']),
+            'movableItems' => $movableItems,
+            'masterMovableItems' => $masterMovableItems, // On passe la nouvelle liste à Vue
+            // On ne passe que les queryParams utiles pour éviter de surcharger la requête
+            'queryParams' => $request->only(['sortField', 'sortOrder', 'filters']),
         ]);
     }
 
@@ -106,18 +129,34 @@ class StockMovementController extends Controller
                 foreach ($validated['items'] as $item) {
                     $movable = $item['movable_type']::lockForUpdate()->findOrFail($item['movable_id']);
                     $qty = $item['quantity'];
+                    $stock_at_movement = 0; // Valeur par défaut
 
                     // 1. Validation de la logique de stock (Sortie/Transfert)
                     if (in_array($validated['type'], ['exit', 'transfer'])) {
-                        if (isset($movable->quantity) && $movable->quantity < $qty) {
+                        $regionId = $validated['source_region_id'];
+                        // Pour les SparePart, le stock est dans la table elle-même par région
+                        if ($item['movable_type'] === SparePart::class) {
+                            $partInRegion = SparePart::where('reference', $movable->reference)->where('region_id', $regionId)->first();
+                            $stock_at_movement = $partInRegion ? $partInRegion->quantity : 0;
+                        } else { // Pour les autres, on suppose une relation ou un champ direct
+                            $stock_at_movement = $movable->stock_in_region ?? $movable->quantity ?? 0;
+                        }
+
+                        if ($stock_at_movement < $qty) {
                             throw ValidationException::withMessages([
-                                'items' => "Stock insuffisant pour {$movable->designation} (Disponible: {$movable->quantity})"
+                                'items' => "Stock insuffisant pour {$movable->designation} (Disponible: {$stock_at_movement})"
                             ]);
                         }
+                    } elseif ($validated['type'] === 'entry') {
+                        $regionId = $validated['destination_region_id'];
+                        // On récupère le stock *avant* l'incrémentation
+                        $partInRegion = SparePart::where('reference', $movable->reference)->where('region_id', $regionId)->first();
+                        $stock_at_movement = $partInRegion ? $partInRegion->quantity : 0;
                     }
 
                     // 2. Création du mouvement
                     StockMovement::create([
+                        'stock_at_movement' => $stock_at_movement, // Sauvegarde du stock au moment du mouvement
                         'movable_type' => $item['movable_type'],
                         'movable_id' => $item['movable_id'],
                         'quantity' => $qty,
