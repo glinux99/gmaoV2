@@ -151,6 +151,19 @@ const availableItems = computed(() => {
     }
 });
 
+const isItemSelectionDisabled = computed(() => {
+    if (form.type === 'entry') {
+        return !form.destination_region_id;
+    }
+    if (form.type === 'exit') {
+        return !form.source_region_id;
+    }
+    if (form.type === 'transfer') {
+        return !form.source_region_id || !form.destination_region_id;
+    }
+    return true; // Désactivé par défaut si aucun type n'est sélectionné
+});
+
 // --- Logique du panier ---
 const newItem = ref({
     movable_type: null,
@@ -161,16 +174,24 @@ const newItem = ref({
 const addItemToCart = () => {
     if (!newItem.value.movable_type || !newItem.value.movable_id) return;
 
-    // On cherche dans la liste d'origine pour avoir les détails complets
+    // 1. Déterminer la liste source (complète pour les entrées, filtrée pour le reste)
     let sourceList;
     if (form.type === 'entry') sourceList = props.masterMovableItems;
     else sourceList = props.movableItems;
 
-    const itemTypeKey = Object.keys(sourceList).find(key => newItem.value.movable_type.toLowerCase().includes(key.slice(0, -1)));
-    const itemToAdd = sourceList[itemTypeKey]?.find(i => i.id === newItem.value.movable_id);
+    // 2. Trouver la clé correspondante de manière fiable (ex: 'spare_parts')
+    // On extrait le nom du modèle (ex: 'SparePart') de la chaîne 'App\Models\SparePart'
+    const modelName = newItem.value.movable_type.split('\\').pop().toLowerCase();
+    // On cherche une clé dans sourceList qui contient ce nom de modèle (ex: 'spare_parts' contient 'sparepart')
+    const itemTypeKey = Object.keys(sourceList).find(key => key.replace('_', '').includes(modelName));
 
+    if (!itemTypeKey) return; // Sécurité: si aucune clé ne correspond
+
+    // 3. Trouver l'article dans la bonne liste
+    const itemToAdd = sourceList[itemTypeKey]?.find(i => i.id === newItem.value.movable_id);
     if (!itemToAdd) return;
 
+    // 4. Ajouter au panier et réinitialiser
     form.items.push({ ...newItem.value, item_details: itemToAdd });
     newItem.value = { movable_type: null, movable_id: null, quantity: 1 }; // Reset
 };
@@ -690,19 +711,19 @@ const movementStats = computed(() => {
                             <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                 <div class="field">
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.itemType') }}</label>
-                                    <Dropdown v-model="newItem.movable_type" :options="movableTypeOptions" optionLabel="label" optionValue="value" :placeholder="t('stockMovements.form.itemTypePlaceholder')" class="w-full quantum-input-v16" />
+                                    <Dropdown v-model="newItem.movable_type" :options="movableTypeOptions" optionLabel="label" optionValue="value" :placeholder="t('stockMovements.form.itemTypePlaceholder')" class="w-full quantum-input-v16" :disabled="isItemSelectionDisabled"/>
                                 </div>
                                 <div class="field">
 
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.item') }}</label>
-                                    <Dropdown v-model="newItem.movable_id" :options="availableItems" :optionLabel="itemLabel" optionValue="id" :placeholder="t('stockMovements.form.itemPlaceholder')" :disabled="!newItem.movable_type" filter class="w-full quantum-input-v16" />
+                                    <Dropdown v-model="newItem.movable_id" :options="availableItems" :optionLabel="itemLabel" optionValue="id" :placeholder="t('stockMovements.form.itemPlaceholder')" :disabled="!newItem.movable_type || isItemSelectionDisabled" filter class="w-full quantum-input-v16" />
                                 </div>
 
                                 <div class="field">
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.quantity') }}</label>
-                                    <InputNumber v-model="newItem.quantity" showButtons :min="1" inputClass="font-black text-center" class="w-full" :disabled="isQuantityDisabled" />
+                                    <InputNumber v-model="newItem.quantity" showButtons :min="1" inputClass="font-black text-center" class="w-full" :disabled="isQuantityDisabled || isItemSelectionDisabled" />
                                 </div>
-                                <Button icon="pi pi-plus" :label="t('stockMovements.form.addItem')" @click="addItemToCart" :disabled="!newItem.movable_id" class="p-button-sm" />
+                                <Button icon="pi pi-plus" :label="t('stockMovements.form.addItem')" @click="addItemToCart" :disabled="!newItem.movable_id || isItemSelectionDisabled" class="p-button-sm" />
                             </div>
 
                             <div class="mt-4 border-t border-slate-200 pt-4">

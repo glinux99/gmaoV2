@@ -10,6 +10,7 @@ use App\Models\Unity;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SparePartController extends Controller
@@ -19,28 +20,53 @@ class SparePartController extends Controller
      */
     public function index(Request $request)
     {
-        $query = SparePart::with(['label', 'user', 'sparePartCharacteristics.labelCharacteristic', 'region', 'unity']);
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d H:i:s'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d H:i:s'));
+        $regionId = $request->input('region_id');
+        $search = $request->input('search');
+        $perPage = $request->input('per_page', 10);
 
-        $query->whereBetween('created_at', [$startDate, $endDate]);
+        if ($regionId) {
+            // Si une région est sélectionnée, on retourne les pièces de cette région.
+            $query = SparePart::with(['label', 'user', 'sparePartCharacteristics.labelCharacteristic', 'region', 'unity'])
+                ->where('region_id', $regionId);
 
-        if ($request->has('search')) {
-            $query->where('reference', 'like', '%' . $request->search . '%')
-                ->orWhere('location', 'like', '%' . $request->search . '%')
-                ->orWhereHas('label', function ($q) use ($request) {
-                    $q->where('designation', 'like', '%' . $request->search . '%');
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('reference', 'like', '%' . $search . '%')
+                      ->orWhere('location', 'like', '%' . $search . '%')
+                      ->orWhereHas('label', fn($l) => $l->where('designation', 'like', '%' . $search . '%'));
                 });
+            }
+            $spareParts = $query->paginate($perPage)->withQueryString();
+        } else {
+            // Si aucune région n'est sélectionnée, on groupe par référence et on somme les quantités.
+            $query = SparePart::with(['label', 'user'])
+                ->select(
+                    'reference',
+                    'label_id',
+                    DB::raw('MIN(price) as price'), // On prend le premier prix trouvé
+                    DB::raw('MIN(location) as location'), // On prend le premier emplacement trouvé
+                    DB::raw('MIN(user_id) as user_id'), // On prend le premier responsable trouvé
+                    DB::raw('SUM(quantity) as quantity'),
+                    DB::raw('SUM(min_quantity) as min_quantity')
+                )
+                ->groupBy('reference', 'label_id');
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('reference', 'like', '%' . $search . '%')
+                      ->orWhereHas('label', fn($l) => $l->where('designation', 'like', '%' . $search . '%'));
+                });
+            }
+            $spareParts = $query->paginate($perPage)->withQueryString();
         }
 
         return Inertia::render('Actifs/SpareParts', [
-            'spareParts' => $query->paginate(10), // Changed from labels to spareParts
+            'spareParts' => $spareParts,
             'labels' => Label::with('labelCharacteristics')->get(), // To select a label for the spare part
             'users' => User::all(['id', 'name']), // Pass users for the responsible person dropdown,
             'regions' => Region::get(), // To select a region for the spare part,
             'unities' => Unity::get(), // To select a unity for the spare part,
-            'sparePartCharacteristics' => [], // Existing characteristics for the spare part
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'region_id']),
         ]);
     }
 

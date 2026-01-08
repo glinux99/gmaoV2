@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { Head, useForm, router, usePage } from '@inertiajs/vue3';
+import { ref, onMounted, computed, watch } from 'vue';
+import { Head, useForm, router } from '@inertiajs/vue3';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
@@ -18,6 +18,7 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Tag from 'primevue/tag';
 
+
 const props = defineProps({
     spareParts: Object, // Changed from labels to spareParts
     filters: Object,
@@ -25,6 +26,7 @@ const props = defineProps({
     labels: Array, // To select a label for the spare part
     users: Array, // To select a responsible user
     sparePartCharacteristics: Array, // Existing characteristics for the spare part
+    queryParams: Object,
 });
 
 const characteristicTypes = ref([
@@ -39,7 +41,6 @@ const { t } = useI18n();
 
 const toast = useToast();
 const confirm = useConfirm();
-const page = usePage();
 
 const sparePartDialog = ref(false); // Changed from labelDialog to sparePartDialog
 const submitted = ref(false);
@@ -47,6 +48,7 @@ const editing = ref(false);
 const search = ref(props.filters?.search || '');
 const selectedRegion = ref(props.filters?.region_id || null);
 const selectedSpareParts = ref([]);
+const loading = ref(false);
 
 const form = useForm({
     id: null,
@@ -64,20 +66,42 @@ const form = useForm({
     user_id: null, // Default to current user
 });
 
-const filters = ref({
-    'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
-    'reference': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    'label.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    'location': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-});
+const filters = ref();
 
 const initFilters = () => {
-    filters.value.global.value = null;
-    filters.value.reference.constraints[0].value = null;
-    filters.value['label.designation'].constraints[0].value = null;
-    filters.value.location.constraints[0].value = null;
-    filters.value['region.designation'].constraints[0].value = null;
+    filters.value = {
+        'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
+        'reference': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'label.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'location': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    };
+};
+initFilters();
+
+const lazyParams = ref({
+    first: props.spareParts.from - 1,
+    rows: props.spareParts.per_page,
+    sortField: props.queryParams?.sortField || 'reference',
+    sortOrder: props.queryParams?.sortOrder === 'desc' ? -1 : 1,
+    filters: filters.value
+});
+
+const onPage = (event) => {
+    loading.value = true;
+    lazyParams.value = event;
+    const queryParams = {
+        ...event,
+        page: event.page + 1,
+        per_page: event.rows,
+        search: search.value,
+        region_id: selectedRegion.value,
+    };
+
+    router.get(route('spare-parts.index'), queryParams, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
 };
 
 const op = ref();
@@ -301,10 +325,17 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
             </div>
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable :value="spareParts.data" ref="dt" dataKey="id" v-model:selection="selectedSpareParts" :paginator="true" :rows="10"
-                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['reference', 'label.designation', 'location', 'region.designation']" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                <DataTable :value="spareParts.data" ref="dt" dataKey="id" v-model:selection="selectedSpareParts" :paginator="true"
+                           :rows="spareParts.per_page"
+                           :lazy="true" @page="onPage($event)" @sort="onPage($event)"
+                           :totalRecords="spareParts.total" :loading="loading"
+                           v-model:first="lazyParams.first"
+                           :sortField="lazyParams.sortField" :sortOrder="lazyParams.sortOrder"
+                           :rowsPerPageOptions="[10, 25, 50, 100]"
+                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['reference', 'label.designation', 'location', 'region.designation']"
+                           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                            :currentPageReportTemplate="t('spareParts.table.report')"
-                           class="p-datatable-sm quantum-table">
+                           class="p-datatable-sm quantum-table" >
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
@@ -312,11 +343,11 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="filters['global'].value" :placeholder="t('spareParts.toolbar.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                                <InputText v-model="search" @input="performSearch" :placeholder="t('spareParts.toolbar.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
                             <Dropdown v-model="selectedRegion"
                                       :options="props.regions" optionLabel="designation" optionValue="id"
-                                      placeholder="Filtrer par région"
+                                      :placeholder="t('spareParts.toolbar.filterByRegion')"
                                       showClear class="w-full md:w-60 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!bg-white"
                                       @change="performSearch"
                             />
@@ -369,7 +400,8 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
                     <Column v-if="visibleColumns.includes('location')" field="location" header="Emplacement" :sortable="true" style="min-width: 10rem;"></Column>
 
                     <Column v-if="visibleColumns.includes('region.designation')" field="region.designation" header="Région" :sortable="true" style="min-width: 10rem;">
-                        <template #body="{ data }">{{ data.region?.designation }}</template>
+                        <template #body="{ data }">
+                            {{ data.region?.designation }}                        </template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('user.name')" field="user.name" header="Responsable" :sortable="true" style="min-width: 10rem;">
