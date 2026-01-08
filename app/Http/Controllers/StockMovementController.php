@@ -28,6 +28,17 @@ class StockMovementController extends Controller
             ->with(['movable', 'sourceRegion', 'destinationRegion', 'user'])
             ->select('stock_movements.*');
 
+        // --- NOUVEAU : Gestion du filtre par région pour les articles déplaçables ---
+        $regionId = null;
+        if ($request->has('filters')) {
+            $filters = $request->input('filters');
+            // On vérifie si un filtre de région est appliqué (ex: depuis un Dropdown)
+            if (isset($filters['region_id']['value'])) {
+                $regionId = $filters['region_id']['value'];
+            }
+        }
+
+
         // --- Gestion du Tri ---
         if ($sortField = $request->input('sortField')) {
             $sortOrder = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
@@ -59,12 +70,13 @@ class StockMovementController extends Controller
             'stockMovements' => $query->paginate($request->input('rows', 10))->withQueryString(),
             'regions' => Region::select('id', 'designation')->get(),
             'users' => User::select('id', 'name')->get(),
+            // Les articles sont maintenant chargés en fonction du filtre de région
             'movableItems' => [
-                'spare_parts' => SparePart::all(),
-                'equipments' => Equipment::all(),
-                'meters'    => Meter::all(),
-                'keypads'   => Keypad::all(),
-                'engins'    => Engin::all(),
+                'spare_parts' => SparePart::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get(),
+                'equipments' => Equipment::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get(),
+                'meters'    => Meter::where('region_id', $regionId)->orWhereNull('region_id')->get(),
+                'keypads'   => Keypad::where('region_id', $regionId)->orWhereNull('region_id')->get(),
+                'engins'    => Engin::where('region_id', $regionId)->orWhereNull('region_id')->get(),
             ],
             'queryParams' => $request->all(['sortField', 'sortOrder', 'filters']),
         ]);
@@ -222,8 +234,14 @@ public function update(Request $request, $id)
                 // Incrémente le stock de la pièce dans la région de destination.
                 // Crée la pièce dans cette région si elle n'existe pas.
                 $part = SparePart::firstOrCreate(
-                    ['reference' => $movable->reference, 'region_id' => $validated['destination_region_id']],
-                    ['label_id' => $movable->label_id, 'price' => $movable->price, 'min_quantity' => $movable->min_quantity, 'quantity' => 0]
+                    ['reference' => $movable->reference, 'region_id' => $validated['destination_region_id']], // Attributs de recherche
+                    [ // Attributs de création
+                        'label_id' => $movable->label_id,
+                        'price' => $movable->price,
+                        'min_quantity' => $movable->min_quantity,
+                        'quantity' => 0,
+                        'user_id' => Auth::id() // Ajout du user_id ici
+                    ]
                 );
                 $part->increment('quantity', $quantity);
 
@@ -243,7 +261,13 @@ public function update(Request $request, $id)
                 // Incrémente la destination (en la créant si besoin)
                 $destPart = SparePart::firstOrCreate(
                     ['reference' => $movable->reference, 'region_id' => $validated['destination_region_id']],
-                    ['label_id' => $movable->label_id, 'price' => $movable->price, 'min_quantity' => $movable->min_quantity, 'quantity' => 0]
+                    [ // Attributs de création
+                        'label_id' => $movable->label_id,
+                        'price' => $movable->price,
+                        'min_quantity' => $movable->min_quantity,
+                        'quantity' => 0,
+                        'user_id' => Auth::id() // Ajout du user_id ici
+                    ]
                 );
                 $destPart->increment('quantity', $quantity);
             }
@@ -258,6 +282,14 @@ public function update(Request $request, $id)
     }
 
     /**
+ * Display the specified resource.
+ */
+ public function show(StockMovement $stockMovement)
+ {
+ //
+ }
+
+ /**
      * Suppression avec Rollback de stock (Annulation)
      */
     public function destroy(StockMovement $stockMovement)

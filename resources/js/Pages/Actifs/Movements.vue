@@ -26,6 +26,7 @@ import OverlayPanel from 'primevue/overlaypanel';
 import MultiSelect from 'primevue/multiselect';
 import debounce from 'lodash/debounce';
 
+import axios from 'axios';
 const props = defineProps({
     stockMovements: Object,
     filters: Object,
@@ -113,26 +114,32 @@ const movableTypeOptions = ref([
     { label: t('stockMovements.movableTypes.engin'), value: 'App\\Models\\Engin' },
 ]);
 
-const movementTypeOptions = computed(() => [
+const movementTypeOptions = ref([
     { label: t('stockMovements.movementTypes.entry'), value: 'entry' },
     { label: t('stockMovements.movementTypes.exit'), value: 'exit' },
     { label: t('stockMovements.movementTypes.transfer'), value: 'transfer' },
 ]);
 
-const availableItems = computed(() => {
 
+const availableItems = computed(() => {
     if (!newItem.value.movable_type) return [];
+    const type = newItem.value.movable_type;
+
+    // Utiliser les listes dynamiques pour les types concernés
+    if (type === 'App\\Models\\SparePart' && (form.type === 'exit' || form.type === 'transfer')) {
+        return props.movableItems.spare_parts;
+    }
+    if (type === 'App\\Models\\Equipment' && (form.type === 'exit' || form.type === 'transfer')) {
+        return props.movableItems.equipments;
+    }
+
+    // Utiliser les props pour tous les cas
     switch (newItem.value.movable_type) {
-        case 'App\\Models\\SparePart':
-            return props.movableItems.spare_parts || [];
-        case 'App\\Models\\Equipment':
-            return props.movableItems.equipments || [];
-        case 'App\\Models\\Meter':
-            return props.movableItems.meters || [];
-        case 'App\\Models\\Keypad':
-            return props.movableItems.keypads || [];
-        case 'App\\Models\\Engin':
-            return props.movableItems.engins || [];
+        case 'App\\Models\\SparePart': return props.movableItems.spare_parts || [];
+        case 'App\\Models\\Equipment': return props.movableItems.equipments || [];
+        case 'App\\Models\\Meter': return props.movableItems.meters || [];
+        case 'App\\Models\\Keypad': return props.movableItems.keypads || [];
+        case 'App\\Models\\Engin': return props.movableItems.engins || [];
         default:
             return [];
     }
@@ -161,8 +168,13 @@ const removeItemFromCart = (index) => {
 const itemLabel = (item) => {
     // Retourne un label formaté selon le type d'objet
     if (!item) return '';
+
+    // Affiche le stock calculé pour la région si disponible
+    const stockInfo = item.stock_in_region !== null ? ` - Stock: ${item.stock_in_region}` : '';
+
     if (item.serial_number) return `${item.serial_number} (${item.model || 'N/A'})`; // Pour Meters, Keypads
-    if (item.reference) return `${item.reference} (${item.name}) - Stock: ${item.quantity}`; // Pour SpareParts
+    // Pour les pièces détachées, on affiche le stock calculé
+    if (item.reference) return `${item.reference} (${item.label?.name || 'N/A'})${stockInfo}`;
     if (item.tag) return `${item.tag} - ${item.designation}`; // Pour Equipments
     return `ID: ${item.id}`;
 };
@@ -172,9 +184,25 @@ watch(() => newItem.value.movable_type, () => {
 });
 
 watch(() => form.type, (newType) => {
-    if (newType !== 'transfer') {
-        form.source_region_id = null;
-        form.destination_region_id = null;
+    // Réinitialiser les régions et les articles dynamiques lors du changement de type
+    form.source_region_id = null;
+    form.destination_region_id = null;
+    form.items = []; // Vider le panier
+});
+
+watch(() => form.source_region_id, (newRegionId) => {
+    form.items = [];
+    newItem.value.movable_id = null;
+
+    if (form.type === 'exit' || form.type === 'transfer') {
+        // On recharge la page avec le filtre de région pour obtenir les bons articles
+        router.get(route('stock-movements.index'), {
+            ...lazyParams.value,
+            'filters[region_id][value]': newRegionId
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     }
 });
 
@@ -560,6 +588,7 @@ const movementStats = computed(() => {
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.item') }}</label>
                                     <Dropdown v-model="newItem.movable_id" :options="availableItems" :optionLabel="itemLabel" optionValue="id" :placeholder="t('stockMovements.form.itemPlaceholder')" :disabled="!newItem.movable_type" filter class="w-full quantum-input-v16" />
                                 </div>
+
                                 <div class="field">
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.quantity') }}</label>
                                     <InputNumber v-model="newItem.quantity" showButtons :min="1" inputClass="font-black text-center" class="w-full" :disabled="isQuantityDisabled" />
@@ -594,12 +623,12 @@ const movementStats = computed(() => {
                                 <SelectButton v-model="form.type" :options="movementTypeOptions" optionLabel="label" optionValue="value" class="v16-select-button" />
                             </div>
 
-                            <div v-if="form.type === 'transfer'" class="space-y-6">
-                                <div class="field">
+                            <div class="space-y-6">
+                                <div class="field" v-if="form.type === 'exit' || form.type === 'transfer'">
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.sourceRegion') }}</label>
                                     <Dropdown v-model="form.source_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.sourceRegionPlaceholder')" class="w-full quantum-input-v16" />
                                 </div>
-                                <div class="field">
+                                <div class="field" v-if="form.type === 'entry' || form.type === 'transfer'">
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.destinationRegion') }}</label>
                                     <Dropdown v-model="form.destination_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.destinationRegionPlaceholder')" class="w-full quantum-input-v16" />
                                 </div>

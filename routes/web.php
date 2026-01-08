@@ -78,6 +78,7 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::resource('/role', RoleController::class)->except('create', 'show', 'edit');
 
     Route::resource('/permission', PermissionController::class)->except('create', 'show', 'edit');
+      // Déclarer les routes spécifiques AVANT les routes 'resource' pour éviter les conflits.
       Route::resources([
     'labels'=>LabelController::class,
     'unities'=> UnityController::class,
@@ -122,9 +123,6 @@ Route::post('zones/bulk-destroy', [ZoneController::class, 'bulkDestroy'])->name(
   Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
   Route::post('/meters/bulk-transfer', [MeterController::class, 'bulkTransfer'])->name('meters.bulk-transfer');
   Route::post('/keypads/bulk-transfer', [KeypadController::class, 'bulkTransfer'])->name('keypads.bulk-transfer');
-  Route::post('/stock-movements/bulk-destroy', [StockMovementController::class, 'bulkDestroy'])->name('stock-movements.bulk-destroy');
-  Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
-
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
 Route::put('/equipments/{equipment}/update-quantity', [EquipmentController::class, 'updateQuantity'])->name('equipments.update-quantity');
 Route::post('/interventions/bulk-destroy', [InterventionRequestController::class, 'bulkDestroy'])->name('interventions.bulkdestroy');
@@ -134,6 +132,7 @@ Route::put('/interventions/{intervention}/validate', [InterventionRequestControl
 Route::post('/reports/reorder', [ReportController::class, 'reorder'])->name('reports.reorder');
 Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::post('quantum/query', [ReportController::class, 'fetchData'])->name('quantum.query');
+Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
 
 
 });

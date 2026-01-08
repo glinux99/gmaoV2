@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasStock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 class SparePart extends Model
 {
-    use HasFactory,InteractsWithMedia;
+    use HasFactory, InteractsWithMedia, HasStock;
 
     /**
      * The attributes that are mass assignable.
@@ -75,4 +76,9 @@ public function spareParts()
     return $this->belongsToMany(SparePart::class)->withPivot('quantity_used')->withTimestamps();
 }
 
+    // Ajout de l'accessor pour rendre 'stock_in_region' disponible
+    public function getStockInRegionAttribute()
+    {
+        return $this->attributes['stock_in_region'] ?? 0;
+    }
 }
