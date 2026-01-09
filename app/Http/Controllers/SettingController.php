@@ -114,9 +114,15 @@ class SettingController extends Controller
             return back()->withErrors(['error' => 'Vous ne pouvez pas déconnecter votre session actuelle.']);
         }
 
+            $userId = Auth::id();
+            $ipAddress = $request->ip();
+            $userAgent = substr($request->header('User-Agent'), 0, 500);
+
         DB::table('sessions')
-            ->where('id', $sessionId)
-            ->where('user_id', $user->id)
+              ->where('id', $sessionId)
+                // ->where('user_id', $userId)
+                // ->where('ip_address', $ipAddress)
+                // ->where('user_agent', $userAgent)
             ->delete();
 
         return back()->with('message', 'La session a été fermée avec succès.');

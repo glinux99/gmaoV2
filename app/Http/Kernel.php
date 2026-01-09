@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\CheckSessionInDatabase;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 class Kernel extends HttpKernel
@@ -33,9 +34,11 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
+            // \Illuminate\Session\Middleware\AuthenticateSession::class, // Décommentez si vous l'utilisez
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\CheckSessionInDatabase::class, // Déplacé ici pour une vérification précoce
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ],
@@ -44,6 +47,7 @@ class Kernel extends HttpKernel
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+
         ],
     ];
 
@@ -71,5 +75,5 @@ class Kernel extends HttpKernel
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
     ];
 
-    
+
 }

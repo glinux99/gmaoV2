@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch , onMounted} from 'vue';
 import { useForm, router, Head } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 
@@ -28,6 +28,7 @@ import ToggleButton from 'primevue/togglebutton';
 import { useToast } from "primevue/usetoast";
 import { useConfirm } from "primevue/useconfirm";
 import { useI18n } from 'vue-i18n';
+import { useSpareParts } from '@/composables/useSpareParts';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
 const props = defineProps({
@@ -38,6 +39,7 @@ const props = defineProps({
     queryParams: Object,
     meters: Array,
     keypads: Array,
+    spareParts: Array,
 });
 
 const toast = useToast();
@@ -80,7 +82,7 @@ const form = useForm({
     box_seal_number: '',
     phase_number: 1,
     amperage: '',
-    voltage: '220V',
+    voltage: 220,
     with_ready_box: false,
     tariff: '',
     tariff_index: null,
@@ -93,8 +95,42 @@ const form = useForm({
     additional_meter_2: '',
     additional_meter_3: '',
     rccm_number: '',
-    materials_used: [],
-    client_search: null
+    client_search: null,
+    spare_parts_used: []
+});
+
+// --- GESTION RÉACTIVE DU STOCK LOCAL (POUR MATÉRIAUX) ---
+const localSpareParts = ref([]);
+
+onMounted(() => {
+    localSpareParts.value = JSON.parse(JSON.stringify(props.spareParts || []));
+});
+
+watch(() => props.spareParts, (newParts) => {
+    localSpareParts.value = JSON.parse(JSON.stringify(newParts || []));
+}, { deep: true });
+
+// --- COMPOSABLE SPARE PARTS (POUR MATÉRIAUX) ---
+const {
+    sparePartDialogVisible,
+    sparePartData,
+    getSparePartReference,
+    openSparePartDialog,
+    saveSparePart,
+    removeSparePart,
+} = useSpareParts(form, ref(localSpareParts), 'spare_parts_used');
+
+const sparePartOptions = computed(() => {
+    const regionId = form.region_id;
+    if (!regionId) return [];
+
+    return (localSpareParts.value || []).map(part => {
+        const stockInRegion = part.stocks_by_region?.[regionId] || 0;
+        return {
+            label: `${part.reference} (${t('sparePartMovements.stockLabel')}: ${stockInRegion})`,
+            value: part.id,
+        };
+    }).filter(part => part.label.includes(`Stock actuel:`) && !part.label.includes(`Stock actuel: 0`));
 });
 
 // --- ZONES FILTRÉES ---
@@ -178,15 +214,38 @@ const openEdit = (data) => {
 };
 
 const submit = () => {
-    const url = form.id ? route('connections.update', form.id) : route('connections.store');
-    form[form.id ? 'put' : 'post'](url, {
+    // Étape 1: Préparation des données finales
+    // form.service_order_cost = serviceOrderCost.value; // Not applicable here
+
+    // Convertir les objets Date en ISO string formaté pour MySQL
+    const dataToSend = {
+        ...form.data(),
+        connection_date: form.connection_date ? new Date(form.connection_date).toISOString().slice(0, 19).replace('T', ' ') : null,
+        payment_date: form.payment_date ? new Date(form.payment_date).toISOString().slice(0, 19).replace('T', ' ') : null,
+    };
+    console.log(dataToSend);
+    // Déterminer la route et la méthode
+    const method = form.id ? 'put' : 'post';
+    const routeName = !form.id ? 'connections.store' : 'connections.update';
+    const routeParams = form.id;
+    const successMessage = form.id ? t('connections.toast.updateSuccess') : t('connections.toast.saveSuccess');
+
+    const handler = {
         onSuccess: () => {
             isModalOpen.value = false;
-            toast.add({ severity: 'success', summary: t('common.success'), detail: t('connections.toast.saveSuccess') });
+            toast.add({ severity: 'success', summary: t('common.success'), detail: successMessage, life: 3000 });
+        },
+        onError: (errors) => {
+            console.error(errors);
+            toast.add({ severity: 'error', summary: t('common.error'), detail: t('connections.toast.saveError'), life: 3000 });
         }
-    });
+    };
+    if (method === 'post') {
+        form.transform(() => dataToSend).post(route(routeName), handler);
+    } else {
+        form.transform(() => dataToSend).put(route(routeName, routeParams), handler);
+    }
 };
-
 const allColumns = computed(() => [
     { field: 'customer_code', header: t('connections.table.customerCode'), sortable: true },
     { field: 'full_name', header: t('connections.table.fullName'), sortable: true },
@@ -367,7 +426,8 @@ watch(() => isModalOpen.value, (isOpen) => {
         mask: { style: 'backdrop-filter: blur(8px); background: rgba(15, 23, 42, 0.6)' }
     }">
 
-        <div class="px-8 py-5 bg-slate-900 flex justify-between items-center shadow-xl relative z-10">
+
+        <div class="px-8 py-5 bg-slate-900 flex justify-between items-center shadow-xl relative z-10 rounded-xl">
             <div class="flex items-center gap-5">
                 <div class="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
                     <i class="pi pi-bolt text-blue-400 text-2xl animate-pulse"></i>
@@ -456,12 +516,28 @@ watch(() => isModalOpen.value, (isOpen) => {
                                 <label class="text-[10px] font-black uppercase text-blue-600 tracking-widest block mb-4 underline decoration-2 underline-offset-8">Matériel Central</label>
                                 <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500">Compteur</label><Dropdown v-model="form.meter_id" filter class="h-11 !rounded-xl" /></div>
                                 <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500">Clavier</label><Dropdown v-model="form.keypad_id" filter class="h-11 !rounded-xl" /></div>
+
+                                <!-- Section Matériaux Utilisés -->
+                                <div class="pt-4 border-t border-slate-100">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="text-[11px] font-bold text-slate-500">Matériaux Utilisés</label>
+                                        <Button icon="pi pi-plus" rounded text severity="secondary" size="small" @click="openSparePartDialog('used')" />
+                                    </div>
+
+                                    <div class="space-y-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-2">
+                                        <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-2 p-2 bg-blue-50/50 rounded-lg text-[10px] border border-blue-100 group">
+                                            <b class="text-blue-700">x{{ part.quantity }}</b>
+                                            <span class="flex-grow truncate text-slate-600 font-medium">{{ getSparePartReference(part.id) }}</span>
+                                            <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePart('used', idx)"></i>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4">
                                 <label class="text-[10px] font-black uppercase text-blue-600 tracking-widest block mb-4 underline decoration-2 underline-offset-8">Spécifications</label>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Phasage</label><InputNumber v-model="form.phase_number" inputClass="h-11 rounded-xl w-full" /></div>
-                                    <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Voltage</label><InputText v-model="form.voltage" class="h-11 rounded-xl" /></div>
+                                    <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Voltage</label><InputNumber v-model="form.voltage" class="h-11 rounded-xl w-full" /></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Ampérage</label><InputText v-model="form.amperage" class="h-11 rounded-xl" /></div>
@@ -552,8 +628,6 @@ watch(() => isModalOpen.value, (isOpen) => {
                             <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Dossier de Validation</h3>
                             <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-600 uppercase">RCCM</label>
                                 <InputText v-model="form.rccm_number" class="h-11 rounded-xl shadow-sm border-slate-200" /></div>
-                            <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-600 uppercase">Matériaux</label>
-                                <Textarea v-model="form.materials_used" rows="3" class="rounded-xl border-slate-200" /></div>
                             <div class="flex items-center justify-between p-4 bg-white rounded-2xl border-2 border-dashed border-slate-200 mt-4">
                                 <div class="flex flex-col"><span class="text-sm font-black text-slate-700">Approbation Dossier</span><span class="text-[10px] text-slate-400 uppercase">Vérifié</span></div>
                                 <ToggleButton v-model="form.is_verified" onIcon="pi pi-verified" offIcon="pi pi-times" class="h-10 px-6 !rounded-xl" />
@@ -590,6 +664,42 @@ watch(() => isModalOpen.value, (isOpen) => {
                     </template>
                 </FileUpload>
             </div>
+        </Dialog>
+
+        <!-- MODALE DE SÉLECTION DES MATÉRIAUX -->
+        <Dialog v-model:visible="sparePartDialogVisible" modal :closable="false"
+                class="quantum-dialog w-full max-w-lg shadow-2xl"
+                :pt="{ mask: { style: 'backdrop-filter: blur(8px)' }, content: { class: 'p-0 rounded-2xl overflow-hidden' } }">
+
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
+                        <i class="pi pi-box text-blue-400 text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-800">
+                            Ajouter un matériau
+                        </h2>
+                        <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                            {{ form.customer_code }}
+                        </p>
+                    </div>
+                </div>
+                <Button icon="pi pi-times" text rounded severity="secondary" @click="sparePartDialogVisible = false" />
+            </div>
+
+            <div class="p-6 space-y-6 bg-white">
+                <div class="field">
+
+                    <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">Références</label>
+                    <MultiSelect v-model="sparePartData.ids" :options="sparePartOptions" optionLabel="label" optionValue="value" filter display="chip" placeholder="Rechercher une pièce..." class="w-full !rounded-xl" />
+                </div>
+                <div class="field">
+                    <label class="text-[10px] font-black uppercase text-slate-400 mb-2 block">Quantité</label>
+                    <InputNumber v-model="sparePartData.quantity" showButtons :min="1" buttonLayout="horizontal" class="w-full" />
+                </div>
+            </div>
+            <div class="p-4 bg-slate-100/60 flex justify-end gap-3 border-t border-slate-200"><Button label="Fermer" severity="secondary" @click="sparePartDialogVisible = false" class="font-bold text-xs" /><Button label="Valider" severity="info" @click="saveSparePart" class="font-bold text-xs rounded-lg shadow-lg shadow-blue-100" /></div>
         </Dialog>
     </AppLayout>
 </template>
@@ -650,5 +760,12 @@ watch(() => isModalOpen.value, (isOpen) => {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
+}
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
 }
 </style>
