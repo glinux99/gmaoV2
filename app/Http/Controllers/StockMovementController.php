@@ -310,6 +310,41 @@ public function update(Request $request, $id)
                 );
                 $destPart->increment('quantity', $quantity);
             }
+        } elseif ($item['movable_type'] === Equipment::class) {
+            $quantity = $item['quantity'];
+
+            if ($validated['type'] === 'entry' && isset($validated['destination_region_id'])) {
+                $equipment = Equipment::firstOrCreate(
+                    [
+                        'tag' => $movable->tag,
+                        'region_id' => $validated['destination_region_id']
+                    ],
+                    [
+                        'designation' => $movable->designation,
+                        'brand' => $movable->brand,
+                        'model' => $movable->model,
+                        'serial_number' => null,
+                        'status' => 'en stock',
+                        'equipment_type_id' => $movable->equipment_type_id,
+                        'user_id' => Auth::id(),
+                        'quantity' => 0,
+                    ]
+                );
+                $equipment->increment('quantity', $quantity);
+            } elseif ($validated['type'] === 'exit' && isset($validated['source_region_id'])) {
+                $equipment = Equipment::where('tag', $movable->tag)
+                                 ->where('region_id', $validated['source_region_id'])->first();
+                if ($equipment) {
+                    $equipment->decrement('quantity', $quantity);
+                }
+            } elseif ($validated['type'] === 'transfer') {
+                // Décrémente la source
+                Equipment::where('tag', $movable->tag)
+                         ->where('region_id', $validated['source_region_id'])
+                         ->decrement('quantity', $quantity);
+                // Incrémente la destination (en la créant si besoin)
+                $this->updateInventory($movable, ['movable_type' => Equipment::class, 'quantity' => $quantity], ['type' => 'entry', 'destination_region_id' => $validated['destination_region_id']]);
+            }
         } else {
              // Logique pour les autres types de modèles (Equipments, Meters, etc.)
              if ($validated['type'] === 'entry') {

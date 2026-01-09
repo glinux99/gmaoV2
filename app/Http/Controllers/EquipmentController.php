@@ -25,13 +25,18 @@ class EquipmentController extends Controller
  public function index()
 {
     $request = request();
-    $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-    $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+    $perPage = $request->input('per_page', 10);
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
     $search = $request->input('search');
+    $regionId = $request->input('region_id');
 
     // 1. Query pour le Tableau (avec pagination et filtres temporels)
-    $tableQuery = Equipment::with(['equipmentType', 'region', 'user', 'parent', 'characteristics'])
-        ->whereBetween('created_at', [$startDate, $endDate]);
+    $tableQuery = Equipment::with(['equipmentType', 'region', 'user', 'parent', 'characteristics'])->latest();
+
+    if ($startDate && $endDate) {
+        $tableQuery->whereBetween('created_at', [$startDate, $endDate]);
+    }
 
     if ($search) {
         $tableQuery->where(function ($q) use ($search) {
@@ -42,13 +47,18 @@ class EquipmentController extends Controller
         });
     }
 
+    if ($regionId) {
+        $tableQuery->where('region_id', $regionId);
+    }
+
     // 2. Query pour l'Arborescence (Besoin de TOUS les équipements pour ne pas briser les liens)
     // On ne filtre PAS par date ici, sinon les enfants n'auront pas leurs parents si créés avant.
     $allEquipments = Equipment::with(['equipmentType:id,name', 'region:id,designation'])
         ->get(['id', 'tag', 'designation', 'parent_id', 'region_id', 'equipment_type_id', 'status']);
+    $allEquipments = Equipment::get(['id', 'tag', 'designation', 'parent_id']);
 
     return Inertia::render('Actifs/Equipments', [
-        'equipments' => $tableQuery->paginate(10)->withQueryString(),
+        'equipments' => $tableQuery->paginate($perPage)->withQueryString(),
         'filters' => $request->only(['search', 'start_date', 'end_date']),
         'equipmentTypes' => EquipmentType::all(),
         'regions' => Region::all(),

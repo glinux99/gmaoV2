@@ -49,6 +49,8 @@ public function index(Request $request)
             'filters' => $request->all(['search']),
             'regions' => Region::all(['id', 'designation as name']),
             'zones' => Zone::all(['id', 'title as name']),
+            'meters'=>Meter::all(['id', 'serial_number as name']),
+            'keypads'=>Keypad::all(['id', 'serial_number as name']),
             'connectionStatuses' => [
                 ['label' => 'Raccordé', 'value' => '5 - Raccordé'],
                 ['label' => 'En attente', 'value' => 'pending'],

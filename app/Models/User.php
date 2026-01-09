@@ -3,10 +3,13 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -31,6 +34,7 @@ class User extends Authenticatable implements HasMedia
         'pointure',
         'size',
         'profile_photo',
+        'region_id'
 
     ];
 
@@ -58,7 +62,10 @@ class User extends Authenticatable implements HasMedia
     protected $appends = [
         'profile_photo_url',
     ];
-
+ public function logins(): HasMany
+    {
+        return $this->hasMany(Login::class);
+    }
     public function getCreatedAtAttribute()
     {
         return date('d-m-Y H:i', strtotime($this->attributes['created_at']));

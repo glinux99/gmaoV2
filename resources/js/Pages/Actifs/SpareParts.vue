@@ -339,26 +339,50 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
-                    <template #header>
-                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
-                            <IconField iconPosition="left">
-                                <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="search" @input="performSearch" :placeholder="t('spareParts.toolbar.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
-                            </IconField>
-                            <Dropdown v-model="selectedRegion"
-                                      :options="props.regions" optionLabel="designation" optionValue="id"
-                                      :placeholder="t('spareParts.toolbar.filterByRegion')"
-                                      showClear class="w-full md:w-60 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!bg-white"
-                                      @change="performSearch"
-                            />
-                            <div class="flex items-center gap-2">
-                                <Button v-if="!bulkDeleteButtonIsDisabled" :label="`Supprimer (${selectedSpareParts.length})`" icon="pi pi-trash" severity="danger" @click="deleteSelectedSpareParts" />
-                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
-                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" v-tooltip.bottom="t('common.export')" />
-                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="'Colonnes'" />
-                            </div>
-                        </div>
-                    </template>
+                 <template #header>
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+
+        <div class="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+
+            <Dropdown
+                v-model="selectedRegion"
+                :options="props.regions"
+                optionLabel="designation"
+                optionValue="id"
+                :placeholder="t('spareParts.toolbar.filterByRegion')"
+                showClear
+                @change="performSearch"
+                class="w-full md:w-64 h-11 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!ring-2 focus:!ring-primary-500/20 focus:!bg-white transition-all duration-200"
+            />
+
+            <IconField iconPosition="left" class="w-full md:w-80">
+                <InputIcon class="pi pi-search text-slate-400" />
+                <InputText
+                    v-model="search"
+                    @input="performSearch"
+                    :placeholder="t('spareParts.toolbar.searchPlaceholder')"
+                    class="w-full h-11 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-primary-500/20 focus:bg-white transition-all duration-200"
+                />
+            </IconField>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <Button
+                v-if="!bulkDeleteButtonIsDisabled"
+                :label="`Supprimer (${selectedSpareParts.length})`"
+                icon="pi pi-trash"
+                severity="danger"
+                @click="deleteSelectedSpareParts"
+                class="rounded-xl h-11"
+            />
+
+            <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl h-11" v-tooltip.bottom="t('common.resetFilters')" />
+            <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" class="h-11 w-11" v-tooltip.bottom="t('common.export')" />
+            <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" class="h-11 w-11" v-tooltip.bottom="'Colonnes'" />
+        </div>
+
+    </div>
+</template>
 
                     <Column v-if="visibleColumns.includes('reference')" field="reference" header="REF" :sortable="true" style="min-width: 8rem;">
                         <template #body="{ data }">

@@ -284,7 +284,7 @@ watch(() => form.items, (newItems, oldItems) => {
 const isQuantityDisabled = computed(() => {
     if (!newItem.value.movable_type) return true;
     // La quantité est désactivée (forcée à 1) pour les items sérialisés
-    return newItem.value.movable_type !== 'App\\Models\\SparePart';
+    return (newItem.value.movable_type !== 'App\\Models\\SparePart') && newItem.value.movable_type !== 'App\\Models\\Equipment';
 });
 
 watch(isQuantityDisabled, (disabled) => {
@@ -518,35 +518,52 @@ const movementStats = computed(() => {
                         v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['movable.serial_number', 'movable.reference', 'movable.tag', 'user.name', 'notes']"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                         :currentPageReportTemplate="t('common.paginationReport')">
+<template #header>
+    <div v-if="!selectedMovements.length" class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
 
-                    <template #header>
-                        <div v-if="!selectedMovements.length" class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
-                            <IconField iconPosition="left">
-                                <Dropdown v-model="filters['region'].value" :options="regions" optionLabel="designation" optionValue="id"
-                                          :placeholder="t('stockMovements.filter.byRegion')" showClear
-                                          @change="onPage(lazyParams)"
-                                          class="w-full md:w-56 mr-4" />
+        <div class="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+            <Dropdown
+                v-model="filters['region'].value"
+                :options="regions"
+                optionLabel="designation"
+                optionValue="id"
+                :placeholder="t('stockMovements.filter.byRegion')"
+                showClear
+                @change="onPage(lazyParams)"
+                class="w-full md:w-64 h-11 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!ring-2 focus:!ring-primary-500/20 focus:!bg-white transition-all duration-200"
+            />
 
+            <IconField iconPosition="left" class="w-full md:w-96">
+                <InputIcon class="pi pi-search text-slate-400" />
+                <InputText
+                    v-model="filters['global'].value"
+                    @input="debounce(() => onPage(lazyParams), 500)()"
+                    :placeholder="t('stockMovements.toolbar.searchPlaceholder')"
+                    class="w-full h-11 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-primary-500/20 focus:bg-white transition-all duration-200"
+                />
+            </IconField>
+        </div>
 
+        <div class="flex items-center gap-2">
+            <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl h-11" v-tooltip.bottom="t('common.resetFilters')" />
+            <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" class="h-11 w-11" v-tooltip.bottom="t('common.exportCSV')" />
+            <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" class="h-11 w-11" v-tooltip.bottom="t('common.selectColumns')" />
+        </div>
+    </div>
 
-
-
-                                <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="filters['global'].value" @input="debounce(() => onPage(lazyParams), 500)()" :placeholder="t('stockMovements.toolbar.searchPlaceholder')" class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
-                            </IconField>
-                            <div class="flex items-center gap-2">
-                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
-                                <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" v-tooltip.bottom="t('common.exportCSV')" />
-                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="t('common.selectColumns')" />
-                            </div>
-                        </div>
-                        <div v-else class="flex justify-between items-center p-4 bg-primary-50 rounded-xl">
-                            <span class="font-bold text-sm text-primary-700">{{ t('common.selectedCount', { count: selectedMovements.length }) }}</span>
-                            <div>
-                                <Button :label="t('common.deleteSelection')" icon="pi pi-trash" severity="danger" @click="deleteSelectedMovements" />
-                            </div>
-                        </div>
-                    </template>
+    <div v-else class="flex justify-between items-center p-4 bg-primary-50 rounded-xl">
+        <span class="font-bold text-sm text-primary-700">
+            {{ t('common.selectedCount', { count: selectedMovements.length }) }}
+        </span>
+        <Button
+            :label="t('common.deleteSelection')"
+            icon="pi pi-trash"
+            severity="danger"
+            @click="deleteSelectedMovements"
+            class="rounded-xl h-11"
+        />
+    </div>
+</template>
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem" frozen></Column>
 

@@ -1277,11 +1277,22 @@
   "connections": {
     "title": "Gestion des Raccordements",
     "headTitle": "Raccordements",
+    "titleHtml": "Gestion des <span class='text-primary-600'>Raccordements</span>",
     "subtitle": "Clients & Points de connexion",
     "addNew": "Nouveau Raccordement",
     "import": "Importer",
     "delete": "Supprimer",
     "closest": "Plus proches",
+    "status": {
+        "active": "Actif",
+        "inactive": "Inactif",
+        "pending": "En attente",
+        "suspended": "Suspendu",
+        "fraud": "Fraude"
+    },
+    "toast": {
+        "saveSuccess": "Raccordement enregistré avec succès."
+    },
     "exportCSV": "Exporter en CSV",
     "selectColumns": "Choisir les colonnes",
     "searchPlaceholder": "Rechercher...",
@@ -1294,6 +1305,12 @@
     "dialog": {
         "editTitle": "Modifier le Raccordement",
         "createTitle": "Nouveau Raccordement",
+        "clientInfo": "Informations Client",
+        "technicalData": "Données Techniques",
+        "adminInfo": "Administration",
+        "searchClient": "Rechercher un client existant",
+        "searchClientPlaceholder": "Saisir un nom ou un code client...",
+        "customerCodePlaceholder": "Généré automatiquement si vide",
         "customerCode": "Code Client",
         "firstName": "Prénom",
         "lastName": "Nom",
@@ -1304,7 +1321,9 @@
         "gpsLatitude": "Latitude GPS",
         "gpsLongitude": "Longitude GPS",
         "cancel": "Annuler",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "selectMeter": "Sélectionner un compteur disponible",
+        "selectKeypad": "Sélectionner un clavier disponible"
     },
     "table": {
         "customerCode": "Code Client",
@@ -2221,6 +2240,45 @@
         }
     }
 
+,
+    "profile": {
+        "title": "Mon Profil",
+        "headTitle": "Profil Utilisateur",
+        "sections": {
+            "about": "À Propos",
+            "security": "Sécurité du Compte",
+            "securitySubtitle": "Mettez à jour votre mot de passe pour sécuriser votre compte.",
+            "preferences": "Préférences & Notifications",
+            "preferencesSubtitle": "Gérez la manière dont vous recevez les informations."
+        },
+        "fields": {
+            "fullName": "Nom complet",
+            "email": "Adresse e-mail",
+            "memberSince": "Membre depuis le",
+            "roles": "Rôles & Permissions",
+            "currentPassword": "Mot de passe actuel",
+            "newPassword": "Nouveau mot de passe",
+            "confirmPassword": "Confirmer le nouveau mot de passe"
+        },
+        "actions": {
+            "updatePassword": "Mettre à jour le mot de passe",
+            "savePreferences": "Enregistrer les préférences"
+        },
+        "preferences": {
+            "emailNotifications": "Notifications par e-mail",
+            "emailNotificationsDesc": "Recevoir les alertes importantes par e-mail.",
+            "smsNotifications": "Notifications par SMS",
+            "smsNotificationsDesc": "Recevoir les alertes urgentes par SMS.",
+            "darkMode": "Mode Sombre",
+            "darkModeDesc": "Activer l'interface en mode sombre."
+        },
+        "messages": {
+            "noRoles": "Aucun rôle assigné."
+        },
+        "toast": {
+            "passwordUpdated": "Mot de passe mis à jour avec succès."
+        }
+    }
 
 
 }

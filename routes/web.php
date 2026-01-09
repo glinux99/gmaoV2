@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Http\Controllers\MeterController;
 use App\Http\Controllers\KeypadController;
 use App\Http\Controllers\InterventionRequestController;
+use App\Http\Controllers\SettingController;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -76,7 +77,7 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::post('/user/destroy-bulk', [UserController::class, 'destroyBulk'])->name('user.destroy-bulk');
 
     Route::resource('/role', RoleController::class)->except('create', 'show', 'edit');
-
+    Route::post('/sessions/{session_id}', [SettingController::class, 'logoutSession'])->name('sessions.logout');
     Route::resource('/permission', PermissionController::class)->except('create', 'show', 'edit');
       // Déclarer les routes spécifiques AVANT les routes 'resource' pour éviter les conflits.
       Route::resources([
@@ -113,7 +114,12 @@ Route::middleware('auth', 'verified')->group(function () {
     'keypads' => KeypadController::class,
     'zones'=> ZoneController::class,
 
+
   ]);
+
+  Route::put('/settings/profile', [SettingController::class, 'updateProfile'])->name('settings.updateProfile');
+  Route::put('/settings/password', [SettingController::class, 'updatePassword'])->name('settings.updatePassword');
+  Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
 
   Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
   Route::put('/expenses/{expense}/status', [ExpensesController::class, 'updateStatus'])->name('expenses.updateStatus');

@@ -16,8 +16,7 @@ return new class extends Migration
 
             $table->foreignId('task_id')->nullable()->constrained('tasks')->onDelete('cascade');
             $table->foreignId('maintenance_id')->nullable()->constrained('maintenances')->onDelete('cascade');
-            $table->foreignId('intervention_request_id')->nullable()->constrained('intervention_requests')->onDelete('cascade');
-            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
+
 
             // Informations confirmées de la tâche
             $table->timestamp('actual_start_time')->nullable();
@@ -25,8 +24,6 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('activities')->onDelete('cascade'); // ID de l'activité parente
             $table->nullableMorphs('assignable'); // Crée assignable_id et assignable_type
              $table->integer('jobber')->nullable(); // Nombre de techniciens
-            $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null'); // Ajout de la région
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null'); // Ajout de la zone
 
             // Pièces détachées
             $table->json('spare_parts_used')->nullable(); // Pièces détachées utilisées (JSON pour stocker id, quantité)

@@ -44,10 +44,16 @@ class ConnectionsImport implements ToModel, WithHeadingRow
             $keypad = Keypad::firstOrCreate(['serial_number' => $row['numero_du_clavier']]);
         }
 
+        // Générer un code client si non fourni
+        $customerCode = $row['code_client_automatique'] ?? null;
+        if (empty($customerCode)) {
+            $customerCode = 'VE-CLI-15' . str_pad(mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
+        }
+
         // --- 2. Création de la Connexion ---
         // Les clés du tableau $row correspondent aux en-têtes transformés en "slug" par Laravel Excel
         return new Connection([
-            'customer_code'          => $row['code_client_automatique'] ?? null,
+            'customer_code'          => $customerCode,
             'region_id'              => $region->id,
             'zone_id'                => $zone->id,
             'status'                 => $row['statut'] ?? 'pending',

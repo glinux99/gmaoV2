@@ -203,7 +203,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
                     </div>
 
                     <div class="p-2.5 space-y-1">
-                        <NavLink href="/profile" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 no-underline border-none text-gray-600 font-bold text-xs transition-colors group">
+                        <NavLink href="/settings" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 no-underline border-none text-gray-600 font-bold text-xs transition-colors group">
                             <i class="pi pi-user-edit text-indigo-400 group-hover:text-indigo-600"></i> {{ t('topbar.userMenu.edit_profile') }}
                         </NavLink>
                         <NavLink href="/settings" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 no-underline border-none text-gray-600 font-bold text-xs transition-colors group">

@@ -22,22 +22,20 @@ return new class extends Migration
     $table->dateTime('started_at')->nullable(); // Date et heure de début réelle
     $table->dateTime('completed_at')->nullable(); // Date et heure de fin réelle
     $table->decimal('cost', 10, 2)->nullable();
-    $table->foreignId('network_id')->nullable()->constrained('networks')->onDelete('set null');
-    $table->foreignId('region_id')->nullable()->constrained()->onDelete('set null');
+
 
     // Champs de récurrence
     $table->string('recurrence_type')->nullable();
     $table->integer('recurrence_interval')->nullable();
     $table->integer('recurrence_month_interval')->nullable();
     $table->json('recurrence_days')->nullable();
-    $table->foreignId('network_node_id')->nullable()->constrained('network_nodes')->onDelete('set null');
-    $table->integer('recurrence_day_of_month')->nullable();
+   $table->integer('recurrence_day_of_month')->nullable();
     $table->integer('recurrence_month')->nullable();
     $table->integer('reminder_days')->nullable();
     $table->text('custom_recurrence_config')->nullable();
     $table->foreignId('maintenance_schedule_id')->nullable()->constrained('maintenance_schedules')->onDelete('set null');
     $table->foreignId('equipment_id')->nullable()->constrained('equipment')->onDelete('set null');
-    $table->foreignId('intervention_request_id')->nullable()->constrained('intervention_requests')->onDelete('set null');
+
     $table->json('regenerated_dates')->nullable()->comment('Liste des dates régénérées si la maintenance prend plusieurs fois');
 
     $table->timestamps();

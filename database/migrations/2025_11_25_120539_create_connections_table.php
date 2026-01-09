@@ -37,9 +37,7 @@ return new class extends Migration
             // --- Détails Techniques du Raccordement ---
             $table->string('connection_type')->nullable(); // Type de raccordement
             $table->date('connection_date')->nullable(); // Date de raccordement
-            $table->foreignId('meter_id')->nullable()->constrained('meters')->onDelete('set null'); // Lien vers le compteur
-            $table->foreignId('keypad_id')->nullable()->constrained('keypads')->onDelete('set null'); // Lien vers le clavier
-            $table->string('cable_section')->nullable(); // Section câble de raccordement (ex: 2x16 mm²)
+
             $table->string('meter_type_connected')->nullable(); // Type de compteur raccordé (ex: E460 1ph)
             $table->integer('cable_length')->nullable(); // Longueur câble de raccordement
             $table->string('box_type')->nullable(); // Type de boîtier (ex: Boite double)

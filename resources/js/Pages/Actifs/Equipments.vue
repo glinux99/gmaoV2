@@ -1,6 +1,6 @@
 <script setup>
 import Divider from 'primevue/divider'
-import { ref, computed, watch, reactive } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/sakai/layout/AppLayout.vue';
 import { useToast } from 'primevue/usetoast';
@@ -11,6 +11,11 @@ import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import MultiSelect from 'primevue/multiselect';
 import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Dropdown from 'primevue/dropdown';
 
 
 // Composants PrimeVue utilisés dans le template (s'assurer qu'ils sont importés dans le Layout ou le main.js)
@@ -24,6 +29,7 @@ const props = defineProps({
     users: Array,
     parentEquipments: Array,
     labels: Array,
+    queryParams: Object,
 });
 const { t } = useI18n();
 
@@ -36,7 +42,9 @@ const activeStep = ref(1);
 const insufficientQuantityDialog = ref(false); // Nouvelle variable pour le dialogue
 const editing = ref(false);
 const equipmentTypeDialog = ref(false);
+const regionFilter = ref(props.filters?.region_id || null);
 const search = ref(props.filters?.search || '');
+const loading = ref(false);
 
 const filters = ref({
     'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -45,6 +53,15 @@ const filters = ref({
     'equipment_type.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     'status': { value: null, matchMode: FilterMatchMode.EQUALS },
+    'region_id': { value: null, matchMode: FilterMatchMode.EQUALS },
+});
+
+const lazyParams = ref({
+    first: props.equipments.from - 1,
+    rows: props.equipments.per_page || 10,
+    sortField: props.queryParams?.sortField || 'created_at',
+    sortOrder: props.queryParams?.sortOrder === 'desc' ? -1 : 1,
+    filters: filters.value
 });
 
 const initFilters = () => {
@@ -54,6 +71,8 @@ const initFilters = () => {
     filters.value['equipment_type.name'].constraints[0].value = null;
     filters.value['region.designation'].constraints[0].value = null;
     filters.value.status.value = null;
+    regionFilter.value = null;
+    performSearch();
 };
 
 const form = useForm({
@@ -102,7 +121,7 @@ const allColumns = ref([
     { field: 'warranty_end_date', header: 'Fin de garantie' },
     { field: 'user.name', header: 'Responsable' }
 ]);
-const visibleColumns = ref(allColumns.value.slice(0, 6).map(col => col.field)); // Affiche les 6 premières par défaut
+const visibleColumns = ref(['tag', 'designation', 'equipment_type.name', 'region.designation', 'status', 'quantity']);
 
 const statusOptions = computed(() => [
     { label: t('equipments.statusOptions.in_service'), value: 'en service' },
@@ -519,15 +538,32 @@ const insufficienQty = () => {
         saveEquipment();
     }
 };
+
+const loadLazyData = () => {
+    loading.value = true;
+    const queryParams = {
+        ...lazyParams.value,
+        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+        per_page: lazyParams.value.rows,
+        sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc',
+        search: filters.value.global.value,
+        region_id: regionFilter.value,
+    };
+
+    router.get(route('equipments.index'), queryParams, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
+
+const onPage = (event) => {
+    lazyParams.value = event;
+    loadLazyData();
+};
+
 let timeoutId = null;
 const performSearch = () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-        router.get(route('equipments.index'), { search: search.value }, {
-            preserveState: true,
-            replace: true,
-        });
-    }, 300);
+    loadLazyData();
 };
 
 const dt = ref();
@@ -638,26 +674,77 @@ defineExpose({
 
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable :value="equipments.data" ref="dt" dataKey="id" v-model:selection="selectedEquipments" :paginator="true" :rows="10"
-                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['tag', 'designation', 'equipment_type.name', 'region.designation', 'status']" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                <DataTable :value="equipments.data" ref="dt" dataKey="id" v-model:selection="selectedEquipments" :paginator="true"
+                           :rows="equipments.per_page" :rowsPerPageOptions="[10, 25, 50, 100]"
+                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['tag', 'designation', 'equipment_type.name', 'region.designation', 'status']"
+                           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
                            :currentPageReportTemplate="t('equipments.table.report')"
+                           :lazy="true" @page="onPage($event)" @sort="onPage($event)"
+                           :totalRecords="equipments.total" :loading="loading"
+                           v-model:first="lazyParams.first"
+                           :sortField="lazyParams.sortField" :sortOrder="lazyParams.sortOrder"
                            class="p-datatable-sm quantum-table">
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
-                    <template #header>
-                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
-                            <IconField iconPosition="left">
-                                <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="filters['global'].value" :placeholder="t('equipments.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
-                            </IconField>
-                            <div class="flex items-center gap-2">
-                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
-                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" v-tooltip.bottom="t('common.export')" />
-                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="'Colonnes'" />
-                            </div>
-                        </div>
-                    </template>
+                   <template #header>
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+
+        <div class="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+
+            <Dropdown
+                v-model="regionFilter"
+                :options="regions"
+                optionLabel="designation"
+                optionValue="id"
+                :placeholder="t('equipments.filterByRegion') || 'Filtrer par région'"
+                showClear
+                @change="performSearch"
+                class="w-full md:w-64 h-11 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!ring-2 focus:!ring-primary-500/20 focus:!bg-white transition-all duration-200"
+            />
+
+            <IconField iconPosition="left" class="w-full md:w-80">
+                <InputIcon class="pi pi-search text-slate-400" />
+                <InputText
+                    v-model="filters['global'].value"
+                    @input="onPage(lazyParams)"
+                    :placeholder="t('equipments.searchPlaceholder')"
+                    class="w-full h-11 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-primary-500/20 focus:bg-white transition-all duration-200"
+                />
+            </IconField>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <Button
+                icon="pi pi-filter-slash"
+                outlined
+                severity="secondary"
+                @click="initFilters"
+                class="rounded-xl h-11"
+                v-tooltip.bottom="t('common.resetFilters')"
+            />
+            <Button
+                icon="pi pi-download"
+                text
+                rounded
+                severity="secondary"
+                @click="exportCSV"
+                class="h-11 w-11"
+                v-tooltip.bottom="t('common.export')"
+            />
+            <Button
+                icon="pi pi-cog"
+                text
+                rounded
+                severity="secondary"
+                @click="op.toggle($event)"
+                class="h-11 w-11"
+                v-tooltip.bottom="'Colonnes'"
+            />
+        </div>
+
+    </div>
+</template>
 
                     <Column v-if="visibleColumns.includes('tag')" field="tag" :header="t('equipments.table.tag')" :sortable="true" style="min-width: 8rem;">
                         <template #body="{ data }">
