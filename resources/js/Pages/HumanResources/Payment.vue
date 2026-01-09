@@ -69,7 +69,7 @@ const stats = computed(() => {
     const data = props.payments.data || [];
     const total = data.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
     return {
-        totalFlux: total.toLocaleString('fr-FR') + ' XOF',
+        totalFlux: total.toLocaleString('fr-FR') + ' USD',
         transactions: data.length,
         pending: data.filter(p => p.status === 'pending').length,
         average: data.length > 0 ? (total / data.length).toFixed(0) : 0
@@ -252,7 +252,7 @@ const getPayableAvatarLabel = (type, id) => {
 
                     <Column field="amount" :header="t('payments.table.amount')" sortable>
                         <template #body="{ data }">
-                            <span class="font-black text-slate-800">{{ data.amount.toLocaleString() }} <small>XOF</small></span>
+                            <span class="font-black text-slate-800">{{ data.amount.toLocaleString() }} <small>USD</small></span>
                         </template>
                     </Column>
 
@@ -334,7 +334,7 @@ const getPayableAvatarLabel = (type, id) => {
                 <div class="p-6 bg-white max-h-[80vh] overflow-y-auto scroll-smooth">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="flex flex-col gap-2">
-                            <label class="text-xs font-black text-slate-500 uppercase">Montant (XOF)</label>
+                            <label class="text-xs font-black text-slate-500 uppercase">Montant (USD)</label>
                             <InputNumber v-model="form.amount" mode="decimal" class="w-full" inputClass="py-3.5 rounded-xl border-slate-200" />
                             <small v-if="submitted && !form.amount" class="text-red-500 font-bold text-[10px]">Requis</small>
                         </div>

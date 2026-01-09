@@ -50,6 +50,7 @@ const activityDialogVisible = ref(false);
 const dt = ref();
 const op = ref();
 const isCreatingSubActivity = ref(false);
+const expandedRows = ref([]);
 
 /**
  * SOLUTION : Utiliser tm() (translation message) au lieu de t()
@@ -326,6 +327,15 @@ const currentActivities = computed(() => {
     });
 });
 // -------------------------------------------------------------------------
+
+// --- NOUVELLE LOGIQUE POUR LA VUE HIÉRARCHIQUE ---
+const parentActivities = computed(() => {
+    return currentActivities.value.filter(activity => !activity.parent_id);
+});
+
+const getSubActivities = (parentId) => {
+    return currentActivities.value.filter(activity => activity.parent_id === parentId);
+};
 
 // --- STATISTIQUES ---
 const stats = computed(() => {
@@ -635,13 +645,13 @@ const exportCSV = () => {
             </div>
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable ref="dt" :value="currentActivities" dataKey="id"
+                <DataTable ref="dt" :value="parentActivities" dataKey="id" v-model:expandedRows="expandedRows"
                     lazy paginator :totalRecords="activities.total"
                     :rows="activities.per_page"
                     @page="onPage($event)" @sort="onSort($event)"
                     v-model:filters="lazyParams.filters" filterDisplay="menu"
                     :globalFilterFields="['task.title', 'jobber', 'status']"
-                    class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                    class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport" responsiveLayout="scroll"
                     :currentPageReportTemplate="t('myActivities.table.report')">
 
                     <template #header>
@@ -662,6 +672,8 @@ const exportCSV = () => {
                             </div>
                         </div>
                     </template>
+
+                    <Column :expander="true" headerStyle="width: 3rem" />
 
                     <Column v-for="col in allColumns.filter(c => visibleColumns.includes(c.field))" :key="col.field" :field="col.field" :header="col.header" sortable :filterField="col.field">
                         <template #body="{ data, field }">
@@ -697,6 +709,25 @@ const exportCSV = () => {
                             </div>
                         </template>
                     </Column>
+
+                    <template #expansion="{ data }">
+                        <div class="bg-slate-100/50 px-12 py-4 border-t border-b border-slate-200" v-if="getSubActivities(data.id).length > 0">
+                            <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Sous-activités associées</h4>
+                            <div class="space-y-2">
+                                <div v-for="subActivity in getSubActivities(data.id)" :key="subActivity.id"
+                                     class="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-primary-200 transition-colors">
+                                    <div class="flex items-center gap-4">
+                                        <Tag :value="getStatusLabel(subActivity.status)" :severity="getStatusSeverity(subActivity.status)" class="uppercase text-[9px] px-2" />
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-sm text-slate-700">{{ subActivity.task?.title || subActivity.maintenance?.title }}</span>
+                                            <span class="text-xs text-slate-500">{{ subActivity.assignable?.name || subActivity.jobber }}</span>
+                                        </div>
+                                    </div>
+                                    <Button icon="pi pi-arrow-right" class="p-button-rounded p-button-text p-button-secondary" @click="editActivity(subActivity)" v-tooltip.left="t('myActivities.common.completeActivityTooltip')" />
+                                </div>
+                            </div>
+                        </div>
+                    </template>
 
                 </DataTable>
             </div>

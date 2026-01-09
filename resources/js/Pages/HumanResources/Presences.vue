@@ -304,7 +304,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Paiement' : 'Cr√
                             <Column :field="col.field" :header="col.header" :sortable="true" style="min-width: 12rem;">
                                 <template #body="slotProps">
                                     <span v-if="col.field === 'amount'">
-                                        {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slotProps.data.amount) }}
+                                        {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(slotProps.data.amount) }}
                                     </span>
                                     <span v-else-if="col.field === 'payment_date'">
                                         {{ new Date(slotProps.data.payment_date).toLocaleDateString('fr-FR') }}
@@ -356,7 +356,7 @@ const dialogTitle = computed(() => editing.value ? 'Modifier le Paiement' : 'Cr√
                         <div class="flex flex-column gap-3">
                             <div class="flex items-center gap-4">
                                 <label for="amount" class="font-semibold w-24">Montant *</label>
-                                <InputNumber id="amount" v-model="form.amount" mode="currency" currency="XOF" locale="fr-FR"
+                                <InputNumber id="amount" v-model="form.amount" mode="currency" currency="USD" locale="fr-FR"
                                     :class="{ 'p-invalid': submitted && !form.amount }" class="flex-auto" />
                             </div>
                             <small class="p-error" v-if="form.errors.amount">{{ form.errors.amount }}</small>

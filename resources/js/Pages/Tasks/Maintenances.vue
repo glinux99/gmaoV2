@@ -1383,7 +1383,7 @@ const formatDate = (dateString) => {
                     </Column>
                     <Column v-if="visibleColumns.includes('cost')" field="cost" :header="t('maintenances.columns.cost')" :sortable="true" style="min-width: 10rem;">
                         <template #body="slotProps">
-                            {{ slotProps.data.cost }} XOF
+                            {{ slotProps.data.cost }} USD
                         </template>
                     </Column>
                     <Column v-if="visibleColumns.includes('region.designation')" field="region.designation" :header="t('maintenances.columns.region')" :sortable="true" style="min-width: 10rem;">
@@ -1549,7 +1549,7 @@ const formatDate = (dateString) => {
                             <div class="mt-3 p-3 bg-primary-50 rounded border border-primary-100">
                                 <div class="flex items-center justify-between text-[10px]">
                                     <span class="font-bold text-primary-700">{{ t('maintenances.activityDialog.estimatedCost') }}</span>
-                                    <InputNumber v-model="activity.cost" mode="currency" currency="XOF" class="quantum-input-transparent text-right font-black" />
+                                    <InputNumber v-model="activity.cost" mode="currency" currency="USD" class="quantum-input-transparent text-right font-black" />
                                 </div>
                             </div>
                         </div>
@@ -2014,7 +2014,7 @@ const formatDate = (dateString) => {
                             <i class="pi pi-wallet text-slate-400 group-hover:text-emerald-500"></i>
                         </div>
                         <label for="cost" class="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1 block">{{ t('maintenances.formDialog.estimatedBudget') }}</label>
-                        <InputNumber id="cost" v-model="form.cost" mode="currency" currency="XOF" locale="fr-FR" class="quantum-input-transparent text-emerald-600 font-bold" :min="0" />
+                        <InputNumber id="cost" v-model="form.cost" mode="currency" currency="USD" locale="fr-FR" class="quantum-input-transparent text-emerald-600 font-bold" :min="0" />
                     </div>
                 </div>
             </div>

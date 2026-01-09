@@ -721,7 +721,7 @@ const getPrioritySeverity = (priority) => {
                     <div class="field">
                         <label for="cost" class="font-semibold">Coût / Budget</label>
                         <InputNumber id="cost" class="w-full" v-model="form.cost" mode="currency"
-                            currency="XOF" locale="fr-FR" :min="0" />
+                            currency="USD" locale="fr-FR" :min="0" />
                         <small class="p-error">{{ form.errors.cost }}</small>
                     </div>
                     <div class="field">

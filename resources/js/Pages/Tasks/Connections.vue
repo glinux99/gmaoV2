@@ -389,7 +389,7 @@ watch(() => isModalOpen.value, (isOpen) => {
                         <template #body="{ data, field }">
                             <span v-if="field === 'full_name'" class="font-bold">{{ data.first_name }} {{ data.last_name }}</span>
                             <Tag v-else-if="field === 'status'" :value="t(`connections.status.${data.status}`, data.status)" :severity="getStatusSeverity(data.status)" class="uppercase text-[9px] px-2" />
-                            <span v-else-if="field === 'amount_paid'">{{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(data.amount_paid) }}</span>
+                            <span v-else-if="field === 'amount_paid'">{{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD' }).format(data.amount_paid) }}</span>
                             <span v-else-if="field.includes('date')">{{ data[field] ? new Date(data[field]).toLocaleDateString() : '-' }}</span>
                             <span v-else-if="field === 'region.designation'">{{ data.region?.designation }}</span>
                             <span v-else-if="field === 'zone.title'">{{ data.zone?.title }}</span>
@@ -613,8 +613,8 @@ watch(() => isModalOpen.value, (isOpen) => {
                             <label class="text-[10px] font-black uppercase text-blue-200 tracking-widest block mb-8 opacity-70">Transactions & Ledger</label>
                             <div class="space-y-8 relative z-10">
                                 <div class="flex flex-col gap-2">
-                                    <label class="text-xs font-bold text-blue-100 uppercase ml-1">Montant Versé (XOF)</label>
-                                    <InputNumber v-model="form.amount_paid" mode="currency" currency="XOF" inputClass="!bg-white/10 !border-none !text-4xl !font-black !text-white w-full !p-3 !rounded-2xl" />
+                                    <label class="text-xs font-bold text-blue-100 uppercase ml-1">Montant Versé (USD)</label>
+                                    <InputNumber v-model="form.amount_paid" mode="currency" currency="USD" inputClass="!bg-white/10 !border-none !text-4xl !font-black !text-white w-full !p-3 !rounded-2xl" />
                                 </div>
                                 <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/10">
                                     <div class="flex flex-col gap-1"><label class="text-[10px] text-blue-200">N° Transaction</label>

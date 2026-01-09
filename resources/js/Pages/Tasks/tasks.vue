@@ -1168,7 +1168,7 @@ const updateInstructions = (taskId, instructions) => {
                     <div class="p-8 bg-white rounded-[1rem] shadow-xl shadow-slate-200/50 space-y-8 border border-slate-100">
                         <div class="field">
                             <span class="text-[9px] font-black text-slate-400 uppercase block mb-3 uppercase">Budget Estimé</span>
-                            <InputNumber v-model="form.estimated_cost" mode="currency" currency="XOF" locale="fr-FR" class="w-full text-2xl font-black text-slate-900" />
+                            <InputNumber v-model="form.estimated_cost" mode="currency" currency="USD" locale="fr-FR" class="w-full text-2xl font-black text-slate-900" />
                         </div>
                         <Divider class="my-0" />
                         <div class="field">
@@ -1239,7 +1239,7 @@ const updateInstructions = (taskId, instructions) => {
                             </div>
                             <div class="field">
                                 <label for="spare_part_unit_estimated_cost" class="font-semibold">Coût unitaire</label>
-                                <InputNumber id="spare_part_unit_estimated_cost" v-model="sparePartForm.unit_estimated_cost" mode="currency" currency="XOF" locale="fr-FR" :min="0" :class="{ 'p-invalid': sparePartForm.errors.unit_estimated_cost }" />
+                                <InputNumber id="spare_part_unit_estimated_cost" v-model="sparePartForm.unit_estimated_cost" mode="currency" currency="USD" locale="fr-FR" :min="0" :class="{ 'p-invalid': sparePartForm.errors.unit_estimated_cost }" />
                                 <small class="p-error">{{ sparePartForm.errors.unit_estimated_cost }}</small>
                             </div>
                         </div>

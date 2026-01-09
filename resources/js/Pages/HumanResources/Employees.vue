@@ -218,7 +218,7 @@ watch(() => filters.value.global.value, (newValue) => {
                             </template>
                             <template v-else-if="field === 'salary'">
                                 <span class="font-mono font-bold text-slate-700">
-                                    {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(data[field]) }}
+                                    {{ new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD' }).format(data[field]) }}
                                 </span>
                             </template>
                             <template v-else-if="field.includes('date')">
@@ -278,7 +278,7 @@ watch(() => filters.value.global.value, (newValue) => {
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.salary') }}</label>
-                        <InputNumber v-model="form.salary" mode="currency" currency="XOF" locale="fr-FR" class="v11-input" />
+                        <InputNumber v-model="form.salary" mode="currency" currency="USD" locale="fr-FR" class="v11-input" />
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('employees.fields.hire_date') }}</label>

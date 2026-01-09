@@ -1037,7 +1037,7 @@
     "dialog": {
       "financeSettings": "Paramètres financiers",
       "financeSubtitle": "Veuillez renseigner les détails du mouvement de fonds",
-      "amountLabel": "Montant (XOF)",
+      "amountLabel": "Montant (USD)",
       "valueDate": "Date de valeur",
       "beneficiaryType": "Type Bénéficiaire",
       "specificBeneficiary": "Bénéficiaire Spécifique",

@@ -110,7 +110,7 @@ const stats = computed(() => {
 });
 
 const formatCurrency = (value) => {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(value);
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD' }).format(value);
 };
 
 // --- Actions ---
@@ -342,7 +342,7 @@ const exportCSV = () => dt.value.exportCSV();
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="flex flex-col gap-2">
-                                <label class="text-xs font-black text-slate-500 uppercase">Montant HT (XOF)</label>
+                                <label class="text-xs font-black text-slate-500 uppercase">Montant HT (USD)</label>
                                 <InputNumber v-model="form.amount" mode="decimal" class="w-full" inputClass="py-3.5 rounded-xl border-slate-200" />
                             </div>
 
