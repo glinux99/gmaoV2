@@ -35,6 +35,7 @@ const props = defineProps({
     activities: Object,
     spareParts: Array,
     users: Array,
+    equipments: Array,
     teams: Array,
     tasks: Array,
     regions: Array,
@@ -108,6 +109,7 @@ const form = useForm({
     zone_id: null,
     task_id: null,
     maintenance_id: null,
+    equipment_ids: [], // Champ pour les équipements associés
     stock_movements: [], // Nouveau système de gestion de stock
 });
 
@@ -152,7 +154,7 @@ const sparePartOptions = computed(() => {
                 value: part.id, // On utilise l'ID de référence
             };
         })
-        .filter(part => part.label.includes(`Stock actuel:`) && !part.label.includes(`Stock actuel: 0`)); // Optionnel: ne montrer que les pièces en stock
+        .filter(part => part.label.includes(`${t('sparePartMovements.stockLabel')}:`) && !part.label.includes(`${t('sparePartMovements.stockLabel')}: 0`)); // Optionnel: ne montrer que les pièces en stock
 });
 
 
@@ -403,6 +405,7 @@ const editActivity = (activity) => {
     form.zone_id = activity.zone_id;
     form.maintenance_id = activity.maintenance_id;
     form.service_order_cost = activity.service_order_cost || 0;
+    form.equipment_ids = activity.equipment?.map(e => e.id) || []; // Charger les IDs des équipements associés
     form.service_order_description = activity.service_order_description || t('myActivities.defaults.sparePartPayment');
 
     // Ancien système de stock (à migrer si nécessaire ou à ignorer si on repart de zéro)
@@ -431,8 +434,6 @@ const editActivity = (activity) => {
 // FONCTION OPTIMISÉE : Préparer la création d'une sous-activité
 const createSubActivity = (parentActivity) => {
     isCreatingSubActivity.value = true;
-    console.log("Sous Activity");
-    console.log(parentActivity);
     form.reset(); // 1. Réinitialiser tout
 
     // Champs de contexte hérités
@@ -457,6 +458,7 @@ const createSubActivity = (parentActivity) => {
     // Le stock n'est pas hérité, une sous-activité a ses propres mouvements
     form.stock_movements = [];
 
+    form.equipment_ids = parentActivity.equipment?.map(e => e.id) || []; // Hériter aussi des équipements
     // Reste du formulaire (valeurs propres à la nouvelle sous-activité)
     form.status = 'scheduled'; // Default status for new activities
     form.problem_resolution_description = ''; // La description est maintenant dans le titre
@@ -482,8 +484,6 @@ const createSubActivity = (parentActivity) => {
         });
     }
     form.instruction_answers = answers;
-    console.log("CCCCCC");
-    console.log(form);
 
     activityDialogVisible.value = true;
 };
@@ -505,10 +505,7 @@ const saveActivity = () => {
     const routeName = !form.id ? 'activities.store' : 'activities.update';
     const routeParams = isCreatingSubActivity.value ? {} : form.id;
     const successMessage = isCreatingSubActivity.value ? t('myActivities.toast.subActivityCreated') : t('myActivities.toast.activityUpdated');
-    console.log(form.data());
-    console.log(form.id);
-    console.log(method);
-    console.log(routeName);
+
     const handler = {
         onSuccess: () => {
             hideDialog();
@@ -598,7 +595,7 @@ const exportCSV = () => {
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div class="flex items-center gap-4">
                     <div class="flex h-16 w-16 items-center justify-center rounded-xl bg-primary-600 shadow-xl shadow-primary-200">
-                        <i class="pi pi-list-check text-2xl text-white"></i>
+                        <i class="pi pi-briefcase text-2xl text-white"></i>
                     </div>
                     <div>
                         <h1 class="text-2xl font-black tracking-tighter text-slate-900 uppercase">
@@ -615,7 +612,7 @@ const exportCSV = () => {
             <!-- Section des statistiques -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
-                    <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-list-check text-2xl text-slate-500"></i></div>
+                    <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-briefcase text-2xl text-slate-500"></i></div>
                     <div>
                         <div class="text-2xl font-black text-slate-800">{{ stats.total }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('myActivities.stats.total') }}</div>
@@ -687,7 +684,7 @@ const exportCSV = () => {
                                 <i v-if="data.assignable_type === 'App\\Models\\Team'" class="pi pi-users text-slate-500"></i>
                                 <i v-else-if="data.assignable_type === 'App\\Models\\User'" class="pi pi-user text-slate-500"></i>
                                 <span class="text-slate-700 text-sm">{{ data.assignable?.name || data.jobber || 'N/A' }}</span>
-                            </div>
+                            </div> <!-- N/A est une abréviation internationale, pas besoin de traduction -->
                             <span v-else-if="field === 'region.designation'" class="text-slate-600 text-sm">{{ data.region?.designation }}</span>
                             <span v-else-if="field === 'zone.title'" class="text-slate-600 text-sm">{{ data.zone?.title }}</span>
                             <span v-else>{{ data[field] }}</span>
@@ -712,7 +709,7 @@ const exportCSV = () => {
 
                     <template #expansion="{ data }">
                         <div class="bg-slate-100/50 px-12 py-4 border-t border-b border-slate-200" v-if="getSubActivities(data.id).length > 0">
-                            <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Sous-activités associées</h4>
+                            <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">{{ t('myActivities.common.associatedSubActivities') }}</h4>
                             <div class="space-y-2">
                                 <div v-for="subActivity in getSubActivities(data.id)" :key="subActivity.id"
                                      class="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-primary-200 transition-colors">
@@ -894,7 +891,64 @@ const exportCSV = () => {
             </div>
         </div>
 
+        <div class="col-span-12 lg:col-span-4 p-6 bg-slate-50/50 space-y-6">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <i class="pi pi-box text-blue-500"></i> {{ t('myActivities.dialog.usedStock') }}
+                    </span>
+                    <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('used')" class="!h-7 !w-7" />
+                </div>
+                <div class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                    <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-2 p-2 bg-blue-50/50 rounded-lg text-[10px] border border-blue-100 group">
+                        <b class="text-blue-700">x{{ part.quantity }}</b>
+                        <span class="flex-grow truncate text-slate-600 font-medium">{{ getSparePartReference(part.id) }}</span>
+                        <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePart('used', idx)"></i>
+                    </div>
+                </div>
+            </div>
 
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <i class="pi pi-refresh text-emerald-500"></i> {{ t('myActivities.dialog.returnedStock') }}
+                    </span>
+                    <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('returned')" class="!h-7 !w-7"/>
+                </div>
+                <div class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                    <div v-for="(part, idx) in form.spare_parts_returned" :key="idx" class="flex items-center gap-2 p-2 bg-emerald-50/50 rounded-lg text-[10px] border border-emerald-100 group">
+                        <b class="text-emerald-700">x{{ part.quantity }}</b>
+                        <span class="flex-grow truncate text-slate-600 font-medium">{{ getSparePartReference(part.id) }}</span>
+                        <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePart('returned', idx)"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <i class="pi pi-cog text-purple-500"></i> {{ t('myActivities.dialog.associatedEquipments') }}
+                    </span>
+                </div>
+                <div class="space-y-1.5">
+                    <MultiSelect v-model="form.equipment_ids" :options="props.equipments" optionLabel="designation" optionValue="id"
+                                 filter display="chip" :placeholder="t('myActivities.dialog.selectEquipmentsPlaceholder')"
+                                 class="w-full !rounded-xl"
+                    />
+                </div>
+            </div>
+
+            <div class="p-5 bg-slate-900 rounded-xl text-white shadow-lg border border-white/5 relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl"></div>
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2 italic">{{ t('myActivities.dialog.htValuation') }}</span>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-blue-400 tabular-nums">{{ serviceOrderCost.toLocaleString() }}</span>
+                    <span class="text-[10px] font-bold opacity-40 uppercase ml-1">USD</span>
+                </div>
+                <InputText v-model="form.service_order_description" :placeholder="t('myActivities.dialog.billingNotesPlaceholder')"
+                    class="w-full !mt-4 !bg-white/10 !border-none !text-[11px] !text-white !rounded-lg focus:!ring-1 focus:!ring-blue-500/50" />
+            </div>
+        </div>
     </div>
 
     <template #footer>

@@ -67,7 +67,7 @@ class ActivityController extends Controller
         }
 
         // Eager load all necessary relationships for display and edit
-        $query->with(['task.instructions', 'activityInstructions', 'instructionAnswers', 'task.serviceOrders', 'maintenance', 'sparePartActivities.sparePart', 'assignable', 'region', 'zone']);
+        $query->with(['task.instructions', 'activityInstructions', 'instructionAnswers', 'task.serviceOrders', 'maintenance', 'sparePartActivities.sparePart', 'assignable', 'region', 'zone', 'equipment']);
 
         // Préparer les pièces détachées avec le stock par région
         $allParts = SparePart::with('region:id,designation')->get();
@@ -91,6 +91,7 @@ class ActivityController extends Controller
             'users' => \App\Models\User::all(),
             'tasks' => \App\Models\Task::all(),
             'spareParts'=> $sparePartsByRef,
+            'equipments' => \App\Models\Equipment::all(['id', 'designation', 'tag']),
             'teams' => \App\Models\Team::all(),
             'regions' => \App\Models\Region::all(),
             'zones' => \App\Models\Zone::all(),
@@ -573,6 +574,8 @@ public function bulkStore(Request $request)
             'assignable_id' => 'nullable|integer',
             'parent_id' => 'nullable|exists:activities,id',
             'stock_movements' => 'nullable|array',
+            'equipment_ids' => 'nullable|array',
+            'equipment_ids.*' => 'exists:equipment,id',
             'stock_movements.*.movable_id' => 'required|integer',
             'stock_movements.*.movable_type' => 'required|string',
         ]);
@@ -583,7 +586,7 @@ public function bulkStore(Request $request)
             // Exclure les champs qui sont gérés par des relations séparées ou ne sont pas directement dans la table 'activities'
             $activity->update(Arr::except($validated, [
                 'task_id', 'maintenance_id', // Contextual fields, generally not updated directly
-                'instructions', 'instruction_answers', 'spare_parts_used', 'spare_parts_returned',
+                'instructions', 'instruction_answers', 'spare_parts_used', 'spare_parts_returned', 'equipment_ids',
                 'service_order_cost', 'service_order_description', 'stock_movements'
             ]));
 
@@ -596,6 +599,9 @@ public function bulkStore(Request $request)
                     'zone_id' => null // La zone doit être re-sélectionnée car elle dépend de la nouvelle région
                 ]);
             }
+
+            // --- NOUVEAU : Synchronisation des équipements ---
+            $activity->equipment()->sync($validated['equipment_ids'] ?? []);
 
             // --- 2. SYNCHRONISATION DES PIÈCES DÉTACHÉES ---
             $this->syncSpareParts($activity, $validated);
