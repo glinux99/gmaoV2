@@ -587,14 +587,45 @@ public function bulkStore(Request $request)
                 'service_order_cost', 'service_order_description', 'stock_movements'
             ]));
 
+            // --- NOUVEAU : Propagation du changement de région aux enfants ---
+            // Si la région a été modifiée et que cette activité a des enfants
+            if ($activity->wasChanged('region_id') && $activity->children()->exists()) {
+                // Mettre à jour la région de tous les enfants et réinitialiser leur zone
+                $activity->children()->update([
+                    'region_id' => $activity->region_id,
+                    'zone_id' => null // La zone doit être re-sélectionnée car elle dépend de la nouvelle région
+                ]);
+            }
+
             // --- 2. SYNCHRONISATION DES PIÈCES DÉTACHÉES ---
             $this->syncSpareParts($activity, $validated);
-
+            // return $request;
             // --- 3. SYNCHRONISATION DES INSTRUCTIONS ET RÉPONSES ---
             $this->syncInstructionsAndAnswers($activity, $validated);
 
             // --- 4. GESTION DU SERVICE ORDER ---
             $this->processServiceOrder($activity, $validated);
+
+            // --- 5. MISE À JOUR DU STATUT PARENT ---
+            // Si l'activité mise à jour est une sous-activité (a un parent)
+            if ($activity->parent_id) {
+                $parent = $activity->parent()->with('children')->first();
+
+                if ($parent && $parent->children->isNotEmpty()) {
+                    // On récupère le statut de la première sous-activité
+                    $firstStatus = $parent->children->first()->status;
+
+                    // On vérifie si TOUTES les sous-activités ont ce même statut
+                    $allSameStatus = $parent->children->every(function ($child) use ($firstStatus) {
+                        return $child->status === $firstStatus;
+                    });
+
+                    // Si oui, on met à jour le parent. La propagation à la maintenance se fait via l'événement 'updated' du modèle Activity.
+                    if ($allSameStatus && $parent->status !== $firstStatus) {
+                        $parent->update(['status' => $firstStatus]);
+                    }
+                }
+            }
 
             DB::commit();
             return redirect()->route('activities.index')->with('success', 'Activité mise à jour avec succès.');
@@ -682,9 +713,11 @@ public function bulkStore(Request $request)
         $activity->activityInstructions()->whereNotIn('id', $incomingInstructionIds)->delete();
 
         // Update or create answers
+
         foreach ($data['instruction_answers'] ?? [] as $tempId => $value) {
             $realId = $instructionIdMap[$tempId] ?? $tempId;
-            if ($realId && in_array($realId, $incomingInstructionIds)) { // Ensure realId exists and is part of current instructions
+            // S'assurer que l'ID de l'instruction est valide et qu'il fait partie des instructions de l'activité en cours
+            if ($realId && in_array($realId, $incomingInstructionIds)) {
                 InstructionAnswer::updateOrCreate(
                     ['activity_id' => $activity->id, 'activity_instruction_id' => $realId],
                     ['value' => $value, 'user_id' => Auth::id()]

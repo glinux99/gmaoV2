@@ -27,6 +27,8 @@ class Maintenance extends Model implements HasMedia
         'intervention_request_id',
         'network_node_id',
         'network_id',
+        'monthly_recurrence_type',
+        'recurrence_day',
         // Planification et Coût
         'type',
         'status',

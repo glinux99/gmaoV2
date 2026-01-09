@@ -748,7 +748,7 @@ const exportCSV = () => {
     }"
 >
     <template #header>
-        <div class="w-full flex justify-between items-center bg-slate-900 px-6 py-4">
+        <div class="w-full flex justify-between items-center bg-slate-900 px-6 py-4 rounded-xl">
             <div class="flex items-center gap-4">
                 <div class="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                     <i :class="[isCreatingSubActivity ? 'pi pi-plus' : 'pi pi-shield', 'text-white text-lg']"></i>
@@ -803,7 +803,7 @@ const exportCSV = () => {
                     <div class="flex flex-col gap-1.5 pt-2">
                         <label class="text-[10px] font-bold text-slate-600 ml-1 italic">{{ t('myActivities.dialog.region') }}</label>
                         <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="designation" optionValue="id" filter
-                                  :disabled="isCreatingSubActivity"
+                                  :disabled="isCreatingSubActivity || form.parent_id"
                                   class="w-full !rounded-xl !border-slate-200 shadow-sm" />
                     </div>
 
@@ -894,50 +894,7 @@ const exportCSV = () => {
             </div>
         </div>
 
-        <div class="col-span-12 lg:col-span-4 p-6 bg-slate-50/50 space-y-6">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <i class="pi pi-box text-blue-500"></i> {{ t('myActivities.dialog.usedStock') }}
-                    </span>
-                    <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('used')" class="!h-7 !w-7" />
-                </div>
-                <div class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                    <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-2 p-2 bg-blue-50/50 rounded-lg text-[10px] border border-blue-100 group">
-                        <b class="text-blue-700">x{{ part.quantity }}</b>
-                        <span class="flex-grow truncate text-slate-600 font-medium">{{ getSparePartReference(part.id) }}</span>
-                        <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePart('used', idx)"></i>
-                    </div>
-                </div>
-            </div>
 
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <i class="pi pi-refresh text-emerald-500"></i> {{ t('myActivities.dialog.returnedStock') }}
-                    </span>
-                    <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('returned')" class="!h-7 !w-7"/>
-                </div>
-                <div class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                    <div v-for="(part, idx) in form.spare_parts_returned" :key="idx" class="flex items-center gap-2 p-2 bg-emerald-50/50 rounded-lg text-[10px] border border-emerald-100 group">
-                        <b class="text-emerald-700">x{{ part.quantity }}</b>
-                        <span class="flex-grow truncate text-slate-600 font-medium">{{ getSparePartReference(part.id) }}</span>
-                        <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePart('returned', idx)"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-5 bg-slate-900 rounded-xl text-white shadow-lg border border-white/5 relative overflow-hidden">
-                <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl"></div>
-                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2 italic">{{ t('myActivities.dialog.htValuation') }}</span>
-                <div class="flex items-baseline gap-2">
-                    <span class="text-3xl font-black text-blue-400 tabular-nums">{{ serviceOrderCost.toLocaleString() }}</span>
-                    <span class="text-[10px] font-bold opacity-40 uppercase ml-1">Xof</span>
-                </div>
-                <InputText v-model="form.service_order_description" :placeholder="t('myActivities.dialog.billingNotesPlaceholder')"
-                    class="w-full !mt-4 !bg-white/10 !border-none !text-[11px] !text-white !rounded-lg focus:!ring-1 focus:!ring-blue-500/50" />
-            </div>
-        </div>
     </div>
 
     <template #footer>

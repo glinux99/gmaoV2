@@ -29,6 +29,8 @@ return new class extends Migration
     $table->integer('recurrence_interval')->nullable();
     $table->integer('recurrence_month_interval')->nullable();
     $table->json('recurrence_days')->nullable();
+    $table->string('recurrence_day')->nullable();
+    $table->string('monthly_recurrence_type')->nullable();
    $table->integer('recurrence_day_of_month')->nullable();
     $table->integer('recurrence_month')->nullable();
     $table->integer('reminder_days')->nullable();

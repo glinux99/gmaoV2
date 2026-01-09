@@ -169,24 +169,32 @@ const form = useForm({
     id: null,
     title: '',
     description: '',
+    // Relations Polymorphes et Clés Étrangères
     assignable_type: null,
-    assignable_id: null, // Initialiser à null pour éviter des problèmes si non sélectionné
+    assignable_id: null,
+    region_id: null,
+    maintenance_schedule_id: null,
+    intervention_request_id: null,
+    network_node_id: null,
+    network_id: null,
+    // Planification et Coût
     type: 'Préventive',
     status: 'Planifiée',
     priority: 'Moyenne',
     scheduled_start_date: null,
     scheduled_end_date: null,
     estimated_duration: null,
+    started_at: null,
+    completed_at: null,
     cost: null,
-    equipment_ids:[],
-    region_id: null,
-    recurrence_type: null, // Nouvelle propriété pour le type de récurrence
-    recurrence_interval: null, // Intervalle pour quotidienne, trimestrielle, semestrielle, annuelle
-    recurrence_month_interval: null, // Intervalle en mois pour la récurrence mensuelle
-    recurrence_days: [], // Nouvelle propriété pour les jours de la semaine (pour hebdomadaire)
+    // Champs de récurrence (Ajoutés)
+    recurrence_type: null,
+    recurrence_interval: null,
+    recurrence_month_interval: null,
+    recurrence_days: [],
     recurrence_day: null,
-    recurrence_day_of_month: null, // Nouvelle propriété pour le jour du mois (pour mensuel)
-    recurrence_month: null, // Nouvelle propriété pour le mois (pour annuel)
+    recurrence_day_of_month: null,
+    recurrence_month: null,
     monthly_recurrence_type: 'day_of_month', // 'day_of_month' ou 'day_of_week'
     recurrence_week_of_month: 1, // 1ère, 2ème, 3ème, 4ème, dernière semaine
     reminder_days: null, // Jours de rappel avant exécution
@@ -196,6 +204,7 @@ const form = useForm({
 
     network_id: null, // Ajout pour la sélection du réseau
     node_instructions: {}, // Pour les instructions spécifiques aux noeuds,
+    regenerated_dates: null,
     related_equipments: {}, // Pour les équipements liés (TreeSelect model)
     network_node_id: null, // Pour la sélection d'un seul noeud de réseau
 });
@@ -394,6 +403,27 @@ const editMaintenance = (maintenance) => {
     form.description = maintenance.description;
     form.assignable_type = maintenance.assignable_type;
     form.assignable_id = maintenance.assignable_id;
+    form.region_id = maintenance.region_id;
+    form.maintenance_schedule_id = maintenance.maintenance_schedule_id;
+    form.intervention_request_id = maintenance.intervention_request_id;
+    form.network_node_id = maintenance.network_node_id;
+    form.network_id = maintenance.network_id;
+    form.type = maintenance.type;
+    form.status = maintenance.status;
+    form.priority = maintenance.priority;
+    form.scheduled_start_date = maintenance.scheduled_start_date ? new Date(maintenance.scheduled_start_date) : null;
+    form.scheduled_end_date = maintenance.scheduled_end_date ? new Date(maintenance.scheduled_end_date) : null;
+    form.estimated_duration = maintenance.estimated_duration;
+    form.started_at = maintenance.started_at;
+    form.completed_at = maintenance.completed_at;
+    form.cost = maintenance.cost;
+    form.recurrence_type = maintenance.recurrence_type;
+    form.recurrence_interval = maintenance.recurrence_interval;
+    form.recurrence_month_interval = maintenance.recurrence_month_interval;
+    form.recurrence_days = maintenance.recurrence_days;
+    form.recurrence_day_of_month = maintenance.recurrence_day_of_month;
+    form.recurrence_month = maintenance.recurrence_month;
+    form.assignable_id = maintenance.assignable_id;
     form.type = maintenance.type;
     form.status = maintenance.status;
     form.network_node_id = maintenance.network_node_id;
@@ -415,6 +445,8 @@ const editMaintenance = (maintenance) => {
     form.recurrence_day = maintenance.recurrence_day;
     form.placementType = maintenance.region_id ? 'region' : (maintenance.zone_id ? 'zone' : null);
     form.network_id = maintenance.network_id;
+    form.monthly_recurrence_type = maintenance.monthly_recurrence_type;
+
     defaultNodeID.value =form.network_node_id;
     console.log(form.id);
     form.related_equipments = maintenance.equipments.map(e => e.id);

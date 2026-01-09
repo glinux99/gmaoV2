@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('task_instruction_values', function (Blueprint $table) {
             $table->id();
             $table->foreignId('task_instruction_id')->nullable()->constrained('task_instructions')->onDelete('cascade');
-            $table->foreignId('activity_instruction_id')->nullable()->constrained('activity_instructions')->onDelete('cascade');
+            $table->foreignId('activity_instruction_id')->nullable()->constrained('activity_instructions')->onDelete('set null');
             $table->text('value');
             $table->timestamps();
         });
