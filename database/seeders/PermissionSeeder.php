@@ -13,41 +13,56 @@ class PermissionSeeder extends Seeder
      */
     public function run(): void
     {
-        Permission::create(['name' => 'delete user']);
-        Permission::create(['name' => 'update user']);
-        Permission::create(['name' => 'read user']);
-        Permission::create(['name' => 'create user']);
-
-        Permission::create(['name' => 'delete role']);
-        Permission::create(['name' => 'update role']);
-        Permission::create(['name' => 'read role']);
-        Permission::create(['name' => 'create role']);
-
-        Permission::create(['name' => 'delete permission']);
-        Permission::create(['name' => 'update permission']);
-        Permission::create(['name' => 'read permission']);
-        Permission::create(['name' => 'create permission']);
-         $permissions = [
-            'inventories',
-            'sorties',
-            'entries',
-            'categories',
-            'unities',
-            'projects',
-            'tasks',
-            'teams',
-            'techniciens',
-            'maintenances',
-            'calendar',
-            'equipment',
-            'read user',
-            'read role',
-            'read permission',
-            'repports',
-            'priority',
+        // Permissions CRUD pour une gestion fine
+        $entities = [
+            'user', 'role', 'permission', // Administration
+            'equipment', 'equipment-type', 'region', 'zone', // Actifs & Structure
+            'task', 'activity', 'maintenance', // Tâches & Maintenance
+            'intervention-request', // Demandes d'intervention
+            'stock-movement', 'spare-part', // Stock
+            'network', // Schémas de réseau
+            'team', // Équipes
+            'connection', // Raccordements clients
+            'report-template', // Modèles de rapport
         ];
 
-        foreach ($permissions as $permission) {
+        $actions = ['create', 'read', 'update', 'delete'];
+
+        foreach ($entities as $entity) {
+            foreach ($actions as $action) {
+                Permission::firstOrCreate(['name' => "{$action}-{$entity}"]);
+            }
+        }
+
+        // Permissions spécifiques supplémentaires
+        $specificPermissions = [
+            // Interventions
+            'assign-intervention-request',
+            'validate-intervention-request',
+            'cancel-intervention-request',
+
+            // Équipements
+            'update-equipment-quantity',
+            'bulk-delete-equipment',
+
+            // Stock
+            'create-stock-entry',
+            'create-stock-exit',
+            'create-stock-transfer',
+            'bulk-delete-stock-movement',
+
+            // Tâches & Activités
+            'assign-task',
+            'assign-activity',
+
+            // Import/Export
+            'import-connections',
+            'export-equipments',
+            'export-tasks',
+            'export-stock-movements',
+        ];
+
+        foreach ($specificPermissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
         }
     }
