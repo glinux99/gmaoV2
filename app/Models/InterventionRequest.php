@@ -14,17 +14,14 @@ class InterventionRequest extends Model
 
     // Définissez les champs que vous pouvez assigner en masse (Mass Assignable)
     protected $fillable = [
-        'id',
         'title',
         'description',
         'status',
-        'is_validated',
-        'reported_at',
-
+        'priority',
         'requested_by_user_id',
         'requested_by_connection_id',
-        'assignable_id',
         'assignable_type',
+        'assignable_id',
         'region_id',
         'zone_id',
         'intervention_reason',
@@ -32,9 +29,8 @@ class InterventionRequest extends Model
         'technical_complexity',
         'min_time_hours',
         'max_time_hours',
-        'comments',
-        'priority',
         'scheduled_date',
+        'is_validated',
         'completed_date',
         'resolution_notes',
         'gps_latitude',
@@ -42,7 +38,6 @@ class InterventionRequest extends Model
 
     ];
     protected $casts = [
-        'reported_at' => 'datetime',
         'closed_at' => 'datetime',
         'validated_at' => 'datetime',
     ];

@@ -143,6 +143,7 @@ Route::post('/reports/reorder', [ReportController::class, 'reorder'])->name('rep
 Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::post('quantum/query', [ReportController::class, 'fetchData'])->name('quantum.query');
 Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
+Route::post('/interventions/import', [InterventionRequestController::class, 'import'])->name('interventions.import');
 
 
 });

@@ -73,6 +73,7 @@ const dt = ref();
 const op = ref();
 const selectedItems = ref([]);
 const lastAssignable = ref({ type: null, id: null });
+const isImportModalOpen = ref(false);
 const requester_type = ref('client');
 
 
@@ -185,6 +186,12 @@ const form = useForm({
     is_validated: false, // Validation
 });
 const editing =ref(false);
+
+const importForm = useForm({
+    file: null,
+});
+
+
 const openCreate = () => {
     form.reset();
     form.title = `PLT-${Math.floor(Date.now() / 1000)}`;
@@ -192,6 +199,11 @@ const openCreate = () => {
      form.is_validated=true;
         editing.value = false;
     isModalOpen.value = true;
+};
+
+const openImportModal = () => {
+    importForm.reset();
+    isImportModalOpen.value = true;
 };
 
 const openEdit = (data) => {
@@ -241,6 +253,20 @@ const submit = () => {
             isModalOpen.value = false ;
         },
         onError: () => {  isModalOpen.value = false ; }
+    });
+};
+
+const submitImport = () => {
+    importForm.post(route('interventions.import'), {
+        onSuccess: () => {
+            isImportModalOpen.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Importation démarrée avec succès.', life: 3000 });
+            router.reload({ only: ['interventionRequests'] }); // Recharger les données de la table
+        },
+        onError: (errors) => {
+            const errorDetail = errors.file || 'Une erreur est survenue lors de l\'importation.';
+            toast.add({ severity: 'error', summary: 'Erreur d\'importation', detail: errorDetail, life: 5000 });
+        }
     });
 };
 watch(() => form.requested_by_connection_id, (newVal) => {
@@ -296,8 +322,8 @@ const exportCSV = () => {
                     <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">{{ t('interventions.subtitle') }}</p>
                 </div>
                 </div>
-                <div class="flex gap-2">
-                    <Button :label="t('interventions.addNew')" icon="pi pi-plus"
+                <div class="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                    <Button :label="t('common.import')" icon="pi pi-upload" severity="secondary" @click="openImportModal" class="rounded-lg" />                    <Button :label="t('interventions.addNew')" icon="pi pi-plus"
 
                             class=" shadow-lg shadow-primary-200" @click="openCreate" />
                 </div>
@@ -584,6 +610,36 @@ const exportCSV = () => {
                     <Button :label="t('interventions.dialog.save')" icon="pi pi-save"
                             class="px-6 shadow-lg shadow-primary-100" @click="submit" :loading="form.processing" />
                 </div>
+            </template>
+        </Dialog>
+
+        <!-- Boîte de dialogue d'importation -->
+        <Dialog v-model:visible="isImportModalOpen" modal :header="t('connections.importDialog.title')" :style="{ width: '450px' }">
+            <div class="flex flex-col gap-6 p-4">
+                <div class="flex items-center justify-center border-2 border-dashed border-slate-300 rounded-lg p-8">
+                    <div class="text-center">
+                        <i class="pi pi-upload text-4xl text-slate-400 mb-3"></i>
+                        <p class="font-semibold text-slate-700">{{ t('connections.importDialog.chooseFile') }}</p>
+                        <input type="file" @input="importForm.file = $event.target.files[0]" class="mt-4" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+                        <small class="p-error" v-if="importForm.errors.file">{{ importForm.errors.file }}</small>
+                    </div>
+                </div>
+            </div>
+
+            <template #footer>
+                <Button
+                    :label="t('common.cancel')"
+                    icon="pi pi-times"
+                    text
+                    @click="isImportModalOpen = false"
+                />
+                <Button
+                    :label="t('connections.importDialog.startImport')"
+                    icon="pi pi-check"
+                    @click="submitImport"
+                    :loading="importForm.processing"
+                    :disabled="!importForm.file"
+                />
             </template>
         </Dialog>
 

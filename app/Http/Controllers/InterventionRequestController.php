@@ -12,6 +12,8 @@ use App\Models\Zone;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InterventionRequestController extends Controller
 {
@@ -235,5 +237,41 @@ class InterventionRequestController extends Controller
         }
 
         return Redirect::route('interventions.index')->with('success', 'Demande validée avec succès.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt',
+        ]);
+
+        try {
+            $file = $request->file('file');
+            $data = array_map('str_getcsv', file($file->getRealPath()));
+
+            // Supposer que la première ligne est l'en-tête
+            $header = array_shift($data);
+
+            foreach ($data as $row) {
+                if (count($header) !== count($row)) {
+                    Log::warning('Ligne ignorée : le nombre de colonnes ne correspond pas à l\'en-tête.', ['row' => $row]);
+                    continue;
+                }
+                $interventionData = array_combine($header, $row);
+
+                // Créer la demande d'intervention avec les données mappées
+                InterventionRequest::create([
+                    'title' => $interventionData['title'] ?? 'Titre non défini',
+                    'description' => $interventionData['description'] ?? null,
+                    'status' => $interventionData['status'] ?? 'pending',
+                    'priority' => $interventionData['priority'] ?? 'Moyenne',
+                    // Ajoutez d'autres champs ici en fonction des colonnes de votre CSV
+                ]);
+            }
+
+            return Redirect::route('interventions.index')->with('success', 'Demandes d\'intervention importées avec succès.');
+        } catch (\Exception $e) {
+            return Redirect::back()->with('error', 'Une erreur est survenue lors de l\'importation : ' . $e->getMessage());
+        }
     }
 }
