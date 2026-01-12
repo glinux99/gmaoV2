@@ -168,7 +168,7 @@ const lazyParams = ref({
         'global': { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
         'status': { value: props.filters?.status || null, matchMode: FilterMatchMode.EQUALS },
         'team_id': { value: props.filters?.team_id || null, matchMode: FilterMatchMode.EQUALS },
-        'task.title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     }
 });
 
@@ -188,7 +188,7 @@ const resetFilters = () => {
         'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
         'status': { value: null, matchMode: FilterMatchMode.EQUALS },
         'team_id': { value: null, matchMode: FilterMatchMode.EQUALS },
-        'task.title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     };
     applyFilters();
 };
@@ -210,7 +210,7 @@ watch(() => lazyParams.value.filters, () => {
 });
 
 const allColumns = computed(() => [
-    { field: 'task.title', header: t('myActivities.table.task') },
+    { field: 'title', header: t('myActivities.table.task') },
     { field: 'status', header: t('myActivities.table.status') },
     { field: 'actual_start_time', header: t('myActivities.table.start_time') },
     { field: 'actual_end_time', header: t('myActivities.table.end_time') },
@@ -218,7 +218,7 @@ const allColumns = computed(() => [
     { field: 'region.designation', header: t('myActivities.table.region') },
     { field: 'zone.title', header: t('myActivities.table.zone') },
 ]);
-const visibleColumns = ref(['task.title', 'status', 'actual_start_time', 'jobber', 'region.designation']);
+const visibleColumns = ref(['title', 'status', 'actual_start_time', 'jobber', 'region.designation']);
 
 // --- UTILITIES ---
 
@@ -374,7 +374,7 @@ const editActivity = (activity) => {
 
     // Remplir le formulaire avec les données existantes
     form.id = activity.id;
-    form.title = activity.task?.title || activity.maintenance?.title || t('myActivities.common.unnamedActivity');
+    form.title = activity?.title || activity.maintenance?.title || t('myActivities.common.unnamedActivity');
     form.problem_resolution_description = activity.problem_resolution_description || '';
     form.proposals = activity.proposals || '';
 
@@ -437,7 +437,7 @@ const createSubActivity = (parentActivity) => {
     form.reset(); // 1. Réinitialiser tout
 
     // Champs de contexte hérités
-    form.title = t('myActivities.subActivityFor', { title: parentActivity.task?.title || parentActivity.maintenance?.title || t('myActivities.unnamedActivity') });
+    form.title = t('myActivities.subActivityFor', { title: parentActivity?.title || parentActivity.maintenance?.title || t('myActivities.unnamedActivity') });
 
     form.parent_id = parentActivity.id;
     form.assignable_type = parentActivity.assignable_type;
@@ -647,7 +647,7 @@ const exportCSV = () => {
                     :rows="activities.per_page"
                     @page="onPage($event)" @sort="onSort($event)"
                     v-model:filters="lazyParams.filters" filterDisplay="menu"
-                    :globalFilterFields="['task.title', 'jobber', 'status']"
+                    :globalFilterFields="['title', 'jobber', 'status']"
                     class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport" responsiveLayout="scroll"
                     :currentPageReportTemplate="t('myActivities.table.report')">
 
@@ -674,8 +674,8 @@ const exportCSV = () => {
 
                     <Column v-for="col in allColumns.filter(c => visibleColumns.includes(c.field))" :key="col.field" :field="col.field" :header="col.header" sortable :filterField="col.field">
                         <template #body="{ data, field }">
-                            <span v-if="field === 'task.title'" class="font-bold text-slate-800 tracking-tight">
-                                {{ data.task?.title || data.maintenance?.title || t('myActivities.common.unnamedActivity') }}
+                            <span v-if="field === 'title'" class="font-bold text-slate-800 tracking-tight">
+                                {{ data?.title ||  t('myActivities.common.unnamedActivity') }}
                             </span>
                             <Tag v-else-if="field === 'status'" :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" class="uppercase text-[9px] px-2" />
                             <span v-else-if="field.includes('time')" class="text-slate-600 text-sm font-mono">{{ formatDateTime(data[field]) }}</span>
@@ -693,7 +693,7 @@ const exportCSV = () => {
                         <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'status'">
                             <Dropdown v-model="lazyParams.filters['status'].value" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('myActivities.table.filterByStatus')" class="p-column-filter" showClear />
                         </template>
-                        <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'task.title'">
+                        <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'title'">
                             <InputText v-model="filterModel.constraints[0].value" type="text" @input="filterCallback()" class="p-column-filter" :placeholder="t('myActivities.table.filterByTask')" />
                         </template>
                     </Column>

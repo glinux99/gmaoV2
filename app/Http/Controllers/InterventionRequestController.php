@@ -114,10 +114,52 @@ class InterventionRequestController extends Controller
         $validated['is_validated'] = $request->input('is_validated', false);
         $validated['status'] = $request->input('status', 'pending');
 
-        InterventionRequest::create($validated);
+        $intervention = InterventionRequest::create($validated);
+
+        $activityTitle = $intervention->title;
+        $activityRegionId = $intervention->region_id;
+        $activityZoneId = $intervention->zone_id;
+
+        if ($intervention->requested_by_connection_id) {
+            $intervention->loadMissing('requestedByConnection');
+            if ($intervention->requestedByConnection) {
+                $activityTitle = 'Inter Cli ' . $intervention->requestedByConnection->customer_code . ' - ' . $intervention->title;
+                $activityRegionId = $intervention->requestedByConnection->region_id;
+                $activityZoneId = $intervention->requestedByConnection->zone_id;
+            }
+        }else{
+             $activityTitle = 'Activité  Générée' .' - ' . $intervention->title;
+        }
+
+        // Si la demande est validée et assignée, créer une activité
+        if ($validated['is_validated']) {
+            Activity::updateOrCreate(
+                ['intervention_request_id' => $intervention->id], // Critère de recherche
+                [
+                    'title' => $activityTitle,
+                    'region_id' => $activityRegionId,
+                    'zone_id' => $activityZoneId,
+                    'user_id' => $intervention->assignable_type === User::class ? $intervention->assignable_id : null,
+                    'assignable_type' => $intervention->assignable_type,
+                    'assignable_id' => $intervention->assignable_id,
+                    'status' => 'scheduled', // Ou 'in_progress' selon la logique métier
+                    'priority' => $intervention->priority, // La priorité de l'activité dépend de la priorité de la demande d'intervention
+                    'problem_resolution_description' => 'Activité générée suite à la création de la demande d\'intervention.',
+                    'instructions' => $intervention->description, // Utiliser la description de la demande comme instruction initiale
+                    'actual_start_time' => $intervention->scheduled_date ?? now(),
+                    // Vous pouvez ajouter d'autres champs pertinents ici
+                ]
+            );
+
+            return Redirect::route('interventions.index')->with('success', 'Demande créée et activité générée avec succès.');
+        }
 
         return Redirect::route('interventions.index')->with('success', 'Demande créée.');
     }
+
+    /**
+     * Mise à jour d'un raccordement existant.
+     */
 
    public function update(Request $request, InterventionRequest $intervention)
 {
@@ -150,15 +192,33 @@ class InterventionRequestController extends Controller
     // Mise à jour de l'instance
     $intervention->update($validated);
 
+    $activityTitle = $intervention->title;
+    $activityRegionId = $intervention->region_id;
+    $activityZoneId = $intervention->zone_id;
+
+      if ($intervention->requested_by_connection_id) {
+            $intervention->loadMissing('requestedByConnection');
+            if ($intervention->requestedByConnection) {
+                $activityTitle = 'Inter Cli ' . $intervention->requestedByConnection->customer_code . ' - ' . $intervention->title;
+                $activityRegionId = $intervention->requestedByConnection->region_id;
+                $activityZoneId = $intervention->requestedByConnection->zone_id;
+            }
+        }else{
+             $activityTitle = 'Activité  Générée' .' - ' . $intervention->title;
+        }
+
     // Si l'intervention est validée et assignée, créer ou mettre à jour une activité
-    if ($intervention->status=='completed' && ($intervention->assignable_id && $intervention->assignable_type)) {
+    if ($intervention->is_validated) {
         Activity::updateOrCreate(
             ['intervention_request_id' => $intervention->id], // Critère de recherche
             [
+                'title' => $activityTitle,
+                'region_id' => $activityRegionId,
+                'zone_id' => $activityZoneId,
                 'user_id' => $intervention->assignable_type === User::class ? $intervention->assignable_id : null,
                 'assignable_type' => $intervention->assignable_type,
                 'assignable_id' => $intervention->assignable_id,
-                'status' => 'scheduled', // Ou 'in_progress' selon la logique métier
+                'status' => $intervention->status, // Ou 'in_progress' selon la logique métier
                 'priority' => $intervention->priority, // La priorité de l'activité dépend de la priorité de la demande d'intervention
                 'problem_resolution_description' => 'Activité générée suite à la validation de la demande d\'intervention.',
                 'instructions' => $intervention->description, // Utiliser la description de la demande comme instruction initiale
@@ -215,12 +275,27 @@ class InterventionRequestController extends Controller
             'completed_date' => now(),
         ]);
 
+        $activityTitle = $intervention->title;
+        $activityRegionId = $intervention->region_id;
+        $activityZoneId = $intervention->zone_id;
+
+        if ($intervention->requested_by_connection_id) {
+            $intervention->loadMissing('requestedByConnection');
+            if ($intervention->requestedByConnection) {
+                $activityTitle = 'Intervention pour client ' . $intervention->requestedByConnection->customer_code . ' - ' . $intervention->title;
+                $activityRegionId = $intervention->requestedByConnection->region_id;
+                $activityZoneId = $intervention->requestedByConnection->zone_id;
+            }
+        }
 
         // Si l'intervention est validée et assignée, créer une activité
         if ($intervention->status=='completed' && $intervention->assignable_id && $intervention->assignable_type) {
             Activity::updateOrCreate(
                 ['intervention_request_id' => $intervention->id], // Critère de recherche
                 [
+                    'title' => $activityTitle,
+                    'region_id' => $activityRegionId,
+                    'zone_id' => $activityZoneId,
                     'user_id' => $intervention->assignable_type === User::class ? $intervention->assignable_id : null,
                     'assignable_type' => $intervention->assignable_type,
                     'assignable_id' => $intervention->assignable_id,
@@ -242,7 +317,7 @@ class InterventionRequestController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt',
+            'file' => 'required|file|mimes:csv,txt,xlsx,xls',
         ]);
 
         try {

@@ -49,6 +49,21 @@ class Activity extends Model implements HasMedia
 
     protected static function booted(): void
     {
+        // Événement 'updating' pour capturer les changements avant la sauvegarde
+        static::updating(function (Activity $activity) {
+            // Si l'assignation a changé, on met à jour le parent
+            if ($activity->isDirty('assignable_id') || $activity->isDirty('assignable_type')) {
+                $updateData = [
+                    'assignable_id' => $activity->assignable_id,
+                    'assignable_type' => $activity->assignable_type,
+                ];
+
+                if ($activity->task_id) $activity->task()->update($updateData);
+                if ($activity->maintenance_id) $activity->maintenance()->update($updateData);
+                if ($activity->intervention_request_id) $activity->interventionRequest()->update($updateData);
+            }
+        });
+
         static::updated(function (Activity $activity) {
             if ($activity->isDirty('status')) {
                 $newStatus = $activity->status;
