@@ -1183,9 +1183,42 @@
             "email": "Email",
             "pointure": "Pointure",
             "size": "Taille",
+            "phone": "Téléphone",
             "created_at": "Créé le",
             "updated_at": "Mis à jour le",
-            "teams":"Équipes"
+            "teams": "Équipes"
+        }
+    },
+    "users": {
+        "title": "Gestion des Utilisateurs",
+        "subtitle": "Gérez les comptes utilisateurs et leurs rôles.",
+        "actions": {
+            "add": "Ajouter un utilisateur",
+            "deleteSelected": "Supprimer la sélection"
+        },
+        "fields": {
+            "name": "Nom complet",
+            "email": "Email",
+            "role": "Rôle",
+            "created_at": "Créé le",
+            "phone": "Téléphone"
+        },
+        "stats": {
+            "total": "Total Utilisateurs",
+            "admin": "Administrateurs",
+            "technician": "Techniciens",
+            "manager": "Managers",
+            "client": "Clients"
+        },
+        "editTitle": "Modifier l'utilisateur",
+        "createTitle": "Créer un utilisateur",
+        "messages": {
+            "deleteConfirmation": "Voulez-vous supprimer définitivement {name} ?",
+            "bulkDeleteConfirmation": "Êtes-vous sûr de vouloir supprimer les {count} utilisateurs sélectionnés ?",
+            "deleteSuccess": "Utilisateur retiré",
+            "bulkDeleteSuccess": "{count} utilisateurs supprimés.",
+            "operationSuccess": "Opération réussie",
+            "validationError": "Veuillez corriger les erreurs."
         }
     },
     "teams": {

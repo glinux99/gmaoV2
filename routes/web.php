@@ -113,6 +113,9 @@ Route::middleware('auth', 'verified')->group(function () {
     'meters' => MeterController::class,
     'keypads' => KeypadController::class,
     'zones'=> ZoneController::class,
+    'roles'=> RoleController::class,
+    'permissions'=> PermissionController::class,
+    'users' =>UserController::class
 
 
   ]);

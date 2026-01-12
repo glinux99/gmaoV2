@@ -52,7 +52,7 @@ class UserController extends Controller
             $roles = Role::where('name', '<>', 'superadmin')->get();
         }
 
-        return Inertia::render('User/Index', [
+        return Inertia::render('User/Users', [
             'title'         => 'User',
             'filters'       => $request->all(['search', 'field', 'order', 'start_date', 'end_date']),
             'users'         => $users->with('roles')->paginate(10),
