@@ -136,4 +136,12 @@ class Maintenance extends Model implements HasMedia
     {
         return $this->hasOne(Activity::class);
     }
+
+    /**
+     * Get the status history for the maintenance.
+     */
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(MaintenanceStatusHistory::class)->latest();
+    }
 }

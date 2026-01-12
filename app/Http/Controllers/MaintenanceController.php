@@ -14,6 +14,7 @@ use App\Models\InstructionTemplate;
 use App\Models\Network;
 use App\Models\SparePart;
 use Illuminate\Http\Request;
+use App\Models\MaintenanceStatusHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +32,7 @@ class MaintenanceController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
 
-        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region'])
+        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region', 'statusHistories.user'])
             ->whereBetween('scheduled_start_date', [
                 Carbon::parse($startDate)->startOfDay(),
                 Carbon::parse($endDate)->endOfDay()
@@ -191,6 +192,7 @@ class MaintenanceController extends Controller
         DB::beginTransaction();
         try {
             $oldNodeId = $maintenance->network_node_id;
+            $originalStatus = $maintenance->status;
 
             // 1. Mise à jour récurrence
             $regeneratedDates = $this->generateRecurrenceDates($validatedData);
@@ -198,6 +200,16 @@ class MaintenanceController extends Controller
 
             // 2. Update Maintenance & Activité
             $maintenance->update($validatedData);
+
+            // Enregistrement du changement de statut
+            if (isset($validatedData['status']) && $originalStatus !== $validatedData['status']) {
+                MaintenanceStatusHistory::create([
+                    'maintenance_id' => $maintenance->id,
+                    'user_id' => Auth::id(),
+                    'old_status' => $originalStatus,
+                    'new_status' => $validatedData['status'],
+                ]);
+            }
 
             // Supprimer les anciennes activités pour les recréer proprement
             Activity::where('maintenance_id', $maintenance->id)->delete();

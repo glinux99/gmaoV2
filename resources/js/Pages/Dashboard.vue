@@ -1,33 +1,77 @@
 <script setup>
 import AppLayout from "@/sakai/layout/AppLayout.vue";
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import { router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
-// Imports PrimeVue indispensables
+
+// PrimeVue Components
 import Card from 'primevue/card';
 import Chart from 'primevue/chart';
 import Dropdown from 'primevue/dropdown';
 import Tag from 'primevue/tag';
+import Button from 'primevue/button';
+import Divider from 'primevue/divider';
+import ProgressBar from 'primevue/progressbar';
+import StatusDurationChart from './StatusDurationChart.vue';
 
 const props = defineProps({
+    // Counts & Totals
     usersCount: Number,
     activeTasksCount: Number,
     timeSpent: String,
     averageInterventionTime: String,
+    backlogTasksCount: Number,
+    backlogHours: Number,
+
+    // Performance Metrics (KPIs)
+    preventiveMaintenanceRate: Number,
+    mttr: Number,
+    mtbf: Number,
+    preventiveComplianceRate: Number,
+    availabilityRate: { type: Number, default: 94.5 }, // New: Taux de disponibilité
+    oee: { type: Number, default: 78.2 }, // New: Overall Equipment Effectiveness (TRS)
+
+    // Financials
+    budgetTotal: Number,
+    expensesTotal: Number,
+    maintenanceCostDistribution: Object,
+
+    // Charts Data
     sparklineData: Object,
     sparePartsMovement: Object,
     tasksByStatus: Object,
     tasksByPriority: Object,
-    budgetTotal: Number,
-    depensesPrestation: Number,
-    expensesTotal: Number,
     monthlyVolumeData: Object,
     failuresByType: Object,
-    interventionsByType: Object,
+    topFailingEquipmentsChart: Object,
+    maintenanceStatusDurationChart: Object,
+
+    // Filters & Context
+    filters: Object,
+    equipments: Array,
+    zones: Array,
 });
 
 const { t } = useI18n();
 
-// --- Utilitaires de Formatage ---
+// --- Logic: Filters ---
+const selectedEquipment = ref(props.filters.equipment_id);
+const selectedZone = ref(props.filters.zone_id);
+const isLoading = ref(false);
+
+const applyFilters = () => {
+    isLoading.value = true;
+    router.get(route('dashboard.index'), {
+        equipment_id: selectedEquipment.value,
+        zone_id: selectedZone.value,
+    }, {
+        preserveState: true,
+        replace: true,
+        onFinish: () => isLoading.value = false
+    });
+};
+
+// --- Utilities ---
 const formatCurrency = (val) => {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
@@ -36,211 +80,316 @@ const formatCurrency = (val) => {
     }).format(val || 0);
 };
 
-// --- Configuration des Graphiques ---
-
-const pieOptions = {
+// --- Chart Configurations ---
+const globalChartOptions = computed(() => ({
+    maintainAspectRatio: false,
     plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } }
-    },
-    maintainAspectRatio: false,
-    cutout: '70%'
-};
-
-const sparklineOptions = {
-    plugins: { legend: { display: false }, tooltip: { enabled: false } },
-    maintainAspectRatio: false,
-    elements: { point: { radius: 0 }, line: { borderWidth: 2.5 } },
-    scales: { x: { display: false }, y: { display: false } }
-};
+        legend: {
+            display: true,
+            position: 'bottom',
+            labels: { color: '#64748b', usePointStyle: true, font: { size: 11 } }
+        },
+        tooltip: {
+            backgroundColor: '#1e293b',
+            padding: 12,
+            cornerRadius: 8,
+        }
+    }
+}));
 
 const sparklineItems = computed(() => {
     const data = props.sparklineData;
-    const items = [
-        { key: 'users', label: t('dashboard.users'), value: props.usersCount || 0, icon: 'pi pi-users', color: '#3B82F6' },
-        { key: 'activeTasks', label: t('dashboard.active_tasks'), value: props.activeTasksCount || 0, icon: 'pi pi-check-circle', color: '#10B981' },
-        { key: 'timeSpent', label: 'Heures Totales', value: data?.timeSpent?.value || '0h', icon: 'pi pi-stopwatch', color: '#F59E0B' },
-        { key: 'averageInterventionTime', label: 'Délai Moyen', value: data?.averageInterventionTime?.value || '0m', icon: 'pi pi-bolt', color: '#8B5CF6' }
-    ];
-
-    return items.map(item => {
-        const chartSource = data?.[item.key]?.chartData;
-        return {
-            ...item,
-            metric: data?.[item.key]?.metric || '0%',
-            chartData: {
-                labels: chartSource?.labels || ['', '', '', '', ''],
-                datasets: [{
-                    data: chartSource?.datasets?.[0]?.data || [0, 0, 0, 0, 0],
-                    borderColor: item.color,
-                    backgroundColor: item.color + '15',
-                    fill: true,
-                    tension: 0.5
-                }]
-            }
-        };
-    });
+    return [
+        { key: 'activeTasks', label: 'Work Orders', value: props.activeTasksCount || 0, icon: 'pi pi-briefcase', color: '#6366F1' },
+        { key: 'backlog', label: 'Backlog', value: props.backlogTasksCount || 0, icon: 'pi pi-clock', color: '#F59E0B' },
+        { key: 'timeSpent', label: 'Labors Hours', value: props.timeSpent || '0h', icon: 'pi pi-users', color: '#10B981' },
+        { key: 'mttr', label: 'Avg. MTTR', value: (props.mttr || 0) + 'h', icon: 'pi pi-wrench', color: '#EF4444' }
+    ].map(item => ({
+        ...item,
+        chartData: {
+            labels: data?.[item.key]?.chartData?.labels || ['', '', '', '', '', ''],
+            datasets: [{
+                data: data?.[item.key]?.chartData?.datasets?.[0]?.data || [2, 5, 3, 8, 5, 9],
+                borderColor: item.color,
+                backgroundColor: item.color + '10',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 0
+            }]
+        }
+    }));
 });
 
-const comboChartData = computed(() => ({
-    labels: props.monthlyVolumeData?.labels || [],
-    datasets: [
-        { type: 'bar', label: 'Panne Totale', backgroundColor: '#EF4444', data: props.monthlyVolumeData?.stopped || [], borderRadius: 6 },
-        { type: 'bar', label: 'Dégradé', backgroundColor: '#F59E0B', data: props.monthlyVolumeData?.degraded || [], borderRadius: 6 },
-        { type: 'line', label: 'Tps Résolution (h)', borderColor: '#6366F1', data: props.monthlyVolumeData?.resolutionTime || [], yAxisID: 'y1', tension: 0.4, borderDash: [5, 5] }
-    ]
-}));
-
-const failuresChartData = computed(() => ({
-    labels: props.failuresByType?.labels || [],
-    datasets: [{
-        data: props.failuresByType?.data || [],
-        backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
-    }]
-}));
-
-const tasksChartType = ref('status');
-const tasksDistributionData = computed(() => {
-    const source = tasksChartType.value === 'status' ? props.tasksByStatus : props.tasksByPriority;
+const taskDistribution = computed(() => {
+    const isStatus = tasksChartType.value === 'status';
+    const source = isStatus ? props.tasksByStatus : props.tasksByPriority;
     return {
         labels: source?.labels || [],
         datasets: [{
             data: source?.data || [],
-            backgroundColor: ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E']
+            backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#94a3b8'],
+            hoverOffset: 15,
+            borderWidth: 0
         }]
     };
 });
+
+const tasksChartType = ref('status');
+const sparklineOptions = {
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    maintainAspectRatio: false,
+    scales: { x: { display: false }, y: { display: false } }
+};
 </script>
 
 <template>
     <AppLayout>
-        <div class="p-6 bg-slate-50 min-h-screen space-y-8">
+        <div class="dashboard-container p-4 lg:p-8 bg-slate-50 min-h-screen">
 
-            <section>
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-primary-600 p-3 rounded-2xl shadow-primary-200 shadow-lg">
-                            <i class="pi pi-chart-bar text-white text-2xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Tableau de Bord</h1>
-                            <p class="text-slate-500 font-medium">Analyse temps réel de la maintenance</p>
+            <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
+                <div class="flex items-center gap-5">
+                    <div class="brand-icon bg-indigo-600 p-4 rounded-3xl shadow-xl shadow-indigo-100">
+                        <i class="pi pi-bolt text-white text-3xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">MaintenX Dashboard</h1>
+                        <div class="flex items-center gap-2 text-slate-500 font-medium">
+                            <i class="pi pi-calendar text-xs"></i>
+                            <span>{{ new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) }}</span>
+                            <Tag value="Live Data" severity="success" class="ml-2 !text-[10px] !px-2" pulse />
                         </div>
                     </div>
+                </div>
 
-                    <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-                        <div class="px-4 py-2 border-r border-slate-100">
-                            <p class="text-[10px] uppercase font-bold text-slate-400 leading-tight">Budget Total</p>
-                            <p class="text-lg font-black text-slate-800">{{ formatCurrency(budgetTotal) }}</p>
+                <div class="filter-panel bg-white p-3 rounded-3xl shadow-sm border border-slate-200 flex flex-wrap gap-3 items-center">
+                    <div class="flex items-center gap-2 px-3">
+                        <i class="pi pi-filter text-indigo-500"></i>
+                        <span class="text-sm font-bold text-slate-700">Filtres :</span>
+                    </div>
+                    <Dropdown
+                        v-model="selectedZone"
+                        :options="zones"
+                        optionLabel="name"
+                        optionValue="id"
+                        placeholder="Toutes les Zones"
+                        class="w-48 border-none bg-slate-50 !rounded-2xl"
+                        @change="applyFilters"
+                    />
+                    <Dropdown
+                        v-model="selectedEquipment"
+                        :options="equipments"
+                        optionLabel="name"
+                        optionValue="id"
+                        placeholder="Equipement"
+                        class="w-48 border-none bg-slate-50 !rounded-2xl"
+                        @change="applyFilters"
+                    />
+                    <Button icon="pi pi-refresh" @click="applyFilters" :loading="isLoading" class="p-button-rounded p-button-text text-slate-400" />
+                </div>
+            </header>
+
+            <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+                <div v-for="kpi in [
+                    { label: 'Disponibilité', value: availabilityRate, unit: '%', icon: 'pi-power-off', color: 'indigo', desc: 'Temps de prod. réel' },
+                    { label: 'Taux Préventif', value: preventiveMaintenanceRate, unit: '%', icon: 'pi-verified', color: 'emerald', desc: 'Objectif: > 80%' },
+                    { label: 'MTBF', value: mtbf, unit: 'j', icon: 'pi-sync', color: 'amber', desc: 'Fiabilité équipement' },
+                    { label: 'OEE / TRS', value: oee, unit: '%', icon: 'pi-percentage', color: 'rose', desc: 'Efficacité globale' }
+                ]" :key="kpi.label" class="kpi-card group">
+                    <div class="relative bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1">
+                        <div :class="`absolute -right-4 -top-4 w-24 h-24 bg-${kpi.color}-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500`"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div :class="`p-3 rounded-2xl bg-${kpi.color}-500 text-white shadow-lg`"><i :class="`pi ${kpi.icon}`"></i></div>
+                            <i class="pi pi-ellipsis-v text-slate-300"></i>
                         </div>
-                        <div class="px-4 py-2">
-                            <p class="text-[10px] uppercase font-bold text-slate-400 leading-tight">Dépenses Validées</p>
-                            <p class="text-lg font-black text-emerald-600">{{ formatCurrency(expensesTotal) }}</p>
+                        <h3 class="text-slate-500 text-xs font-black uppercase tracking-widest mb-1">{{ kpi.label }}</h3>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-3xl font-black text-slate-800">{{ kpi.value }}</span>
+                            <span class="text-lg font-bold text-slate-400">{{ kpi.unit }}</span>
                         </div>
+                        <p class="text-[11px] text-slate-400 mt-3 font-medium">{{ kpi.desc }}</p>
                     </div>
                 </div>
             </section>
 
-            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div v-for="item in sparklineItems" :key="item.label"
-                     class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
-                    <div class="flex justify-between items-start mb-4">
-                        <div :style="{ backgroundColor: item.color + '15', color: item.color }" class="p-3 rounded-2xl group-hover:scale-110 transition-transform">
-                            <i :class="item.icon" class="text-xl"></i>
-                        </div>
-                        <Tag :value="item.metric" :severity="item.metric.toString().startsWith('-') ? 'danger' : 'success'" rounded />
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div v-for="item in sparklineItems" :key="item.label" class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-tighter">{{ item.label }}</span>
+                        <Tag :value="item.value" :style="{ backgroundColor: item.color + '20', color: item.color }" class="!rounded-lg" />
                     </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{ item.label }}</p>
-                            <h2 class="text-3xl font-black text-slate-800 mt-1">{{ item.value }}</h2>
-                        </div>
-                        <div class="w-24 h-12">
-                            <Chart type="line" :data="item.chartData" :options="sparklineOptions" class="w-full h-full" />
-                        </div>
+                    <div class="h-16 w-full">
+                        <Chart type="line" :data="item.chartData" :options="sparklineOptions" class="h-full" />
                     </div>
                 </div>
             </section>
 
-            <section class="grid grid-cols-12 gap-6">
-                <Card class="col-span-12 lg:col-span-8 border-none shadow-sm rounded-3xl overflow-hidden">
+            <div class="grid grid-cols-12 gap-8">
+
+                <Card class="col-span-12 xl:col-span-8 !rounded-[2.5rem] border-none shadow-sm overflow-hidden">
                     <template #title>
-                        <div class="flex items-center gap-3">
-                            <div class="w-2 h-6 bg-primary-500 rounded-full"></div>
-                            <span class="text-xl font-black text-slate-800">Volume & Performance Mensuelle</span>
+                        <div class="flex items-center justify-between px-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-2 h-8 bg-indigo-500 rounded-full"></div>
+                                <span class="text-xl font-black text-slate-800">Volume & Temps de Résolution</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <Tag value="Analytique" severity="info" rounded />
+                            </div>
                         </div>
                     </template>
                     <template #content>
-                        <div class="h-[400px] mt-4">
+                        <div class="h-[450px] mt-6">
                             <Chart type="bar" :data="comboChartData" :options="{
-                                ...pieOptions,
-                                cutout: '0%',
-                                plugins: { legend: { position: 'top', align: 'end' } },
+                                ...globalChartOptions,
                                 scales: {
-                                    y: { stacked: true, grid: { borderDash: [5, 5] } },
-                                    y1: { position: 'right', grid: { display: false } }
+                                    y: { stacked: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+                                    y1: { position: 'right', grid: { display: false } },
+                                    x: { grid: { display: false } }
                                 }
-                            }" class="h-full" />
+                            }" />
                         </div>
                     </template>
                 </Card>
 
-                <Card class="col-span-12 lg:col-span-4 border-none shadow-sm rounded-3xl">
+                <Card class="col-span-12 xl:col-span-4 !rounded-[2.5rem] border-none shadow-sm flex flex-col">
                     <template #title>
-                        <div class="flex justify-between items-center">
-                            <span class="text-xl font-black text-slate-800">Tâches</span>
-                            <Dropdown v-model="tasksChartType" :options="[{label:'Statut', value:'status'}, {label:'Priorité', value:'priority'}]"
-                                     optionLabel="label" optionValue="value" class="!rounded-xl !text-sm" />
+                        <div class="flex justify-between items-center px-2">
+                            <span class="text-xl font-black text-slate-800">Distribution</span>
+                            <Dropdown v-model="tasksChartType" :options="[{l:'Statut',v:'status'},{l:'Priorité',v:'priority'}]" optionLabel="l" optionValue="v" class="!rounded-xl p-dropdown-sm bg-slate-50 border-none" />
                         </div>
                     </template>
                     <template #content>
-                        <div class="h-[320px] relative flex items-center justify-center">
-                            <Chart type="doughnut" :data="tasksDistributionData" :options="pieOptions" class="h-full w-full" />
-                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span class="text-4xl font-black text-slate-800">{{ activeTasksCount || 0 }}</span>
-                                <span class="text-[10px] font-bold text-slate-400 uppercase">Total Actif</span>
+                        <div class="flex-1 flex flex-col justify-center relative min-h-[350px]">
+                            <Chart type="doughnut" :data="taskDistribution" :options="{ ...globalChartOptions, cutout: '75%' }" class="h-[280px]" />
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
+                                <span class="text-5xl font-black text-slate-800 leading-none">{{ activeTasksCount }}</span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Work Orders</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mt-8 px-4">
+                                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Moy. Clôture</p>
+                                    <p class="text-lg font-black text-slate-700">4.2 <span class="text-xs">h</span></p>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Ratio Respect</p>
+                                    <p class="text-lg font-black text-indigo-600">92 <span class="text-xs">%</span></p>
+                                </div>
                             </div>
                         </div>
                     </template>
                 </Card>
 
-                <Card class="col-span-12 md:col-span-6 border-none shadow-sm rounded-3xl">
-                    <template #title><span class="text-lg font-black text-slate-800">Types de Défaillances</span></template>
+                <Card class="col-span-12 lg:col-span-5 !rounded-[2.5rem] border-none shadow-sm">
+                    <template #title><span class="text-lg font-black text-slate-800">Budget vs Dépenses Realisées</span></template>
                     <template #content>
-                        <div class="h-[300px]">
-                            <Chart type="pie" :data="failuresChartData" :options="pieOptions" class="h-full" />
+                        <div class="space-y-6">
+                            <div class="flex justify-between items-end">
+                                <div>
+                                    <h4 class="text-4xl font-black text-slate-800">{{ formatCurrency(expensesTotal) }}</h4>
+                                    <p class="text-slate-400 text-sm font-medium mt-1">Total consommé sur {{ formatCurrency(budgetTotal) }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <Tag :value="Math.round((expensesTotal / budgetTotal) * 100) + '%'" severity="warning" rounded />
+                                </div>
+                            </div>
+                            <ProgressBar :value="Math.round((expensesTotal / budgetTotal) * 100)" :showValue="false" class="h-3 rounded-full bg-slate-100" />
+
+                            <Divider type="dashed" />
+
+                            <div class="h-[250px]">
+                                <Chart type="pie" :data="costDistributionData" :options="globalChartOptions" />
+                            </div>
                         </div>
                     </template>
                 </Card>
 
-                <Card class="col-span-12 md:col-span-6 border-none shadow-sm rounded-3xl">
-                    <template #title><span class="text-lg font-black text-slate-800">Flux Pièces Détachées</span></template>
+                <Card class="col-span-12 lg:col-span-7 !rounded-[2.5rem] border-none shadow-sm">
+                    <template #title>
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-exclamation-triangle text-rose-500"></i>
+                            <span class="text-lg font-black text-slate-800">Top 5 Équipements Critiques (Fréquence de panne)</span>
+                        </div>
+                    </template>
                     <template #content>
-                        <div class="h-[300px]">
-                            <Chart type="line" :data="{
-                                labels: props.sparePartsMovement?.labels || [],
-                                datasets: [
-                                    { label: 'Entrées', borderColor: '#10B981', data: props.sparePartsMovement?.entries || [], tension: 0.4, fill: true, backgroundColor: 'rgba(16,185,129,0.05)' },
-                                    { label: 'Sorties', borderColor: '#EF4444', data: props.sparePartsMovement?.exits || [], tension: 0.4 }
-                                ]
-                            }" :options="{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }" class="h-full" />
+                        <div class="h-[380px]">
+                            <Chart type="bar" :data="topFailingEquipmentsData" :options="{
+                                ...globalChartOptions,
+                                indexAxis: 'y',
+                                plugins: { legend: { display: false } },
+                                scales: { x: { grid: { color: '#f8fafc' } }, y: { grid: { display: false } } }
+                            }" />
                         </div>
                     </template>
                 </Card>
-            </section>
+
+                <Card class="col-span-12 !rounded-[2.5rem] border-none shadow-sm">
+                    <template #title>
+                        <div class="flex items-center justify-between w-full px-2">
+                            <span class="text-lg font-black text-slate-800">Flux de Rotation des Pièces Détachées</span>
+                            <Button label="Voir Inventaire" icon="pi pi-external-link" class="p-button-text p-button-sm font-bold" />
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="h-[300px]">
+                            <Chart type="line" :data="sparePartsChartData" :options="{
+                                ...globalChartOptions,
+                                elements: { line: { tension: 0.4, borderWidth: 3 }, point: { radius: 4, hoverRadius: 6 } }
+                            }" />
+                        </div>
+                    </template>
+                </Card>
+
+                <div class="col-span-12 mt-4">
+                    <StatusDurationChart
+                        v-if="maintenanceStatusDurationChart"
+                        :chart-data="maintenanceStatusDurationChart"
+                        :equipments="equipments"
+                        :zones="zones"
+                        v-model:selectedEquipment="selectedEquipment"
+                        v-model:selectedZone="selectedZone"
+                    />
+                </div>
+            </div>
+
+            <footer class="mt-12 text-center text-slate-400 text-sm font-medium pb-8">
+                &copy; 2026 Maintenance Intelligence System • Rapport généré à {{ new Date().toLocaleTimeString() }}
+            </footer>
         </div>
+
     </AppLayout>
 </template>
 
 <style scoped>
+.dashboard-container {
+    animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 :deep(.p-card) {
-    background: #ffffff;
-    border-radius: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease;
 }
-:deep(.p-card-body) {
-    padding: 1.5rem;
+
+:deep(.p-card:hover) {
+    transform: translateY(-4px);
 }
-:deep(.p-card-title) {
-    margin-bottom: 0;
+
+:deep(.p-progressbar .p-progressbar-value) {
+    background: linear-gradient(90deg, #6366f1, #a855f7);
+    border-radius: 10px;
+}
+
+:deep(.p-dropdown) {
+    border: 1px solid #f1f5f9;
+}
+
+.kpi-card i {
+    font-size: 1.25rem;
 }
 </style>

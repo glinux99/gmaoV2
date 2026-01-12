@@ -12,6 +12,8 @@ use App\Models\ServiceOrder;
 use App\Models\SparePart;
 use Carbon\Carbon;
 use App\Models\Expense;
+use App\Models\Zone;
+use App\Models\MaintenanceStatusHistory;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +40,8 @@ class DashboardController extends Controller
         $request->validate([
             'start_date' => 'nullable|date_format:Y-m-d',
             'end_date' => 'nullable|date_format:Y-m-d',
+            'equipment_id' => 'nullable|integer|exists:equipment,id',
+            'zone_id' => 'nullable|integer|exists:zones,id',
         ]);
 
         // Définition des périodes
@@ -47,6 +51,10 @@ class DashboardController extends Controller
         $endDate = $request->input('end_date')
             ? Carbon::parse($request->input('end_date'))->endOfDay()
             : now()->endOfMonth();
+
+        // Récupération des filtres optionnels
+        $equipmentId = $request->input('equipment_id');
+        $zoneId = $request->input('zone_id');
 
         // Période précédente (pour comparaison des métriques)
         $previousStartDate = $startDate->copy()->subMonth();
@@ -141,11 +149,11 @@ class DashboardController extends Controller
             ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
 
         $sparklineData = [
-            'users' => [
-                'value' => $usersCurrentCount,
-                'metric' => $calculateMetric($usersCurrentCount, $usersPreviousCount),
-                'chartData' => $generateChartData(new User, 'created_at', ['start' => $startDate, 'end' => $endDate])
-            ],
+            // 'users' => [
+            //     'value' => $usersCurrentCount,
+            //     'metric' => $calculateMetric($usersCurrentCount, $usersPreviousCount),
+            //     'chartData' => $generateChartData(new User, 'created_at', ['start' => $startDate, 'end' => $endDate])
+            // ],
             'activeTasks' => [
                 'value' => $activeTasksCurrentCount,
                 'metric' => $calculateMetric($activeTasksCurrentCount, $activeTasksPreviousCount),
@@ -195,6 +203,15 @@ class DashboardController extends Controller
             ->sum(DB::raw('spare_part_movements.quantity * spare_parts.price'));
 
         $budgetTotalCalculated = $equipmentPurchaseCost + $sparePartsInflowCost + $depensesPrestation;
+
+        // --- Coûts de Maintenance ---
+        $laborCost = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
+            ->join('users', 'activities.user_id', '=', 'users.id')
+            ->sum(DB::raw($getTimeDiffExpression('activities.actual_end_time', 'activities.actual_start_time', 'hour') . ' * COALESCE(users.hourly_rate, 0)'));
+
+        $totalMaintenanceCost = $depensesPiecesDetachees + $depensesPrestation + $expensesTotal + $laborCost;
+
+
 
         // --- Mouvements de Pièces Détachées ---
         $movements = SparePartMovement::whereBetween('created_at', [$startDate, $endDate])
@@ -295,6 +312,118 @@ class DashboardController extends Controller
             'data' => $interventionsData->pluck('total'),
         ];
 
+        // --- NOUVEAU : Taux de Maintenance Préventive ---
+        $totalTasks = $interventionsData->sum('total');
+        $preventiveTasks = $interventionsData->where('maintenance_type', 'Préventive')->first()->total ?? 0;
+        $preventiveMaintenanceRate = ($totalTasks > 0) ? ($preventiveTasks / $totalTasks) * 100 : 0;
+
+        // --- NOUVEAU : MTBF & MTTR (Exemples de calculs) ---
+        // MTTR (Mean Time To Repair) en heures
+        $mttr = Activity::where('status', 'completed')
+            ->whereBetween('actual_end_time', [$startDate, $endDate])
+            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
+
+        // MTBF (Mean Time Between Failures) en jours
+        // Calcul simplifié : (Période en jours) / (Nombre de pannes correctives + 1)
+        $correctiveFailuresCount = Task::where('maintenance_type', 'Corrective')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
+        $periodInDays = $startDate->diffInDays($endDate) + 1;
+        $mtbf = ($correctiveFailuresCount > 0)
+            ? $periodInDays / $correctiveFailuresCount
+            : $periodInDays; // Si 0 panne, le MTBF est la période entière
+
+        // --- NOUVEAU : Analyse du temps passé par statut de maintenance ---
+        $statusDurationsQuery = MaintenanceStatusHistory::select(
+            'old_status as status',
+            // Calcule la différence de temps en heures entre la création de l'historique et la création de l'historique suivant pour la même maintenance
+            DB::raw("SUM(
+                " . $getTimeDiffExpression(
+                    '(SELECT MIN(h2.created_at) FROM maintenance_status_histories h2 WHERE h2.maintenance_id = maintenance_status_histories.maintenance_id AND h2.created_at > maintenance_status_histories.created_at)',
+                    'maintenance_status_histories.created_at',
+                    'min'
+                ) . "
+            ) as total_hours")
+        )
+        ->whereBetween('maintenance_status_histories.created_at', [$startDate, $endDate])
+        ->whereNotNull('old_status')
+        ->groupBy('old_status');
+
+        // Ajout des filtres optionnels pour équipement et zone
+        if ($equipmentId || $zoneId) {
+            $statusDurationsQuery->join('maintenances', 'maintenance_status_histories.maintenance_id', '=', 'maintenances.id')
+                                 ->join('activity_maintenance', 'maintenances.id', '=', 'activity_maintenance.maintenance_id')
+                                 ->join('activities', 'activity_maintenance.activity_id', '=', 'activities.id');
+
+            if ($equipmentId) {
+                $statusDurationsQuery->join('activity_equipment', 'activities.id', '=', 'activity_equipment.activity_id')
+                                     ->where('activity_equipment.equipment_id', $equipmentId);
+            }
+
+            if ($zoneId) {
+                $statusDurationsQuery->where('activities.zone_id', $zoneId);
+            }
+        }
+        $statusDurations = $statusDurationsQuery->get();
+        // Formattage pour le graphique
+        $maintenanceStatusDurationChart = [
+            'labels' => $statusDurations->pluck('status')->map(function ($status) {
+                // Optionnel: rendre les noms de statuts plus lisibles
+                return ucwords(str_replace('_', ' ', $status));
+            }),
+            'data' => $statusDurations->pluck('total_hours')->map(function ($hours) {
+                // Arrondir à une décimale
+                return round($hours, 1);
+            }),
+            'title' => "Temps moyen passé par statut (en heures)",
+            'subtitle' => "Basé sur les changements de statut enregistrés dans la période."
+        ];
+
+        // --- NOUVEAU : Taux de conformité du préventif ---
+        $preventiveTasksScheduled = Task::where('maintenance_type', 'Préventive')
+            ->whereBetween('planned_start_date', [$startDate, $endDate])
+            ->count();
+        $preventiveTasksCompletedOnTime = Task::where('maintenance_type', 'Préventive')
+            ->where('status', 'completed')
+            ->whereBetween('planned_start_date', [$startDate, $endDate])
+            // ->whereNotNull('actual_end_time')
+            // ->whereRaw('actual_end_time <= planned_end_date')
+            ->count();
+        $preventiveComplianceRate = ($preventiveTasksScheduled > 0) ? ($preventiveTasksCompletedOnTime / $preventiveTasksScheduled) * 100 : 100;
+
+        // --- NOUVEAU : Backlog de maintenance ---
+        $backlogTasks = Task::whereIn('status', ['scheduled', 'in_progress', 'awaiting_resources'])
+            ->where('planned_start_date', '<=', $endDate);
+        $backlogTasksCount = $backlogTasks->count();
+        $backlogHours = $backlogTasks->sum('estimated_duration');
+
+        // --- NOUVEAU : Répartition des coûts de maintenance ---
+        $maintenanceCostDistribution = [
+            'labels' => ['Main d\'œuvre', 'Pièces Détachées', 'Prestations Externes', 'Autres Dépenses'],
+            'data' => [$laborCost, $depensesPiecesDetachees, $depensesPrestation, $expensesTotal],
+            'title' => "Répartition des Coûts de Maintenance",
+        ];
+
+        // --- NOUVEAU : Top 5 des équipements avec le plus de pannes ---
+        $topFailingEquipmentsData = Equipment::select('equipment.designation', DB::raw('COUNT(tasks.id) as failure_count'))
+            ->join('activity_equipment', 'equipment.id', '=', 'activity_equipment.equipment_id')
+            ->join('activities', 'activity_equipment.activity_id', '=', 'activities.id')
+            ->join('tasks', 'activities.task_id', '=', 'tasks.id')
+            ->where('tasks.maintenance_type', 'Corrective')
+            ->whereBetween('tasks.created_at', [$startDate, $endDate])
+            ->groupBy('equipment.id', 'equipment.designation')
+            ->orderByDesc('failure_count')
+            ->limit(5)
+            ->get();
+
+        $topFailingEquipmentsChart = [
+            'labels' => $topFailingEquipmentsData->pluck('designation'),
+            'data' => $topFailingEquipmentsData->pluck('failure_count'),
+            'title' => "Top 5 Équipements avec le plus de pannes",
+            'subtitle' => "Basé sur les tâches correctives sur la période."
+        ];
+
+
 
         // 2. Rendu de la vue Inertia avec les props
         return Inertia::render('Dashboard', [
@@ -311,6 +440,8 @@ class DashboardController extends Controller
             'filters' => [
                 'startDate' => $startDate->toDateString(),
                 'endDate' => $endDate->toDateString(),
+                'equipment_id' => $equipmentId,
+                'zone_id' => $zoneId,
             ],
 
             // Données Financières
@@ -318,6 +449,13 @@ class DashboardController extends Controller
             'depensesPiecesDetachees' => $depensesPiecesDetachees,
             'depensesPrestation' => $depensesPrestation,
             'expensesTotal' => $expensesTotal,
+            'totalMaintenanceCost' => $totalMaintenanceCost,
+            'preventiveMaintenanceRate' => round($preventiveMaintenanceRate),
+            'mttr' => round($mttr, 1),
+            'mtbf' => round($mtbf, 1),
+            'preventiveComplianceRate' => round($preventiveComplianceRate), // NOUVEAU
+            'backlogTasksCount' => $backlogTasksCount, // NOUVEAU
+            'backlogHours' => round($backlogHours / 60, 1), // NOUVEAU (en heures)
 
             // Graphiques
             'sparePartsMovement' => $sparePartsMovement,
@@ -326,6 +464,13 @@ class DashboardController extends Controller
             'monthlyVolumeData' => $monthlyVolumeData,
             'failuresByType' => $failuresByType,
             'interventionsByType' => $interventionsByType,
+            'maintenanceStatusDurationChart' => $maintenanceStatusDurationChart, // Ajout des données pour le nouveau graphique
+            'topFailingEquipmentsChart' => $topFailingEquipmentsChart,
+            'maintenanceCostDistribution' => $maintenanceCostDistribution, // NOUVEAU
+
+            // Données pour les filtres
+            'equipments' => Equipment::get(['id', 'designation']),
+            'zones' => Zone::get(['id', 'title']),
         ]);
     }
 
