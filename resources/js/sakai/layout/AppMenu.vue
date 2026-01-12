@@ -13,41 +13,45 @@ const model = ref([
     },
     { label: 'menu.assetManagement.title',
         items: [
-            { label: 'menu.assetManagement.inventories', icon: 'pi pi-fw pi-sync', to: '/stock-movements', /*can: 'inventories'*/ },
+            { label: 'menu.assetManagement.inventories', icon: 'pi pi-fw pi-sync', to: '/stock-movements',
+             can: 'read-stock-movement'
+             },
             // { label: 'menu.assetManagement.inventories', icon: 'pi pi-fw pi-sync', to: '/spare-part-movements', /*can: 'inventories'*/ },
             // { label: 'Sortie', icon: 'pi pi-fw pi-arrow-circle-up', to: '/sorties', /*can: 'sorties'*/ },
             // { label: 'Entrée', icon: 'pi pi-fw pi-arrow-circle-down', to: '/entries', /*can: 'entries'*/ },
-            { label: 'menu.assetManagement.spareParts', icon: 'pi pi-fw pi-book', to: '/spare-parts', /*can: 'categories'*/ },
-            { label: 'menu.assetManagement.equipments', icon: 'pi pi-fw pi-cog', to: '/equipments', /*can: 'equipment'*/ },
-            { label: 'menu.assetManagement.networks', icon: 'pi pi-fw pi-sitemap', to: '/networks', /*can: 'equipment'*/ },
+            { label: 'menu.assetManagement.spareParts', icon: 'pi pi-fw pi-book', to: '/spare-parts', can: 'read-spare-part' },
+            { label: 'menu.assetManagement.equipments', icon: 'pi pi-fw pi-cog', to: '/equipments', can: 'read-equipment' },
+            { label: 'menu.assetManagement.networks', icon: 'pi pi-fw pi-sitemap', to: '/networks', can: 'read-network' },
                    {
                 label: 'menu.systemConfiguration.meters',
                 icon: 'pi pi-fw pi-bolt',
                 to: '/meters',
+                can: 'read-meter'
             },
             {
                 label: 'menu.systemConfiguration.keyboards',
                 icon: 'pi pi-fw pi-key',
                 to: '/keypads',
+                can: 'read-keypad'
             },
 
         ]
     },
     { label: 'menu.taskManagement.title',
         items: [
-            { label: 'menu.taskManagement.agenda', icon: 'pi pi-fw pi-calendar', to: '/agenda', /*can: 'projects'*/ },
-            { label: 'menu.taskManagement.myActivities', icon: 'pi pi-fw pi-list', to: '/activities', /*can: 'projects'*/ },
-            { label: 'menu.taskManagement.workOrder', icon: 'pi pi-fw pi-check-square', to: '/tasks', /*can: 'projects'*/ },
-            { label: 'menu.taskManagement.interventionRequests', icon: 'pi pi-fw pi-exclamation-circle', to: '/interventions', /*can: 'projects'*/ },
-            { label: 'menu.taskManagement.maintenancePlan', icon: 'pi pi-fw pi-wrench', to: '/maintenances', /*can: 'projects'*/ },
-            { label: 'menu.taskManagement.connections', icon: 'pi pi-fw pi-sitemap', to: '/connections', /*can: 'projects'*/ },
-            { label: 'menu.taskManagement.expenses', icon: 'pi pi-fw pi-money-bill', to: '/expenses', /*can: 'expenses'*/ },
+            { label: 'menu.taskManagement.agenda', icon: 'pi pi-fw pi-calendar', to: '/agenda', can: 'read-task' },
+            { label: 'menu.taskManagement.myActivities', icon: 'pi pi-fw pi-list', to: '/activities', can: 'read-activity' },
+            { label: 'menu.taskManagement.workOrder', icon: 'pi pi-fw pi-check-square', to: '/tasks', can: 'read-task' },
+            { label: 'menu.taskManagement.interventionRequests', icon: 'pi pi-fw pi-exclamation-circle', to: '/interventions', can: 'read-intervention-request' },
+            { label: 'menu.taskManagement.maintenancePlan', icon: 'pi pi-fw pi-wrench', to: '/maintenances', can: 'read-maintenance' },
+            { label: 'menu.taskManagement.connections', icon: 'pi pi-fw pi-sitemap', to: '/connections', can: 'read-connection' },
+            { label: 'menu.taskManagement.expenses', icon: 'pi pi-fw pi-money-bill', to: '/expenses', can: 'read-expense' },
           ]
     },
     { label: 'menu.teamManagement.title',
         items: [
-            { label: 'menu.teamManagement.teams', icon: 'pi pi-fw pi-users', to: '/teams', /*can: 'teams'*/ },
-            { label: 'menu.teamManagement.technicians', icon: 'pi pi-fw pi-user', to: '/technicians', /*can: 'techniciens'*/ }
+            { label: 'menu.teamManagement.teams', icon: 'pi pi-fw pi-users', to: '/teams', can: 'read-team' },
+            { label: 'menu.teamManagement.technicians', icon: 'pi pi-fw pi-user', to: '/technicians', can: 'read-technician' }
         ]
     },
 
@@ -57,13 +61,13 @@ const model = ref([
                 label: 'menu.hrManagement.employees',
                 icon: 'pi pi-fw pi-users',
                 to: '/employees',
-                /*can: 'employees'*/
+                can: 'read-employee'
             },
             {
                 label: 'menu.hrManagement.leaves',
                 icon: 'pi pi-fw pi-calendar-times',
                 to: '/leaves',
-                /*can: 'leaves'*/
+                can: 'read-leave'
             },
             // {
             //     label: 'menu.hrManagement.attendances',
@@ -75,7 +79,7 @@ const model = ref([
                 label: 'menu.hrManagement.payroll',
                 icon: 'pi pi-fw pi-money-bill',
                 to: '/payroll',
-                /*can: 'payroll'*/
+                can: 'read-payroll'
 
             }
         ]
@@ -85,22 +89,25 @@ const model = ref([
             {
                 label: 'menu.systemConfiguration.userManagement',
                 icon: 'pi pi-fw pi-shield',
-                /*can: ['read user', 'read role', 'read permission'],*/
+                can: ['read-user', 'read-role', 'read-permission'],
                 items: [
                     {
-                        label: 'menu.systemConfiguration.users',
-                        to: '/users',
-                        /*can: 'read user'*/
+ label: 'menu.systemConfiguration.users',
+ icon: 'pi pi-fw pi-user',
+ to: '/users',
+ can: 'read-user'
                     },
                     {
-                        label: 'menu.systemConfiguration.roles',
-                        to: '/roles',
-                        /*can: 'read role'*/
+ label: 'menu.systemConfiguration.roles',
+ icon: 'pi pi-fw pi-users',
+ to: '/roles',
+ can: 'read-role'
                     },
                     {
-                        label: 'menu.systemConfiguration.permissions',
-                        to: '/permissions',
-                        /*can: 'read permission'*/
+ label: 'menu.systemConfiguration.permissions',
+ icon: 'pi pi-fw pi-lock',
+ to: '/permissions',
+ can: 'read-permission'
                     }
                 ]
             },
@@ -108,39 +115,38 @@ const model = ref([
                 label: 'menu.systemConfiguration.reports',
                 icon: 'pi pi-fw pi-chart-bar',
                 to: '/reports',
-                /*can: 'repports'*/
+                can: 'read-report'
             },
-            {
-                label: 'menu.systemConfiguration.maps',
-                icon: 'pi pi-fw pi-map-marker',
-                to: '/googlemaps'
-            },
-            {
+                    {
                 label: 'menu.systemConfiguration.regions',
                 icon: 'pi pi-fw pi-map',
                 to: '/regions',
+                can: 'read-region'
             },
              {
                 label: 'menu.systemConfiguration.zones',
                 icon: 'pi pi-fw pi-map-marker',
-                to: '/zones'
+                to: '/zones',
+                can: 'read-zone'
             },
             { label: 'menu.systemConfiguration.rollingStock',
                 icon: 'pi pi-fw pi-car',
-                to: '/engins'
+                to: '/engins',
+                can: 'read-engin'
             },
-            { label: 'menu.systemConfiguration.units', icon: 'pi pi-fw pi-tag', to: '/unities', /*can: 'unities'*/ },
+
+            { label: 'menu.systemConfiguration.units', icon: 'pi pi-fw pi-tag', to: '/unities', can: 'read-unit' },
             { label: 'menu.systemConfiguration.labels',
                 icon: 'pi pi-fw pi-pencil',
                 to: '/labels',
-                /*can: 'priority'*/
+                can: 'read-label'
             },
-            {
-                label: 'menu.systemConfiguration.systemPriority',
-                icon: 'pi pi-fw pi-sort-amount-up',
-                to: '/priorities',
-                /*can: 'priority'*/
-            },
+            // {
+            //     label: 'menu.systemConfiguration.systemPriority',
+            //     icon: 'pi pi-fw pi-sort-amount-up',
+            //     to: '/priorities',
+            //     can: 'read-priority'
+            // },
 
 
         ]

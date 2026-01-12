@@ -116,9 +116,10 @@ Route::middleware('auth', 'verified')->group(function () {
     'roles'=> RoleController::class,
     'permissions'=> PermissionController::class,
     'users' =>UserController::class
-
-
   ]);
+
+  Route::get('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
+  Route::get('/users/leave-impersonate', [UserController::class, 'leaveImpersonate'])->name('users.leave-impersonate');
 
   Route::put('/settings/profile', [SettingController::class, 'updateProfile'])->name('settings.updateProfile');
   Route::put('/settings/password', [SettingController::class, 'updatePassword'])->name('settings.updatePassword');

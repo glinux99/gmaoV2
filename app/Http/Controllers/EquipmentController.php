@@ -19,6 +19,15 @@ use Illuminate\Database\Eloquent\Builder;
 
 class EquipmentController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:read-equipment')->only(['index']);
+        $this->middleware('can:create-equipment')->only(['store']);
+        $this->middleware('can:update-equipment')->only(['update', 'updateQuantity']);
+        $this->middleware('can:delete-equipment')->only(['destroy']);
+        $this->middleware('can:bulk-delete-equipment')->only(['bulkDestroy']);
+    }
+
     /**
      * Affiche la liste des équipements avec pagination et filtres.
      */

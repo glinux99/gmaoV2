@@ -22,6 +22,13 @@ use App\Models\Expenses;
 
 class DashboardController extends Controller
 {
+    public function __construct()
+    {
+        // Seuls les utilisateurs avec la permission 'view-dashboard' peuvent accéder à ce contrôleur.
+        // Le middleware s'applique à toutes les méthodes du contrôleur.
+        $this->middleware('can:view-dashboard');
+    }
+
     /**
      * Display a listing of the resource.
      */

@@ -948,6 +948,7 @@
          "create":"Créer",
          "selectedCount": "Vous avez selectionné {count} items",
          "deleteSelection": "Supprimer",
+         "columns":"Colonnes",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "import": "Importer",
@@ -965,8 +966,18 @@
     "errorOccurred": "Une erreur est survenue.",
     "selectColumns": "Choisir les colonnes",
     "customize_columns": "Personnaliser les colonnes",
+    "columnSelector":{
+        "title": "Personnaliser les colonnes",
+        "placeholder": "Choisir les colonnes"
+    },
      "types": {
             "annual": "Annuel",
+            "columns": "Colonnes",
+            "shoeSize": "Pointure",
+            "clothingSize": "Taille de vêtement",
+            "password": "Mot de passe",
+            "confirmPassword": "Confirmer le mot de passe",
+            "removePhoto": "Supprimer la photo",
             "sick": "Maladie",
             "rtt": "RTT",
             "exceptional": "Exceptionnel"
@@ -976,7 +987,9 @@
             "pending": "En attente",
             "rejected": "Rejeté"
         },
+          "exportCsv":"Exporter en CSV",
          "notApplicable": "N/A",
+            "uploadPhotoAriaLabel": "Télécharger une photo de profil",
             "unspecifiedDate": "Date non définie",
             "resetFilters": "Réinitialiser les filtres",
             "unnamedActivity": "Activité Sans Titre",
@@ -1149,6 +1162,7 @@
             "deleteSuccess": "Employé supprimé."
         }
     },
+
     "technicians": {
         "title": "Gestion des Techniciens",
         "subtitle": "Base de données Master",
@@ -1186,7 +1200,12 @@
             "phone": "Téléphone",
             "created_at": "Créé le",
             "updated_at": "Mis à jour le",
-            "teams": "Équipes"
+            "last_login_at": "Dernière connexion",
+            "last_login_ip": "Dernière IP de connexion",
+            "sessions": "Sessions Actives",
+            "current_session": "Session Actuelle",
+            "teams": "Équipes",
+            "language": "Langue"
         }
     },
     "users": {
@@ -1201,17 +1220,42 @@
             "email": "Email",
             "role": "Rôle",
             "created_at": "Créé le",
-            "phone": "Téléphone"
+            "phone": "Téléphone",
+            "last_login_at": "Dernière connexion",
+            "last_login_ip": "Dernière IP de connexion",
+            "sessions": "Sessions Actives",
+            "region": "Région",
+            "zone": "Zone",
+            "status": "Statut",
+            "current_session": "Session Actuelle",
+            "teams": "Équipes",
+            "language": "Langue",
+            "workEmail":"Email de Travail",
+            "fullName":"Nom Complet",
+            "assignmentAndRole": "Assignation et rôle",
+            "safetyData": "Données de sécurité",
+            "accountSecurity": "Sécurité du compte",
+            "function":"Fonction"
         },
         "stats": {
             "total": "Total Utilisateurs",
             "admin": "Administrateurs",
             "technician": "Techniciens",
             "manager": "Managers",
-            "client": "Clients"
+            "client": "Clients",
+            "operator": "Opérateurs",
+            "magasinier": "Magasiniers",
+            "engineer": "Ingénieurs",
+            "network-engineer": "Ingénieurs Réseau",
+            "superadmin": "Super-Administrateurs",
+            "visitor": "Visiteurs"
         },
         "editTitle": "Modifier l'utilisateur",
         "createTitle": "Créer un utilisateur",
+        "dialog": {
+            "editTitle": "Modifier l'utilisateur",
+            "createTitle": "Créer un utilisateur"
+        },
         "messages": {
             "deleteConfirmation": "Voulez-vous supprimer définitivement {name} ?",
             "bulkDeleteConfirmation": "Êtes-vous sûr de vouloir supprimer les {count} utilisateurs sélectionnés ?",
@@ -1219,6 +1263,31 @@
             "bulkDeleteSuccess": "{count} utilisateurs supprimés.",
             "operationSuccess": "Opération réussie",
             "validationError": "Veuillez corriger les erreurs."
+        },
+        "confirm": {
+            "deleteMessage": "Voulez-vous supprimer définitivement {name} ?",
+            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} utilisateurs sélectionnés ?"
+        },
+        "searchPlaceholder":"Rechercher un item, un utilisateur..."
+        ,"placeholders":{
+            "fullName":"Nom Complet",
+            "workEmail":"Email de Travail",
+            "assignmentAndRole": "Assignation et rôle",
+            "function": "Fonction",
+            "shoeSize": "Pointure",
+            "clothingSize": "Taille de vêtement",
+            "password":"Mot de passe",
+            "confirmPassword":"Confirmer le nouveau mot de passe",
+            "phone":"Téléphone",
+            "region" :"Région",
+            "selectRole": "Selectionner un rôle"
+
+        },
+        "form":{
+            "generalInfo":"Information Générale",
+            "assignmentAndRole":"Assignation et rôle",
+            "accountSecurity":"Sécurité du compte",
+            "safetyData":"Données de sécurité"
         }
     },
     "teams": {
@@ -2102,6 +2171,7 @@
             "invalidDate": "Date invalide",
             "notSet": "Non défini",
             "associatedSubActivities": "Sous-activités associées"
+
         },
         "table": {
             "task": "Tâche",

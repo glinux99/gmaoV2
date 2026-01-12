@@ -18,6 +18,15 @@ use Illuminate\Validation\ValidationException;
 
 class StockMovementController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:read-stock-movement')->only(['index', 'show']);
+        $this->middleware('can:create-stock-movement')->only(['store']);
+        $this->middleware('can:update-stock-movement')->only(['update']);
+        $this->middleware('can:delete-stock-movement')->only(['destroy']);
+        $this->middleware('can:bulk-delete-stock-movement')->only(['bulkDestroy']);
+    }
+
     /**
      * Display a listing of the resource.
      */

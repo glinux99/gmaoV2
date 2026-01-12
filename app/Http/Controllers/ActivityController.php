@@ -22,6 +22,16 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Arr;
 class ActivityController extends Controller
 {
+    public function __construct()
+    {
+        // Appliquer les permissions CRUD aux méthodes correspondantes
+        $this->middleware('can:read-activity')->only(['index', 'show']);
+        $this->middleware('can:create-activity')->only(['store', 'bulkStore']);
+        $this->middleware('can:update-activity')->only(['update']);
+        $this->middleware('can:delete-activity')->only(['destroy']);
+        // Note: 'create' et 'edit' affichent des vues, leur accès est souvent lié à 'read' ou à la permission de l'action (create/update).
+    }
+
     /**
      * Display a listing of the resource.
      */

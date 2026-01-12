@@ -29,6 +29,7 @@ class RoleSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->givePermissionTo([
             // Gestion utilisateurs (sans gestion des rôles/permissions)
+            'view-dashboard',
             'create-user', 'read-user', 'update-user', 'delete-user',
             'read-role', 'read-permission',
             // Gestion complète des entités principales
@@ -36,11 +37,16 @@ class RoleSeeder extends Seeder
             'create-task', 'read-task', 'update-task', 'delete-task', 'assign-task',
             'create-activity', 'read-activity', 'update-activity', 'delete-activity', 'assign-activity',
             'create-maintenance', 'read-maintenance', 'update-maintenance', 'delete-maintenance',
-            'create-intervention-request', 'read-intervention-request', 'update-intervention-request', 'delete-intervention-request',
-            'assign-intervention-request', 'validate-intervention-request', 'cancel-intervention-request',
+            'create-intervention-request', 'read-intervention-request', 'update-intervention-request', 'delete-intervention-request', 'assign-intervention-request', 'validate-intervention-request', 'cancel-intervention-request',
             'create-stock-movement', 'read-stock-movement', 'update-stock-movement', 'delete-stock-movement', 'bulk-delete-stock-movement',
             'create-network', 'read-network', 'update-network', 'delete-network',
             'create-team', 'read-team', 'update-team', 'delete-team',
+            'read-technician',
+            'read-employee', 'read-leave', 'read-payroll',
+            'read-report', 'read-region', 'read-zone', 'read-engin', 'read-map', 'read-unit', 'read-label', 'read-priority',
+            'read-meter', 'read-keypad',
+            'read-spare-part',
+            'read-expense',
             'import-connections', 'read-connection', 'update-connection', 'delete-connection',
             'create-report-template', 'read-report-template', 'update-report-template', 'delete-report-template',
             'export-equipments', 'export-tasks', 'export-stock-movements',
@@ -49,9 +55,10 @@ class RoleSeeder extends Seeder
         // Opérateur - Centre d'appel, création des demandes
         $operator = Role::firstOrCreate(['name' => 'operator']);
         $operator->givePermissionTo([
+            'view-dashboard',
             'read-user', // Pour assigner
             'read-team', // Pour assigner
-            'read-region', 'read-zone',
+            'read-region', 'read-zone', 'read-map',
             'read-connection',
             'create-intervention-request',
             'read-intervention-request',
@@ -61,13 +68,16 @@ class RoleSeeder extends Seeder
         // Technicien - Exécute les tâches sur le terrain
         $technician = Role::firstOrCreate(['name' => 'technician']);
         $technician->givePermissionTo([
+            'view-dashboard',
             'read-task',                // Voir ses tâches assignées
             'update-task',              // Mettre à jour le statut, ajouter des notes
             'read-activity',            // Voir ses activités
+            'read-technician',          // Voir sa propre fiche ou celle des collègues
             'update-activity',          // Compléter les instructions, marquer comme terminée
             'read-equipment',           // Consulter les détails d'un équipement
             'read-spare-part',          // Voir les pièces disponibles
             'create-stock-exit',        // Déclarer une sortie de pièce pour une réparation
+            'read-stock-movement',      // Voir ses sorties de pièces
             'read-intervention-request',// Consulter les détails des demandes
             'update-intervention-request', // Mettre à jour le statut (ex: 'en cours')
         ]);
@@ -75,31 +85,36 @@ class RoleSeeder extends Seeder
         // Magasinier - Gère le stock
         $magasinier = Role::firstOrCreate(['name' => 'magasinier']);
         $magasinier->givePermissionTo([
+            'view-dashboard',
             'read-stock-movement', 'create-stock-movement', 'update-stock-movement', 'delete-stock-movement',
             'bulk-delete-stock-movement',
             'create-stock-entry', 'create-stock-exit', 'create-stock-transfer', // Actions spécifiques de stock
             'read-spare-part', 'create-spare-part', 'update-spare-part', 'delete-spare-part',
             'read-equipment', // Pour voir les équipements en stock
+            'read-meter', 'read-keypad', 'read-engin', // Peut voir les autres actifs en stock
             'update-equipment-quantity', // Pour ajuster les quantités
         ]);
 
         // Ingénieur Réseau - Conçoit les schémas
         $networkEngineer = Role::firstOrCreate(['name' => 'network-engineer']);
         $networkEngineer->givePermissionTo([
+            'view-dashboard',
             'create-network', 'read-network', 'update-network', 'delete-network',
-            'read-equipment', 'read-equipment-type',
+            'read-equipment', 'read-equipment-type', 'read-connection',
             'read-region', 'read-zone',
         ]);
 
         // Visiteur - Accès en lecture seule
         $visitor = Role::firstOrCreate(['name' => 'visitor']);
         $visitor->givePermissionTo([
+            'view-dashboard',
             'read-equipment',
             'read-equipment-type',
             'read-task',
             'read-maintenance',
             'read-network',
-            'read-region',
+            'read-region', 'read-zone', 'read-map',
+            'read-technician',
         ]);
          $superadmin->givePermissionTo(Permission::all());
     }
