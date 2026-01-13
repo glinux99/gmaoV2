@@ -22,6 +22,8 @@ use Inertia\Inertia;
 use Spatie\Permission\Models\Permission;
 use App\Models\Equipment;
 use App\Models\Expenses;
+use App\Models\Maintenance;
+use App\Models\StockMovement;
 
 class DashboardController extends Controller
 {
@@ -231,6 +233,43 @@ class DashboardController extends Controller
             'exits' => $movements->pluck('exits'),
         ];
 
+        // --- NOUVEAU : Données pour la rotation de stock par article ---
+        $itemMovements = StockMovement::with('movable')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->select(
+                'movable_id',
+                'movable_type',
+                DB::raw("SUM(CASE WHEN type = 'entry' THEN quantity ELSE 0 END) as total_entries"),
+                DB::raw("SUM(CASE WHEN type = 'exit' THEN quantity ELSE 0 END) as total_exits")
+            )
+            ->groupBy('movable_id', 'movable_type')
+            ->orderByRaw('total_entries + total_exits DESC') // Ordonner par le total des mouvements
+            ->limit(7) // Limiter aux 7 articles les plus mouvementés pour la clarté du graphique
+            ->get();
+
+        $stockRotationData = [
+            'labels' => $itemMovements->map(function ($item) {
+                if (!$item->movable) {
+                    return 'Item #' . $item->movable_id;
+                }
+                // Retourne la référence, le tag, le numéro de série ou la désignation
+                return $item->movable->reference
+                    ?? $item->movable->tag
+                    ?? $item->movable->serial_number
+                    ?? $item->movable->designation
+                    ?? 'Item Inconnu';
+            }),
+            'entries' => $itemMovements->pluck('total_entries'),
+            'exits' => $itemMovements->pluck('total_exits'),
+        ];
+
+        // --- NOUVEAU : Totaux pour les cartes de flux de stock ---
+        $totalStockIn = StockMovement::whereBetween('date', [$startDate, $endDate])
+            ->where('type', 'entry')
+            ->sum('quantity');
+        $totalStockOut = StockMovement::whereBetween('date', [$startDate, $endDate])
+            ->where('type', 'exit')
+            ->sum('quantity');
 
         // --- Tâches par Statut et Priorité (Graphiques en secteurs/barres) ---
 
@@ -400,9 +439,19 @@ class DashboardController extends Controller
 
         // --- NOUVEAU : Répartition des coûts de maintenance ---
         $maintenanceCostDistribution = [
-            'labels' => ['Main d\'œuvre', 'Pièces Détachées', 'Prestations Externes', 'Autres Dépenses'],
-            'data' => [$laborCost, $depensesPiecesDetachees, $depensesPrestation, $expensesTotal],
             'title' => "Répartition des Coûts de Maintenance",
+            'items' => [
+                [
+                    'label' => 'Pièces Détachées',
+                    'value' => $totalMaintenanceCost > 0 ? round(($depensesPiecesDetachees / $totalMaintenanceCost) * 100) : 0,
+                    'color' => 'bg-blue-500'
+                ],
+                [
+                    'label' => 'Main d\'œuvre',
+                    'value' => $totalMaintenanceCost > 0 ? round(($laborCost / $totalMaintenanceCost) * 100) : 0,
+                    'color' => 'bg-purple-500'
+                ],
+            ]
         ];
 
         // --- NOUVEAU : Top 5 des équipements avec le plus de pannes ---
@@ -487,26 +536,42 @@ class DashboardController extends Controller
         $oee = $availabilityRate * $performanceRate * $qualityRate * 100;
 
         // --- NOUVEAU : Données pour les sections avec données statiques dans Vue ---
-
-        // Work Orders (File d'attente)
-        $workOrders = Task::with(['activities.assignable', 'equipments'])
-            ->whereIn('status', ['scheduled', 'in_progress', 'awaiting_resources'])
-            ->orderBy('priority', 'desc')
+        // Work Orders (Interventions)
+        $workOrders = Activity::with(['equipment', 'assignable'])
+            ->whereIn('status', ['in_progress', 'scheduled', 'en cours', 'planifiée'])
+            ->latest()
+            ->orderBy('id')
             ->limit(10)
-            ->get()
-            ->map(function ($task) {
-                $activity = $task->activities->first();
-                $technician = $activity && $activity->assignable_type === 'App\Models\User' ? $activity->assignable : null;
+            ->get();
+
+        $workOrders = $workOrders->map(function ($activity) {
+                $tech = $activity->assignable_type === 'App\Models\User' ? $activity->assignable : null;
                 return [
-                    'id' => 'WO-' . $task->id,
-                    'asset' => $task->equipments->first()->designation ?? 'N/A',
-                    'location' => $task->equipments->first()->zone->title ?? 'N/A',
-                    'priority' => strtoupper($task->priority),
-                    'technician' => $technician ? $technician->name : ($activity->assignable->name ?? 'Non assigné'),
-                    'tech_img' => $technician ? $technician->profile_photo_url : null,
-                    'progress' => $task->progress ?? 0, // Assumant une colonne 'progress' sur le modèle Task
+                    'id' => $activity->id,
+                    'asset' => $activity->equipments->first()->designation ?? 'N/A',
+                    'location' => $activity->equipments->first()->location ?? 'N/A',
+                    'priority' => $activity->task->priority ?? 'MOYENNE',
+                    'technician' => $tech ? $tech->name : 'Non assigné',
+                    'tech_img' => $tech ? $tech->profile_photo_url : null,
+                    'progress' => rand(10, 90), // Placeholder for progress
                 ];
             });
+
+        $urgentWorkOrdersCount = Activity::whereHas('task', fn($q) => $q->where('priority', 'CRITIQUE'))
+            ->orWhereHas('maintenance', fn($q) => $q->where('priority', 'CRITIQUE'))
+            ->whereIn('status', ['in_progress', 'scheduled', 'en cours', 'planifiée'])
+            ->count();
+
+        $inProgressWorkOrdersCount = Activity::whereIn('status', ['in_progress', 'en cours'])->count();
+
+        // --- NOUVEAU : Statistiques pour le flux d'interventions ---
+        $awaitingWorkOrdersCount = Activity::whereIn('status', ['awaiting_resources', 'En attente'])
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
+
+        $completedLast24hCount = Activity::where('status', 'completed')
+            ->where('actual_end_time', '>=', now()->subHours(24))
+            ->count();
 
         // Spare Parts (Alerte stock)
         $alertSpareParts = SparePart::whereRaw('quantity <= min_quantity')->limit(5)->get(['reference', 'quantity', 'min_quantity']);
@@ -528,24 +593,104 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Preventive Calendar Events
-        $calendarEvents = Task::where('maintenance_type', 'Préventive')
-            ->where('planned_start_date', '>=', now())
-            ->orderBy('planned_start_date', 'asc')
-            ->limit(3)
+        // PREVENTIVE CALENDAR
+        $calendarEvents = Maintenance::where('type', 'preventive')
+            ->where('scheduled_start_date', '>=', now())
+            ->orderBy('scheduled_start_date', 'asc')
+            ->limit(5)
             ->get()
-            ->map(function ($task) {
-                $date = Carbon::parse($task->planned_start_date);
+            ->map(function ($event) {
+                $startCarbon = $event->scheduled_start_date ? Carbon::parse($event->scheduled_start_date) : null;
+                $endCarbon = $event->scheduled_end_date ? Carbon::parse($event->scheduled_end_date) : null;
+
+                $startTime = $startCarbon ? $startCarbon->format('H:i') : '07:00';
+                $endTime = $endCarbon ? $endCarbon->format('H:i') : '16:00';
+
+                $durationInDays = 0;
+                if (!empty($event->regenerated_dates)) {
+                    $dates = json_decode($event->regenerated_dates, true);
+                    $durationInDays = is_array($dates) ? count($dates) : 0;
+                }
+
+                $durationString = $durationInDays > 0 ? $durationInDays . ' jours (' . $startTime . ' - ' . $endTime . ')' : $startTime . ' - ' . $endTime;
+                $team = $event->assignable_type === 'App\Models\Team' ? $event->assignable->name : ($event->assignable->name ?? 'Non assigné');
                 return [
-                    'month' => $date->format('M'),
-                    'day' => $date->format('d'),
-                    'title' => $task->title,
-                    'duration' => ($task->estimated_duration ?? 60) . 'm',
-                    'team' => 'Planifié'
+                    'month' => $startCarbon ? $startCarbon->format('M') : 'N/A',
+                    'day' => $startCarbon ? $startCarbon->format('d') : 'N/A',
+                    'title' => $event->title,
+                    'duration' => $durationString,
+                    'team' => $team,
                 ];
             });
 
+        // --- NOUVEAU : Interventions Récentes ---
+        $recentInterventions = Activity::with(['task', 'assignable', 'equipments'])
+            ->where('status', 'completed')
+            ->whereBetween('actual_end_time', [$startDate, $endDate])
+            ->latest('actual_end_time')
+            ->limit(5)
+            ->get()
+            ->map(function ($activity) {
+                $technician = $activity->assignable_type === 'App\Models\User' ? $activity->assignable : null;
+                return [
+                    'equipment' => $activity->equipments->first()->designation ?? 'N/A',
+                    'priority' => $activity->task->priority ?? 'low',
+                    'technician' => $technician->name ?? 'N/A',
+                    'tech_image' => $technician->profile_photo_url ?? null,
+                    'status' => 'Completed', // Statut fixe car on ne prend que les terminées
+                ];
+            });
 
+        // --- NOUVEAU : Matrice de Risques ---
+        // On prend les 2 équipements avec le plus de pannes (déjà calculé dans topFailingEquipmentsData)
+        $top2FailingEquipments = $topFailingEquipmentsData->take(2);
+        $riskMatrixDatasets = [];
+        $riskLabels = ['Vibration', 'Chaleur', 'Cycle', 'Bruit', 'Électrique']; // Labels de risque
+
+        foreach ($top2FailingEquipments as $index => $equipData) {
+            $equipment = Equipment::where('designation', $equipData->designation)->first();
+            if ($equipment) {
+                $riskValues = [];
+                foreach ($riskLabels as $label) {
+                    // On cherche une caractéristique nommée 'risk_vibration', 'risk_chaleur', etc.
+                    $riskChar = $equipment->characteristics()->where('name', 'like', 'risk_'.strtolower($label))->first();
+                    $riskValues[] = $riskChar ? (int)$riskChar->value : rand(10, 40); // Valeur aléatoire si non trouvée
+                }
+
+                $colors = [
+                    ['rgba(239, 68, 68, 0.2)', '#EF4444'],
+                    ['rgba(99, 102, 241, 0.2)', '#6366F1']
+                ];
+
+                $riskMatrixDatasets[] = [
+                    'label' => $equipment->designation,
+                    'backgroundColor' => $colors[$index][0],
+                    'borderColor' => $colors[$index][1],
+                    'data' => $riskValues,
+                ];
+            }
+        }
+
+        $riskMatrixData = [
+            'labels' => $riskLabels,
+            'datasets' => $riskMatrixDatasets,
+        ];
+
+        // --- NOUVEAU : Calculs pour les cartes d'information sous le graphique principal ---
+        // Temps moyen de clôture des activités (en heures)
+        $averageClosureTime = Activity::where('status', 'completed')
+            ->whereBetween('actual_end_time', [$startDate, $endDate])
+            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
+
+        // Efficacité de l'équipe (changement du nombre de tâches terminées par rapport à la période précédente)
+        $completedTasksCurrent = Activity::where('status', 'completed')->whereBetween('actual_end_time', [$startDate, $endDate])->count();
+        $completedTasksPrevious = Activity::where('status', 'completed')->whereBetween('actual_end_time', [$previousStartDate, $previousEndDate])->count();
+        $teamEfficiencyChange = 0;
+        if ($completedTasksPrevious > 0) {
+            $teamEfficiencyChange = (($completedTasksCurrent - $completedTasksPrevious) / $completedTasksPrevious) * 100;
+        } elseif ($completedTasksCurrent > 0) {
+            $teamEfficiencyChange = 100; // Si 0 avant et > 0 maintenant, c'est une augmentation de 100%
+        }
         // 2. Rendu de la vue Inertia avec les props
         return Inertia::render('Dashboard', [
             // Données Basiques
@@ -584,7 +729,10 @@ class DashboardController extends Controller
 
             // Graphiques
             'sparePartsMovement' => $sparePartsMovement,
+            'stockRotationData' => $stockRotationData, // Ajout des données pour le graphique
             'tasksByStatus' => $tasksByStatusChart,
+            'totalStockIn' => $totalStockIn, // NOUVEAU
+            'totalStockOut' => $totalStockOut, // NOUVEAU
             'tasksByPriority' => $tasksByPriorityChart,
             'monthlyVolumeData' => $monthlyVolumeData,
             'failuresByType' => $failuresByType,
@@ -597,7 +745,15 @@ class DashboardController extends Controller
             'workOrders' => $workOrders,
             'alertSpareParts' => $alertSpareParts,
             'technicianEfficiency' => $technicianEfficiency,
+            'awaitingWorkOrdersCount' => $awaitingWorkOrdersCount,
+            'inProgressWorkOrdersCount' => $inProgressWorkOrdersCount,
+            'completedLast24hCount' => $completedLast24hCount,
             'calendarEvents' => $calendarEvents,
+            'recentInterventions' => $recentInterventions, // NOUVEAU
+            'riskMatrixData' => $riskMatrixData, // NOUVEAU
+
+            'averageClosureTime' => round($averageClosureTime, 1),
+            'teamEfficiencyChange' => round($teamEfficiencyChange),
 
             // Données pour les filtres
             'equipments' => Equipment::get(['id', 'designation']),

@@ -146,7 +146,14 @@ const parentIsStock = computed(() => props.parentEquipments.find(p => p.id === f
 
 // Watch for changes in parent_id
 watch(() => form.parent_id, (newParentId) => {
-    const initialCharacteristics = [{ name: '', type: 'text', value: null }];
+    const initialCharacteristics = [
+        { name: 'risk_vibration', type: 'number', value: 0 },
+        { name: 'risk_chaleur', type: 'number', value: 0 },
+        { name: 'risk_cycle', type: 'number', value: 0 },
+        { name: 'risk_bruit', type: 'number', value: 0 },
+        { name: 'risk_electrique', type: 'number', value: 0 },
+        { name: '', type: 'text', value: null }
+    ];
 
     if (newParentId) {
         const parent = props.parentEquipments.find(p => p.id === newParentId);
@@ -213,7 +220,13 @@ watch(() => form.label_id, (newLabelId) => {
 
 const openNew = () => {
     form.reset();
-    form.characteristics = [{ name: '', type: 'text', value: null }];
+    form.characteristics = [
+        { name: 'risk_vibration', type: 'number', value: 0 },
+        { name: 'risk_chaleur', type: 'number', value: 0 },
+        { name: 'risk_cycle', type: 'number', value: 0 },
+        { name: 'risk_bruit', type: 'number', value: 0 },
+        { name: 'risk_electrique', type: 'number', value: 0 },
+    ];
     editing.value = false;
     activeStep.value = 1;
     submitted.value = false;
@@ -1045,7 +1058,6 @@ defineExpose({
             class="text-white hover:bg-white/10"
         />
     </div>
-
     <div class="p-8 bg-white space-y-6">
         <div class="flex flex-col items-center text-center gap-4">
             <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">

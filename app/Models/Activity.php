@@ -110,9 +110,13 @@ class Activity extends Model implements HasMedia
     {
         return $this->belongsTo(Zone::class);
     }
-    public function equipment(): BelongsToMany
-    {
-        return $this->belongsToMany(Equipment::class);
+    public function equipments(): BelongsToMany
+    { // Correction: La table pivot doit être spécifiée si elle n'est pas conventionnelle
+        return $this->belongsToMany(Equipment::class, 'activity_equipment', 'activity_id', 'equipment_id');
+    }
+     public function equipment(): BelongsToMany
+    { // Correction: La table pivot doit être spécifiée si elle n'est pas conventionnelle
+        return $this->belongsToMany(Equipment::class, 'activity_equipment', 'activity_id', 'equipment_id');
     }
     /**
      * Get the instructions for the activity.
