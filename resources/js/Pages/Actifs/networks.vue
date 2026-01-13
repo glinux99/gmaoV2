@@ -29,7 +29,7 @@ const { t } = useI18n();
 // --- CONSTANTES TECHNIQUES ---
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 130;
-const FLOW_SPEED = 2.0;
+const FLOW_SPEED = 4.0; // Augmenté pour ralentir l'animation
 const ELECTRON_COUNT = 4;
 const ELECTRON_SPACING = 0.8;
 
@@ -124,7 +124,14 @@ const energizedNodes = computed(() => {
 
     // Propagation via les jeux de barres
     const liveBusbars = new Set(connections.value
-        .filter(c => (liveNodes.has(c.fromId) && equipments.value.find(e => e.id === c.toId)?.isBusbar) || (liveNodes.has(c.toId) && equipments.value.find(e => e.id === c.fromId)?.isBusbar))
+        .filter(c => {
+            const fromNode = equipments.value.find(e => e.id === c.fromId);
+            const toNode = equipments.value.find(e => e.id === c.toId);
+            if (!fromNode || !toNode) return false;
+
+            // Un jeu de barres est alimenté si un noeud actif y est connecté
+            return (liveNodes.has(c.fromId) && toNode.isBusbar && fromNode.active) || (liveNodes.has(c.toId) && fromNode.isBusbar && toNode.active);
+        })
         .flatMap(c => [c.fromId, c.toId])
         .filter(id => equipments.value.find(e => e.id === id)?.isBusbar)
     );
@@ -246,6 +253,43 @@ const getOrthogonalPath = (wire) => {
         : `M ${p1.x} ${p1.y} L ${p1.x} ${midY} L ${p2.x} ${midY} L ${p2.x} ${p2.y}`;
 };
 
+const getBusbarFlowPath = (busbarNode) => {
+    if (!busbarNode || !busbarNode.isBusbar) return "";
+
+    // 1. Trouver la connexion d'entrée qui alimente ce jeu de barres
+    const inConnection = connections.value.find(c =>
+        (c.toId === busbarNode.id && energizedNodes.value.liveNodes.has(c.fromId)) ||
+        (c.fromId === busbarNode.id && energizedNodes.value.liveNodes.has(c.toId) && !equipments.value.find(e => e.id === c.toId)?.isBusbar)
+    );
+
+    if (!inConnection) {
+        // Fallback: animation sur toute la longueur si aucune entrée n'est trouvée
+        return `M 0 ${busbarNode.h / 2} L ${busbarNode.w} ${busbarNode.h / 2}`;
+    }
+
+    // 2. Trouver les connexions de sortie
+    const outConnections = connections.value.filter(c =>
+        c.fromId === busbarNode.id && c.id !== inConnection.id
+    );
+
+    // 3. Calculer les positions X relatives sur la barre
+    const getRelativeX = (conn) => {
+        const otherNodeId = conn.fromId === busbarNode.id ? conn.toId : conn.fromId;
+        const otherNode = equipments.value.find(e => e.id === otherNodeId);
+        if (!otherNode) return busbarNode.w / 2;
+
+        const otherSide = conn.fromId === busbarNode.id ? conn.toSide : conn.fromSide;
+        const portPos = getPortPos(otherNode, otherSide);
+        return Math.max(0, Math.min(portPos.x - busbarNode.x, busbarNode.w));
+    };
+
+    const inX = getRelativeX(inConnection);
+    const outXs = outConnections.map(getRelativeX);
+
+    // 4. Créer un chemin SVG qui va de l'entrée à chaque sortie
+    return outXs.map(outX => `M ${inX} ${busbarNode.h / 2} L ${outX} ${busbarNode.h / 2}`).join(' ');
+};
+
 const startMove = (e, item) => {
     const startX = e.clientX;
     const startY = e.clientY;
@@ -318,11 +362,18 @@ const centerView = () => {
 const exportDiagram = (format) => {
     if (!exportContainer.value) return;
 
+    // Correction pour l'erreur CORS avec les polices externes (Google Fonts)
+    const fetchRequestInit = {
+        headers: new Headers(),
+        mode: 'cors',
+        cache: 'no-cache',
+    };
+
     const options = {
         quality: 0.98,
         pixelRatio: 2, // Augmente la résolution
         backgroundColor: 'var(--surface-ground)',
-        skipAutoScale: true, // Correction pour l'export SVG
+        fetchRequestInit,
     };
 
     const exporter = format === 'png' ? htmlToImage.toPng : htmlToImage.toSvg;
@@ -416,106 +467,134 @@ onMounted(() => {
             </div>
 
             <div class="flex-grow flex relative overflow-hidden">
-                <main ref="exportContainer" class="flex-grow relative bg-surface-ground overflow-auto shadow-inner scroll-smooth" @scroll="updateViewport" @mousedown="selectedIds = []">
-                    <div :style="{ transform: `scale(${zoomLevel})`, transformOrigin: '0 0' }" class="absolute inset-0 transition-transform duration-75">
+<main ref="exportContainer"
+      class="flex-grow relative bg-surface-ground overflow-auto shadow-inner scroll-smooth select-none"
+      @scroll="updateViewport"
+      @mousedown="selectedIds = []">
 
-                        <svg id="canvas-svg" width="5000" height="5000" class="absolute inset-0 pointer-events-none">
-                            <defs>
-                                <filter id="red-glow" x="-50%" y="-50%" width="200%" height="200%">
-                                    <feGaussianBlur stdDeviation="4" result="blur" />
-                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                </filter>
-                            </defs>
-                            <defs>
-                                <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
-                                    <feGaussianBlur stdDeviation="3" result="blur" />
-                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                </filter>
-                            </defs>
-                            <g v-for="w in visibleConnections" :key="w.id">
-                                <path :d="getOrthogonalPath(w)"
-                                      :stroke="isWireLive(w) ? w.color : '#1e293b'"
-                                      stroke-width="3" fill="none" class="transition-colors duration-700"
-                                      :filter="isWireLive(w) ? 'url(#neon-glow)' : ''" />
+    <div :style="{ transform: `scale(${zoomLevel})`, transformOrigin: '0 0' }"
+         class="absolute inset-0 transition-transform duration-75">
 
-                                <g v-if="isWireLive(w)">
-                                    <circle v-for="n in ELECTRON_COUNT" :key="n" r="4" fill="#81f50c" class="electron-red shadow-lg">
-                                        <animateMotion :path="getOrthogonalPath(w)" :dur="FLOW_SPEED + 's'"
-                                            :begin="((n - 1) * ELECTRON_SPACING) + 's'" repeatCount="indefinite" />
-                                    </circle>
-                                </g>
-                            </g>
-                        </svg>
+        <svg id="canvas-svg" width="5000" height="5000" class="absolute inset-0 pointer-events-none">
+            <defs>
+                <filter id="red-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+            </defs>
 
-                        <div v-for="label in labels" :key="label.id"
-                             :style="{ left: label.x + 'px', top: label.y + 'px', color: label.color, fontSize: label.font_size + 'px', fontWeight: label.is_bold ? 'bold' : 'normal', transform: `rotate(${label.rotation || 0}deg)` }"
-                             class="absolute z-10 px-2 py-1 whitespace-nowrap pointer-events-none">
-                             {{ label.text }}
-                        </div>
+            <g v-for="w in visibleConnections" :key="w.id">
+                <path :d="getOrthogonalPath(w)"
+                      :stroke="isWireLive(w) ? w.color : '#1e293b'"
+                      stroke-width="3"
+                      fill="none"
+                      class="transition-colors duration-700"
+                      :filter="isWireLive(w) ? 'url(#neon-glow)' : ''" />
 
+                <g v-if="isWireLive(w)">
+                    <circle v-for="n in ELECTRON_COUNT" :key="n"
+                            r="3"
+                            fill="#81f50c"
+                            class="electron-pulse">
+                        <animateMotion :path="getOrthogonalPath(w)"
+                                       :dur="FLOW_SPEED + 's'"
+                                       :begin="((n - 1) * (FLOW_SPEED / ELECTRON_COUNT)) + 's'"
+                                       repeatCount="indefinite" />
+                    </circle>
+                </g>
+            </g>
+        </svg>
 
-                        <div v-for="node in visibleEquipments" :key="node.id"
-                             :style="{ left: node.x + 'px', top: node.y + 'px', width: node.w + 'px', height: node.h + 'px' }"
-                             @mousedown.stop="startMove($event, node)"
-                             class="absolute z-20 node-card">
+        <div v-for="label in labels" :key="label.id"
+             :style="{
+                left: label.x + 'px',
+                top: label.y + 'px',
+                color: label.color,
+                fontSize: label.font_size + 'px',
+                fontWeight: label.is_bold ? 'bold' : 'normal',
+                transform: `rotate(${label.rotation || 0}deg)`
+             }"
+             class="absolute z-10 px-2 py-1 whitespace-nowrap pointer-events-none drop-shadow-sm">
+            {{ label.text }}
+        </div>
 
-                            <div :class="['relative w-full h-full border-4 rounded-2xl transition-all shadow-xl',
-                                          'border-transparent',
-                                          !node.active ? 'opacity-50' : '',
-                                          !node.isBusbar ? 'bg-[#0f172a]' : 'bg-slate-900']"
-                                 :style="node.isBusbar ? {
-                                     'background-image': `linear-gradient(to right, ${node.color}, #1e293b)`,
-                                     'border-color': node.color
-                                 } : {}">
+        <div v-for="node in visibleEquipments" :key="node.id"
+             :style="{ left: node.x + 'px', top: node.y + 'px', width: node.w + 'px', height: node.h + 'px' }"
+             @mousedown.stop="startMove($event, node)"
+             class="absolute z-20 node-card group">
 
-                                <div v-if="!node.isBusbar" class="h-9 px-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[9px] font-black text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">{{ node.tag }}</span>
-                                        <i v-if="node.isRoot" class="pi pi-bolt text-amber-500 text-[10px] animate-pulse"></i>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <i @click.stop="node.active = !node.active"
-                                           :class="['pi pi-power-off text-[10px] cursor-pointer hover:scale-110', node.active ? 'text-green-500' : 'text-slate-500']"></i>
-                                        <i :class="['pi', node.icon, 'text-slate-500 text-[10px]']"></i>
-                                    </div>
-                                </div>
+            <div :class="[
+                    'relative w-full h-full border-2 rounded-xl transition-all shadow-xl',
+                    !node.active ? 'opacity-60 grayscale-[0.5]' : '',
+                    node.isBusbar ? 'bg-slate-900 overflow-hidden' : 'bg-[#0f172a]'
+                 ]"
+                 :style="node.isBusbar ? {
+                    'background-image': `linear-gradient(to right, ${node.color}33, #1e293b)`,
+                    'border-color': node.color
+                 } : { 'border-color': 'rgba(255,255,255,0.05)' }">
 
-                                <!-- Indicateur de maintenance -->
-                                <div v-if="node.next_maintenance_date"
-                                     v-tooltip.top="`Maintenance planifiée le ${new Date(node.next_maintenance_date).toLocaleDateString('fr-FR')}`"
-                                     class="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-[#0f172a] animate-pulse z-30">
-                                    <i class="pi pi-calendar-clock text-white text-xs"></i>
-                                </div>
-
-                                <div v-if="!node.isBusbar" class="p-4 flex flex-col items-center justify-center text-center h-[calc(100%-36px)]">
-                                    <span class="text-[11px] font-bold text-slate-100 leading-tight uppercase tracking-tight">
-                                        {{ node.designation }}
-                                    </span>
-                                     <div v-if="energizedNodes.liveNodes.has(node.id)" class="mt-2 flex gap-1">
-                                        <span class="w-1 h-1 bg-green-500 rounded-full animate-ping"></span>
-                                        <span class="text-[8px] font-mono text-green-500/70">ACTIVE</span>
-                                    </div>
-                                     <div v-if="getLocationName(node)" class="absolute bottom-2 left-2 flex items-center gap-1.5 bg-slate-900/50 border border-white/10 rounded-full px-2 py-0.5">
-                                        <i class="pi pi-map-marker text-[8px] text-amber-400"></i>
-                                        <span class="text-[8px] font-bold text-slate-300 uppercase tracking-wider">{{ getLocationName(node) }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Animation des électrons sur le jeu de barres lui-même -->
-                                <div v-if="node.isBusbar && energizedNodes.liveBusbars.has(node.id)" class="absolute inset-0 pointer-events-none overflow-hidden">
-                                    <div class="absolute top-1/2 -translate-y-1/2 left-0 w-full h-0.5">
-                                        <div v-for="i in 15" :key="i"
-                                            class="absolute w-1 h-1 bg-white rounded-full electron-glow"
-                                            :style="{ animation: `flow-right ${2 + Math.random()}s linear infinite`, animationDelay: `${Math.random() * 2}s`, '--bus-width': `${node.w}px` }">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div v-for="side in ['N','S','E','W']" :key="side" :class="['port', side]"></div>
-                            </div>
-                        </div>
+                <div v-if="!node.isBusbar" class="h-8 px-3 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] font-black text-primary-400 bg-primary-500/10 px-1.5 py-0.5 rounded tracking-tighter">{{ node.tag }}</span>
+                        <i v-if="energizedNodes.liveNodes.has(node.id)" class="pi pi-bolt text-amber-500 text-[10px] animate-pulse"></i>
                     </div>
-                </main>
+                    <div class="flex items-center gap-2">
+                        <i @click.stop="node.active = !node.active"
+                           :class="['pi pi-power-off text-[10px] cursor-pointer transition-transform hover:scale-125', node.active ? 'text-green-500' : 'text-red-500']">
+                        </i>
+                        <i :class="['pi text-[10px] text-slate-400', node.icon]"></i>
+                    </div>
+                </div>
+
+                <div v-if="node.next_maintenance_date"
+                     v-tooltip.top="`Maintenance : ${new Date(node.next_maintenance_date).toLocaleDateString()}`"
+                     class="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-[#0f172a] animate-bounce z-30 cursor-help">
+                    <i class="pi pi-calendar-clock text-white text-[10px]"></i>
+                </div>
+
+                <div v-if="!node.isBusbar" class="p-3 flex flex-col items-center justify-center text-center h-[calc(100%-32px)]">
+                    <span class="text-[10px] font-bold text-slate-200 leading-tight uppercase tracking-tight">
+                        {{ node.designation }}
+                    </span>
+
+                    <div v-if="energizedNodes.liveNodes.has(node.id)" class="mt-2 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span>
+                        <span class="text-[8px] font-mono text-green-400 font-bold">SOUS TENSION</span>
+                    </div>
+
+                    <div v-if="getLocationName(node) && !node.isBusbar" class="absolute bottom-2 left-2 flex items-center gap-1 bg-black/30 backdrop-blur-sm border border-white/5 rounded-full px-2 py-0.5">
+                        <i class="pi pi-map-marker text-[7px] text-amber-400"></i>
+                        <span class="text-[7px] font-bold text-slate-400 uppercase">{{ getLocationName(node) }}</span>
+                    </div>
+                </div>
+
+                <div v-if="node.isBusbar" class="w-full h-full relative z-20">
+                    <div v-if="node.isRoot" class="absolute inset-0 flex items-center justify-center z-10">
+                        <i class="pi pi-bolt text-amber-400 text-xl animate-pulse" v-tooltip.top="'Source d\'énergie'"></i>
+                    </div>
+
+                    <!-- NOUVELLE ANIMATION D'ÉLECTRONS SUR LE JEU DE BARRES -->
+                    <div v-if="energizedNodes.liveBusbars.has(node.id)" class="absolute inset-0 pointer-events-none overflow-hidden flex items-center">
+                        <svg width="100%" height="100%" class="overflow-visible">
+                            <circle v-for="i in 25" :key="i" r="1.5" fill="#f59e0b" class="electron-glow">
+                                <animateMotion :path="getBusbarFlowPath(node)"
+                                               :dur="`${FLOW_SPEED}s`"
+                                               :begin="`${(i / 25) * FLOW_SPEED}s`"
+                                               repeatCount="indefinite" />
+                            </circle>
+                        </svg>
+                    </div>
+                </div>
+
+                <div v-if="!node.isBusbar" v-for="side in ['N','S','E','W']" :key="side" :class="['port', side]"></div>
+            </div>
+        </div>
+    </div>
+</main>
                   <div v-if="showStats" class="absolute top-4 right-4 z-50 bg-surface-900/90 backdrop-blur text-surface-0 p-4 rounded-2xl shadow-2xl border border-surface-0/10 w-56">
                     <div class="flex justify-between items-center mb-4">
                         <span class="text-[10px] font-bold text-primary-400 uppercase">{{ t('networks.stats.title') }}</span>
@@ -641,8 +720,4 @@ aside::-webkit-scrollbar-thumb { background: var(--surface-300); border-radius: 
 }
 .animate-bounce-4 { animation: bounce-4 0.9s ease-in-out infinite 0.3s; }
 
-@keyframes flow-right {
-    from { transform: translateX(0%); }
-    to { transform: translateX(calc(var(--bus-width) - 100%)); }
-}
 </style>

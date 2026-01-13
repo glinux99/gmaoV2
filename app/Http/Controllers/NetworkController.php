@@ -124,6 +124,8 @@ public function store(Request $request)
             'equipments' => 'nullable|array', // Les équipements sont des noeuds du réseau
             'connections' => 'nullable|array',
             'labels' => 'nullable|array',
+             'is_busbar'=> 'nullable|boolean',
+        'color' => 'nullable|string',
         ]);
 
         $network = DB::transaction(function () use ($validated, $request) {
@@ -169,7 +171,7 @@ public function store(Request $request)
                     'h' => $nodeData['h'] ?? 130,
                      'is_active' => (int) ($nodeData['active'] ==="true" ?? false),
                     'is_root'   => (int) ($nodeData['active'] ==="true" ?? false),
-                    'is_busbar' => (bool) ($nodeData['isBusbar'] ?? false), // Ajout de is_busbar
+                    'is_busbar' => (bool) ($nodeData['is_busbar'] ?? false), // Ajout de is_busbar
                     'color'     => $nodeData['color'] ?? null, // Ajout de la couleur
  'region_id' => $nodeData['region_id'] ?? null,
  'zone_id' => $nodeData['zone_id'] ?? null,
@@ -259,6 +261,8 @@ public function update(Request $request, Network $network)
         'equipments' => 'nullable|array',
         'connections' => 'nullable|array',
         'labels' => 'nullable|array',
+        'is_busbar'=> 'nullable|boolean',
+        'color' => 'nullable|string',
     ]);
 
     DB::transaction(function () use ($request, $validated, $network) {
@@ -304,7 +308,7 @@ public function update(Request $request, Network $network)
                         'h' => $nodeData['h'] ?? 130,
                         'is_active' => filter_var($nodeData['active'], FILTER_VALIDATE_BOOLEAN),
                         'is_root' => filter_var($nodeData['is_root'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                        'is_busbar' => filter_var($nodeData['isBusbar'] ?? false, FILTER_VALIDATE_BOOLEAN), // Ajout de is_busbar
+                        'is_busbar' => filter_var($nodeData['is_busbar'] ?? false, FILTER_VALIDATE_BOOLEAN), // Ajout de is_busbar
                         'color' => $nodeData['color'] ?? null, // Ajout de la couleur
                         'region_id' => $nodeData['region_id'] ?? null,
                         'zone_id' => $nodeData['zone_id'] ?? null,

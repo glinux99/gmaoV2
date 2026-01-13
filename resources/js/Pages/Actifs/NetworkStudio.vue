@@ -138,7 +138,7 @@ const addBusbar = () => {
         x: 400, y: 400,
         w: BUSBAR_INITIAL_WIDTH, h: 12, // Un jeu de barre est fin et long par défaut
         active: true,
-        isBusbar: true, // Propriété pour l'identifier
+        is_busbar: true, // Propriété pour l'identifier
         color: '#334155', // Couleur par défaut pour le jeu de barres
     });
     recordState();
@@ -264,9 +264,9 @@ const energizedNodes = computed(() => {
     // NOUVEAU : Propagation via les jeux de barres
     // Si un jeu de barres est connecté à un noeud alimenté, on considère le jeu de barres comme alimenté.
     const liveBusbars = new Set(connections.value
-        .filter(c => (liveSet.has(c.fromId) && equipments.value.find(e => e.id === c.toId)?.isBusbar) || (liveSet.has(c.toId) && equipments.value.find(e => e.id === c.fromId)?.isBusbar))
+        .filter(c => (liveSet.has(c.fromId) && equipments.value.find(e => e.id === c.toId)?.is_busbar) || (liveSet.has(c.toId) && equipments.value.find(e => e.id === c.fromId)?.is_busbar))
         .flatMap(c => [c.fromId, c.toId])
-        .filter(id => equipments.value.find(e => e.id === id)?.isBusbar)
+        .filter(id => equipments.value.find(e => e.id === id)?.is_busbar)
     );
 
     return { liveNodes: liveSet, liveBusbars };
@@ -282,7 +282,7 @@ const getPortPos = (node, side) => {
     if (!node) return { x: 0, y: 0 };
 
     // Pour les jeux de barres, les côtés N/S sont sur toute la longueur
-    if (node.isBusbar) {
+    if (node.is_busbar) {
         if (side === 'N') return { x: node.x, y: node.y, w: node.w };
         if (side === 'S') return { x: node.x, y: node.y + node.h, w: node.w };
     }
@@ -321,15 +321,15 @@ const getOrthogonalPath = (wire) => {
 
     // Si l'un des noeuds est un jeu de barres, on ajuste le point de connexion
     // pour qu'il soit le plus proche sur la barre.
-    if (n1.isBusbar && !n2.isBusbar) {
+    if (n1.is_busbar && !n2.is_busbar) {
         const portPos2 = getPortPos(n2, wire.toSide);
         const clampedX = Math.max(0, Math.min(portPos2.x - n1.x, n1.w));
         p1 = { x: n1.x + clampedX, y: wire.fromSide === 'N' ? n1.y : n1.y + n1.h };
-    } else if (n2.isBusbar && !n1.isBusbar) {
+    } else if (n2.is_busbar && !n1.is_busbar) {
         const portPos1 = getPortPos(n1, wire.fromSide); // Correction: portPos1 au lieu de portPos2
         const clampedX = Math.max(0, Math.min(portPos1.x - n2.x, n2.w)); // Correction: portPos1.x
         p2 = { x: n2.x + clampedX, y: wire.toSide === 'N' ? n2.y : n2.y + n2.h };
-    } else if (n1.isBusbar && n2.isBusbar) {
+    } else if (n1.is_busbar && n2.is_busbar) {
         p1 = { x: n1.x + n1.w / 2, y: wire.fromSide === 'N' ? n1.y : n1.y + n1.h };
         p2 = { x: n2.x + n2.w / 2, y: wire.toSide === 'N' ? n2.y : n2.y + n2.h };
     }
@@ -356,7 +356,7 @@ const getOrthogonalPath = (wire) => {
 };
 
 const addCustomPort = (event, node) => {
-    if (!node.isBusbar || !event.altKey) return;
+    if (!node.is_busbar || !event.altKey) return;
     if (!node.customPorts) node.customPorts = [];
     const relativeX = event.offsetX;
     node.customPorts.push({ id: `port-${Date.now()}`, x: relativeX });
@@ -431,7 +431,7 @@ const createNode = () => {
 };
 
 const openBusbarResizeModal = (node) => {
-    if (!node.isBusbar) return;
+    if (!node.is_busbar) return;
     editingBusbar.value = node;
     busbarDimensions.w = node.w;
     busbarDimensions.h = node.h;
@@ -531,6 +531,12 @@ const deleteSelected = () => {
         const ids = selectedIds.value;
         equipments.value = equipments.value.filter(e => !ids.includes(e.id));
         connections.value = connections.value.filter(c => !ids.includes(c.fromId) && !ids.includes(c.toId));
+
+        // Si après suppression, il n'y a plus de source, on en désigne une nouvelle.
+        const hasRoot = equipments.value.some(e => e.isRoot);
+        // if (!hasRoot && equipments.value.length > 0) {
+        //     equipments.value[equipments.value.length - 1].isRoot = true;
+        // }
         selectedIds.value = [];
     }
     if (selectedConnectionId.value) {
@@ -557,9 +563,10 @@ const duplicateSelection = () => {
         const original = equipments.value.find(n => n.id === id);
         if (original) {
             const clone = JSON.parse(JSON.stringify(original));
-            clone.id = `${original.isBusbar ? 'busbar' : 'node'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            clone.id = `${original.is_busbar ? 'busbar' : 'node'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             clone.x += offset;
             clone.y += offset;
+            clone.isRoot = false; // La copie ne peut pas être une source
             newNodes.push(clone);
             newSelectedIds.push(clone.id);
         }
@@ -743,7 +750,7 @@ const handlePortClick = (nodeId, side) => {
 };
 
 const removeCustomPort = (node, portId) => {
-    if (!node.isBusbar || !node.customPorts) return;
+    if (!node.is_busbar || !node.customPorts) return;
     const index = node.customPorts.findIndex(p => p.id === portId);
     if (index > -1) {
         node.customPorts.splice(index, 1);
@@ -808,7 +815,7 @@ const startResize = (e, node, handle) => {
 
     // --- NOUVEAU : Calcul de la taille minimale basée sur les connexions ---
     let minSize = { w: gridSize.value, h: gridSize.value };
-    if (node.isBusbar) {
+    if (node.is_busbar) {
         const connectedWires = connections.value.filter(c => c.fromId === node.id || c.toId === node.id);
         if (connectedWires.length > 0) {
             const relativePositions = connectedWires.map(wire => {
@@ -962,7 +969,7 @@ const loadNetwork = (network) => {
             next_maintenance_date: node.next_maintenance_date, // Ajout de la date de maintenance
         };
         // Assurer que les jeux de barres ont une couleur par défaut s'ils n'en ont pas (pour les anciens projets)
-        if (eq.isBusbar && !eq.color) eq.color = '#334155';
+        if (eq.is_busbar && !eq.color) eq.color = '#334155';
     });
 
     connections.value = (network.connections || []).map(conn => ({
@@ -1563,21 +1570,21 @@ const handleDrop = (event) => {
           <div v-for="node in equipments" :key="node.id"
                :style="{ left: node.x + 'px', top: node.y + 'px', width: node.w + 'px', height: node.h + 'px' }"
                @mousedown.stop="startMove($event, node, 'node'); addCustomPort($event, node)"
-               @dblclick="!node.isBusbar && openEditModal(node)"
-               @click="node.isBusbar && handleNodeClick($event, node)"
+               @dblclick="!node.is_busbar && openEditModal(node)"
+               @click="node.is_busbar && handleNodeClick($event, node)"
                class="absolute z-20 node-container group"
                >
             <div :class="['relative w-full h-full border-4 rounded-2xl transition-all shadow-xl',
                           selectedIds.includes(node.id) ? 'border-indigo-500 shadow-indigo-500/20' : 'border-transparent',
                           !node.active ? 'opacity-50' : '',
                           node.isGroup ? 'bg-indigo-900/20' : '',
-                          !node.isBusbar ? 'bg-[#0f172a]' : 'bg-slate-900']"
-                 :style="node.isBusbar ? {
+                          !node.is_busbar ? 'bg-[#0f172a]' : 'bg-slate-900']"
+                 :style="node.is_busbar ? {
                      'background-image': `linear-gradient(to right, ${node.color}, #1e293b)`,
                      'border-color': node.color
                  } : {}">
                 <!-- Poignées de redimensionnement pour les jeux de barres -->
-                <template v-if="node.isBusbar && selectedIds.includes(node.id)">
+                <template v-if="node.is_busbar && selectedIds.includes(node.id)">
                     <div v-for="handle in ['e', 'w']" :key="handle"
                         :class="['absolute bg-indigo-500 border-2 border-white rounded-full w-3 h-3 z-40 cursor-ew-resize',
                                 'top-1/2 -translate-y-1/2',
@@ -1596,7 +1603,7 @@ const handleDrop = (event) => {
                     <i class="pi pi-calendar-clock text-white text-xs"></i>
                 </div>
 
-                <div v-if="!node.isBusbar" class="h-9 px-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+                <div v-if="!node.is_busbar" class="h-9 px-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] font-black text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">{{ node.tag }}</span>
                         <i v-if="node.isRoot" class="pi pi-bolt text-amber-500 text-[10px] animate-pulse"></i>
@@ -1608,7 +1615,7 @@ const handleDrop = (event) => {
                     </div>
                 </div>
 
-                <div v-if="!node.isBusbar" class="p-4 flex flex-col items-center justify-center text-center h-[calc(100%-36px)]">
+                <div v-if="!node.is_busbar" class="p-4 flex flex-col items-center justify-center text-center h-[calc(100%-36px)]">
                     <span class="text-[11px] font-bold text-slate-100 leading-tight uppercase tracking-tight">
                         {{ node.designation }}
                     </span>
@@ -1624,7 +1631,7 @@ const handleDrop = (event) => {
                 </div>
 
                 <!-- NOUVEAU : Animation des électrons sur le jeu de barres lui-même -->
-                <div v-if="node.isBusbar && energizedNodes.liveBusbars.has(node.id)" class="absolute inset-0 pointer-events-none overflow-hidden">
+                <div v-if="node.is_busbar && energizedNodes.liveBusbars.has(node.id)" class="absolute inset-0 pointer-events-none overflow-hidden">
                     <div class="absolute top-1/2 -translate-y-1/2 left-0 w-full h-0.5">
                         <div v-for="i in 15" :key="i"
                             class="absolute w-1 h-1 bg-white rounded-full electron-glow"
@@ -1636,7 +1643,7 @@ const handleDrop = (event) => {
                     </div>
                 </div>
 
-                <div v-if="!node.isBusbar" v-for="side in ['N', 'S', 'E', 'W']" :key="side"
+                <div v-if="!node.is_busbar" v-for="side in ['N', 'S', 'E', 'W']" :key="side"
                      @click.stop="handlePortClick(node.id, side)"
                      :class="['absolute w-4 h-4 rounded-full border-2 border-[#020408] z-30 transition-all cursor-crosshair opacity-0 group-hover:opacity-100 scale-75 hover:scale-125',
                               side === 'N' ? '-top-2 left-1/2 -translate-x-1/2' : '',
@@ -1646,7 +1653,7 @@ const handleDrop = (event) => {
                               linking.fromId === node.id && linking.fromSide === side ? 'bg-amber-400 !opacity-100 animate-bounce' : 'bg-slate-700 hover:bg-indigo-500']">
                 </div>
                 <!-- NOUVEAU : Ports pour le jeu de barres -->
-                <div v-if="node.isBusbar" v-for="side in ['N', 'S']" :key="side"
+                <div v-if="node.is_busbar" v-for="side in ['N', 'S']" :key="side"
                      @dblclick.stop="handlePortClick(node.id, side)"
                      :class="['absolute w-full h-1/2 cursor-crosshair',
                               side === 'N' ? 'top-0' : 'bottom-0',
@@ -1654,7 +1661,7 @@ const handleDrop = (event) => {
                              ]">
                 </div>
                 <!-- NOUVEAU : Points de connexion personnalisés sur le jeu de barres -->
-                <div v-if="node.isBusbar && node.customPorts"
+                <div v-if="node.is_busbar && node.customPorts"
                      v-for="port in node.customPorts"
                      :key="port.id"
                      @click.stop="handlePortClick(node.id, `custom_${port.id}`)"

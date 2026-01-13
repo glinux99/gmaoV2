@@ -23,6 +23,8 @@ class NetworkNode extends Model
         'w',
         'h',
         'next_maintenance_date',
+        'is_busbar',
+        'color'
     ];
 
     protected $casts = [
