@@ -401,7 +401,7 @@ const showWODialog = ref(false);
                         <div :class="`absolute -right-4 -top-4 w-24 h-24 bg-${kpi.color}-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500`"></div>
                         <div class="flex justify-between items-start mb-4 relative z-10">
                             <div :class="`p-3 rounded-xl bg-${kpi.color}-500 text-white shadow-lg`">
-WWWW                                <i :class="`pi ${kpi.icon}`"></i></div>
+                          <i :class="`pi ${kpi.icon}`"></i></div>
                             <i class="pi pi-ellipsis-v text-slate-300"></i>
                         </div>
                         <h3 class="text-slate-500 text-xs font-black uppercase tracking-widest mb-1">{{ kpi.label }}</h3>

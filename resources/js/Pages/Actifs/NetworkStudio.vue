@@ -14,6 +14,7 @@ import Calendar from 'primevue/calendar';
 import InputNumber from 'primevue/inputnumber';
 import { useForm } from '@inertiajs/vue3';
 
+
 const props = defineProps({
     initialNetwork: Object,
     library: {
@@ -28,7 +29,8 @@ const toast = useToast();
 
 // --- PARAMÈTRES TECHNIQUES ---
 const NODE_WIDTH = 220;
-const GRID_SIZE = 20;
+const BUSBAR_INITIAL_WIDTH = 400;
+const gridSize = ref(20);
 const CANVAS_SIZE = 10000;
 
 const NODE_HEIGHT = 130;
@@ -72,6 +74,13 @@ const analysisPanel = ref(null);
 
 const showAddModal = ref(false);
 const showEditModal = ref(false);
+
+// --- NOUVEAU : Dialogue de redimensionnement pour le jeu de barres ---
+const showBusbarResizeModal = ref(false);
+const editingBusbar = ref(null);
+const busbarDimensions = reactive({ w: 0, h: 0, color: '#334155' });
+// --- FIN NOUVEAU ---
+
 
 const marquee = reactive({
     active: false,
@@ -118,6 +127,21 @@ const openNewLabelModal = () => {
     labelFormData.bold = false;
     labelFormData.rotation = 0;
     showLabelModal.value = true;
+};
+const addBusbar = () => {
+    const id = `busbar-${Date.now()}`;
+    equipments.value.push({
+        id,
+        tag: 'JB',
+        designation: 'Jeu de Barres',
+        type: 'Jeu de Barres',
+        x: 400, y: 400,
+        w: BUSBAR_INITIAL_WIDTH, h: 12, // Un jeu de barre est fin et long par défaut
+        active: true,
+        isBusbar: true, // Propriété pour l'identifier
+        color: '#334155', // Couleur par défaut pour le jeu de barres
+    });
+    recordState();
 };
 
 const openEditLabelModal = (label) => {
@@ -236,20 +260,46 @@ const energizedNodes = computed(() => {
     };
 
     equipments.value.filter(e => e.isRoot && e.active).forEach(s => traverse(s.id));
-    return liveSet;
+
+    // NOUVEAU : Propagation via les jeux de barres
+    // Si un jeu de barres est connecté à un noeud alimenté, on considère le jeu de barres comme alimenté.
+    const liveBusbars = new Set(connections.value
+        .filter(c => (liveSet.has(c.fromId) && equipments.value.find(e => e.id === c.toId)?.isBusbar) || (liveSet.has(c.toId) && equipments.value.find(e => e.id === c.fromId)?.isBusbar))
+        .flatMap(c => [c.fromId, c.toId])
+        .filter(id => equipments.value.find(e => e.id === id)?.isBusbar)
+    );
+
+    return { liveNodes: liveSet, liveBusbars };
 });
 
-const isWireLive = (wire) => energizedNodes.value.has(wire.fromId);
+const isWireLive = (wire) => {
+    // Vérifier si le noeud de départ ou le noeud d'arrivée est alimenté
+    return energizedNodes.value.liveNodes.has(wire.fromId) || energizedNodes.value.liveNodes.has(wire.toId);
+};
 
 // --- FONCTIONS GÉOMÉTRIQUES ---
 const getPortPos = (node, side) => {
     if (!node) return { x: 0, y: 0 };
+
+    // Pour les jeux de barres, les côtés N/S sont sur toute la longueur
+    if (node.isBusbar) {
+        if (side === 'N') return { x: node.x, y: node.y, w: node.w };
+        if (side === 'S') return { x: node.x, y: node.y + node.h, w: node.w };
+    }
+
     switch(side) {
         case 'N': return { x: node.x + node.w / 2, y: node.y };
         case 'S': return { x: node.x + node.w / 2, y: node.y + node.h };
         case 'E': return { x: node.x + node.w, y: node.y + node.h / 2 };
         case 'W': return { x: node.x, y: node.y + node.h / 2 };
-        default: return { x: node.x, y: node.y };
+        default: {
+            // Cas où 'side' est un point de connexion sur un jeu de barres (ex: 'busbar-12345_x_150')
+            if (typeof side === 'string' && side.startsWith('busbar-')) {
+                const [,, relX] = side.split('_');
+                return { x: node.x + parseFloat(relX), y: node.y + node.h / 2 };
+            }
+            return { x: node.x, y: node.y };
+        }
     }
 };
 
@@ -258,19 +308,58 @@ const getOrthogonalPath = (wire) => {
     const n2 = equipments.value.find(e => e.id === wire.toId);
     if (!n1 || !n2) return "";
 
-    const p1 = getPortPos(n1, wire.fromSide);
-    const p2 = getPortPos(n2, wire.toSide);
+    // Déterminer la direction du flux pour l'animation
+    const isForward = energizedNodes.value.liveNodes.has(wire.fromId) && !energizedNodes.value.liveNodes.has(wire.toId);
+    const isBackward = energizedNodes.value.liveNodes.has(wire.toId) && !energizedNodes.value.liveNodes.has(wire.fromId);
+
+    // Si le flux est inversé, on inverse les points pour que l'animation aille dans le bon sens
+    const fromNode = isBackward ? n2 : n1;
+    const toNode = isBackward ? n1 : n2;
+
+    let p1 = getPortPos(n1, wire.fromSide);
+    let p2 = getPortPos(n2, wire.toSide);
+
+    // Si l'un des noeuds est un jeu de barres, on ajuste le point de connexion
+    // pour qu'il soit le plus proche sur la barre.
+    if (n1.isBusbar && !n2.isBusbar) {
+        const portPos2 = getPortPos(n2, wire.toSide);
+        const clampedX = Math.max(0, Math.min(portPos2.x - n1.x, n1.w));
+        p1 = { x: n1.x + clampedX, y: wire.fromSide === 'N' ? n1.y : n1.y + n1.h };
+    } else if (n2.isBusbar && !n1.isBusbar) {
+        const portPos1 = getPortPos(n1, wire.fromSide); // Correction: portPos1 au lieu de portPos2
+        const clampedX = Math.max(0, Math.min(portPos1.x - n2.x, n2.w)); // Correction: portPos1.x
+        p2 = { x: n2.x + clampedX, y: wire.toSide === 'N' ? n2.y : n2.y + n2.h };
+    } else if (n1.isBusbar && n2.isBusbar) {
+        p1 = { x: n1.x + n1.w / 2, y: wire.fromSide === 'N' ? n1.y : n1.y + n1.h };
+        p2 = { x: n2.x + n2.w / 2, y: wire.toSide === 'N' ? n2.y : n2.y + n2.h };
+    }
+
+    // Si le flux est inversé, on recalcule le chemin avec les points inversés pour l'animation
+    if (isBackward) {
+        const temp = p1;
+        p1 = p2;
+        p2 = temp;
+    }
 
     const dx = Math.abs(p2.x - p1.x);
     const dy = Math.abs(p2.y - p1.y);
 
     if (dx > dy) {
-        const midX = p1.x + (p2.x - p1.x) / 2;
+        let midX = p1.x + (p2.x - p1.x) / 2;
+        midX = Math.round(midX / gridSize.value) * gridSize.value; // Aligner sur la grille
         return `M ${p1.x} ${p1.y} L ${midX} ${p1.y} L ${midX} ${p2.y} L ${p2.x} ${p2.y}`;
     } else {
-        const midY = p1.y + (p2.y - p1.y) / 2;
+        let midY = p1.y + (p2.y - p1.y) / 2;
+        midY = Math.round(midY / gridSize.value) * gridSize.value; // Aligner sur la grille
         return `M ${p1.x} ${p1.y} L ${p1.x} ${midY} L ${p2.x} ${midY} L ${p2.x} ${p2.y}`;
     }
+};
+
+const addCustomPort = (event, node) => {
+    if (!node.isBusbar || !event.altKey) return;
+    if (!node.customPorts) node.customPorts = [];
+    const relativeX = event.offsetX;
+    node.customPorts.push({ id: `port-${Date.now()}`, x: relativeX });
 };
 
 const getMarqueeRect = (m) => {
@@ -287,6 +376,15 @@ const isNodeInMarquee = (node, rect) => {
     const rectRight = rect.x + rect.width;
     const rectBottom = rect.y + rect.height;
     return node.x < rectRight && nodeRight > rect.x && node.y < rectBottom && nodeBottom > rect.y;
+};
+
+const isStraight = (wire) => {
+    const n1 = equipments.value.find(e => e.id === wire.fromId);
+    const n2 = equipments.value.find(e => e.id === wire.toId);
+    if (!n1 || !n2) return false;
+    const p1 = getPortPos(n1, wire.fromSide);
+    const p2 = getPortPos(n2, wire.toSide);
+    return p1.x === p2.x || p1.y === p2.y;
 };
 
 const isLabelInMarquee = (label, rect) => {
@@ -330,6 +428,25 @@ const createNode = () => {
     });
     showAddModal.value = false;
     recordState();
+};
+
+const openBusbarResizeModal = (node) => {
+    if (!node.isBusbar) return;
+    editingBusbar.value = node;
+    busbarDimensions.w = node.w;
+    busbarDimensions.h = node.h;
+    busbarDimensions.color = node.color || '#334155';
+    showBusbarResizeModal.value = true;
+};
+
+const applyBusbarResize = () => {
+    if (editingBusbar.value) {
+        editingBusbar.value.w = busbarDimensions.w;
+        editingBusbar.value.h = busbarDimensions.h;
+        editingBusbar.value.color = busbarDimensions.color;
+        recordState();
+    }
+    showBusbarResizeModal.value = false;
 };
 
 const saveLabel = () => {
@@ -426,6 +543,46 @@ const deleteSelected = () => {
         selectedLabelIds.value = [];
     }
     recordState();
+};
+
+const duplicateSelection = () => {
+    const offset = gridSize.value;
+    const newNodes = [];
+    const newLabels = [];
+    const newSelectedIds = [];
+    const newSelectedLabelIds = [];
+
+    // Dupliquer les équipements
+    selectedIds.value.forEach(id => {
+        const original = equipments.value.find(n => n.id === id);
+        if (original) {
+            const clone = JSON.parse(JSON.stringify(original));
+            clone.id = `${original.isBusbar ? 'busbar' : 'node'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            clone.x += offset;
+            clone.y += offset;
+            newNodes.push(clone);
+            newSelectedIds.push(clone.id);
+        }
+    });
+
+    // Dupliquer les labels
+    selectedLabelIds.value.forEach(id => {
+        const original = labels.value.find(l => l.id === id);
+        if (original) {
+            const clone = { ...original, id: `label-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, x: original.x + offset, y: original.y + offset };
+            newLabels.push(clone);
+            newSelectedLabelIds.push(clone.id);
+        }
+    });
+
+    if (newNodes.length > 0 || newLabels.length > 0) {
+        equipments.value.push(...newNodes);
+        labels.value.push(...newLabels);
+        selectedIds.value = newSelectedIds;
+        selectedLabelIds.value = newSelectedLabelIds;
+        recordState();
+        toast.add({ severity: 'info', summary: 'Duplication', detail: `${newNodes.length + newLabels.length} élément(s) dupliqué(s).`, life: 2000 });
+    }
 };
 
 const groupSelection = () => {
@@ -557,7 +714,7 @@ const handlePortClick = (nodeId, side) => {
         // Désélectionner tout pour éviter les confusions
         selectedIds.value = [];
         selectedConnectionId.value = null;
-        selectedLabelId.value = null;
+        selectedLabelIds.value = []; // Correction de la référence
     } else {
         if (linking.fromId === nodeId) {
             linking.active = false;
@@ -582,6 +739,15 @@ const handlePortClick = (nodeId, side) => {
             toast.add({ severity: 'warn', summary: 'Connexion existante', detail: 'Cette liaison existe déjà.', life: 2000 });
             linking.active = false;
         }
+    }
+};
+
+const removeCustomPort = (node, portId) => {
+    if (!node.isBusbar || !node.customPorts) return;
+    const index = node.customPorts.findIndex(p => p.id === portId);
+    if (index > -1) {
+        node.customPorts.splice(index, 1);
+        recordState();
     }
 };
 
@@ -615,8 +781,8 @@ const startMove = (e, item, type = 'node') => {
                 : labels.value.find(l => l.id === pos.id);
 
             if (current) {
-                current.x = Math.round((pos.x + dx) / 5) * 5; // Magnétisme à la grille (5px)
-                current.y = Math.round((pos.y + dy) / 5) * 5;
+                current.x = Math.round((pos.x + dx) / gridSize.value) * gridSize.value; // Magnétisme à la grille
+                current.y = Math.round((pos.y + dy) / gridSize.value) * gridSize.value;
             }
         });
     };
@@ -631,6 +797,79 @@ const startMove = (e, item, type = 'node') => {
     window.addEventListener('mouseup', onMouseUp);
 };
 
+const startResize = (e, node, handle) => {
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origX = node.x;
+    const origY = node.y;
+    const origW = node.w;
+    const origH = node.h;
+
+    // --- NOUVEAU : Calcul de la taille minimale basée sur les connexions ---
+    let minSize = { w: gridSize.value, h: gridSize.value };
+    if (node.isBusbar) {
+        const connectedWires = connections.value.filter(c => c.fromId === node.id || c.toId === node.id);
+        if (connectedWires.length > 0) {
+            const relativePositions = connectedWires.map(wire => {
+                const otherNodeId = wire.fromId === node.id ? wire.toId : wire.fromId;
+                const otherNode = equipments.value.find(e => e.id === otherNodeId);
+                if (!otherNode) return { x: 0, y: 0 };
+
+                const otherNodeSide = wire.fromId === node.id ? wire.toSide : wire.fromSide;
+                const portPos = getPortPos(otherNode, otherNodeSide);
+                return { x: portPos.x - node.x, y: portPos.y - node.y };
+            });
+
+            const minX = Math.min(...relativePositions.map(p => p.x));
+            const maxX = Math.max(...relativePositions.map(p => p.x));
+            minSize.w = Math.max(gridSize.value, maxX - minX);
+        }
+    }
+    // --- FIN NOUVEAU ---
+
+    const onMouseMove = (me) => {
+        const dx = (me.clientX - startX) / zoomLevel.value;
+        const dy = (me.clientY - startY) / zoomLevel.value; // Correction: dy était manquant
+
+        if (handle.includes('e')) node.w = Math.max(minSize.w, origW + dx);
+        if (handle.includes('s')) node.h = Math.max(minSize.h, origH + dy);
+        if (handle.includes('w')) {
+            const newW = origW - dx;
+            if (newW > minSize.w) {
+                node.x = origX + dx;
+                node.w = newW;
+            }
+        }
+        if (handle.includes('n')) {
+            const newH = origH - dy;
+            if (newH > minSize.h) {
+                node.y = origY + dy;
+                node.h = newH;
+            }
+        }
+    };
+
+    const onMouseUp = () => window.removeEventListener('mousemove', onMouseMove);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp, { once: true });
+};
+
+let clickTimeout = null;
+let clickCount = 0;
+
+const handleNodeClick = (event, node) => {
+    clickCount++;
+    if (clickCount === 1) {
+        clickTimeout = setTimeout(() => {
+            clickCount = 0; // Reset after timeout
+        }, 400); // 400ms window for multi-click
+    } else if (clickCount === 3) {
+        clearTimeout(clickTimeout);
+        clickCount = 0;
+        openBusbarResizeModal(node);
+    }
+};
 const handleSelection = (e, item, type) => {
     if (type === 'node') {
         selectedLabelIds.value = [];
@@ -722,6 +961,8 @@ const loadNetwork = (network) => {
             characteristics: node.characteristics || {}, // Assurer que les caractéristiques sont là
             next_maintenance_date: node.next_maintenance_date, // Ajout de la date de maintenance
         };
+        // Assurer que les jeux de barres ont une couleur par défaut s'ils n'en ont pas (pour les anciens projets)
+        if (eq.isBusbar && !eq.color) eq.color = '#334155';
     });
 
     connections.value = (network.connections || []).map(conn => ({
@@ -750,6 +991,10 @@ onMounted(() => {
             if (e.target.tagName !== 'INPUT') deleteSelected();
         }
         if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } // Empêche le comportement par défaut du navigateur
+        if (e.ctrlKey && e.key === 'v') {
+            e.preventDefault();
+            duplicateSelection();
+        }
     });
 });
 
@@ -1053,6 +1298,36 @@ const getCharacteristicName = (charId) => {
     return `Caractéristique ${charId}`;
 };
 
+const handleDragStart = (event, item) => {
+    event.dataTransfer.setData('application/json', JSON.stringify(item));
+    event.dataTransfer.effectAllowed = 'copy';
+};
+
+const handleDrop = (event) => {
+    event.preventDefault();
+    const itemJSON = event.dataTransfer.getData('application/json');
+    if (!itemJSON) return;
+
+    const item = JSON.parse(itemJSON);
+    const canvasRect = mainContainer.value.getBoundingClientRect();
+
+    // Calculer les coordonnées sur le canevas en tenant compte du zoom et du scroll
+    const x = (event.clientX - canvasRect.left) / zoomLevel.value + (mainContainer.value.scrollLeft / zoomLevel.value);
+    const y = (event.clientY - canvasRect.top) / zoomLevel.value + (mainContainer.value.scrollTop / zoomLevel.value);
+
+    const id = `node-${Date.now()}`;
+    equipments.value.push({
+        id,
+        libraryId: item.id,
+        tag: item.tag,
+        designation: item.designation,
+        type: item.type?.category || 'Composant',
+        x: Math.round(x / gridSize.value) * gridSize.value,
+        y: Math.round(y / gridSize.value) * gridSize.value,
+        w: NODE_WIDTH, h: NODE_HEIGHT, active: true, isRoot: false,
+    });
+    recordState();
+};
 </script>
 
 <template>
@@ -1147,6 +1422,7 @@ const getCharacteristicName = (charId) => {
         <div class="flex items-center gap-1">
             <Button icon="pi pi-undo" @click="undo" class="p-button-text p-button-sm !text-slate-400 hover:!text-white" v-tooltip="'Annuler (Ctrl+Z)'" />
             <Button icon="pi pi-tag" label="Label" @click="openNewLabelModal" class="p-button-text p-button-sm !text-slate-400" />
+            <Button icon="pi pi-minus" label="Jeu de Barre" @click="addBusbar" class="p-button-text p-button-sm !text-slate-400" />
             <Button icon="pi pi-save" label="Enregistre" @click="exportApiProject" class="p-button-text p-button-sm !text-indigo-400" />
             <Button icon="pi pi-download" label="Export JSON" @click="exportProject" class="p-button-text p-button-sm !text-slate-400" />
             <input type="file" id="import-file" class="hidden" accept=".json" @change="importProject" />
@@ -1164,6 +1440,10 @@ const getCharacteristicName = (charId) => {
             <i class="pi pi-search text-slate-600 text-[10px]"></i>
             <Slider v-model="zoomLevel" :min="0.1" :max="3" :step="0.01" class="w-24" />
             <span class="text-[10px] font-mono text-indigo-400 w-8">{{ Math.round(zoomLevel*100) }}%</span>
+            <div class="h-4 w-px bg-white/10 mx-1"></div>
+            <i class="pi pi-th-large text-slate-600 text-[10px]" v-tooltip.bottom="'Taille de la grille'"></i>
+            <Slider v-model="gridSize" :min="5" :max="50" :step="5" class="w-24" />
+            <span class="text-[10px] font-mono text-indigo-400 w-8">{{ gridSize }}px</span>
             <Button icon="pi pi-map" @click="isMinimapVisible = !isMinimapVisible" :class="['p-button-text p-button-sm', isMinimapVisible ? '!text-indigo-400' : '!text-slate-500']" v-tooltip.bottom="'Afficher le mini-plan'" />
             <Button icon="pi pi-arrows-alt" @click="centerView" class="p-button-text p-button-sm !text-slate-400" v-tooltip.bottom="'Centrer la vue'" />
             <Button icon="pi pi-window-maximize" @click="resetPanelPositions" class="p-button-text p-button-sm !text-slate-400" v-tooltip.bottom="'Réinitialiser la position des panneaux'" />
@@ -1195,8 +1475,10 @@ const getCharacteristicName = (charId) => {
 
                 <div class="grid grid-cols-1 gap-1.5">
                     <div v-for="item in items" :key="item.id"
+                         draggable="true"
+                         @dragstart="handleDragStart($event, item)"
                          @click="openAddModal(item)"
-                         class="group flex items-center gap-3 p-2.5 bg-white/[0.02] hover:bg-indigo-500/10 border border-white/5 hover:border-indigo-500/50 rounded-xl cursor-pointer transition-all">
+                         class="group flex items-center gap-3 p-2.5 bg-white/[0.02] hover:bg-indigo-500/10 border border-white/5 hover:border-indigo-500/50 rounded-xl cursor-grab transition-all">
                         <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-indigo-600/20 transition-colors">
                              <i :class="['pi', item.type?.icon || 'pi-box', 'text-slate-500 group-hover:text-indigo-400']"></i>
                         </div>
@@ -1211,11 +1493,17 @@ const getCharacteristicName = (charId) => {
       </aside>
 
       <main ref="mainContainer"
-            class="flex-grow relative overflow-auto bg-dot-pattern custom-scrollbar"
+            class="flex-grow relative overflow-auto custom-scrollbar"
+            :style="{
+                'background-image': `radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px)`,
+                'background-size': `${gridSize}px ${gridSize}px`
+            }"
             @mousemove="updateMousePos"
             @mousedown="handleCanvasMouseDown"
             @scroll="handleScroll"
-            @mouseup="handleMouseUp">
+            @mouseup="handleMouseUp"
+            @dragover.prevent
+            @drop="handleDrop">
 
         <div :style="{ transform: `scale(${zoomLevel})`, transformOrigin: '0 0' }" class="absolute inset-0 transition-transform duration-75">
 
@@ -1238,13 +1526,13 @@ const getCharacteristicName = (charId) => {
                 <path :d="getOrthogonalPath(w)" stroke="transparent" stroke-width="12" fill="none" @mousedown.stop="selectedConnectionId = w.id" />
 
                 <path :d="getOrthogonalPath(w)"
-                      :stroke="isWireLive(w) ? w.color : '#1e293b'"
+                      :stroke="isWireLive(w) ? w.color : (isStraight(w) ? '#FFFFFF' : '#1e293b')"
                       :stroke-width="selectedConnectionId === w.id ? 4 : 2"
                       :stroke-dasharray="w.dash"
                       fill="none"
                       class="transition-all duration-500"
                       :filter="isWireLive(w) ? 'url(#neon-glow)' : ''" />
-
+               <!-- NOUVEAU : Animation directionnelle des électrons -->
                <g v-if="isWireLive(w)">
     <circle v-for="n in 3" :key="n" r="2.5" fill="#fff" class="electron-glow">
         <animateMotion
@@ -1274,13 +1562,33 @@ const getCharacteristicName = (charId) => {
 
           <div v-for="node in equipments" :key="node.id"
                :style="{ left: node.x + 'px', top: node.y + 'px', width: node.w + 'px', height: node.h + 'px' }"
-               @mousedown.stop="startMove($event, node, 'node')" @dblclick="openEditModal(node)"
-               class="absolute z-20 node-container group">
-            <div :class="['relative w-full h-full bg-[#0f172a] border-2 rounded-2xl transition-all shadow-xl',
-                          selectedIds.includes(node.id) ? 'border-indigo-500 shadow-indigo-500/20' : 'border-slate-800',
+               @mousedown.stop="startMove($event, node, 'node'); addCustomPort($event, node)"
+               @dblclick="!node.isBusbar && openEditModal(node)"
+               @click="node.isBusbar && handleNodeClick($event, node)"
+               class="absolute z-20 node-container group"
+               >
+            <div :class="['relative w-full h-full border-4 rounded-2xl transition-all shadow-xl',
+                          selectedIds.includes(node.id) ? 'border-indigo-500 shadow-indigo-500/20' : 'border-transparent',
                           !node.active ? 'opacity-50' : '',
-                          node.isGroup ? 'bg-indigo-900/20' : '']">
-
+                          node.isGroup ? 'bg-indigo-900/20' : '',
+                          !node.isBusbar ? 'bg-[#0f172a]' : 'bg-slate-900']"
+                 :style="node.isBusbar ? {
+                     'background-image': `linear-gradient(to right, ${node.color}, #1e293b)`,
+                     'border-color': node.color
+                 } : {}">
+                <!-- Poignées de redimensionnement pour les jeux de barres -->
+                <template v-if="node.isBusbar && selectedIds.includes(node.id)">
+                    <div v-for="handle in ['e', 'w']" :key="handle"
+                        :class="['absolute bg-indigo-500 border-2 border-white rounded-full w-3 h-3 z-40 cursor-ew-resize',
+                                'top-1/2 -translate-y-1/2',
+                                handle === 'w' ? '-left-1.5' : '-right-1.5']"
+                        @mousedown.stop="startResize($event, node, handle)"></div>
+                    <div v-for="handle in ['n', 's']" :key="handle"
+                        :class="['absolute bg-indigo-500 border-2 border-white rounded-full w-3 h-3 z-40 cursor-ns-resize',
+                                'left-1/2 -translate-x-1/2',
+                                handle === 'n' ? '-top-1.5' : '-bottom-1.5']"
+                        @mousedown.stop="startResize($event, node, handle)"></div>
+                </template>
                 <!-- NOUVEAU : Indicateur de maintenance planifiée -->
                 <div v-if="node.next_maintenance_date"
                      v-tooltip.top="`Maintenance planifiée le ${new Date(node.next_maintenance_date).toLocaleDateString('fr-FR')}`"
@@ -1288,7 +1596,7 @@ const getCharacteristicName = (charId) => {
                     <i class="pi pi-calendar-clock text-white text-xs"></i>
                 </div>
 
-                <div class="h-9 px-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+                <div v-if="!node.isBusbar" class="h-9 px-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] font-black text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">{{ node.tag }}</span>
                         <i v-if="node.isRoot" class="pi pi-bolt text-amber-500 text-[10px] animate-pulse"></i>
@@ -1300,11 +1608,11 @@ const getCharacteristicName = (charId) => {
                     </div>
                 </div>
 
-                <div class="p-4 flex flex-col items-center justify-center text-center h-[calc(100%-36px)]">
+                <div v-if="!node.isBusbar" class="p-4 flex flex-col items-center justify-center text-center h-[calc(100%-36px)]">
                     <span class="text-[11px] font-bold text-slate-100 leading-tight uppercase tracking-tight">
                         {{ node.designation }}
                     </span>
-                    <div v-if="energizedNodes.has(node.id)" class="mt-2 flex gap-1">
+                    <div v-if="energizedNodes.liveNodes.has(node.id)" class="mt-2 flex gap-1">
                         <span class="w-1 h-1 bg-green-500 rounded-full animate-ping"></span>
                         <span class="text-[8px] font-mono text-green-500/70">ACTIVE</span>
                     </div>
@@ -1315,7 +1623,20 @@ const getCharacteristicName = (charId) => {
 
                 </div>
 
-                <div v-for="side in ['N', 'S', 'E', 'W']" :key="side"
+                <!-- NOUVEAU : Animation des électrons sur le jeu de barres lui-même -->
+                <div v-if="node.isBusbar && energizedNodes.liveBusbars.has(node.id)" class="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div class="absolute top-1/2 -translate-y-1/2 left-0 w-full h-0.5">
+                        <div v-for="i in 15" :key="i"
+                            class="absolute w-1 h-1 bg-white rounded-full electron-glow"
+                            :style="{
+                                animation: `flow-right ${2 + Math.random()}s linear infinite`,
+                                animationDelay: `${Math.random() * 2}s`,
+                                '--bus-width': `${node.w}px`
+                            }"></div>
+                    </div>
+                </div>
+
+                <div v-if="!node.isBusbar" v-for="side in ['N', 'S', 'E', 'W']" :key="side"
                      @click.stop="handlePortClick(node.id, side)"
                      :class="['absolute w-4 h-4 rounded-full border-2 border-[#020408] z-30 transition-all cursor-crosshair opacity-0 group-hover:opacity-100 scale-75 hover:scale-125',
                               side === 'N' ? '-top-2 left-1/2 -translate-x-1/2' : '',
@@ -1324,6 +1645,25 @@ const getCharacteristicName = (charId) => {
                               side === 'W' ? '-left-2 top-1/2 -translate-y-1/2' : '',
                               linking.fromId === node.id && linking.fromSide === side ? 'bg-amber-400 !opacity-100 animate-bounce' : 'bg-slate-700 hover:bg-indigo-500']">
                 </div>
+                <!-- NOUVEAU : Ports pour le jeu de barres -->
+                <div v-if="node.isBusbar" v-for="side in ['N', 'S']" :key="side"
+                     @dblclick.stop="handlePortClick(node.id, side)"
+                     :class="['absolute w-full h-1/2 cursor-crosshair',
+                              side === 'N' ? 'top-0' : 'bottom-0',
+                              'hover:bg-indigo-500/20'
+                             ]">
+                </div>
+                <!-- NOUVEAU : Points de connexion personnalisés sur le jeu de barres -->
+                <div v-if="node.isBusbar && node.customPorts"
+                     v-for="port in node.customPorts"
+                     :key="port.id"
+                     @click.stop="handlePortClick(node.id, `custom_${port.id}`)"
+                     @contextmenu.prevent.stop="removeCustomPort(node, port.id)"
+                     :style="{ left: port.x + 'px' }"
+                     v-tooltip.top="'Clic droit pour supprimer'"
+                     class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-sky-500 rounded-full border-2 border-slate-900 cursor-crosshair hover:scale-125 transition-transform z-30">
+                </div>
+
             </div>
           </div>
         </div>
@@ -1536,17 +1876,37 @@ const getCharacteristicName = (charId) => {
             <Button :label="editingLabelId ? 'Mettre à jour' : 'Ajouter le label'" icon="pi pi-check" @click="saveLabel" class="w-full !bg-indigo-600 border-none !rounded-xl py-3" />
         </div>
     </Dialog>
+
+    <!-- NOUVEAU : Dialogue pour redimensionner le jeu de barres -->
+    <Dialog v-model:visible="showBusbarResizeModal" header="Redimensionner le Jeu de Barres" modal :style="{ width: '350px' }" class="dark-dialog">
+        <div class="flex flex-col gap-4 py-2">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Largeur (px)</label>
+                    <InputNumber v-model="busbarDimensions.w" :min="20" :step="10" showButtons class="!bg-white/5" @input="editingBusbar.w = $event.value" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Hauteur (px)</label>
+                    <InputNumber v-model="busbarDimensions.h" :min="4" :step="2" showButtons class="!bg-white/5" @input="editingBusbar.h = $event.value" />
+                </div>
+            </div>
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Couleur de fond</label>
+                <div class="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/10">
+                    <ColorPicker v-model="busbarDimensions.color" />
+                    <span class="text-xs font-mono">#{{ busbarDimensions.color }}</span>
+                </div>
+            </div>
+            <div class="mt-4">
+                <Button label="Appliquer" icon="pi pi-check" @click="applyBusbarResize" class="w-full !bg-indigo-600 border-none !rounded-xl py-3" />
+            </div>
+        </div>
+    </Dialog>
   </div>
 </template>
 
 <style>
 /* FOND TECHNIQUE */
-.bg-dot-pattern {
-    background-color: #020408;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-    background-size: 30px 30px;
-}
-
 /* SCROLLBARS */
 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1603,6 +1963,12 @@ const getCharacteristicName = (charId) => {
     box-shadow: 0 0 10px #fff;
     opacity: 0.8;
 }
+
+@keyframes flow-right {
+    from { transform: translateX(0%); }
+    to { transform: translateX(calc(var(--bus-width) - 100%)); }
+}
+
 
 
 </style>

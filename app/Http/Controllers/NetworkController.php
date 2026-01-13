@@ -169,6 +169,8 @@ public function store(Request $request)
                     'h' => $nodeData['h'] ?? 130,
                      'is_active' => (int) ($nodeData['active'] ==="true" ?? false),
                     'is_root'   => (int) ($nodeData['active'] ==="true" ?? false),
+                    'is_busbar' => (bool) ($nodeData['isBusbar'] ?? false), // Ajout de is_busbar
+                    'color'     => $nodeData['color'] ?? null, // Ajout de la couleur
  'region_id' => $nodeData['region_id'] ?? null,
  'zone_id' => $nodeData['zone_id'] ?? null,
                 ]);
@@ -302,6 +304,8 @@ public function update(Request $request, Network $network)
                         'h' => $nodeData['h'] ?? 130,
                         'is_active' => filter_var($nodeData['active'], FILTER_VALIDATE_BOOLEAN),
                         'is_root' => filter_var($nodeData['is_root'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                        'is_busbar' => filter_var($nodeData['isBusbar'] ?? false, FILTER_VALIDATE_BOOLEAN), // Ajout de is_busbar
+                        'color' => $nodeData['color'] ?? null, // Ajout de la couleur
                         'region_id' => $nodeData['region_id'] ?? null,
                         'zone_id' => $nodeData['zone_id'] ?? null,
                     ]
