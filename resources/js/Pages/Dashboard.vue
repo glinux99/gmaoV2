@@ -397,11 +397,11 @@ const showWODialog = ref(false);
                     { label: 'MTBF', value: mtbf, unit: 'j', icon: 'pi-sync', color: 'amber', desc: 'Fiabilité équipement' },
                     { label: 'OEE / TRS', value: oee, unit: '%', icon: 'pi-percentage', color: 'red', desc: 'Efficacité globale' }
                 ]" :key="kpi.label" class="kpi-card group">
-                    <div @click="toggleSection('kpis')" class="relative bg-white p-6 rounded-xl border border-slate-100 shadow-sm overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 section-title">
+                    <div @dblclick="toggleSection('kpis')" class="relative bg-white p-6 rounded-xl border border-slate-100 shadow-sm overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 section-title">
                         <div :class="`absolute -right-4 -top-4 w-24 h-24 bg-${kpi.color}-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500`"></div>
                         <div class="flex justify-between items-start mb-4 relative z-10">
                             <div :class="`p-3 rounded-xl bg-${kpi.color}-500 text-white shadow-lg`">
-                                <i :class="`pi ${kpi.icon}`"></i></div>
+WWWW                                <i :class="`pi ${kpi.icon}`"></i></div>
                             <i class="pi pi-ellipsis-v text-slate-300"></i>
                         </div>
                         <h3 class="text-slate-500 text-xs font-black uppercase tracking-widest mb-1">{{ kpi.label }}</h3>
@@ -415,7 +415,7 @@ const showWODialog = ref(false);
             </section>
 
             <section v-show="sections.sparklines.visible" data-section-id="sparklines" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 section-container">
-                <div v-for="item in sparklineItems" :key="item.label" @click="toggleSection('sparklines')" class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between section-title">
+                <div v-for="item in sparklineItems" :key="item.label" @dblclick="toggleSection('sparklines')" class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between section-title">
 
                     <div class="flex justify-between items-center mb-4">
                         <span class="text-xs font-bold text-slate-400 uppercase tracking-tighter">{{ item.label }}</span>
@@ -431,7 +431,7 @@ const showWODialog = ref(false);
                 <Card v-show="sections.workOrders.visible" data-section-id="workOrders" class="col-span-12 xl:col-span-7 !rounded-xl border-none shadow-xl shadow-slate-200/40 bg-white section-container">
 
                     <template #title>
-                        <div @click="toggleSection('workOrders')" class="flex justify-between items-center px-4 pt-2 section-title">
+                        <div @dblclick="toggleSection('workOrders')" class="flex justify-between items-center px-4 pt-2 section-title">
                             <span class="text-lg font-black text-slate-800">File d'Attente Interventions</span>
                             <div class="flex gap-2">
                                 <Tag :value="`${props.urgentWorkOrdersCount || 0} Urgent`" severity="danger" rounded />
@@ -480,7 +480,7 @@ const showWODialog = ref(false);
                 <Card v-show="sections.stockAlerts.visible" data-section-id="stockAlerts" class="col-span-12 xl:col-span-5 !rounded-xl border-none shadow-xl shadow-slate-200/40 bg-white overflow-hidden section-container">
 
                     <template #title>
-                        <div @click="toggleSection('stockAlerts')" class="px-4 pt-2 font-black text-slate-800 section-title">Alerte Stock Critique</div>
+                        <div @dblclick="toggleSection('stockAlerts')" class="px-4 pt-2 font-black text-slate-800 section-title">Alerte Stock Critique</div>
                     </template>
                     <template #content>
                         <div class="space-y-4 px-2">
@@ -515,7 +515,7 @@ const showWODialog = ref(false);
 
             <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 section-container">
                 <div v-show="sections.preventiveCalendar.visible" data-section-id="preventiveCalendar" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <div @click="toggleSection('preventiveCalendar')" class="flex justify-between items-center mb-6 section-title">
+                    <div @dblclick="toggleSection('preventiveCalendar')" class="flex justify-between items-center mb-6 section-title">
                         <h3 class="font-black text-slate-800 tracking-tight">Calendrier Préventif</h3>
                         <i class="pi pi-calendar-plus text-primary-500 text-xl cursor-pointer"></i>
                     </div>
@@ -538,7 +538,7 @@ const showWODialog = ref(false);
                 </div>
 
                 <div v-show="sections.riskMatrix.visible" data-section-id="riskMatrix" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <h3 @click="toggleSection('riskMatrix')" class="font-black text-slate-800 mb-6 section-title">Matrice de Risque Actifs</h3>
+                    <h3 @dblclick="toggleSection('riskMatrix')" class="font-black text-slate-800 mb-6 section-title">Matrice de Risque Actifs</h3>
                     <div class="h-[300px]">
                         <Chart type="radar" :data="props.riskMatrixData" :options="radarOptions" />
                     </div>
@@ -549,7 +549,7 @@ const showWODialog = ref(false);
                 </div>
 
                 <div v-show="sections.technicianEfficiency.visible" data-section-id="technicianEfficiency" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <h3 @click="toggleSection('technicianEfficiency')" class="font-black text-slate-800 mb-6 section-title">Efficacité Technicienne</h3>
+                    <h3 @dblclick="toggleSection('technicianEfficiency')" class="font-black text-slate-800 mb-6 section-title">Efficacité Technicienne</h3>
                     <div class="space-y-6">
                         <div v-for="user in props.technicianEfficiency" :key="user.name">
                             <div class="flex justify-between items-center mb-2">
@@ -578,7 +578,7 @@ const showWODialog = ref(false);
                         data-section-id="mainChart"
                         class="!rounded-xl border-none shadow-lg shadow-slate-200/50 bg-white overflow-hidden transition-all duration-300">
                         <template #title>
-                            <div @click="toggleSection('mainChart')" class="flex justify-between items-center p-5 cursor-pointer hover:bg-slate-50 transition-colors">
+                            <div @dblclick="toggleSection('mainChart')" class="flex justify-between items-center p-5 cursor-pointer hover:bg-slate-50 transition-colors">
                                 <div class="flex items-center gap-3">
                                     <div class="w-1.5 h-8 bg-primary-600 rounded-full"></div>
                                     <span class="text-xl font-black text-slate-800 tracking-tight">Flux de Maintenance & Temps d'Arrêt</span>
@@ -616,7 +616,7 @@ const showWODialog = ref(false);
                     <div v-show="sections.statusDuration.visible"
                         data-section-id="statusDuration"
                         class="bg-white p-4 rounded-xl shadow-lg shadow-slate-200/50 cursor-pointer hover:ring-1 ring-primary-200 transition-all"
-                        @click="toggleSection('statusDuration')">
+                        @dblclick="toggleSection('statusDuration')">
                         <StatusDurationChart
                             :chart-data="maintenanceStatusDurationChart"
                             :equipments="equipments"
@@ -630,7 +630,7 @@ const showWODialog = ref(false);
                         data-section-id="statusDoughnut"
                         class="!rounded-xl border-none shadow-lg shadow-slate-200/50 bg-white overflow-hidden h-fit">
                         <template #title>
-                            <div @click="toggleSection('statusDoughnut')" class="flex justify-between items-center p-5 cursor-pointer border-b border-slate-50">
+                            <div @dblclick="toggleSection('statusDoughnut')" class="flex justify-between items-center p-5 cursor-pointer border-b border-slate-50">
                                 <span class="text-lg font-bold text-slate-800">Charge par Statut</span>
                                 <i class="pi pi-info-circle text-slate-300"></i>
                             </div>
@@ -659,7 +659,7 @@ const showWODialog = ref(false);
                             <i class="pi pi-wallet text-[7rem]"></i>
                         </div>
 
-                        <h3 @click="toggleSection('budget')" class="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mb-8 cursor-pointer flex items-center gap-2">
+                        <h3 @dblclick="toggleSection('budget')" class="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mb-8 cursor-pointer flex items-center gap-2">
                             <span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
                             Finances Maintenance
                         </h3>
@@ -692,7 +692,7 @@ const showWODialog = ref(false);
             <div class="grid grid-cols-12 gap-8">
                 <Card v-show="sections.criticalityAnalysis.visible" data-section-id="criticalityAnalysis" class="col-span-12 xl:col-span-7 !rounded-xl border-none shadow-xl shadow-slate-200/50 bg-white section-container">
                     <template #title>
-                        <div @click="toggleSection('criticalityAnalysis')" class="flex items-center gap-3 px-2 pt-2 section-title">
+                        <div @dblclick="toggleSection('criticalityAnalysis')" class="flex items-center gap-3 px-2 pt-2 section-title">
                             <i class="pi pi-exclamation-triangle text-rose-500 text-xl"></i>
                             <span class="text-lg font-black text-slate-800">Analyse de Criticité Équipements</span>
                         </div>
@@ -720,7 +720,7 @@ const showWODialog = ref(false);
 
                 <Card v-show="sections.recentInterventions.visible" data-section-id="recentInterventions" class="col-span-12 xl:col-span-5 !rounded-xl border-none shadow-xl shadow-slate-200/50 bg-white overflow-hidden section-container">
                     <template #title>
-                        <div @click="toggleSection('recentInterventions')" class="flex justify-between items-center px-4 pt-2 section-title">
+                        <div @dblclick="toggleSection('recentInterventions')" class="flex justify-between items-center px-4 pt-2 section-title">
                             <span class="text-lg font-black text-slate-800">Flux d'Interventions</span>
                             <Button label="Voir Tout" class="p-button-text p-button-sm font-bold" />
                         </div>
@@ -779,7 +779,7 @@ const showWODialog = ref(false);
             <section v-show="sections.stockFlow.visible" data-section-id="stockFlow" class="mt-10 section-container">
                 <Card class="!rounded-xl border-none shadow-xl shadow-slate-200/50 bg-white overflow-hidden">
                     <template #content>
-                        <div @click="toggleSection('stockFlow')" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-4 section-title">
+                        <div @dblclick="toggleSection('stockFlow')" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-4 section-title">
                             <div class="lg:col-span-4">
                                 <h3 class="text-2xl font-black text-slate-800 mb-2">Flux Stocks & Pièces</h3>
                                 <p class="text-slate-400 text-sm mb-6 font-medium">Analyse des entrées/sorties de composants critiques sur les 30 derniers jours.</p>
