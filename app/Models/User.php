@@ -33,7 +33,8 @@ class User extends Authenticatable implements HasMedia
         'region_id',
         'pointure',
         'size',
-        'profile_photo',
+        'profile_photo', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
+        'hourly_rate', // Added for DashboardController's labor cost calculation
         'region_id'
 
     ];
@@ -113,6 +114,14 @@ public function getProfilePhotoUrlAttribute(): ?string
         return $url ?: null;
     }
     return null;
+}
+
+/**
+ * Get the activities assigned to the user.
+ */
+public function activities(): HasMany
+{
+    return $this->hasMany(Activity::class, 'user_id');
 }
 
 }

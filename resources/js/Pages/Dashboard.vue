@@ -363,7 +363,7 @@ const showWODialog = ref(false);
                         <i class="pi pi-bolt text-white text-3xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">MaintenX Dashboard</h1>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
                         <div class="flex items-center gap-2 text-slate-500 font-medium">
                             <i class="pi pi-calendar text-xs"></i>
                             <span>System • généré à {{ new Date().toLocaleTimeString() }}

@@ -15,6 +15,7 @@ use App\Models\Expense;
 use App\Models\Zone;
 use App\Models\MaintenanceStatusHistory;
 use Carbon\CarbonPeriod;
+use App\Models\InstructionAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -423,6 +424,126 @@ class DashboardController extends Controller
             'subtitle' => "Basé sur les tâches correctives sur la période."
         ];
 
+        // --- NOUVEAU : Calcul détaillé du TRS (OEE) ---
+
+        // --- A. Calcul de la DISPONIBILITÉ (Availability) ---
+        $periodInHours = $startDate->diffInHours($endDate);
+        $equipmentCountForAvailability = $equipmentId ? 1 : Equipment::count();
+        $plannedProductionTime = $periodInHours * $equipmentCountForAvailability;
+
+        // Temps d'arrêt non planifié (Correctif)
+        $unplannedDowntimeQuery = Activity::join('tasks', 'activities.task_id', '=', 'tasks.id')
+            ->where('tasks.maintenance_type', 'Corrective')
+            ->whereNotNull('activities.actual_start_time')->whereNotNull('activities.actual_end_time')
+            ->whereBetween('activities.actual_end_time', [$startDate, $endDate]);
+        if ($equipmentId) {
+            $unplannedDowntimeQuery->join('activity_equipment', 'activities.id', '=', 'activity_equipment.activity_id')->where('activity_equipment.equipment_id', $equipmentId);
+        }
+        $unplannedDowntime = $unplannedDowntimeQuery->sum(DB::raw($getTimeDiffExpression('activities.actual_end_time', 'activities.actual_start_time', 'hour')));
+
+        // Temps d'arrêt total (planifié et non planifié)
+        $totalDowntimeQuery = Activity::whereNotNull('actual_start_time')->whereNotNull('actual_end_time')
+            ->whereBetween('actual_end_time', [$startDate, $endDate]);
+        if ($equipmentId) {
+            $totalDowntimeQuery->join('activity_equipment', 'activities.id', '=', 'activity_equipment.activity_id')->where('activity_equipment.equipment_id', $equipmentId);
+        }
+        $totalDowntime = $totalDowntimeQuery->sum(DB::raw($getTimeDiffExpression('activities.actual_end_time', 'activities.actual_start_time', 'hour')));
+
+        $runTime = $plannedProductionTime - $totalDowntime;
+        $availabilityRate = ($plannedProductionTime > 0) ? (($plannedProductionTime - $unplannedDowntime) / $plannedProductionTime) : 1;
+
+        // --- B. Calcul de la PERFORMANCE (Performance) ---
+        $idealCycleRate = 0; // Cadence nominale en pièces/heure
+        if ($equipmentId) {
+            $idealCycleRate = (float) Equipment::find($equipmentId)->characteristics()->where('name', 'cadence_nominale')->value('value');
+        }
+
+        // On suppose que le nombre de pièces est enregistré dans une réponse d'instruction
+        $totalPartsProducedQuery = InstructionAnswer::join('activity_instructions', 'instruction_answers.activity_instruction_id', '=', 'activity_instructions.id')
+            ->where('activity_instructions.label', 'Pièces produites')
+            ->whereBetween('instruction_answers.created_at', [$startDate, $endDate]);
+        if ($equipmentId) {
+            $totalPartsProducedQuery->whereHas('activity.equipment', fn($q) => $q->where('equipment.id', $equipmentId));
+        }
+        $totalPartsProduced = (int) $totalPartsProducedQuery->sum('value');
+
+        $performanceRate = 1; // Par défaut à 100% si données non disponibles
+        if ($runTime > 0 && $idealCycleRate > 0) {
+            $performanceRate = ($totalPartsProduced / $runTime) / $idealCycleRate;
+        }
+
+        // --- C. Calcul de la QUALITÉ (Quality) ---
+        $rejectedPartsQuery = InstructionAnswer::join('activity_instructions', 'instruction_answers.activity_instruction_id', '=', 'activity_instructions.id')
+            ->where('activity_instructions.label', 'Pièces rejetées')
+            ->whereBetween('instruction_answers.created_at', [$startDate, $endDate]);
+        if ($equipmentId) {
+            $rejectedPartsQuery->whereHas('activity.equipment', fn($q) => $q->where('equipment.id', $equipmentId));
+        }
+        $rejectedParts = (int) $rejectedPartsQuery->sum('value');
+        $goodParts = $totalPartsProduced - $rejectedParts;
+        $qualityRate = ($totalPartsProduced > 0) ? ($goodParts / $totalPartsProduced) : 1;
+
+        // --- D. Calcul final du TRS/OEE ---
+        $oee = $availabilityRate * $performanceRate * $qualityRate * 100;
+
+        // --- NOUVEAU : Données pour les sections avec données statiques dans Vue ---
+
+        // Work Orders (File d'attente)
+        $workOrders = Task::with(['activities.assignable', 'equipments'])
+            ->whereIn('status', ['scheduled', 'in_progress', 'awaiting_resources'])
+            ->orderBy('priority', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($task) {
+                $activity = $task->activities->first();
+                $technician = $activity && $activity->assignable_type === 'App\Models\User' ? $activity->assignable : null;
+                return [
+                    'id' => 'WO-' . $task->id,
+                    'asset' => $task->equipments->first()->designation ?? 'N/A',
+                    'location' => $task->equipments->first()->zone->title ?? 'N/A',
+                    'priority' => strtoupper($task->priority),
+                    'technician' => $technician ? $technician->name : ($activity->assignable->name ?? 'Non assigné'),
+                    'tech_img' => $technician ? $technician->profile_photo_url : null,
+                    'progress' => $task->progress ?? 0, // Assumant une colonne 'progress' sur le modèle Task
+                ];
+            });
+
+        // Spare Parts (Alerte stock)
+        $alertSpareParts = SparePart::whereRaw('quantity <= min_quantity')->limit(5)->get(['reference', 'quantity', 'min_quantity']);
+
+        // Technician Efficiency
+        $technicianEfficiency = User::whereHas('roles', fn($q) => $q->where('name', 'technician'))
+            ->withCount(['activities as completed_tasks' => fn($q) => $q->where('status', 'completed')])
+            ->withCount(['activities as backlog_tasks' => fn($q) => $q->whereIn('status', ['in_progress', 'scheduled'])])
+            ->limit(5)
+            ->get()
+            ->map(function ($user) {
+                $totalTasks = $user->completed_tasks + $user->backlog_tasks;
+                return [
+                    'name' => $user->name,
+                    'load' => $totalTasks > 0 ? round(($user->backlog_tasks / $totalTasks) * 100) : 0,
+                    'completed' => $user->completed_tasks,
+                    'backlog' => $user->backlog_tasks,
+                    'img' => $user->profile_photo_url,
+                ];
+            });
+
+        // Preventive Calendar Events
+        $calendarEvents = Task::where('maintenance_type', 'Préventive')
+            ->where('planned_start_date', '>=', now())
+            ->orderBy('planned_start_date', 'asc')
+            ->limit(3)
+            ->get()
+            ->map(function ($task) {
+                $date = Carbon::parse($task->planned_start_date);
+                return [
+                    'month' => $date->format('M'),
+                    'day' => $date->format('d'),
+                    'title' => $task->title,
+                    'duration' => ($task->estimated_duration ?? 60) . 'm',
+                    'team' => 'Planifié'
+                ];
+            });
 
 
         // 2. Rendu de la vue Inertia avec les props
@@ -455,6 +576,10 @@ class DashboardController extends Controller
             'mtbf' => round($mtbf, 1),
             'preventiveComplianceRate' => round($preventiveComplianceRate), // NOUVEAU
             'backlogTasksCount' => $backlogTasksCount, // NOUVEAU
+            'availabilityRate' => round(max(0, $availabilityRate * 100), 1), // On s'assure que le taux n'est pas négatif
+            'oee' => round(max(0, min(100, $oee)), 1), // Le TRS est borné entre 0 et 100
+
+
             'backlogHours' => round($backlogHours / 60, 1), // NOUVEAU (en heures)
 
             // Graphiques
@@ -467,6 +592,12 @@ class DashboardController extends Controller
             'maintenanceStatusDurationChart' => $maintenanceStatusDurationChart, // Ajout des données pour le nouveau graphique
             'topFailingEquipmentsChart' => $topFailingEquipmentsChart,
             'maintenanceCostDistribution' => $maintenanceCostDistribution, // NOUVEAU
+
+            // Données pour les sections dynamiques
+            'workOrders' => $workOrders,
+            'alertSpareParts' => $alertSpareParts,
+            'technicianEfficiency' => $technicianEfficiency,
+            'calendarEvents' => $calendarEvents,
 
             // Données pour les filtres
             'equipments' => Equipment::get(['id', 'designation']),
