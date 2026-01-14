@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\SparePartImport;
 use App\Models\SparePart;
 use App\Models\Label;
 use App\Models\Region;
@@ -11,7 +12,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SparePartController extends Controller
 {
@@ -202,5 +206,29 @@ class SparePartController extends Controller
         $SparePart->sparePartCharacteristics()->delete();
         $SparePart->delete();
         return redirect()->route('spare-parts.index')->with('success', 'Pièce de rechange supprimée avec succès.');
+    }
+
+    /**
+ * Import spare parts from a file.
+     */
+public function import(Request $request)
+    {
+        // Validation des formats acceptés
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt',
+        ]);
+
+        try {
+            // Excel::import gère automatiquement le CSV, TXT et XLSX
+            Excel::import(new SparePartImport, $request->file('file'));
+
+            return redirect()->route('spare-parts.index')
+                ->with('success', "L'importation a été effectuée avec succès.");
+
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de l'import : " . $e->getMessage());
+
+            return back()->with('error', "Une erreur est survenue : " . $e->getMessage());
+        }
     }
 }

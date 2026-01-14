@@ -16,6 +16,7 @@ import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Dropdown from 'primevue/dropdown';
+import FileUpload from 'primevue/fileupload';
 
 
 // Composants PrimeVue utilisés dans le template (s'assurer qu'ils sont importés dans le Layout ou le main.js)
@@ -30,6 +31,7 @@ const props = defineProps({
     parentEquipments: Array,
     labels: Array,
     queryParams: Object,
+    import_errors: Array, // Pour les erreurs d'importation
 });
 const { t } = useI18n();
 
@@ -43,6 +45,7 @@ const insufficientQuantityDialog = ref(false); // Nouvelle variable pour le dial
 const editing = ref(false);
 const equipmentTypeDialog = ref(false);
 const regionFilter = ref(props.filters?.region_id || null);
+const importDialog = ref(false); // Pour le dialogue d'importation
 const search = ref(props.filters?.search || '');
 const loading = ref(false);
 
@@ -101,6 +104,10 @@ const equipmentTypeForm = useForm({
     name: '',
     description: '',
 });
+const importForm = useForm({
+    file: null,
+});
+
 const selectedEquipments = ref([]);
 const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonnes
 
@@ -614,6 +621,30 @@ const equipmentStats = computed(() => {
     const down = props.equipments.data.filter(e => e.status === 'en panne').length;
     return { total, in_service, in_stock, down };
 });
+const openImportDialog = () => {
+ importForm.reset();
+ importDialog.value = true;
+};
+
+const importEquipments = (event) => {
+    const file = event.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    // Pas de region_id pour les équipements, mais on pourrait ajouter d'autres champs si nécessaire
+
+    router.post(route('equipments.import'), formData, {
+        onSuccess: () => {
+            importDialog.value = false;
+            toast.add({ severity: 'success', summary: t('common.success'), detail: t('equipments.toast.importStarted'), life: 3000 });
+        },
+        onError: (errors) => {
+            console.error("Erreur lors de l'importation des équipements", errors);
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'envoi du fichier.', life: 3000 });
+        }
+    });
+}
 // Exposer les fonctions et variables nécessaires au template
 defineExpose({
     openNew, hideDialog, editEquipment, saveEquipment, deleteEquipment,
@@ -647,6 +678,8 @@ defineExpose({
                 </div>
                 </div>
                 <div class="flex gap-2">
+                    <!-- NOUVEAU: Bouton d'importation -->
+                    <Button :label="t('common.import')" icon="pi pi-upload" severity="secondary" outlined @click="openImportDialog" />
                     <Button :label="t('equipments.addNew')" icon="pi pi-plus"
                             class=" shadow-lg shadow-primary-200" @click="openNew" />
                 </div>
@@ -682,6 +715,14 @@ defineExpose({
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Stock</div>
                     </div>
                 </div>
+            </div>
+
+            <!-- NOUVEAU: Affichage des erreurs d'importation -->
+            <div v-if="import_errors && import_errors.length > 0" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <h3 class="font-bold">Erreurs lors de la dernière importation :</h3>
+                <ul class="list-disc list-inside mt-2 text-sm">
+                    <li v-for="(error, index) in import_errors" :key="index">{{ error }}</li>
+                </ul>
             </div>
 
 
@@ -1188,6 +1229,31 @@ defineExpose({
             />
         </div>
     </template>
+</Dialog>
+
+<!-- NOUVEAU: Boîte de dialogue pour l'importation -->
+<Dialog v-model:visible="importDialog" modal header="Importer des Équipements" :style="{ width: '40rem' }">
+    <div class="p-fluid">
+        <p class="mb-4 text-sm text-slate-600">
+            Importez des équipements via un fichier CSV ou Excel. Assurez-vous que votre fichier respecte la structure suivante : <br>
+            <code class="bg-slate-100 p-1 rounded text-xs">Tag, Désignation, Type, Région, Statut</code>
+        </p>
+        <FileUpload
+                        name="file"
+                        @select="onFileSelect"
+                        :multiple="false"
+                        accept=".csv,.txt,.xls,.xlsx"
+                        :maxFileSize="1000000"
+                        chooseLabel="Choisir un fichier"
+                        :auto="true"
+                        customUpload
+                        @uploader="importEquipments"
+                    >
+                        <template #empty>
+                            <p>Glissez-déposez un fichier ici pour le téléverser.</p>
+                        </template>
+                    </FileUpload>
+    </div>
 </Dialog>
     </AppLayout>
 </template>

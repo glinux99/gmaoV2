@@ -12,10 +12,12 @@ use App\Models\EquipmentCharacteristic;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Builder;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EquipmentController extends Controller
 {
@@ -513,5 +515,94 @@ class EquipmentController extends Controller
         } while (Equipment::where('tag', $tag)->exists());
 
         return $tag;
+    }
+
+    /**
+     * Import equipments from a file.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt',
+        ]);
+
+        $file = $request->file('file');
+        $errors = [];
+        $successCount = 0;
+
+        DB::beginTransaction();
+        try {
+            // Utilisation de Maatwebsite/Excel pour lire le fichier
+            $rows = Excel::toCollection(null, $file)[0];
+
+            // On ignore la première ligne (en-têtes)
+            $dataRows = $rows->slice(1);
+
+            foreach ($dataRows as $index => $row) {
+                $rowNumber = $index + 2; // +2 car l'index est 0-based et on a sauté l'en-tête
+
+                // Structure attendue : Tag, Designation, Type, Region, Status
+                $tag = trim($row[0] ?? '');
+                $designation = trim($row[1] ?? '');
+                $typeName = trim($row[2] ?? '');
+                $regionName = trim($row[3] ?? '');
+                $status = strtolower(trim($row[4] ?? 'en stock'));
+
+                if (empty($tag) || empty($designation)) {
+                    $errors[] = "Ligne {$rowNumber}: Le tag et la désignation sont obligatoires.";
+                    continue;
+                }
+
+                // Recherche du type d'équipement
+                $equipmentType = EquipmentType::where('name', $typeName)->first();
+                if (!$equipmentType) {
+                    $errors[] = "Ligne {$rowNumber}: Le type d'équipement '{$typeName}' est introuvable.";
+                    continue;
+                }
+
+                // Recherche de la région
+                $region = Region::where('designation', $regionName)->first();
+                if (!$region) {
+                    $errors[] = "Ligne {$rowNumber}: La région '{$regionName}' est introuvable.";
+                    continue;
+                }
+
+                // Validation du statut
+                $validStatuses = ['en service', 'en panne', 'en maintenance', 'hors service', 'en stock'];
+                if (!in_array($status, $validStatuses)) {
+                    $errors[] = "Ligne {$rowNumber}: Le statut '{$status}' n'est pas valide.";
+                    continue;
+                }
+
+                // Création ou mise à jour de l'équipement
+                Equipment::updateOrCreate(
+                    ['tag' => $tag],
+                    [
+                        'designation' => $designation,
+                        'equipment_type_id' => $equipmentType->id,
+                        'region_id' => $region->id,
+                        'status' => $status,
+                        'quantity' => ($status === 'en stock') ? 1 : 1, // Logique à affiner si besoin
+                        'user_id' => Auth::id(),
+                    ]
+                );
+
+                $successCount++;
+            }
+
+            if (!empty($errors)) {
+                DB::rollBack();
+                return back()->with('import_errors', $errors)->with('error', 'Certaines lignes n\'ont pas pu être importées.');
+            }
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Erreur d'importation des équipements: " . $e->getMessage());
+            return back()->with('error', "Une erreur est survenue lors de l'importation: " . $e->getMessage());
+        }
+
+        return redirect()->route('equipments.index')->with('success', "{$successCount} équipement(s) importé(s) avec succès.");
     }
 }

@@ -135,6 +135,7 @@ Route::post('zones/bulk-destroy', [ZoneController::class, 'bulkDestroy'])->name(
   Route::post('/meters/bulk-transfer', [MeterController::class, 'bulkTransfer'])->name('meters.bulk-transfer');
   Route::post('/keypads/bulk-transfer', [KeypadController::class, 'bulkTransfer'])->name('keypads.bulk-transfer');
 Route::post('/equipments/bulk-destroy', [EquipmentController::class, 'bulkDestroy'])->name('equipments.bulkdestroy');
+Route::post('/equipments/import', [EquipmentController::class, 'import'])->name('equipments.import');
 Route::put('/equipments/{equipment}/update-quantity', [EquipmentController::class, 'updateQuantity'])->name('equipments.update-quantity');
 Route::post('/interventions/bulk-destroy', [InterventionRequestController::class, 'bulkDestroy'])->name('interventions.bulkdestroy');
 Route::put('/interventions/{intervention}/assign', [InterventionRequestController::class, 'assign'])->name('interventions.assign');
@@ -144,6 +145,7 @@ Route::post('/reports/reorder', [ReportController::class, 'reorder'])->name('rep
 Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::post('quantum/query', [ReportController::class, 'fetchData'])->name('quantum.query');
 Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
+Route::post('/spare-parts/import', [SparePartController::class, 'import'])->name('spare-parts.import');
 Route::post('/interventions/import', [InterventionRequestController::class, 'import'])->name('interventions.import');
 
 

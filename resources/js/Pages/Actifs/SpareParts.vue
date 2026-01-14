@@ -18,6 +18,8 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Tag from 'primevue/tag';
 
+// --- NOUVEAU: Import pour la fonctionnalité d'import ---
+import FileUpload from 'primevue/fileupload';
 
 const props = defineProps({
     spareParts: Object, // Changed from labels to spareParts
@@ -27,6 +29,8 @@ const props = defineProps({
     users: Array, // To select a responsible user
     sparePartCharacteristics: Array, // Existing characteristics for the spare part
     queryParams: Object,
+    // --- NOUVEAU: Propriété pour les erreurs d'importation ---
+    import_errors: Array,
 });
 
 const characteristicTypes = ref([
@@ -46,6 +50,9 @@ const sparePartDialog = ref(false); // Changed from labelDialog to sparePartDial
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
+// --- NOUVEAU: Référence pour la boîte de dialogue d'importation ---
+const importDialog = ref(false);
+
 const selectedRegion = ref(props.filters?.region_id || null);
 const selectedSpareParts = ref([]);
 const loading = ref(false);
@@ -64,6 +71,12 @@ const form = useForm({
     label_id: null, // To link to a label
     characteristic_values: {}, // To store values for label characteristics
     user_id: null, // Default to current user
+});
+
+// --- NOUVEAU: Formulaire pour l'importation ---
+const importForm = useForm({
+    file: null,
+    region_id: null, // Pour assigner une région par défaut lors de l'import
 });
 
 const filters = ref();
@@ -123,6 +136,33 @@ const sparePartStats = computed(() => {
     const totalValue = props.spareParts.data.reduce((sum, p) => sum + (p.quantity * p.price), 0);
     return { total, lowStock, totalValue };
 });
+
+// --- NOUVEAU: Logique pour l'importation ---
+const openImportDialog = () => {
+    importForm.reset();
+    importDialog.value = true;
+};
+
+const importSpareParts = (event) => {
+    const file = event.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (importForm.region_id) {
+        formData.append('region_id', importForm.region_id);
+    }
+
+    router.post(route('spare-parts.import'), formData, {
+        onSuccess: () => {
+            importDialog.value = false;
+            toast.add({ severity: 'success', summary: t('common.success'), detail: t('spareParts.toast.importStarted'), life: 3000 });
+        },
+        onError: () => {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'envoi du fichier.', life: 3000 });
+        }
+    });
+};
 
 const openNew = () => {
     form.reset();
@@ -264,6 +304,10 @@ const performSearch = () => {
 
 onMounted(() => {
     // Logic for spare parts loading
+    // --- NOUVEAU: Afficher les erreurs d'importation au chargement de la page ---
+    if (props.import_errors && props.import_errors.length > 0) {
+        toast.add({ severity: 'error', summary: 'Erreurs d\'importation', detail: 'Certaines lignes du fichier n\'ont pas pu être traitées.', life: 10000 });
+    }
 });
 
 const formatCurrency = (value) => {
@@ -294,6 +338,8 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
                     </div>
                 </div>
                 <div class="flex gap-2">
+                    <!-- NOUVEAU: Bouton d'importation -->
+                    <Button :label="t('common.import')" icon="pi pi-upload" severity="secondary" outlined @click="openImportDialog" />
                     <Button :label="t('spareParts.toolbar.add')" icon="pi pi-plus"
                             class=" shadow-lg shadow-primary-200" @click="openNew" />
                 </div>
@@ -323,6 +369,19 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
                     </div>
                 </div>
             </div>
+
+            <!-- NOUVEAU: Affichage des erreurs d'importation -->
+            <div v-if="import_errors && import_errors.length > 0" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <h3 class="font-bold">Erreurs lors de la dernière importation :</h3>
+                <ul class="list-disc list-inside mt-2 text-sm">
+                    <li v-for="(error, index) in import_errors" :key="index">{{ error }}</li>
+                </ul>
+            </div>
+
+
+
+
+
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
                 <DataTable :value="spareParts.data" ref="dt" dataKey="id" v-model:selection="selectedSpareParts" :paginator="true"
@@ -579,6 +638,47 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
         </div>
     </template>
 </Dialog>
+
+        <!-- NOUVEAU: Boîte de dialogue pour l'importation -->
+        <Dialog v-model:visible="importDialog" modal header="Importer des Pièces de Rechange" :style="{ width: '40rem' }">
+            <div class="p-fluid">
+                <p class="mb-4 text-sm text-slate-600">
+                    Importez des pièces de rechange via un fichier CSV ou Excel. Assurez-vous que votre fichier respecte la structure suivante : <br>
+                    <code class="bg-slate-100 p-1 rounded text-xs">Référence, Quantité, Quantité_Min, Prix, Emplacement, Région_ID, Label_ID, User_ID</code>
+                </p>
+                <div class="field">
+                    <label for="import-region">Région par défaut (Optionnel)</label>
+                    <Dropdown
+                        id="import-region"
+                        v-model="importForm.region_id"
+                        :options="props.regions"
+                        optionLabel="designation"
+                        optionValue="id"
+                        placeholder="Assigner à une région"
+                        class="w-full"
+                    />
+                    <small class="text-slate-500">Toutes les pièces importées seront assignées à cette région si elle est sélectionnée.</small>
+                </div>
+                <div class="field mt-4">
+                    <label for="file-upload">Fichier CSV</label>
+                    <FileUpload
+                        name="file"
+                        @select="onFileSelect"
+                        :multiple="false"
+                        accept=".csv,.txt,.xls,.xlsx"
+                        :maxFileSize="1000000"
+                        chooseLabel="Choisir un fichier"
+                        :auto="true"
+                        customUpload
+                        @uploader="importSpareParts"
+                    >
+                        <template #empty>
+                            <p>Glissez-déposez un fichier ici pour le téléverser.</p>
+                        </template>
+                    </FileUpload>
+                </div>
+            </div>
+        </Dialog>
         </div>
     </AppLayout>
 </template>
