@@ -126,6 +126,15 @@ public function index(Request $request)
 
         $validated['paid_by'] = $validated['paid_by'] ?? Auth::id();
 
+        // Correction : Si payable_id est un tableau (objet Dropdown), on extrait l'ID.
+        if (is_array($validated['payable_id']) && isset($validated['payable_id']['id'])) {
+            $validated['payable_id'] = $validated['payable_id']['id'];
+        }
+        // Correction pour le champ paid_by également
+        if (is_array($validated['paid_by']) && isset($validated['paid_by']['id'])) {
+            $validated['paid_by'] = $validated['paid_by']['id'];
+        }
+
         Payment::create($validated);
 
         return redirect()->route('payroll.index')->with('success', 'Paiement créé avec succès.');
@@ -159,6 +168,7 @@ public function index(Request $request)
      */
     public function update(Request $request, Payment $payment)
     {
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
             'payment_date' => 'required|date',
@@ -172,6 +182,15 @@ public function index(Request $request)
             'category' => 'required|string|max:255',
         ]);
         $validated['paid_by'] = $validated['paid_by'] ?? Auth::id();
+
+        // Correction : Si payable_id est un tableau (objet Dropdown), on extrait l'ID.
+        if (is_array($validated['payable_id']) && array_key_exists('id', $validated['payable_id'])) {
+ $validated['payable_id'] = $validated['payable_id']['id'];
+        }
+        // Correction pour le champ paid_by également
+        if (is_array($validated['paid_by']) && array_key_exists('id', $validated['paid_by'])) {
+ $validated['paid_by'] = $validated['paid_by']['id'];
+        }
 
         $payment->update($validated);
 

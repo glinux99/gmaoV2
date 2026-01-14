@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Inertia\Inertia;
 use App\Models\Leave;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
 class LeaveController extends Controller
@@ -18,7 +20,7 @@ class LeaveController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
 
-        $query = Leave::with('user')
+        $query = Leave::with('user', 'approvedBy')
             ->whereBetween('created_at', [$startDate, $endDate]);
 
         if (request()->has('search')) {
@@ -55,7 +57,13 @@ class LeaveController extends Controller
             'status' => 'required|in:pending,approved,rejected',
             'reason' => 'nullable|string',
             'notes' => 'nullable|string',
+            'document_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048',
         ]);
+
+        if ($request->hasFile('document_file')) {
+
+            $validated['document_path'] = $request->file('document_file')->store('leave_documents', 'public');
+        }
 
         Leave::create($validated);
 
@@ -96,7 +104,15 @@ class LeaveController extends Controller
             'status' => 'required|in:pending,approved,rejected',
             'reason' => 'nullable|string',
             'notes' => 'nullable|string',
+            'document_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048',
         ]);
+
+        if ($request->hasFile('document_file')) {
+            if ($leave->document_path) {
+                Storage::disk('public')->delete($leave->document_path);
+            }
+            $validated['document_path'] = $request->file('document_file')->store('leave_documents', 'public');
+        }
 
         $leave->update($validated);
 
@@ -111,5 +127,26 @@ class LeaveController extends Controller
         $leave->delete();
 
         return redirect()->route('leaves.index')->with('success', 'Demande de congé supprimée avec succès.');
+    }
+
+    /**
+     * Update the status of the specified leave request.
+     */
+    public function updateStatus(Request $request, Leave $leave)
+    {
+        $validated = $request->validate([
+            'status' => 'required|string|in:pending,approved,rejected',
+        ]);
+
+        $updateData = ['status' => $validated['status']];
+
+        if (in_array($validated['status'], ['approved', 'rejected'])) {
+            $updateData['approved_by'] = Auth::id();
+            $updateData['approval_date'] = now();
+        }
+
+        $leave->update($updateData);
+
+        return redirect()->route('leaves.index')->with('success', 'Statut de la demande de congé mis à jour avec succès.');
     }
 }

@@ -1,176 +1,266 @@
 {
-    "dashboard": {
-        "users": "Utilisateurs",
-        "active_tasks": "Tâches Actives",
-        "time_spent_h": "Temps Passé (h)",
-        "avg_intervention_time": "Tps Moyen Interv.",
-        "by_status": "Par Statut",
-        "by_priority": "Par Priorité",
-        "incoming_parts": "Pièces entrantes",
-        "outgoing_parts": "Pièces sortantes",
-        "interventions_count": "Nombre d'interventions",
-        "stopped": "Stoppée",
-        "degraded": "Dégradée",
-        "improvement": "Amélioration",
-        "avg_resolution_time": "Délai de résolution moyen",
-        "delay_hours": "Délai (Heures)",
-        "financial_tracking": "Suivi Financier",
-        "total_budget": "Budget Total",
-        "service_expenses": "Dépenses de prestation",
-        "total_validated_expenses": "Total Dépense validée",
-        "key_metrics_overview": "Aperçu des Métriques Clés",
-        "from_last_period": "depuis la dernière période",
-        "detailed_visualizations": "Visualisations Détaillées",
-        "monthly_intervention_volume_title": "Volume mensuel des interventions et délai moyen de résolution",
-        "monthly_intervention_volume_subtitle": "Statut et temps de résolution sur la période",
-        "spare_parts_movement_title": "Mouvements des Pièces Détachées",
-        "spare_parts_movement_subtitle": "Entrées et sorties sur la période sélectionnée",
-        "failures_by_type_title": "Pannes par type de défaut",
-        "failures_by_type_subtitle": "Répartition des causes de défauts",
-        "interventions_by_type_title": "Interventions par type",
-        "interventions_by_type_subtitle": "Total des actions menées : {count}",
-        "tasks_distribution_title": "Répartition des Tâches",
-        "filter_by": "Filtrer par",
-        "view_by": "Vue par {type}",
-        "status": "statut",
-        "priority": "priorité"
+  "dashboard": {
+    "title 2": "MaintenX Enterprise ERP - v2.0",
+    "title": "Dashboard",
+    "generatedAt": "Généré à : {time}",
+    "liveData": "LIVE",
+    "manageSections": "Gérer l'affichage des sections",
+    "filters": {
+      "title": "FILTRES AVANCÉS",
+      "zonePlaceholder": "Sélectionner une zone",
+      "equipmentPlaceholder": "Sélectionner un équipement"
     },
-    "meters": {
-        "active_tasks": "Tâches Actives",
-        "time_spent_h": "Temps Passé (h)",
-        "avg_intervention_time": "Tps Moyen Interv.",
-        "by_status": "Par Statut",
-        "by_priority": "Par Priorité",
-        "incoming_parts": "Pièces entrantes",
-        "outgoing_parts": "Pièces sortantes",
-        "interventions_count": "Nombre d'interventions",
-        "stopped": "Stoppée",
-        "degraded": "Dégradée",
-        "improvement": "Amélioration",
-        "avg_resolution_time": "Délai de résolution moyen",
-        "delay_hours": "Délai (Heures)",
-        "financial_tracking": "Suivi Financier",
-        "total_budget": "Budget Total",
-        "service_expenses": "Dépenses de prestation",
-        "total_validated_expenses": "Total Dépense validée",
-        "key_metrics_overview": "Aperçu des Métriques Clés",
-        "from_last_period": "depuis la dernière période",
-        "detailed_visualizations": "Visualisations Détaillées",
-        "monthly_intervention_volume_title": "Volume mensuel des interventions et délai moyen de résolution",
-        "monthly_intervention_volume_subtitle": "Statut et temps de résolution sur la période",
-        "spare_parts_movement_title": "Mouvements des Pièces Détachées",
-        "spare_parts_movement_subtitle": "Entrées et sorties sur la période sélectionnée",
-        "failures_by_type_title": "Pannes par type de défaut",
-        "failures_by_type_subtitle": "Répartition des causes de défauts",
-        "interventions_by_type_title": "Interventions par type",
-        "interventions_by_type_subtitle": "Total des actions menées : {count}",
-        "tasks_distribution_title": "Répartition des Tâches",
-        "filter_by": "Filtrer par",
-        "view_by": "Vue par {type}",
-        "status": "statut",
-        "priority": "priorité"
+    "sparklines": {
+      "workOrders": "Tâches Actives",
+      "backlog": "Backlog (Retards)",
+      "laborHours": "Heures de Main-d'œuvre",
+      "avgMttr": "MTTR Moyen"
     },
-    "meters": {
-        "title": "Gestion des Compteurs",
-        "titleHtml": "Gestion des <span class='text-primary-600'>Compteurs</span>",
-        "subtitle": "Actifs de Mesure & Facturation",
-        "status":{
-            "in_stock":"En Stock",
-            "available":"Disponible"
-        },
-        "actions": {
-            "transfer": "Transférer",
-            "delete": "Supprimer",
-            "import": "Importer",
-            "add": "Ajouter Compteur",
-            "close_details": "Fermer les détails",
-            "confirm_transfer": "Confirmer le transfert"
-        },
-        "stats": {
-            "total": "Total Compteurs",
-            "active": "Actifs",
-            "faulty": "Défectueux",
-            "in_stock": "En Stock",
-            "stock_by_region": "Stock par Région",
-            "stock_detail_for": "Détail du Stock pour :",
-            "distribution_by_status": "Répartition par Statut"
-        },
-        "table": {
-            "report": "Affichage de {first} à {last} sur {totalRecords} compteurs",
-            "search_placeholder": "Rechercher (N° série multiples avec virgule)",
-            "serial_number": "N° de Série",
-            "type": "Type",
-            "status": "Statut",
-            "connection_full_name": "Client Associé",
-            "installation_date": "Date d'Installation",
-            "region_name": "Région",
-            "zone_name": "Zone",
-            "is_additional": "Supplémentaire",
-            "notes": "Notes",
-            "unassigned": "Non assigné",
-            "filter": {
-                "by_serial": "Filtrer par N° de série",
-                "by_type": "Filtrer par type",
-                "by_status": "Filtrer par statut",
-                "by_client": "Filtrer par client"
-            }
-        },
-        "dialog": {
-            "transfer_title": "Transfert de Stock",
-            "transfer_subtitle": "Mouvement inter-régional",
-            "add_by_serial": "Ajouter un compteur par N° de série",
-            "to_transfer_count": "Compteurs à transférer ({count})",
-            "destination_region": "Région de Destination",
-            "editTitle": "Modifier le Compteur",
-            "createTitle": "Ajouter un Compteur",
-            "subtitle": "Gestion des informations du compteur"
-        },
-        "messages": {
-            "no_stock": "Aucun compteur en stock.",
-            "no_meter_selected": "Aucun compteur sélectionné pour le transfert."
-        },
-        "form": {
-            "serial_number": "Numéro de Série",
-            "serial_number_placeholder": "Entrez le numéro de série",
-            "manufacturer": "Fabricant",
-            "manufacturer_placeholder": "Entrez le fabricant",
-            "model": "Modèle",
-            "model_placeholder": "Entrez le modèle",
-            "type": "Type",
-            "type_placeholder": "Sélectionnez le type",
-            "status": "Statut",
-            "status_placeholder": "Sélectionnez le statut",
-            "connection": "Raccordement",
-            "connection_placeholder": "Sélectionnez un raccordement",
-            "installation_date": "Date d'Installation",
-            "region": "Région",
-            "region_placeholder": "Sélectionnez une région",
-            "zone": "Zone",
-            "zone_placeholder": "Sélectionnez une zone",
-            "is_additional": "Compteur supplémentaire",
-            "notes": "Notes",
-            "notes_placeholder": "Ajoutez des notes ici"
-        },
-        "history": {
-            "title": "Historique des Transferts",
-            "by_user": "Par : {user}",
-            "none": "Aucun historique de transfert pour ce compteur."
-        },
-        "confirm": {
-            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} compteurs sélectionnés ?",
-            "bulkDeleteHeader": "Confirmation de suppression en masse",
-            "delete": "Supprimer"
-        },
-        "filter" :{
-            "by_client":"Filtrer par client",
-            "by_status":"Filtrer par statut",
-            "by_serial":"Filtrer par N° de série",
-            "by_type":"Filtrer par type",
-            "byType":"Filtrer par type",
-            "brand":"Filtrer par marque",
-            "byUser":"Filtrer par utilisateur"
-        }
+    "stockRotation":{
+        "title":"Alerte Pièces Détachées"
     },
+    "sections": {
+      "kpis": "Indicateurs Clés (KPIs)",
+      "sparklines": "Tendances Rapides",
+      "workOrders": "File d'attente (OT)",
+      "stockAlerts": "Alertes Stock & Pièces",
+      "preventiveCalendar": "Calendrier Préventif",
+      "riskMatrix": "Matrice de Risques",
+      "technicianEfficiency": "Efficacité Techniciens",
+      "mainChart": "Flux de Maintenance",
+      "statusDuration": "Durée par Statut",
+      "statusDoughnut": "Répartition Globale",
+      "budget": "Analyse Budgétaire",
+      "criticalityAnalysis": "Analyse de Criticité",
+      "recentInterventions": "Interventions Récentes",
+      "stockFlow": "Flux de Stock",
+      "reset": "Réinitialiser la vue"
+    },
+    "kpis": {
+      "availability": "Disponibilité",
+      "availabilityDesc": "Taux de fonctionnement opérationnel",
+      "preventiveRate": "Taux de Préventif",
+      "preventiveRateDesc": "Ratio préventif vs correctif",
+      "mtbf": "MTBF",
+      "mtbfDesc": "Temps moyen entre pannes",
+      "oee": "TRS (OEE)",
+      "oeeDesc": "Taux de Rendement Synthétique",
+      "activeTasks": "Tâches Actives",
+      "backlog": "Arriéré",
+      "laborHours": "Heures de Travail",
+      "avgMttr": "MTTR Moyen"
+
+    },
+    "workOrders": {
+      "title": "Ordres de Travail en Cours",
+      "urgent": "{count} Urgents",
+      "inProgress": "{count} En cours",
+      "columns": {
+        "id": "ID",
+        "equipment": "Équipement",
+        "priority": "Priorité",
+        "assigned": "Assigné",
+        "progress": "Progression",
+        "actions": "Actions"
+      }
+    },
+    "stockAlerts": {
+      "title": "Alerte Pièces Détachées",
+      "ref": "Réf:",
+      "units": "unités",
+      "order": "Commander"
+    },
+    "preventiveCalendar": {
+      "title": "Planning Préventif",
+      "confirmed": "Confirmé"
+    },
+    "riskMatrix": {
+      "title": "Analyse des Risques",
+      "criticalRisk": "Risque Critique Détecté",
+      "criticalRiskExample": "Vibration anormale sur palier moteur principal"
+    },
+    "technicianEfficiency": {
+      "title": "Charge de l'Équipe",
+      "completed": "{count} terminés",
+      "pending": "{count} en attente"
+    },
+    "mainChart": {
+      "title": "Analyse de Performance",
+      "exportPdf": "Exporter en PDF",
+      "availabilityRatio": "Ratio Disponibilité",
+      "avgClosure": "Clôture Moyenne",
+      "teamEfficiency": "Efficacité Équipe"
+    },
+    "statusDoughnut": {
+      "title": "Répartition des Tâches",
+      "inProgress": "Tâches Actives"
+    },
+    "budget": {
+      "title": "Consommation Budgétaire Maintenance"
+    },
+    "criticalityAnalysis": {
+      "title": "Top 5 Équipements Critiques",
+      "failuresCount": "Nombre de pannes"
+    },
+    "recentInterventions": {
+      "title": "Dernières Interventions",
+      "seeAll": "Voir tout",
+      "inProgress": "En cours",
+      "pending": "En attente",
+      "closed24h": "Clôturés (24h)",
+      "columns": {
+        "asset": "Actif",
+        "priority": "Priorité",
+        "tech": "Tech.",
+        "status": "Statut"
+      }
+    },
+    "stockFlow": {
+      "title": "Flux de Stock",
+      "description": "Mouvements des pièces de rechange sur les 30 derniers jours",
+      "restock": "Réapprovisionnement",
+      "consumption": "Consommation",
+      "entries": "Entrées",
+      "exits": "Sorties"
+    },
+    "createWoDialog": {
+      "title": "Nouvel Ordre de Travail"
+    }
+  },
+   "meters": {
+    "title": "Gestion des Compteurs",
+    "titleHtml": "Gestion des <span class='text-primary-600'>Compteurs</span>",
+    "subtitle": "Actifs de Mesure & Facturation",
+    "active_tasks": "Tâches Actives",
+    "time_spent_h": "Temps Passé (h)",
+    "avg_intervention_time": "Tps Moyen Interv.",
+    "by_status": "Par Statut",
+    "by_priority": "Par Priorité",
+    "incoming_parts": "Pièces entrantes",
+    "outgoing_parts": "Pièces sortantes",
+    "interventions_count": "Nombre d'interventions",
+    "stopped": "Stoppée",
+    "degraded": "Dégradée",
+    "improvement": "Amélioration",
+    "avg_resolution_time": "Délai de résolution moyen",
+    "delay_hours": "Délai (Heures)",
+    "financial_tracking": "Suivi Financier",
+    "total_budget": "Budget Total",
+    "service_expenses": "Dépenses de prestation",
+    "total_validated_expenses": "Total Dépense validée",
+    "key_metrics_overview": "Aperçu des Métriques Clés",
+    "from_last_period": "depuis la dernière période",
+    "detailed_visualizations": "Visualisations Détaillées",
+    "monthly_intervention_volume_title": "Volume mensuel des interventions et délai moyen de résolution",
+    "monthly_intervention_volume_subtitle": "Statut et temps de résolution sur la période",
+    "spare_parts_movement_title": "Mouvements des Pièces Détachées",
+    "spare_parts_movement_subtitle": "Entrées et sorties sur la période sélectionnée",
+    "failures_by_type_title": "Pannes par type de défaut",
+    "failures_by_type_subtitle": "Répartition des causes de défauts",
+    "interventions_by_type_title": "Interventions par type",
+    "interventions_by_type_subtitle": "Total des actions menées : {count}",
+    "tasks_distribution_title": "Répartition des Tâches",
+    "filter_by": "Filtrer par",
+    "view_by": "Vue par {type}",
+    "status_label": "statut",
+    "priority_label": "priorité",
+    "status": {
+      "in_stock": "En Stock",
+      "available": "Disponible"
+    },
+    "actions": {
+      "transfer": "Transférer",
+      "delete": "Supprimer",
+      "import": "Importer",
+      "add": "Ajouter Compteur",
+      "close_details": "Fermer les détails",
+      "confirm_transfer": "Confirmer le transfert"
+    },
+    "stats": {
+      "total": "Total Compteurs",
+      "active": "Actifs",
+      "faulty": "Défectueux",
+      "in_stock": "En Stock",
+      "stock_by_region": "Stock par Région",
+      "stock_detail_for": "Détail du Stock pour :",
+      "distribution_by_status": "Répartition par Statut"
+    },
+    "table": {
+      "report": "Affichage de {first} à {last} sur {totalRecords} compteurs",
+      "search_placeholder": "Rechercher (N° série multiples avec virgule)",
+      "serial_number": "N° de Série",
+      "type": "Type",
+      "status": "Statut",
+      "connection_full_name": "Client Associé",
+      "installation_date": "Date d'Installation",
+      "region_name": "Région",
+      "zone_name": "Zone",
+      "is_additional": "Supplémentaire",
+      "notes": "Notes",
+      "unassigned": "Non assigné",
+      "filter": {
+        "by_serial": "Filtrer par N° de série",
+        "by_type": "Filtrer par type",
+        "by_status": "Filtrer par statut",
+        "by_client": "Filtrer par client"
+      }
+    },
+    "dialog": {
+      "transfer_title": "Transfert de Stock",
+      "transfer_subtitle": "Mouvement inter-régional",
+      "add_by_serial": "Ajouter un compteur par N° de série",
+      "to_transfer_count": "Compteurs à transférer ({count})",
+      "destination_region": "Région de Destination",
+      "editTitle": "Modifier le Compteur",
+      "createTitle": "Ajouter un Compteur",
+      "subtitle": "Gestion des informations du compteur"
+    },
+    "messages": {
+      "no_stock": "Aucun compteur en stock.",
+      "no_meter_selected": "Aucun compteur sélectionné pour le transfert."
+    },
+    "form": {
+      "serial_number": "Numéro de Série",
+      "serial_number_placeholder": "Entrez le numéro de série",
+      "manufacturer": "Fabricant",
+      "manufacturer_placeholder": "Entrez le fabricant",
+      "model": "Modèle",
+      "model_placeholder": "Entrez le modèle",
+      "type": "Type",
+      "type_placeholder": "Sélectionnez le type",
+      "status": "Statut",
+      "status_placeholder": "Sélectionnez le statut",
+      "connection": "Raccordement",
+      "connection_placeholder": "Sélectionnez un raccordement",
+      "installation_date": "Date d'Installation",
+      "region": "Région",
+      "region_placeholder": "Sélectionnez une région",
+      "zone": "Zone",
+      "zone_placeholder": "Sélectionnez une zone",
+      "is_additional": "Compteur supplémentaire",
+      "notes": "Notes",
+      "notes_placeholder": "Ajoutez des notes ici"
+    },
+    "history": {
+      "title": "Historique des Transferts",
+      "by_user": "Par : {user}",
+      "none": "Aucun historique de transfert pour ce compteur."
+    },
+    "confirm": {
+      "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} compteurs sélectionnés ?",
+      "bulkDeleteHeader": "Confirmation de suppression en masse",
+      "delete": "Supprimer"
+    },
+    "filter": {
+      "by_client": "Filtrer par client",
+      "by_status": "Filtrer par statut",
+      "by_serial": "Filtrer par N° de série",
+      "by_type": "Filtrer par type",
+      "byType": "Filtrer par type",
+      "brand": "Filtrer par marque",
+      "byUser": "Filtrer par utilisateur"
+    }
+  },
     "keypads": {
         "title": "Gestion des Claviers",
         "titleHtml": "Gestion des <span class='text-primary-600'>Claviers</span>",
@@ -401,235 +491,147 @@
             "custom": "Personnalisé"
         }
     },
-    "equipments": {
-        "title": "Gestion des Équipements",
-        "headTitle": "Équipements",
-        "addNew": "Ajouter un équipement",
-        "searchPlaceholder": "Rechercher...",
-        "subtitle": "Base de données Master & Cycle de vie",
-        "stats": {
-            "total": "Total Équipements",
-            "in_service": "En Service",
-            "in_stock": "En Stock",
-            "down": "En Panne"
-        },
-
-        "export": "Exporter",
-        "deleteSelected": "Supprimer ({count})",
-        "deleteSelectedSingle": "Supprimer",
-        "table": {
-            "report": "Affichage de {first} à {last} sur {totalRecords} équipements",
-            "tag": "Tag",
-            "designation": "Désignation",
-            "type": "Type",
-            "brand": "Marque",
-            "model": "Modèle",
-            "region": "Région",
-            "status": "Statut",
-            "quantity": "Quantité",
-            "filter": {
-                "tag": "Filtrer par tag",
-                "designation": "Filtrer par désignation",
-                "type": "Filtrer par type",
-                "region": "Filtrer par région",
-                "status": "Filtrer par statut",
-                "brand": "Filtrer par marque"
-            },
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Modifier l'Équipement",
-            "createTitle": "Créer un nouvel Équipement",
-            "parentLabel": "Équipement Parent (pour créer à partir du stock)",
-            "parentPlaceholder": "Optionnel: Sélectionner un parent",
-            "tag": "Tag",
-            "designation": "Désignation",
-            "type": "Type d'équipement",
-            "typePlaceholder": "Sélectionner un type",
-            "addType": "Ajouter un nouveau type",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "brand": "Marque",
-            "model": "Modèle",
-            "power": "Puissance (kW)",
-            "serialNumber": "Numéro de série",
-            "price": "Prix",
-            "cadence_nominale": "Cadence Nominale (pièces/h)",
-            "risk_vibration": "Niveau de Risque: Vibration",
-            "risk_chaleur": "Niveau de Risque: Chaleur",
-            "risk_cycle": "Niveau de Risque: Cycle/Usure",
-            "risk_bruit": "Niveau de Risque: Bruit",
-            "risk_electrique": "Niveau de Risque: Électrique",
-            "status": "Statut",
-            "statusPlaceholder": "Sélectionner un statut",
-            "stockQuantity": "Quantité en stock",
-            "purchaseDate": "Date d'achat",
-            "warrantyEnd": "Fin de garantie",
-            "location": "Emplacement",
-            "importCharacteristics": "Importer les caractéristiques préexistantes",
-            "importCharacteristicsPlaceholder": "Optionnel: Sélectionner un label pour ajouter ses caractéristiques",
-            "characteristicNamePlaceholder": "Nom de la caractéristique",
-            "characteristicTypePlaceholder": "Type",
-            "characteristicValueText": "Valeur (Texte)",
-            "characteristicValueNumber": "Valeur (Nombre)",
-            "characteristicValueDate": "Valeur (Date)",
-            "characteristicValue": "Valeur",
-            "existingFile": "Fichier existant",
-            "addCharacteristic": "Ajouter une caractéristique",
-            "cancel": "Annuler",
-            "save": "Sauvegarder"
-        },
-        "typeDialog": {
-            "title": "Nouveau Type d'Équipement",
-            "name": "Nom du type",
-            "title": "Nouveau Type d'Équipement",
-            "name": "Nom du type",
-            "description": "Description",
-            "cancel": "Annuler",
-            "create": "Créer"
-        },
-          "insufficientQuantityDialog": {
-                "title": "Quantité Insuffisante",
-                "subtitle": "Alerte de Stock",
-                "message": "La quantité demandée dépasse le stock disponible. L'exécution de ce mouvement pourrait entraîner un stock négatif ou une rupture de service.",
-                "cancel": "Annuler",
-                "performMovement": "Forcer le mouvement",
-                "statusOptions": {
-                    "in_service": "En Service",
-                    "down": "En Panne",
-                    "in_maintenance": "En Maintenance",
-                    "out_of_service": "Hors Service",
-                    "in_stock": "En Stock"
-                }
-            },
-        "toast": {
-            "success": "Succès",
-            "updateSuccess": "Équipement mis à jour avec succès.",
-            "createSuccess": "Équipement créé avec succès.",
-            "deleteSuccess": "Équipement supprimé avec succès.",
-            "insufficientQuantity": "Quantité insuffisante en stock.",
-            "parentQuantityUpdated": "La quantité du parent a été mise à jour.",
-
-            "bulkDeleteSuccess": "Équipements supprimés avec succès.",
-            "saveError": "Erreur de Sauvegarde",
-            "error": "Erreur",
-            "deleteError": "Une erreur est survenue lors de la suppression.",
-            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse.",
-            "typeCreateSuccess": "Type d'équipement créé avec succès.",
-            "typeSaveError": "Erreur lors de la sauvegarde du type d'équipement",
-            "parentQuantityUpdateError": "Erreur lors de la mise à jour de la quantité du parent.",
-            "error": "Erreur"
-        },
-        "confirm": {
-            "deleteHeader": "Confirmation de suppression",
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'équipement \"{name}\" ?",
-            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?",
-            "cancel": "Annuler",
-            "delete": "Supprimer"
-        },
-        "validation": {
-            "quantityRequiredForChild": "La quantité est requise pour un équipement enfant.",
-            "insufficientParentQuantity": "La quantité du parent est insuffisante ou le parent n'est pas en stock."
-        },
-        "statusOptions": {
-            "in_service": "En Service",
-            "down": "En Panne",
-            "in_maintenance": "En Maintenance",
-            "out_of_service": "Hors Service",
-            "in_stock": "En Stock",
-             "en_service": "En Service",
-            "en_maintenance": "En Maintenance",
-            "en_stock": "En Stock",
-            "en_panne": "En Panne"
-        },
-        "characteristicTypes": {
-            "text": "Texte",
-            "number": "Nombre",
-            "date": "Date",
-            "file": "Fichier",
-            "boolean": "Oui/Non",
-            "text": "Texte"
-        }
+  "equipments": {
+    "title": "Gestion des Équipements",
+    "headTitle": "Équipements",
+    "addNew": "Ajouter un équipement",
+    "searchPlaceholder": "Rechercher...",
+    "subtitle": "Base de données Master & Cycle de vie",
+    "stats": {
+      "total": "Total Équipements",
+      "in_service": "En Service",
+      "in_stock": "En Stock",
+      "down": "En Panne"
     },
-    "spareParts": {
-        "title": "Gestion des Pièces Détachées",
-        "headTitle": "Pièces Détachées",
-        "toolbar": {
-            "add": "Ajouter une pièce détachée",
-            "searchPlaceholder": "Rechercher...",
-            "export": "Exporter"
-        },
-        "table": {
-            "report": "Affichage de {first} à {last} sur {totalRecords} pièces détachées",
-            "name": "Nom",
-            "reference": "Référence",
-            "equipment": "Équipement",
-            "location": "Emplacement",
-            "quantity": "Quantité",
-            "min_quantity": "Quantité Min.",
-            "price": "Prix Unitaire",
-            "partType": "Type de pièce",
-            "responsible": "Responsable",
-            "characteristics": "Caractéristiques",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Modifier la Pièce Détachée",
-            "createTitle": "Créer une nouvelle Pièce Détachée",
-            "editSubtitle": "Mettre à jour les informations de la pièce détachée.",
-            "createSubtitle": "Remplissez les informations pour créer une nouvelle pièce.",
-            "partType": "Type de pièce",
-            "partTypePlaceholder": "Sélectionner un type",
-            "reference": "Référence",
-            "quantity": "Quantité",
-            "min_quantity": "Quantité Min.",
-            "price": "Prix Unitaire",
-            "location": "Emplacement",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "responsible": "Responsable",
-            "responsiblePlaceholder": "Sélectionner un responsable",
-            "characteristicValues": "Valeurs des caractéristiques",
-            "description": "Description",
-            "equipment": "Équipement (pour cette pièce)",
-            "equipmentPlaceholder": "Optionnel: Sélectionner un équipement",
-            "supplier": "Fournisseur",
-            "supplierPlaceholder": "Sélectionner un fournisseur",
-            "purchaseDate": "Date d'achat",
-            "warrantyEnd": "Fin de garantie",
-            "addCharacteristic": "Ajouter une caractéristique",
-            "characteristicNamePlaceholder": "Nom de la caractéristique",
-            "characteristicTypePlaceholder": "Type",
-            "characteristicValueText": "Valeur (Texte)",
-            "characteristicValueNumber": "Valeur (Nombre)",
-            "characteristicValueDate": "Valeur (Date)",
-            "characteristicValue": "Valeur",
-            "existingFile": "Fichier existant",
-            "cancel": "Annuler",
-            "save": "Sauvegarder"
-        },
-        "toast": {
-            "success": "Succès",
-            "updateSuccess": "Pièce détachée mise à jour avec succès.",
-            "createSuccess": "Pièce détachée créée avec succès.",
-            "deleteSuccess": "Pièce détachée supprimée avec succès.",
-            "bulkDeleteSuccess": "Pièces détachées supprimées avec succès.",
-            "saveError": "Erreur de Sauvegarde",
-            "error": "Erreur",
-            "deleteError": "Une erreur est survenue lors de la suppression.",
-            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse."
-        },
-        "validation": {
-            "characteristicRequired": "La caractéristique \"{characteristic}\" est obligatoire."
-        },
-        "confirm": {
-            "deleteHeader": "Confirmation de suppression",
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer la pièce détachée \"{name}\" ?",
-            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les pièces détachées sélectionnées ?",
-            "cancel": "Annuler",
-            "delete": "Supprimer"
-        }
+    "export": "Exporter",
+    "deleteSelected": "Supprimer ({count})",
+    "deleteSelectedSingle": "Supprimer",
+    "table": {
+      "report": "Affichage de {first} à {last} sur {totalRecords} équipements",
+      "tag": "Tag",
+      "designation": "Désignation",
+      "type": "Type",
+      "brand": "Marque",
+      "model": "Modèle",
+      "region": "Région",
+      "status": "Statut",
+      "quantity": "Quantité",
+      "filter": {
+        "tag": "Filtrer par tag",
+        "designation": "Filtrer par désignation",
+        "type": "Filtrer par type",
+        "region": "Filtrer par région",
+        "status": "Filtrer par statut",
+        "brand": "Filtrer par marque"
+      },
+      "actions": "Actions"
     },
+    "dialog": {
+      "editTitle": "Modifier l'Équipement",
+      "createTitle": "Créer un nouvel Équipement",
+      "parentLabel": "Équipement Parent (pour créer à partir du stock)",
+      "parentPlaceholder": "Optionnel: Sélectionner un parent",
+      "tag": "Tag",
+      "designation": "Désignation",
+      "type": "Type d'équipement",
+      "typePlaceholder": "Sélectionner un type",
+      "addType": "Ajouter un nouveau type",
+      "region": "Région",
+      "regionPlaceholder": "Sélectionner une région",
+      "brand": "Marque",
+      "model": "Modèle",
+      "power": "Puissance (kW)",
+      "serialNumber": "Numéro de série",
+      "price": "Prix",
+      "cadence_nominale": "Cadence Nominale (pièces/h)",
+      "risk_vibration": "Niveau de Risque: Vibration",
+      "risk_chaleur": "Niveau de Risque: Chaleur",
+      "risk_cycle": "Niveau de Risque: Cycle/Usure",
+      "risk_bruit": "Niveau de Risque: Bruit",
+      "risk_electrique": "Niveau de Risque: Électrique",
+      "status": "Statut",
+      "statusPlaceholder": "Sélectionner un statut",
+      "stockQuantity": "Quantité en stock",
+      "purchaseDate": "Date d'achat",
+      "warrantyEnd": "Fin de garantie",
+      "location": "Emplacement",
+      "importCharacteristics": "Importer les caractéristiques préexistantes",
+      "importCharacteristicsPlaceholder": "Optionnel: Sélectionner un label pour ajouter ses caractéristiques",
+      "characteristicNamePlaceholder": "Nom de la caractéristique",
+      "characteristicTypePlaceholder": "Type",
+      "characteristicValueText": "Valeur (Texte)",
+      "characteristicValueNumber": "Valeur (Nombre)",
+      "characteristicValueDate": "Valeur (Date)",
+      "characteristicValue": "Valeur",
+      "existingFile": "Fichier existant",
+      "addCharacteristic": "Ajouter une caractéristique",
+      "cancel": "Annuler",
+      "save": "Sauvegarder"
+    },
+    "typeDialog": {
+      "title": "Nouveau Type d'Équipement",
+      "name": "Nom du type",
+      "description": "Description",
+      "cancel": "Annuler",
+      "create": "Créer"
+    },
+    "insufficientQuantityDialog": {
+      "title": "Quantité Insuffisante",
+      "subtitle": "Alerte de Stock",
+      "message": "La quantité demandée dépasse le stock disponible. L'exécution de ce mouvement pourrait entraîner un stock négatif ou une rupture de service.",
+      "cancel": "Annuler",
+      "performMovement": "Forcer le mouvement",
+      "statusOptions": {
+        "in_service": "En Service",
+        "down": "En Panne",
+        "in_maintenance": "En Maintenance",
+        "out_of_service": "Hors Service",
+        "in_stock": "En Stock"
+      }
+    },
+    "toast": {
+      "success": "Succès",
+      "updateSuccess": "Équipement mis à jour avec succès.",
+      "createSuccess": "Équipement créé avec succès.",
+      "deleteSuccess": "Équipement supprimé avec succès.",
+      "insufficientQuantity": "Quantité insuffisante en stock.",
+      "parentQuantityUpdated": "La quantité du parent a été mise à jour.",
+      "bulkDeleteSuccess": "Équipements supprimés avec succès.",
+      "saveError": "Erreur de Sauvegarde",
+      "error": "Erreur",
+      "deleteError": "Une erreur est survenue lors de la suppression.",
+      "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse.",
+      "typeCreateSuccess": "Type d'équipement créé avec succès.",
+      "typeSaveError": "Erreur lors de la sauvegarde du type d'équipement",
+      "parentQuantityUpdateError": "Erreur lors de la mise à jour de la quantité du parent."
+    },
+    "confirm": {
+      "deleteHeader": "Confirmation de suppression",
+      "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'équipement \"{name}\" ?",
+      "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?",
+      "cancel": "Annuler",
+      "delete": "Supprimer"
+    },
+    "validation": {
+      "quantityRequiredForChild": "La quantité est requise pour un équipement enfant.",
+      "insufficientParentQuantity": "La quantité du parent est insuffisante ou le parent n'est pas en stock."
+    },
+    "statusOptions": {
+      "in_service": "En Service",
+      "down": "En Panne",
+      "in_maintenance": "En Maintenance",
+      "out_of_service": "Hors Service",
+      "in_stock": "En Stock"
+    },
+    "characteristicTypes": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Date",
+      "file": "Fichier",
+      "boolean": "Oui/Non"
+    }
+  },
+
  "sparePartMovements": {
         "title": "Mouvements des Pièces de Rechange",
         "headTitle": "Gestion des Stocks - Mouvements",
@@ -694,118 +696,99 @@
             "deleteError": "Impossible de supprimer ce mouvement."
         }
     },
-    "stockMovements": {
-        "title": "Mouvements de Stock",
-        "headTitle": "Gestion des Mouvements de Stock",
-        "subtitle": "Traçabilité complète des actifs",
-        "toolbar": {
-            "addMovement": "Nouveau Mouvement",
-            "searchPlaceholder": "Rechercher un item, un utilisateur..."
-        },
-        "table": {
-            "itemType": "Type d'item",
-            "item": "Item",
-            "type": "Type de Mouvement",
-            "quantity": "Quantité",
-            "source": "Source",
-            "destination": "Destination",
-            "user": "Utilisateur",
-            "date": "Date"
-        },
-            "stats": {
-            "total": "Mouvements Totaux",
-            "entries": "Entrées",
-            "exits": "Sorties",
-            "transfers": "Transferts",
-            "total": "Mouvements Totaux",
-            "entries": "Entrées",
-            "exits": "Sorties",
-            "transfers": "Transferts",
-            "uniqueParts": "Pièces Uniques"
-        },
-        "filter":{
-            "byType":"Filtrer par type",
-            "byUser":"Filtrer par utilisateur",
-            "byRegion":"Filtrer par région...",
-            "byItemType": "Par type d'item",
-            "byItem":"Filtrer par item"
-        },
-        "dialog": {
-            "createTitle": "Enregistrer un Mouvement de Stock",
-            "editTitle": "Modifier le Mouvement",
-            "createSubtitle": "Remplissez les informations pour un nouveau mouvement.",
-            "editSubtitle": "Mettez à jour les détails du mouvement.",
-            "itemIdentification": "Identification de l'Item",
-            "detailsValidation": "Détails & Validation",
-            "itemsInMovement": "Items dans le mouvement",
-            "noItems":"Aucun item sélectionné",
-            "itemSelection": "Sélection de l'Item",
-            "addItem": "Ajouter un item",
-            "deleteSelectedMessage":  "Voulez-vous supprimé les {count} items sélectionnés ?"
-        },
-        "form": {
-            "itemType": "Type d'item",
-            "itemTypePlaceholder": "Choisir le type d'item...",
-            "item": "Item Spécifique",
-            "itemPlaceholder": "Rechercher ou sélectionner un item...",
-            "movementType": "Type de Mouvement",
-            "quantity": "Quantité",
-            "sourceRegion": "Région Source",
-            "sourceRegionPlaceholder": "Sélectionner la région de départ",
-            "destinationRegion": "Région de Destination",
-            "destinationRegionPlaceholder": "Sélectionner la région d'arrivée",
-            "addItem": "Ajouter un item",
-            "user": "Opéré par",
-            "responsibleUser": "Utilisateur Responsable",
-            "intendedForUser": "Destiné à l'utilisateur",
-            "userPlaceholder": "Sélectionner l'utilisateur",
-            "itemSelection": "Sélection de l'Item",
-            "itemsInMovement": "Items dans le mouvement",
-            "itemsInMovement": "Items dans le mouvement",
-            "total": "Total Mouvements",
-            "entries": "Entrées",
-            "exits": "Sorties",
-            "transfers": "Transferts",
 
-            "noItems": "Aucun item sélectionné",
-
-            "notes": "Notes complémentaires"
-        },
-        "movableTypes": {
-            "spare_part": "Pièce Détachée",
-            "equipment": "Équipement",
-            "meter": "Compteur",
-            "keypad": "Clavier",
-            "engin": "Engin"
-        },
-        "movementTypes": {
-            "entry": "Entrée",
-            "exit": "Sortie",
-            "transfer": "Transfert",
-            "entree": "Entrée",
-            "sortie": "Sortie",
-            "movableTypeOptions": [
-                { "label": "Pièce Détachée", "value": "App\\Models\\SparePart" },
-                { "label": "Équipement", "value": "App\\Models\\Equipment" },
-                { "label": "Compteur", "value": "App\\Models\\Meter" },
-                { "label": "Clavier", "value": "App\\Models\\Keypad" },
-                { "label": "Engin", "value": "App\\Models\\Engin" }
-            ],
-
-            "transfert": "Transfert"
-        },
-        "confirm": {
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer le mouvement N°{id} ?"
-        },
-        "toast": {
-            "createSuccess": "Le mouvement a été enregistré avec succès.",
-            "updateSuccess": "Le mouvement a été mis à jour avec succès.",
-            "deleteSuccess": "Le mouvement a été supprimé.", "noItems": "Veuillez ajouter au moins un item au mouvement.",
-
-            "saveError": "Erreur lors de l'enregistrement du mouvement."
-        }
+  "stockMovements": {
+    "title": "Mouvements de Stock",
+    "headTitle": "Gestion des Mouvements de Stock",
+    "subtitle": "Traçabilité complète des actifs",
+    "toolbar": {
+      "addMovement": "Nouveau Mouvement",
+      "searchPlaceholder": "Rechercher un item, un utilisateur..."
     },
-
+    "table": {
+      "itemType": "Type d'item",
+      "item": "Item",
+      "type": "Type de Mouvement",
+      "quantity": "Quantité",
+      "source": "Source",
+      "destination": "Destination",
+      "user": "Utilisateur",
+      "date": "Date"
+    },
+    "stats": {
+      "total": "Mouvements Totaux",
+      "entries": "Entrées",
+      "exits": "Sorties",
+      "transfers": "Transferts",
+      "uniqueParts": "Pièces Uniques"
+    },
+    "filter": {
+      "byType": "Filtrer par type",
+      "byUser": "Filtrer par utilisateur",
+      "byRegion": "Filtrer par région...",
+      "byItemType": "Par type d'item",
+      "byItem": "Filtrer par item"
+    },
+    "dialog": {
+      "createTitle": "Enregistrer un Mouvement de Stock",
+      "editTitle": "Modifier le Mouvement",
+      "createSubtitle": "Remplissez les informations pour un nouveau mouvement.",
+      "editSubtitle": "Mettez à jour les détails du mouvement.",
+      "itemIdentification": "Identification de l'Item",
+      "detailsValidation": "Détails & Validation",
+      "itemsInMovement": "Items dans le mouvement",
+      "noItems": "Aucun item sélectionné",
+      "itemSelection": "Sélection de l'Item",
+      "addItem": "Ajouter un item",
+      "deleteSelectedMessage": "Voulez-vous supprimer les {count} items sélectionnés ?"
+    },
+    "form": {
+      "itemType": "Type d'item",
+      "itemTypePlaceholder": "Choisir le type d'item...",
+      "item": "Item Spécifique",
+      "itemPlaceholder": "Rechercher ou sélectionner un item...",
+      "movementType": "Type de Mouvement",
+      "quantity": "Quantité",
+      "sourceRegion": "Région Source",
+      "sourceRegionPlaceholder": "Sélectionner la région de départ",
+      "destinationRegion": "Région de Destination",
+      "destinationRegionPlaceholder": "Sélectionner la région d'arrivée",
+      "user": "Opéré par",
+      "responsibleUser": "Utilisateur Responsable",
+      "intendedForUser": "Destiné à l'utilisateur",
+      "userPlaceholder": "Sélectionner l'utilisateur",
+      "notes": "Notes complémentaires"
+    },
+    "movableTypes": {
+      "spare_part": "Pièce Détachée",
+      "equipment": "Équipement",
+      "meter": "Compteur",
+      "keypad": "Clavier",
+      "engin": "Engin"
+    },
+    "movementTypes": {
+      "entry": "Entrée",
+      "exit": "Sortie",
+      "transfer": "Transfert",
+      "movableTypeOptions": [
+        { "label": "Pièce Détachée", "value": "App\\Models\\SparePart" },
+        { "label": "Équipement", "value": "App\\Models\\Equipment" },
+        { "label": "Compteur", "value": "App\\Models\\Meter" },
+        { "label": "Clavier", "value": "App\\Models\\Keypad" },
+        { "label": "Engin", "value": "App\\Models\\Engin" }
+      ]
+    },
+    "confirm": {
+      "deleteMessage": "Êtes-vous sûr de vouloir supprimer le mouvement N°{id} ?"
+    },
+    "toast": {
+      "createSuccess": "Le mouvement a été enregistré avec succès.",
+      "updateSuccess": "Le mouvement a été mis à jour avec succès.",
+      "deleteSuccess": "Le mouvement a été supprimé.",
+      "noItems": "Veuillez ajouter au moins un item au mouvement.",
+      "saveError": "Erreur lors de l'enregistrement du mouvement."
+    }
+  },
     "characteristics": {
         "types": {
             "text": "Texte",
@@ -955,6 +938,10 @@
          "selectedCount": "Vous avez selectionné {count} items",
          "deleteSelection": "Supprimer",
          "columns":"Colonnes",
+         "approve": "Approuver",
+         "confirm": "Confirmer",
+
+    "reject": "Rejeter",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "import": "Importer",
@@ -1110,64 +1097,7 @@
     "customize_columns": "Personnaliser les colonnes"
   },
 
-  "unities": {
-        "title": "Gestion des Unités",
-        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etca.)",
-        "fields": {
-            "name": "Désignation",
-            "symbol": "Symbole / Abréviation"
-        },
-        "actions": {
-            "add": "Ajouter une unité"
-        },
-        "dialog": {
-            "createTitle": "Créer une unité",
-            "editTitle": "Modifier l'unité",
-            "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
-            "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
-        },
-        "validation": {
-            "nameRequired": "Le nom de l'unité est obligatoire."
-        },
-        "messages": {
-            "createSuccess": "Unité créée avec succès.",
-            "updateSuccess": "Unité mise à jour avec succès.",
-            "deleteSuccess": "Unité supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
-        }
-    },
-    "employees": {
-        "title": "Gestion des Employés",
-        "count_label": "Employés enregistrés",
-        "actions": {
-            "add": "Ajouter un employé"
-        },
-        "fields": {
-            "first_name": "Prénom",
-            "last_name": "Nom",
-            "email": "Email",
-            "phone": "Téléphone",
-            "status": "Statut d'emploi",
-            "salary": "Salaire",
-            "hire_date": "Date d'embauche",
-            "job_title": "Poste / Fonction",
-            "notes": "Observations"
-        },
-        "status": {
-            "active": "Actif",
-            "on_leave": "En congé",
-            "terminated": "Contrat terminé"
-        },
-        "dialog": {
-            "new": "Nouvel Employé",
-            "edit": "Modifier l'Employé"
-        },
-        "messages": {
-            "saved": "L'employé a été enregistré avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
-            "deleteSuccess": "Employé supprimé."
-        }
-    },
+
 
     "technicians": {
         "title": "Gestion des Techniciens",
@@ -1335,53 +1265,21 @@
             "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'équipe \"{name}\" ?"
         }
     },
-    "spareParts": {
-        "title": "Inventory Control",
-        "headTitle": "Gestion des Pièces de Rechange",
-        "toolbar": {
-            "searchPlaceholder": "Rechercher une référence ou un composant...",
-            "add": "Nouvel Actif",
-            "export": "Exporter la base"
-        },
-        "table": {
-            "ref": "REF",
-            "component": "Composant",
-            "stockAlerte": "Stock / Alerte",
-            "price": "Prix HT",
-            "actions": "Actions"
-        },
-        "form": {
-            "partType": "Type de Composant",
-            "partTypePlaceholder": "Sélectionner la catégorie",
-            "reference": "Référence Constructeur",
-            "quantity": "Quantité en Stock",
-            "min_quantity": "Seuil d'Alerte",
-            "price": "Prix Unitaire HT",
-            "location": "Localisation Physique",
-            "region": "Entité / Région",
-            "regionPlaceholder": "Affecter une zone",
-            "responsible": "Superviseur Responsable",
-            "responsiblePlaceholder": "Choisir un gestionnaire",
-            "characteristicValues": "Spécifications Techniques"
-        },
-        "dialog": {
-            "createTitle": "Nouvelle Entrée Stock",
-            "editTitle": "Configuration Technique",
-            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
-            "editSubtitle": "Modification des paramètres et des seuils logistiques"
-        }
-    },
-    "validation": {
-        "required": "Le champ {field} est strictement obligatoire",
-        "invalid": "Format de donnée incorrect pour {field}"
-    },
-    "dialog": {
-        "cancel": "Abandonner",
-        "save": "Valider l'entrée",
-        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
-        "editTitle": "Modifier le Raccordement",
-        "createTitle": "Nouveau Raccordement"
-    },
+
+  "dialog": {
+    "createTitle": "Nouveau Raccordement / Label",
+    "editTitle": "Modifier le Raccordement / Label",
+    "createSubtitle": "Créez un nouvel élément dans le système.",
+    "editSubtitle": "Mettez à jour les informations enregistrées.",
+    "cancel": "Abandonner",
+    "save": "Valider l'entrée",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?"
+  },
+  "validation": {
+    "required": "Le champ {field} est strictement obligatoire",
+    "nameRequired": "Le nom est requis.",
+    "invalid": "Format de donnée incorrect pour {field}"
+  },
   "connections": {
     "title": "Gestion des Raccordements",
     "headTitle": "Raccordements",
@@ -1459,119 +1357,75 @@
         "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les {count} raccordements sélectionnés ?"
     }
 },
-    "expenses": {
-            "title": "Gestion des Dépenses",
-        "headTitle": "Dépenses",
-        "subtitle": "Suivi des coûts et validation",
-        "addNew": "Nouvelle Dépense",
-        "approveSelected": "Approuver Sélection",
-        "rejectSelected": "Rejeter Sélection",
-        "export": "Exporter en CSV",
-        "toolbar": {
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser"
-        },
-        "searchPlaceholder": "Rechercher...",
-        "selectColumns": "Choisir les colonnes",
-        "table": {
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date",
-            "category": "Catégorie",
-            "status": "Statut",
-            "createdBy": "Créé par",
-            "linkedTo": "Lié à",
-            "approvedBy": "Approuvé par",
-            "notes": "Notes",
-            "selectedTotal": "Total sélectionné"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Dépense",
-            "editTitle": "Modifier la Dépense",
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date de la dépense",
-            "category": "Catégorie",
-            "linkedToType": "Type d'élément lié",
-            "linkedToItem": "Élément lié",
-            "notes": "Notes / Justificatif"
-        },
-        "confirm": {
-            "header": "Confirmation de {action}",
-            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
-            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
-        },
-        "toast": {
-            "statusUpdateSuccess": "Dépense {action} avec succès.",
-            "statusUpdateError": "La mise à jour du statut a échoué.",
-            "bulkStatusUpdateSuccess": "{count} dépenses {status} avec succès.",
-            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
-        },
-
-        "title": "Gestion des Dépenses",
-        "headTitle": "Dépenses",
-        "subtitle": "Suivi des coûts et validation",
-        "addNew": "Nouvelle Dépense",
-        "approveSelected": "Approuver Sélection",
-        "rejectSelected": "Rejeter Sélection",
-        "export": "Exporter en CSV",
-        "searchPlaceholder": "Rechercher...",
-        "selectColumns": "Choisir les colonnes",
-        "table": {
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date",
-            "category": "Catégorie",
-            "status": "Statut",
-            "createdBy": "Créé par",
-            "linkedTo": "Lié à",
-            "approvedBy": "Approuvé par",
-            "notes": "Notes",
-            "selectedTotal": "Total sélectionné"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Dépense",
-            "editTitle": "Modifier la Dépense",
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date de la dépense",
-            "category": "Catégorie",
-            "linkedToType": "Type d'élément lié",
-            "linkedToItem": "Élément lié",
-            "notes": "Notes / Justificatif"
-        },
-        "confirm": {
-            "header": "Confirmation de {action}",
-            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
-            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
-        },
-        "toast": {
-            "success": "Succès",
-            "error": "Erreur",
-            "updateSuccess": "Dépense mise à jour avec succès.",
-            "createSuccess": "Dépense créée avec succès.",
-            "deleteSuccess": "Dépense supprimée avec succès.",
-            "statusUpdateSuccess": "Dépense {action} avec succès.",
-            "statusUpdateError": "La mise à jour du statut a échoué.",
-            "bulkStatusUpdateSuccess": "{count} dépenses {action} avec succès.",
-            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
-        },
-        "filter": {
-            "status": "Filtrer par statut",
-            "category": "Filtrer par catégorie",
-            "dateRange": "Filtrer par date",
-            "paymentMethod": "Filtrer par mode de paiement",
-            "project": "Filtrer par projet",
-            "vehicle": "Filtrer par véhicule",
-            "provider": "Filtrer par fournisseur",
-            "apply": "Appliquer les filtres"
-        },
-        "stats": {
-            "totalAmount": "Montant Total",
-            "pending": "Dépenses en attente",
-            "average": "Coût Moyen"
-        }
+ "expenses": {
+    "title": "Gestion des Dépenses",
+    "headTitle": "Dépenses",
+    "subtitle": "Suivi des coûts et validation",
+    "addNew": "Nouvelle Dépense",
+    "approveSelected": "Approuver Sélection",
+    "rejectSelected": "Rejeter Sélection",
+    "export": "Exporter en CSV",
+    "searchPlaceholder": "Rechercher...",
+    "selectColumns": "Choisir les colonnes",
+    "toolbar": {
+      "advancedFilters": "Filtres Avancés",
+      "resetFilters": "Réinitialiser"
     },
+    "table": {
+      "description": "Description",
+      "amount": "Montant",
+      "date": "Date",
+      "category": "Catégorie",
+      "status": "Statut",
+      "createdBy": "Créé par",
+      "linkedTo": "Lié à",
+      "approvedBy": "Approuvé par",
+      "notes": "Notes",
+      "selectedTotal": "Total sélectionné"
+    },
+    "dialog": {
+      "createTitle": "Créer une nouvelle Dépense",
+      "editTitle": "Modifier la Dépense",
+      "description": "Description",
+      "amount": "Montant",
+      "date": "Date de la dépense",
+      "category": "Catégorie",
+      "linkedToType": "Type d'élément lié",
+      "linkedToItem": "Élément lié",
+      "notes": "Notes / Justificatif"
+    },
+    "confirm": {
+      "header": "Confirmation de {action}",
+      "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
+      "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
+    },
+    "toast": {
+      "success": "Succès",
+      "error": "Erreur",
+      "updateSuccess": "Dépense mise à jour avec succès.",
+      "createSuccess": "Dépense créée avec succès.",
+      "deleteSuccess": "Dépense supprimée avec succès.",
+      "statusUpdateSuccess": "Dépense {action} avec succès.",
+      "statusUpdateError": "La mise à jour du statut a échoué.",
+      "bulkStatusUpdateSuccess": "{count} dépenses {action} avec succès.",
+      "bulkStatusUpdateError": "La mise à jour groupée a échoué."
+    },
+    "filter": {
+      "status": "Filtrer par statut",
+      "category": "Filtrer par catégorie",
+      "dateRange": "Filtrer par date",
+      "paymentMethod": "Filtrer par mode de paiement",
+      "project": "Filtrer par projet",
+      "vehicle": "Filtrer par véhicule",
+      "provider": "Filtrer par fournisseur",
+      "apply": "Appliquer les filtres"
+    },
+    "stats": {
+      "totalAmount": "Montant Total",
+      "pending": "Dépenses en attente",
+      "average": "Coût Moyen"
+    }
+  },
     "title": "Gestion des Labels",
     "fields": {
       "name": "Nom",
@@ -1596,15 +1450,7 @@
       "boolean": "Boolean",
       "select": "Liste déroulante"
     },
-    "dialog": {
-      "createTitle": "Créer un nouveau Label",
-      "editTitle": "Modifier le Label",
-      "createSubtitle": "Créez un nouveau label.",
-      "editSubtitle": "Mettez à jour les informations du label."
-    },
-    "validation": {
-      "nameRequired": "Le nom est requis."
-    },
+
     "messages": {
       "createSuccess": "Label créé avec succès",
       "updateSuccess": "Label mis à jour avec succès",
@@ -1617,244 +1463,159 @@
     }
   ,
 
-
-  "unities": {
-        "title": "Gestion des Unités",
-        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
-        "fields": {
-            "name": "Désignation",
-            "symbol": "Symbole / Abréviation"
-        },
-        "actions": {
-            "add": "Ajouter une unité"
-        },
-        "dialog": {
-            "createTitle": "Créer une unité",
-            "editTitle": "Modifier l'unité",
-            "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
-            "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
-        },
-        "validation": {
-            "nameRequired": "Le nom de l'unité est obligatoire."
-        },
-        "messages": {
-            "createSuccess": "Unité créée avec succès.",
-            "updateSuccess": "Unité mise à jour avec succès.",
-            "deleteSuccess": "Unité supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
-        }
+"unities": {
+    "title": "Gestion des Unités",
+    "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
+    "fields": {
+      "name": "Désignation",
+      "symbol": "Symbole / Abréviation"
     },
-    "employees": {
-        "title": "Gestion des Employés",
-        "count_label": "Employés enregistrés",
-        "actions": {
-            "add": "Ajouter un employé"
-        },
-        "fields": {
-            "first_name": "Prénom",
-            "last_name": "Nom",
-            "email": "Email",
-            "phone": "Téléphone",
-            "status": "Statut d'emploi",
-            "salary": "Salaire",
-            "hire_date": "Date d'embauche",
-            "job_title": "Poste / Fonction",
-            "notes": "Observations"
-        },
-        "status": {
-            "active": "Actif",
-            "on_leave": "En congé",
-            "terminated": "Contrat terminé"
-        },
-        "dialog": {
-            "new": "Nouvel Employé",
-            "edit": "Modifier l'Employé"
-        },
-        "messages": {
-            "saved": "L'employé a été enregistré avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
-            "deleteSuccess": "Employé supprimé."
-        }
-    },
-
-    "spareParts": {
-        "title": "Inventory Control",
-        "headTitle": "Gestion des Pièces de Rechange",
-        "toolbar": {
-            "searchPlaceholder": "Rechercher une référence ou un composant...",
-            "add": "Nouvel Actif",
-            "export": "Exporter la base"
-        },
-        "table": {
-            "ref": "REF",
-            "component": "Composant",
-            "stockAlerte": "Stock / Alerte",
-            "price": "Prix HT",
-            "actions": "Actions"
-        },
-        "form": {
-            "partType": "Type de Composant",
-            "partTypePlaceholder": "Sélectionner la catégorie",
-            "reference": "Référence Constructeur",
-            "quantity": "Quantité en Stock",
-            "min_quantity": "Seuil d'Alerte",
-            "price": "Prix Unitaire HT",
-            "location": "Localisation Physique",
-            "region": "Entité / Région",
-            "regionPlaceholder": "Affecter une zone",
-            "responsible": "Superviseur Responsable",
-            "responsiblePlaceholder": "Choisir un gestionnaire",
-            "characteristicValues": "Spécifications Techniques"
-        },
-        "dialog": {
-            "createTitle": "Nouvelle Entrée Stock",
-            "editTitle": "Configuration Technique",
-            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
-            "editSubtitle": "Modification des paramètres et des seuils logistiques"
-        }
-    },
-    "validation": {
-        "required": "Le champ {field} est strictement obligatoire",
-        "invalid": "Format de donnée incorrect pour {field}"
+    "actions": {
+      "add": "Ajouter une unité"
     },
     "dialog": {
-        "cancel": "Abandonner",
-        "save": "Valider l'entrée",
-        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
-        "editTitle": "Modifier le Raccordement",
-        "createTitle": "Nouveau Raccordement"
+      "createTitle": "Créer une unité",
+      "editTitle": "Modifier l'unité",
+      "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
+      "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
     },
+    "validation": {
+      "nameRequired": "Le nom de l'unité est obligatoire."
+    },
+    "messages": {
+      "createSuccess": "Unité créée avec succès.",
+      "updateSuccess": "Unité mise à jour avec succès.",
+      "deleteSuccess": "Unité supprimée avec succès.",
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
+    }
+  },
 
 
 
-    "interventions": {
-         "title": "Gestion des Interventions",
-        "headTitle": "Interventions <span class='text-primary-600'>Field Service</span>",
-        "subtitle": "Opérations & Maintenance Réseau",
-        "addNew": "Nouvelle Intervention",
-        "searchPlaceholder": "Rechercher une référence...",
-        "filters": "Filtres",
-        "deleteSelected": "Supprimer",
-        "selectColumns": "Colonnes actives",
-        "notAssigned": "Non assigné",
-        "notApplicable": "N/A",
-
-        "dialog": {
-            "editTitle": "Détails Intervention",
-            "createTitle": "Création de Ticket",
-            "gmaoConsole": "Console d'administration GMAO v2025",
-            "origin": "Origine de la demande",
-            "externalClient": "Client Externe",
-            "internalAgent": "Agent Interne",
-            "searchPlaceholder": "Rechercher...",
-            "subjectDescription": "Sujet / Description",
-            "autoReference": "Référence auto",
-            "problemPlaceholder": "Expliquez le problème technique ici...",
-            "assignmentDeadline": "Assignation & Délai",
-            "priority": "Priorité",
-            "assignedTo": "Assigné à",
-            "deadline": "Échéance",
-            "region": "Région",
-            "zone": "Zone",
-            "cancel": "Annuler",
-            "save": "Enregistrer l'Intervention",
-            "editTitle": "Détails Intervention",
-            "createTitle": "Création de Ticket",
-            "origin": "Origine de la demande",
-            "externalClient": "Client Externe",
-            "internalAgent": "Agent Interne",
-            "searchPlaceholder": "Rechercher...",
-            "subjectDescription": "Sujet / Description",
-            "autoReference": "Référence auto",
-            "problemPlaceholder": "Expliquez le problème technique ici...",
-            "assignmentDeadline": "Assignation & Délai",
-            "priority": "Priorité",
-            "assignedTo": "Assigné à",
-            "deadline": "Échéance",
-            "region": "Région",
-            "zone": "Zone",
-            "notApplicable": "N/A",
-            "cancel": "Annuler",
-            "save": "Enregistrer l'Intervention",
-            "classification": "Classification",
-            "interventionReason": "Motif d'intervention",
-            "selectReason": "Sélectionner une raison",
-            "category": "Catégorie",
-            "technicalComplexity": "Complexité Technique",
-            "planningTracking": "Planification & Suivi",
-            "minTime": "Temps Min (h)",
-            "maxTime": "Temps Max (h)",
-            "autoConfig": "Auto-configuration",
-            "settingsApplied": "Paramètres appliqués pour : {reason}",
-            "validateIntervention": "Valider l'Intervention"
-
-        },
-        "filtersPanel": {
-            "title": "Filtres avancés",
-            "status": "Statut",
-            "statusPlaceholder": "Tous",
-            "region": "Région",
-            "regionPlaceholder": "Toutes",
-            "priority": "Priorité",
-            "priorityPlaceholder": "Toutes",
-            "reset": "Réinitialiser",
-            "apply": "Appliquer"
-        },
-        "tooltips": {
-            "manage": "Gérer"
-        },
-        "assignableTypes": {
-            "technician": "Technicien",
-            "team": "Équipe"
-        },
-
-        "table": {
-
-            "reason": "Motif",
-            "complexity": "Complexité",
-            "completedAt": "Terminé le",
-            "category": "Catégorie",
-            "description": "Description",
-               "reference": "Référence",
-            "status": "Statut",
-            "customerCode": "Code Client",
-            "clientName": "Nom Client",
-            "region": "Région",
-            "priority": "Priorité",
-            "deadline": "Échéance",
-            "assignedTo": "Assigné à",
-            "actions": "Actions",
-            "report": "Affichage de {first} à {last} sur {totalRecords} interventions"
-        },
-        "stats": {
-            "total": "Total Interventions",
-            "pending": "En Attente",
-            "in_progress": "En Cours",
-            "completed": "Terminées"
-            ,"notValidated": "Non Validées",
-            "reason": "Motif",
-            "complexity": "Complexité",
-            "completedAt": "Terminé le",
-            "category": "Catégorie"
-        },
-
-        "filtersPanel": {
-            "title": "Filtres avancés",
-            "status": "Statut",
-            "statusPlaceholder": "Tous",
-            "region": "Région",
-            "regionPlaceholder": "Toutes",
-            "priority": "Priorité",
-            "priorityPlaceholder": "Toutes",
-            "reset": "Réinitialiser",
-            "apply": "Appliquer"
-        },
-        "tooltips": {
-            "manage": "Gérer"
-        },
-        "status": {
-            "notValidated": "Non validé"
-        }
+  "employees": {
+    "title": "Gestion des Employés",
+    "count_label": "Employés enregistrés",
+    "actions": {
+      "add": "Ajouter un employé"
+    },
+    "fields": {
+      "first_name": "Prénom",
+      "last_name": "Nom",
+      "email": "Email",
+      "phone": "Téléphone",
+      "status": "Statut d'emploi",
+      "salary": "Salaire",
+      "hire_date": "Date d'embauche",
+      "job_title": "Poste / Fonction",
+      "notes": "Observations"
+    },
+    "status": {
+      "active": "Actif",
+      "on_leave": "En congé",
+      "terminated": "Contrat terminé"
+    },
+    "dialog": {
+      "new": "Nouvel Employé",
+      "edit": "Modifier l'Employé"
+    },
+    "messages": {
+      "saved": "L'employé a été enregistré avec succès.",
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
+      "deleteSuccess": "Employé supprimé."
+    }
+  },
+  "interventions": {
+    "title": "Gestion des Interventions",
+    "headTitle": "Interventions <span class='text-primary-600'>Field Service</span>",
+    "subtitle": "Opérations & Maintenance Réseau",
+    "addNew": "Nouvelle Intervention",
+    "searchPlaceholder": "Rechercher une référence...",
+    "filters": "Filtres",
+    "deleteSelected": "Supprimer",
+    "selectColumns": "Colonnes actives",
+    "notAssigned": "Non assigné",
+    "notApplicable": "N/A",
+    "dialog": {
+      "editTitle": "Détails Intervention",
+      "createTitle": "Création de Ticket",
+      "gmaoConsole": "Console d'administration GMAO v2025",
+      "origin": "Origine de la demande",
+      "externalClient": "Client Externe",
+      "internalAgent": "Agent Interne",
+      "searchPlaceholder": "Rechercher...",
+      "subjectDescription": "Sujet / Description",
+      "autoReference": "Référence auto",
+      "problemPlaceholder": "Expliquez le problème technique ici...",
+      "assignmentDeadline": "Assignation & Délai",
+      "priority": "Priorité",
+      "assignedTo": "Assigné à",
+      "deadline": "Échéance",
+      "region": "Région",
+      "zone": "Zone",
+      "notApplicable": "N/A",
+      "cancel": "Annuler",
+      "save": "Enregistrer l'Intervention",
+      "classification": "Classification",
+      "interventionReason": "Motif d'intervention",
+      "selectReason": "Sélectionner une raison",
+      "category": "Catégorie",
+      "technicalComplexity": "Complexité Technique",
+      "planningTracking": "Planification & Suivi",
+      "minTime": "Temps Min (h)",
+      "maxTime": "Temps Max (h)",
+      "autoConfig": "Auto-configuration",
+      "settingsApplied": "Paramètres appliqués pour : {reason}",
+      "validateIntervention": "Valider l'Intervention"
+    },
+    "filtersPanel": {
+      "title": "Filtres avancés",
+      "status": "Statut",
+      "statusPlaceholder": "Tous",
+      "region": "Région",
+      "regionPlaceholder": "Toutes",
+      "priority": "Priorité",
+      "priorityPlaceholder": "Toutes",
+      "reset": "Réinitialiser",
+      "apply": "Appliquer"
+    },
+    "tooltips": {
+      "manage": "Gérer"
+    },
+    "assignableTypes": {
+      "technician": "Technicien",
+      "team": "Équipe"
+    },
+    "table": {
+      "reference": "Référence",
+      "reason": "Motif",
+      "complexity": "Complexité",
+      "completedAt": "Terminé le",
+      "category": "Catégorie",
+      "description": "Description",
+      "status": "Statut",
+      "customerCode": "Code Client",
+      "clientName": "Nom Client",
+      "region": "Région",
+      "priority": "Priorité",
+      "deadline": "Échéance",
+      "assignedTo": "Assigné à",
+      "actions": "Actions",
+      "report": "Affichage de {first} à {last} sur {totalRecords} interventions"
+    },
+    "stats": {
+      "total": "Total Interventions",
+      "pending": "En Attente",
+      "in_progress": "En Cours",
+      "completed": "Terminées",
+      "notValidated": "Non Validées",
+      "reason": "Motif",
+      "complexity": "Complexité",
+      "completedAt": "Terminé le",
+      "category": "Catégorie"
+    },
+    "status": {
+      "notValidated": "Non validé"
+    }
   },
   "regions": {
     "title": "Gestion du Parc Énergétique",
@@ -2062,250 +1823,181 @@
         }
     },
 
-    "myActivities": {
-        "title": "Mes Activités",
-        "subtitle": "Gérez et suivez toutes vos activités et interventions.",
-        "timelineTitle": "Chronologie de mes activités",
-        "timelineSubtitle": "Suivez la progression de vos interventions et tâches assignées.",
-        "table.report": "Affichage de {first} à {last} sur {totalRecords} activités",
-        "columnsPlaceholder": "Choisir les colonnes à afficher",
-        "stats": {
-            "total": "Total Activités",
-            "in_progress": "En Cours",
-            "completed": "Terminées",
-            "scheduled": "Planifiées"
-        },
+  "myActivities": {
+    "title": "Mes Activités",
+    "subtitle": "Gérez et suivez toutes vos activités et interventions.",
+    "timelineTitle": "Chronologie de mes activités",
+    "timelineSubtitle": "Suivez la progression de vos interventions et tâches assignées.",
+    "columnsPlaceholder": "Choisir les colonnes à afficher",
+    "noActivitiesTitle": "Aucune activité trouvée",
+    "noActivitiesSubtitle": "Il semble que vous n'ayez aucune tâche ou intervention planifiée pour le moment.",
+    "addNew": "Nouvelle Activité",
+    "subActivityFor": "Sous-activité pour : {title}",
+    "unknownReference": "Référence inconnue",
 
-        "noActivitiesTitle": "Aucune activité trouvée",
-        "noActivitiesSubtitle": "Il semble que vous n'ayez aucune tâche ou intervention planifiée pour le moment.",
-
-        "status": {
-            "scheduled": "Planifiée",
-            "in_progress": "En cours",
-            "completed": "Terminée",
-            "completed_with_issues": "Terminée avec problèmes",
-            "suspended": "Suspendue",
-            "canceled": "Annulée",
-            "awaiting_resources": "En attente de ressources",
-            "En attente": "En attente"
-        },
-
-        "statusOptions": {
-            "scheduled": "Planifiée",
-            "in_progress": "En cours",
-            "completed": "Terminée",
-            "completed_with_issues": "Terminée avec problèmes",
-            "suspended": "Suspendue",
-            "canceled": "Annulée",
-            "awaiting_resources": "En attente de ressources"
-        },
-
-        "instructionTypes": {
-            "text": "Texte",
-            "number": "Nombre",
-            "boolean": "Oui/Non",
-            "date": "Date",
-            "textarea": "Zone de texte"
-        },
-
-        "displayOptions": {
-            "actual_end_time": "Date de fin réelle",
-            "proposals": "Propositions",
-            "jobber": "Technicien",
-            "additional_information": "Infos supplémentaires",
-            "spare_parts_used": "Pièces utilisées",
-            "spare_parts_returned": "Pièces retournées"
-        },
-
-        "boolean": {
-            "yes": "Oui",
-            "no": "Non"
-        },
-
-        "defaults": {
-            "sparePartPayment": "Règlement des pièces de rechange"
-        },
-
-        "toast": {
-            "jsonParseError": "Erreur lors de l'analyse des données JSON.",
-            "subActivityCreated": "Sous-activité créée avec succès.",
-            "activityUpdated": "Activité mise à jour avec succès.",
-            "success": "Succès",
-            "error": "Erreur",
-            "saveError": "Une erreur est survenue lors de la sauvegarde.",
-            "warning": "Attention",
-            "instructionLabelRequired": "Le libellé de la consigne est requis.",
-            "added": "Ajouté",
-            "instructionAdded": "Consigne ajoutée au formulaire.",
-            "instructionRemoved": "Consigne retirée",
-            "listUpdated": "La liste a été mise à jour."
-        },
-
-        "common": {
-            "instructionNotFound": "Consigne introuvable (ID: {id})",
-            "invalidDate": "Date invalide",
-            "notSet": "Non défini",
-            "unspecifiedDate": "Date non spécifiée",
-            "unnamedActivity": "Activité sans nom",
-            "workOrderId": "OT #{id}",
-            "problemResolution": "Description de la résolution du problème :",
-            "proposals": "Propositions / Recommandations :",
-            "additionalInfo": "Informations additionnelles :",
-            "technician": "Technicien / Intervenant :",
-            "instructionAnswers": "Réponses aux consignes",
-            "usedParts": "Pièces de rechange utilisées",
-            "returnedParts": "Pièces de rechange retournées",
-            "actualEndTime": "Terminé le :",
-            "associatedTaskDetails": "Détails de la tâche associée",
-            "priority": "Priorité :",
-            "description": "Description :",
-            "createSubActivity": "Créer une sous-activité",
-            "complete": "Compléter / Modifier",
-            "taskTitle": "Tâche",
-            "status": "Statut",
-            "actualStart": "Début réel",
-            "notApplicable": "N/A",
-            "usedPartsCount": "{count} pièce(s) utilisée(s)",
-            "returnedPartsCount": "{count} pièce(s) retournée(s)",
-            "instructionsAndActions": "Consignes & Actions",
-            "answersCount": "{count} réponse(s)",
-            "completeActivityTooltip": "Compléter ou modifier l'activité",
-             "createSubActivity": "Créer une sous-activité",
-            "completeActivityTooltip": "Compléter / Voir l'activité",
-            "unnamedActivity": "Activité sans nom",
-            "instructionNotFound": "Instruction introuvable (ID: {id})",
-            "invalidDate": "Date invalide",
-            "notSet": "Non défini",
-            "associatedSubActivities": "Sous-activités associées"
-
-        },
-        "table": {
-            "task": "Tâche",
-            "status": "Statut",
-            "start_time": "Heure de début",
-            "end_time": "Heure de fin",
-            "technician": "Technicien",
-             "report": "Affichage de {first} à {last} sur {totalRecords} activités",
-            "searchPlaceholder": "Rechercher une activité...",
-            "filterByTeam": "Filtrer par équipe",
-  "filterByRegion": "Filtrer par région",
-    "filterByDate": "Filtrer par date",
-            "region": "Région",
-            "zone": "Zone",
-            "filterByStatus": "Filtrer par statut",
-            "filterByTask": "Filtrer par tâche"
-        },
-        "subActivityFor": "Sous-activité pour : {title}",
-        "unnamedActivity": "Activité sans nom",
-        "unknownReference": "Référence inconnue",
-
-        "dialog": {
-            "subActivityInitialization": "Initialisation d'une sous-activité",
-            "technicalInterventionReport": "Rapport d'intervention technique",
-            "missionSettings": "Paramètres Mission",
-            "assignationType": "Type d'affectation",
-            "assignationTypes": {
-                "user": "Seul",
-                "team": "Équipe"
-            },
-            "responsibleTechnician": "Technicien responsable",
-            "responsibleTeam": "Équipe responsable",
-            "currentStatus": "Statut Actuel",
-            "region": "Région",
-            "zone": "Zone",
-            "timestamps": "Horodatage",
-            "start": "Début",
-            "end": "Fin",
-            "activityTitle": "Titre de l'activité",
-            "gmaoAdminConsole": "Console d'administration GMAO",
-            "resolutionTitle": "Description de l'intervention et résolution",
-            "resolutionPlaceholder": "Décrivez en détail le problème rencontré, les étapes de diagnostic et la solution apportée...",
-            "recommendationsLabel": "Recommandations",
-            "internalNotesLabel": "Notes internes (non visible sur le rapport client)",
-            "addInstructionPlaceholder": "Libellé de la nouvelle consigne...",
-            "selectTypePlaceholder": "Type de valeur",
-            "checklistTitle": "Check-list de l'intervention",
-            "internalNotes": "Notes Internes",
-            "adminOnly": "ADMIN ONLY",
-            "internalNotesPlaceholder": "Détails non visibles par le client...",
-            "clientRecommendationsPlaceholder": "Conseils et préconisations...",
-            "checklistPoints": "{count} points de contrôle",
-            "removeInstructionTitle": "Retirer cette consigne",
-            "missionConfigTitle": "Configuration de la mission",
-            "statusLabel": "Statut de l'activité",
-            "assignedTechnicianLabel": "Technicien assigné",
-            "actualStartLabel": "Début réel",
-            "actualEndLabel": "Fin réelle",
-            "stockOutflowsTitle": "Sorties de stock",
-            "storeReturnsTitle": "Retours en magasin",
-            "usedStock": "Stock Utilisé",
-            "returnedStock": "Retour Stock",
-            "htValuation": "Valorisation HT",
-            "billingNotesPlaceholder": "Notes facturation...",
-            "financialImpactLabel": "Impact financier",
-            "billingLabelPlaceholder": "Libellé pour la facturation...",
-            "cancelButton": "Annuler",
-            "createSubActivityButton": "Créer la sous-activité",
-            "publishReportButton": "Publier le rapport",
-            "sparePartModalUsedTitle": "Ajouter des pièces utilisées",
-            "associatedEquipments": "Équipements associés",
-            "sparePartModalReturnedTitle": "Ajouter des pièces retournées",
-            "referencesLabel": "Références des pièces",
-            "searchPartPlaceholder": "Rechercher une pièce...",
-            "unitQuantityLabel": "Quantité (par unité sélectionnée)",
-            "closeButton": "Fermer",
-            "validateButton": "Valider",
-            "selectDestinationRegion": "Veuillez sélectionner une région de destination.",
-            "selectEquipmentsPlaceholder": "Sélectionner les équipements...",
-            "transferSuccess": "{count} compteur(s) transféré(s) avec succès.",
-            "transferError": "Une erreur est survenue lors du transfert des compteurs.",
-            "fileInvalid": "Le fichier d'importation est invalide.",
-              "subActivityInitialization": "Initialisation d'une sous-activité",
-            "technicalInterventionReport": "Rapport d'intervention technique",
-            "gmaoAdminConsole": "Console d'administration GMAO",
-            "missionSettings": "Paramètres de la mission",
-            "assignationType": "Type d'assignation",
-            "assignationTypes": {
-                "user": "Utilisateur",
-                "team": "Équipe"
-            },
-            "responsibleTechnician": "Technicien responsable",
-            "responsibleTeam": "Équipe responsable",
-            "currentStatus": "Statut actuel",
-            "region": "Région",
-            "zone": "Zone",
-            "timestamps": "Horodatage",
-            "start": "Début",
-            "end": "Fin",
-            "activityTitle": "Titre de l'activité",
-            "resolutionTitle": "Description de la résolution",
-            "resolutionPlaceholder": "Décrivez en détail les actions effectuées pour résoudre le problème...",
-            "recommendationsLabel": "Recommandations / Propositions",
-            "clientRecommendationsPlaceholder": "Suggestions pour le client ou prochaines étapes...",
-            "internalNotes": "Notes internes",
-            "adminOnly": "Admin seulement",
-            "internalNotesPlaceholder": "Informations non visibles par le client...",
-            "checklistTitle": "Checklist de l'intervention",
-            "addInstructionPlaceholder": "Ajouter une instruction...",
-            "usedStock": "Stock utilisé",
-            "returnedStock": "Stock retourné",
-            "associatedEquipments": "Équipements associés",
-            "selectEquipmentsPlaceholder": "Sélectionner des équipements",
-            "htValuation": "Valorisation (HT)",
-            "billingNotesPlaceholder": "Notes pour la facturation...",
-            "cancelButton": "Annuler",
-            "createSubActivityButton": "Créer la sous-activité",
-            "publishReportButton": "Publier le rapport",
-            "sparePartModalUsedTitle": "Ajouter une pièce utilisée",
-            "sparePartModalReturnedTitle": "Enregistrer une pièce retournée",
-            "referencesLabel": "Références des pièces",
-            "searchPartPlaceholder": "Rechercher une pièce...",
-            "unitQuantityLabel": "Quantité (par unité)",
-            "closeButton": "Fermer",
-            "validateButton": "Valider"
-        },
-        "addNew": "Nouvelle Activité"
+    "stats": {
+      "total": "Total Activités",
+      "in_progress": "En Cours",
+      "completed": "Terminée(s)",
+      "scheduled": "Planifiée(s)"
     },
+
+    "status": {
+      "scheduled": "Planifiée",
+      "in_progress": "En cours",
+      "completed": "Terminée",
+      "completed_with_issues": "Terminée avec problèmes",
+      "suspended": "Suspendue",
+      "canceled": "Annulée",
+      "awaiting_resources": "En attente de ressources",
+      "pending": "En attente"
+    },
+
+    "instructionTypes": {
+      "text": "Texte",
+      "number": "Nombre",
+      "boolean": "Oui/Non",
+      "date": "Date",
+      "textarea": "Zone de texte"
+    },
+
+    "displayOptions": {
+      "actual_end_time": "Date de fin réelle",
+      "proposals": "Propositions",
+      "jobber": "Technicien",
+      "additional_information": "Infos supplémentaires",
+      "spare_parts_used": "Pièces utilisées",
+      "spare_parts_returned": "Pièces retournées"
+    },
+
+    "boolean": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+
+    "defaults": {
+      "sparePartPayment": "Règlement des pièces de rechange"
+    },
+
+    "toast": {
+      "jsonParseError": "Erreur lors de l'analyse des données JSON.",
+      "subActivityCreated": "Sous-activité créée avec succès.",
+      "activityUpdated": "Activité mise à jour avec succès.",
+      "success": "Succès",
+      "error": "Erreur",
+      "saveError": "Une erreur est survenue lors de la sauvegarde.",
+      "warning": "Attention",
+      "instructionLabelRequired": "Le libellé de la consigne est requis.",
+      "added": "Ajouté",
+      "instructionAdded": "Consigne ajoutée au formulaire.",
+      "instructionRemoved": "Consigne retirée",
+      "listUpdated": "La liste a été mise à jour."
+    },
+
+    "common": {
+      "instructionNotFound": "Consigne introuvable (ID: {id})",
+      "invalidDate": "Date invalide",
+      "notSet": "Non défini",
+      "unspecifiedDate": "Date non spécifiée",
+      "unnamedActivity": "Activité sans nom",
+      "workOrderId": "OT #{id}",
+      "problemResolution": "Description de la résolution du problème :",
+      "proposals": "Propositions / Recommandations :",
+      "additionalInfo": "Informations additionnelles :",
+      "technician": "Technicien / Intervenant :",
+      "instructionAnswers": "Réponses aux consignes",
+      "usedParts": "Pièces de rechange utilisées",
+      "returnedParts": "Pièces de rechange retournées",
+      "actualEndTime": "Terminé le :",
+      "associatedTaskDetails": "Détails de la tâche associée",
+      "priority": "Priorité :",
+      "description": "Description :",
+      "createSubActivity": "Créer une sous-activité",
+      "complete": "Compléter / Modifier",
+      "taskTitle": "Tâche",
+      "status": "Statut",
+      "actualStart": "Début réel",
+      "notApplicable": "N/A",
+      "usedPartsCount": "{count} pièce(s) utilisée(s)",
+      "returnedPartsCount": "{count} pièce(s) retournée(s)",
+      "instructionsAndActions": "Consignes & Actions",
+      "answersCount": "{count} réponse(s)",
+      "completeActivityTooltip": "Compléter / Voir l'activité",
+      "associatedSubActivities": "Sous-activités associées"
+    },
+
+    "table": {
+      "task": "Tâche",
+      "status": "Statut",
+      "start_time": "Heure de début",
+      "end_time": "Heure de fin",
+      "technician": "Technicien",
+      "report": "Affichage de {first} à {last} sur {totalRecords} activités",
+      "searchPlaceholder": "Rechercher une activité...",
+      "filterByTeam": "Filtrer par équipe",
+      "filterByRegion": "Filtrer par région",
+      "filterByDate": "Filtrer par date",
+      "region": "Région",
+      "zone": "Zone",
+      "filterByStatus": "Filtrer par statut",
+      "filterByTask": "Filtrer par tâche"
+    },
+
+    "dialog": {
+      "subActivityInitialization": "Initialisation d'une sous-activité",
+      "technicalInterventionReport": "Rapport d'intervention technique",
+      "missionSettings": "Paramètres de la mission",
+      "assignationType": "Type d'affectation",
+      "assignationTypes": {
+        "user": "Utilisateur seul",
+        "team": "Équipe"
+      },
+      "responsibleTechnician": "Technicien responsable",
+      "responsibleTeam": "Équipe responsable",
+      "currentStatus": "Statut Actuel",
+      "region": "Région",
+      "zone": "Zone",
+      "timestamps": "Horodatage",
+      "start": "Début",
+      "end": "Fin",
+      "activityTitle": "Titre de l'activité",
+      "gmaoAdminConsole": "Console d'administration GMAO",
+      "resolutionTitle": "Description de l'intervention et résolution",
+      "resolutionPlaceholder": "Décrivez en détail le problème rencontré, les étapes de diagnostic et la solution apportée...",
+      "recommendationsLabel": "Recommandations / Propositions",
+      "clientRecommendationsPlaceholder": "Conseils et préconisations pour le client...",
+      "internalNotes": "Notes Internes",
+      "adminOnly": "ADMIN ONLY",
+      "internalNotesPlaceholder": "Détails non visibles par le client...",
+      "addInstructionPlaceholder": "Libellé de la nouvelle consigne...",
+      "selectTypePlaceholder": "Type de valeur",
+      "checklistTitle": "Check-list de l'intervention",
+      "checklistPoints": "{count} points de contrôle",
+      "removeInstructionTitle": "Retirer cette consigne",
+      "missionConfigTitle": "Configuration de la mission",
+      "usedStock": "Stock Utilisé",
+      "returnedStock": "Retour Stock",
+      "htValuation": "Valorisation HT",
+      "billingNotesPlaceholder": "Notes facturation...",
+      "financialImpactLabel": "Impact financier",
+      "billingLabelPlaceholder": "Libellé pour la facturation...",
+      "cancelButton": "Annuler",
+      "createSubActivityButton": "Créer la sous-activité",
+      "publishReportButton": "Publier le rapport",
+      "sparePartModalUsedTitle": "Ajouter des pièces utilisées",
+      "sparePartModalReturnedTitle": "Ajouter des pièces retournées",
+      "associatedEquipments": "Équipements associés",
+      "selectEquipmentsPlaceholder": "Sélectionner les équipements...",
+      "referencesLabel": "Références des pièces",
+      "searchPartPlaceholder": "Rechercher une pièce...",
+      "unitQuantityLabel": "Quantité (par unité)",
+      "closeButton": "Fermer",
+      "validateButton": "Valider",
+      "transferSuccess": "{count} compteur(s) transféré(s) avec succès.",
+      "transferError": "Une erreur est survenue lors du transfert.",
+      "fileInvalid": "Le fichier d'importation est invalide."
+    }
+  },
 
     "leaves": {
         "title": "Gestion des Congés",
@@ -2322,7 +2014,11 @@
             "type": "Type",
             "period": "Période",
             "status": "État",
-            "actions": "Actions"
+            "actions": "Actions",
+            "approvalDate": "Date d'approbation",
+            "approvedBy":"Approuvé par",
+            "rejectedBy":"Rejeté par",
+            "report": "Affichage de {first} à {last} sur {totalRecords} demandes"
         },
         "dialog": {
             "editTitle": "Mise à jour Congé",
@@ -2353,6 +2049,9 @@
             "pending": "En attente",
             "approved": "Approuvé",
             "rejected": "Rejeté"
+        },
+        "confirm":{
+            "statusChange": "Chnager de status"
         }
     }
 
@@ -2450,7 +2149,104 @@
         "toast": {
             "passwordUpdated": "Mot de passe mis à jour avec succès."
         }
+    },
+
+"spareParts": {
+    "title": "Gestion des Pièces Détachées",
+    "headTitle": "Gestion des Pièces de Rechange",
+    "toolbar": {
+      "searchPlaceholder": "Rechercher une référence ou un composant...",
+      "add": "Nouvel Actif",
+      "export": "Exporter la base",
+      "filterByRegion":"Filtrer par région"
+    },
+    "table": {
+      "report": "Affichage de {first} à {last} sur {totalRecords} pièces",
+      "ref": "REF",
+      "name": "Nom",
+      "component": "Composant",
+      "reference": "Référence",
+      "equipment": "Équipement",
+      "location": "Emplacement",
+      "quantity": "Quantité",
+      "stockAlerte": "Stock / Alerte",
+      "min_quantity": "Seuil d'Alerte",
+      "price": "Prix HT",
+      "partType": "Type de pièce",
+      "responsible": "Responsable",
+      "characteristics": "Caractéristiques",
+      "actions": "Actions"
+    },
+    "form": {
+      "partType": "Type de Composant",
+      "partTypePlaceholder": "Sélectionner la catégorie",
+      "reference": "Référence Constructeur",
+      "quantity": "Quantité en Stock",
+      "min_quantity": "Seuil d'Alerte",
+      "price": "Prix Unitaire HT",
+      "location": "Localisation Physique",
+      "region": "Entité / Région",
+      "regionPlaceholder": "Affecter une zone",
+      "responsible": "Superviseur Responsable",
+      "responsiblePlaceholder": "Choisir un gestionnaire",
+      "characteristicValues": "Spécifications Techniques",
+      "description": "Description",
+      "equipment": "Équipement (pour cette pièce)",
+      "equipmentPlaceholder": "Optionnel: Sélectionner un équipement",
+      "supplier": "Fournisseur",
+      "supplierPlaceholder": "Sélectionner un fournisseur",
+      "purchaseDate": "Date d'achat",
+      "warrantyEnd": "Fin de garantie"
+    },
+    "dialog": {
+      "createTitle": "Nouvelle Entrée Stock",
+      "editTitle": "Configuration Technique",
+      "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
+      "editSubtitle": "Modification des paramètres et des seuils logistiques",
+      "partType": "Type de pièce",
+      "partTypePlaceholder": "Sélectionner un type",
+      "reference": "Référence",
+      "quantity": "Quantité",
+      "min_quantity": "Quantité Min.",
+      "price": "Prix Unitaire",
+      "location": "Emplacement",
+      "region": "Région",
+      "regionPlaceholder": "Sélectionner une région",
+      "responsible": "Responsable",
+      "responsiblePlaceholder": "Sélectionner un responsable",
+      "characteristicValues": "Valeurs des caractéristiques",
+      "addCharacteristic": "Ajouter une caractéristique",
+      "characteristicNamePlaceholder": "Nom de la caractéristique",
+      "characteristicTypePlaceholder": "Type",
+      "characteristicValueText": "Valeur (Texte)",
+      "characteristicValueNumber": "Valeur (Nombre)",
+      "characteristicValueDate": "Valeur (Date)",
+      "characteristicValue": "Valeur",
+      "existingFile": "Fichier existant",
+      "cancel": "Annuler",
+      "save": "Sauvegarder"
+    },
+    "toast": {
+      "success": "Succès",
+      "updateSuccess": "Pièce détachée mise à jour avec succès.",
+      "createSuccess": "Pièce détachée créée avec succès.",
+      "deleteSuccess": "Pièce détachée supprimée avec succès.",
+      "bulkDeleteSuccess": "Pièces détachées supprimées avec succès.",
+      "saveError": "Erreur de Sauvegarde",
+      "error": "Erreur",
+      "deleteError": "Une erreur est survenue lors de la suppression.",
+      "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse."
+    },
+    "validation": {
+      "characteristicRequired": "La caractéristique \"{characteristic}\" est obligatoire."
+    },
+    "confirm": {
+      "deleteHeader": "Confirmation de suppression",
+      "deleteMessage": "Êtes-vous sûr de vouloir supprimer la pièce détachée \"{name}\" ?",
+      "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les pièces détachées sélectionnées ?",
+      "cancel": "Annuler",
+      "delete": "Supprimer"
     }
 
-
+  }
 }

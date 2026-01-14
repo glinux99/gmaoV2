@@ -127,6 +127,7 @@ Route::middleware('auth', 'verified')->group(function () {
 
   Route::post('/activities/bulk-store', [ActivityController::class, 'bulkStore'])->name('activities.bulkStore');
   Route::put('/expenses/{expense}/status', [ExpensesController::class, 'updateStatus'])->name('expenses.updateStatus');
+  Route::put('/leaves/{leave}/status', [LeaveController::class, 'updateStatus'])->name('leaves.updateStatus');
   Route::put('/expenses/group-status', [ExpensesController::class, 'updateGroupStatus'])->name('expenses.updateGroupStatus');
 Route::post('zones/bulk-destroy', [ZoneController::class, 'bulkDestroy'])->name('zones.bulkDestroy');
 

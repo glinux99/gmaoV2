@@ -96,7 +96,7 @@ const getStatusSeverity = (status) => {
 
 const getLeaveTypeIcon = (type) => {
     const found = leaveTypes.value.find(t => t.value === type);
-    return found ? found.icon : 'pi-calendar';
+    return ['pi', found ? found.icon : 'pi-calendar'];
 };
 
 const getLeaveTypeColor = (type) => {
@@ -126,13 +126,20 @@ const editLeave = (leave) => {
 
 const saveLeave = () => {
     const url = editing.value ? route('leaves.update', form.id) : route('leaves.store');
-    form.post(url, {
-        forceFormData: true,
+    const method = editing.value ? 'put' : 'post';
+
+    form.transform(data => ({
+        ...data,
+    })).submit(method, url, {
         onSuccess: () => {
             leaveDialog.value = false;
             toast.add({ severity: 'success', summary: t('common.success'), detail: t('leaves.toast.success'), life: 3000 });
+            form.reset();
         },
-        ...(editing.value && { _method: 'put' })
+        onError: (errors) => {
+            console.error("Erreur lors de la sauvegarde du congé", errors);
+            toast.add({ severity: 'error', summary: t('toast.error'), detail: t('toast.genericError'), life: 3000 });
+        }
     });
 };
 
@@ -149,6 +156,24 @@ const deleteLeave = (leave) => {
         accept: () => {
             router.delete(route('leaves.destroy', leave.id), {
                 onSuccess: () => toast.add({ severity: 'info', summary: t('common.info'), detail: t('common.delete'), life: 3000 })
+            });
+        }
+    });
+};
+
+const updateLeaveStatus = (leave, status) => {
+    confirm.require({
+        message: t('leaves.confirm.statusChange', { status: t(`leaves.status.${status}`) }),
+        header: t('common.attention'),
+        icon: 'pi pi-info-circle',
+        acceptClass: status === 'approved' ? 'p-button-success' : 'p-button-danger',
+        acceptLabel: t('common.confirm'),
+        rejectLabel: t('common.cancel'),
+        accept: () => {
+            router.put(route('leaves.updateStatus', leave.id), { status }, {
+                preserveScroll: true,
+                onSuccess: () => toast.add({ severity: 'success', summary: t('common.success'), detail: t('leaves.toast.statusUpdated'), life: 3000 }),
+                onError: () => toast.add({ severity: 'error', summary: t('toast.error'), detail: t('toast.genericError'), life: 3000 }),
             });
         }
     });
@@ -257,10 +282,30 @@ const deleteLeave = (leave) => {
                         </template>
                     </Column>
 
+                    <Column field="approval_date" :header="t('leaves.table.approvalDate')" sortable>
+                        <template #body="{ data }">
+                            <span v-if="data.approval_date" class="text-sm text-slate-600">
+                                {{ new Date(data.approval_date).toLocaleDateString() }}
+                            </span>
+                            <span v-else class="text-slate-400">-</span>
+                        </template>
+                    </Column>
+
+                    <Column field="approvedBy.name" :header="t('leaves.table.approvedBy')" sortable>
+                        <template #body="{ data }">
+                            <span v-if="data.approved_by" class="font-semibold text-slate-700">
+                                {{ data.approved_by.name }}
+                            </span>
+                            <span v-else class="text-slate-400">-</span>
+                        </template>
+                    </Column>
+
                     <Column header="Actions" alignFrozen="right" frozen>
                         <template #body="{ data }">
                             <div class="flex gap-2 justify-end">
                                 <Button icon="pi pi-pencil" text rounded severity="info" @click="editLeave(data)" />
+                                <Button v-if="data.status === 'pending'" icon="pi pi-check" text rounded severity="success" @click="updateLeaveStatus(data, 'approved')" v-tooltip.top="t('common.approve')" />
+                                <Button v-if="data.status === 'pending'" icon="pi pi-times" text rounded severity="warning" @click="updateLeaveStatus(data, 'rejected')" v-tooltip.top="t('common.reject')" />
                                 <Button icon="pi pi-trash" text rounded severity="danger" @click="deleteLeave(data)" />
                             </div>
                         </template>

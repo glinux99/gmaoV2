@@ -93,20 +93,20 @@ const menu = ref();
 
 // --- DEFAULT STATE ---
 const defaultSectionsState = {
-    kpis: { label: 'Indicateurs Clés (KPIs)', visible: true },
-    sparklines: { label: 'Mini-Graphiques', visible: true },
-    workOrders: { label: "File d'attente", visible: true },
-    stockAlerts: { label: 'Alertes Stock', visible: true },
-    preventiveCalendar: { label: 'Calendrier Préventif', visible: true },
-    riskMatrix: { label: 'Matrice de Risques', visible: true },
-    technicianEfficiency: { label: 'Efficacité Techniciens', visible: true },
-    mainChart: { label: 'Flux de Maintenance', visible: false },
-    statusDuration: { label: 'Durée par Statut', visible: true },
-    statusDoughnut: { label: 'Répartition par Statut', visible: false },
-    budget: { label: 'Finances', visible: true },
-    criticalityAnalysis: { label: 'Analyse Criticité', visible: true },
-    recentInterventions: { label: 'Interventions Récentes', visible: true },
-    stockFlow: { label: 'Flux de Stock', visible: true },
+    kpis: { label: t('dashboard.sections.kpis'), visible: true },
+    sparklines: { label: t('dashboard.sections.sparklines'), visible: true },
+    workOrders: { label: t('dashboard.sections.workOrders'), visible: true },
+    stockAlerts: { label: t('dashboard.sections.stockAlerts'), visible: true },
+    preventiveCalendar: { label: t('dashboard.sections.preventiveCalendar'), visible: true },
+    riskMatrix: { label: t('dashboard.sections.riskMatrix'), visible: true },
+    technicianEfficiency: { label: t('dashboard.sections.technicianEfficiency'), visible: true },
+    mainChart: { label: t('dashboard.sections.mainChart'), visible: false },
+    statusDuration: { label: t('dashboard.sections.statusDuration'), visible: true },
+    statusDoughnut: { label: t('dashboard.sections.statusDoughnut'), visible: false },
+    budget: { label: t('dashboard.sections.budget'), visible: true },
+    criticalityAnalysis: { label: t('dashboard.sections.criticalityAnalysis'), visible: true },
+    recentInterventions: { label: t('dashboard.sections.recentInterventions'), visible: true },
+    stockFlow: { label: t('dashboard.sections.stockFlow'), visible: true },
 };
 // Section visibility state
 const sections = ref({
@@ -135,7 +135,7 @@ const sectionMenuItems = computed(() =>
     })),
     { separator: true },
     {
-        label: 'Réinitialiser',
+        label: t('dashboard.sections.reset'),
         icon: 'pi pi-refresh',
         command: resetSections
     }
@@ -162,10 +162,10 @@ const globalChartOptions = computed(() => ({
 const sparklineItems = computed(() => {
     const data = props.sparklineData;
     return [
-        { key: 'activeTasks', label: 'Work Orders', value: props.activeTasksCount || 0, icon: 'pi pi-briefcase', color: '#6366F1' },
-        { key: 'backlog', label: 'Backlog', value: props.backlogTasksCount || 0, icon: 'pi pi-clock', color: '#F59E0B' },
-        { key: 'timeSpent', label: 'Labors Hours', value: props.timeSpent || '0h', icon: 'pi pi-users', color: '#10B981' },
-        { key: 'mttr', label: 'Avg. MTTR', value: (props.mttr || 0) + 'h', icon: 'pi pi-wrench', color: '#EF4444' }
+        { key: 'activeTasks', label: t('dashboard.sparklines.workOrders'), value: props.activeTasksCount || 0, icon: 'pi pi-briefcase', color: '#6366F1' },
+        { key: 'backlog', label: t('dashboard.sparklines.backlog'), value: props.backlogTasksCount || 0, icon: 'pi pi-clock', color: '#F59E0B' },
+        { key: 'timeSpent', label: t('dashboard.sparklines.laborHours'), value: props.timeSpent || '0h', icon: 'pi pi-users', color: '#10B981' },
+        { key: 'mttr', label: t('dashboard.sparklines.avgMttr'), value: (props.mttr || 0) + 'h', icon: 'pi pi-wrench', color: '#EF4444' }
     ].map(item => ({
         ...item,
         chartData: {
@@ -198,11 +198,11 @@ const taskDistribution = computed(() => {
 });
 
 const kpiData = ref([
-    { label: 'Taux Disponibilité', value: '98.4', unit: '%', icon: 'pi-bolt', color: 'primary', trend: 2.1, progress: 98 },
-    { label: 'MTBF Global', value: '156', unit: 'hrs', icon: 'pi-sync', color: 'emerald', trend: 12, progress: 85 },
-    { label: 'TRS (OEE)', value: '82.1', unit: '%', icon: 'pi-chart-bar', color: 'amber', trend: -1.4, progress: 82 },
-    { label: 'Backlog Maintenance', value: '24', unit: 'WO', icon: 'pi-clock', color: 'rose', trend: 5, progress: 40 },
-    { label: 'Conformité Préventif', value: '94', unit: '%', icon: 'pi-check-circle', color: 'blue', trend: 0.8, progress: 94 }
+    { label: t('dashboard.kpis.availabilityRate'), value: '98.4', unit: '%', icon: 'pi-bolt', color: 'primary', trend: 2.1, progress: 98 },
+    { label: t('dashboard.kpis.globalMtbf'), value: '156', unit: 'hrs', icon: 'pi-sync', color: 'emerald', trend: 12, progress: 85 },
+    { label: t('dashboard.kpis.oee'), value: '82.1', unit: '%', icon: 'pi-chart-bar', color: 'amber', trend: -1.4, progress: 82 },
+    { label: t('dashboard.kpis.maintenanceBacklog'), value: '24', unit: 'WO', icon: 'pi-clock', color: 'rose', trend: 5, progress: 40 },
+    { label: t('dashboard.kpis.preventiveCompliance'), value: '94', unit: '%', icon: 'pi-check-circle', color: 'blue', trend: 0.8, progress: 94 }
 ]);
 
 const sparklineOptions = {
@@ -216,7 +216,7 @@ const performanceChartData = {
     labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
     datasets: [
         {
-            label: 'Disponibilité Actifs (%)',
+            label: t('dashboard.performanceChart.availability'),
             borderColor: '#6366F1',
             backgroundColor: 'rgba(99, 102, 241, 0.1)',
             borderWidth: 4,
@@ -225,7 +225,7 @@ const performanceChartData = {
             data: [98, 97, 99, 95, 98, 99, 98]
         },
         {
-            label: 'Productivité (OEE)',
+            label: t('dashboard.performanceChart.productivity'),
             borderColor: '#10B981',
             borderWidth: 3,
             borderDash: [5, 5],
@@ -250,12 +250,12 @@ const stockRotationData = computed(() => {
     return {
         labels: source?.labels || ['S1', 'S2', 'S3', 'S4'],
         datasets: [{
-            label: 'Entrées',
+            label: t('dashboard.stockRotation.entries'),
             backgroundColor: '#6366F1',
             data: source?.entries || [],
             borderRadius: 5
         }, {
-            label: 'Sorties',
+            label: t('dashboard.stockRotation.exits'),
             backgroundColor: '#F43F5E',
             data: source?.exits || [],
             borderRadius: 5
@@ -349,12 +349,12 @@ const showWODialog = ref(false);
                         <i class="pi pi-bolt text-white text-3xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">{{ t('dashboard.title') }}</h1>
                         <div class="flex items-center gap-2 text-slate-500 font-medium">
                             <i class="pi pi-calendar text-xs"></i>
-                            <span>System • généré à {{ new Date().toLocaleTimeString() }}
+                            <span>{{ t('dashboard.generatedAt', { time: new Date().toLocaleTimeString() }) }}
           </span>
-                            <Tag value="Live Data" severity="success" class="ml-2 !text-[10px] !px-2" pulse />
+                            <Tag :value="t('dashboard.liveData')" severity="success" class="ml-2 !text-[10px] !px-2" pulse />
                         </div>
                     </div>
                 </div>
@@ -362,17 +362,17 @@ const showWODialog = ref(false);
                  <div class="glass-panel flex flex-wrap items-center gap-2 p-3 bg-white/70 backdrop-blur-xl border border-white rounded-[2.5rem] shadow-xl shadow-slate-200/50">
                     <div class="flex items-center gap-3 px-4 py-2 border-r border-slate-100">
                         <i class="pi pi-filter-fill text-primary-500"></i>
-                        <span class="text-sm font-black text-slate-700">FILTRES</span>
+                        <span class="text-sm font-black text-slate-700">{{ t('dashboard.filters.title') }}</span>
                     </div>
 
-                    <Dropdown v-model="selectedZone" :options="zones" optionLabel="title" placeholder="Zone Industrielle" class="custom-dropdown w-48" @change="applyFilters" />
-                    <Dropdown v-model="selectedEquipment" :options="equipments" optionLabel="designation" placeholder="Équipement" class="custom-dropdown w-48" @change="applyFilters" />
+                    <Dropdown v-model="selectedZone" :options="zones" optionLabel="title" :placeholder="t('dashboard.filters.zonePlaceholder')" class="custom-dropdown w-48" @change="applyFilters" />
+                    <Dropdown v-model="selectedEquipment" :options="equipments" optionLabel="designation" :placeholder="t('dashboard.filters.equipmentPlaceholder')" class="custom-dropdown w-48" @change="applyFilters" />
 
                     <Button icon="pi pi-sync" @click="applyFilters" :loading="isLoading" class="p-button-rounded p-button-primary shadow-lg hover:scale-105 active:scale-95 transition-all" />
 
                     <Divider layout="vertical" class="hidden lg:block" />
 
-                    <Button icon="pi pi-eye" @click="toggleMenu" aria-haspopup="true" aria-controls="overlay_menu" class="p-button-rounded p-button-text" v-tooltip.bottom="'Gérer les sections'" />
+                    <Button icon="pi pi-eye" @click="toggleMenu" aria-haspopup="true" aria-controls="overlay_menu" class="p-button-rounded p-button-text" v-tooltip.bottom="t('dashboard.manageSections')" />
                     <Menu ref="menu" id="overlay_menu" :model="sectionMenuItems" :popup="true">
                         <template #item="{ item, props }">
                             <a v-ripple class="flex items-center" v-bind="props.action">
@@ -392,10 +392,10 @@ const showWODialog = ref(false);
             <section v-show="sections.kpis.visible" data-section-id="kpis" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8 section-container">
 
                 <div v-for="kpi in [
-                    { label: 'Disponibilité', value: availabilityRate, unit: '%', icon: 'pi-power-off', color: 'primary', desc: 'Temps de prod. réel' },
-                    { label: 'Taux Préventif', value: preventiveMaintenanceRate, unit: '%', icon: 'pi-verified', color: 'emerald', desc: 'Objectif: > 80%' },
-                    { label: 'MTBF', value: mtbf, unit: 'j', icon: 'pi-sync', color: 'amber', desc: 'Fiabilité équipement' },
-                    { label: 'OEE / TRS', value: oee, unit: '%', icon: 'pi-percentage', color: 'red', desc: 'Efficacité globale' }
+                    { label: t('dashboard.kpis.availability'), value: availabilityRate, unit: '%', icon: 'pi-power-off', color: 'primary', desc: t('dashboard.kpis.availabilityDesc') },
+                    { label: t('dashboard.kpis.preventiveRate'), value: preventiveMaintenanceRate, unit: '%', icon: 'pi-verified', color: 'emerald', desc: t('dashboard.kpis.preventiveRateDesc') },
+                    { label: t('dashboard.kpis.mtbf'), value: mtbf, unit: 'j', icon: 'pi-sync', color: 'amber', desc: t('dashboard.kpis.mtbfDesc') },
+                    { label: t('dashboard.kpis.oee'), value: oee, unit: '%', icon: 'pi-percentage', color: 'red', desc: t('dashboard.kpis.oeeDesc') }
                 ]" :key="kpi.label" class="kpi-card group">
                     <div @dblclick="toggleSection('kpis')" class="relative bg-white p-6 rounded-xl border border-slate-100 shadow-sm overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 section-title">
                         <div :class="`absolute -right-4 -top-4 w-24 h-24 bg-${kpi.color}-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500`"></div>
@@ -432,17 +432,17 @@ const showWODialog = ref(false);
 
                     <template #title>
                         <div @dblclick="toggleSection('workOrders')" class="flex justify-between items-center px-4 pt-2 section-title">
-                            <span class="text-lg font-black text-slate-800">File d'Attente Interventions</span>
+                            <span class="text-lg font-black text-slate-800">{{ t('dashboard.workOrders.title') }}</span>
                             <div class="flex gap-2">
-                                <Tag :value="`${props.urgentWorkOrdersCount || 0} Urgent`" severity="danger" rounded />
-                                <Tag :value="`${props.inProgressWorkOrdersCount || 0} En Cours`" severity="info" rounded />
+                                <Tag :value="t('dashboard.workOrders.urgent', { count: props.urgentWorkOrdersCount || 0 })" severity="danger" rounded />
+                                <Tag :value="t('dashboard.workOrders.inProgress', { count: props.inProgressWorkOrdersCount || 0 })" severity="info" rounded />
                             </div>
                         </div>
                     </template>
                     <template #content>
                         <DataTable :value="props.workOrders" scrollable scrollHeight="450px" class="p-datatable-sm custom-erp-table">
-                            <Column field="id" header="ID" class="font-black text-primary-600 w-20"></Column>
-                            <Column field="asset" header="ÉQUIPEMENT">
+                            <Column field="id" :header="t('dashboard.workOrders.columns.id')" class="font-black text-primary-600 w-20"></Column>
+                            <Column field="asset" :header="t('dashboard.workOrders.columns.equipment')">
                                 <template #body="{data}">
                                     <div class="flex flex-col">
                                         <span class="font-bold text-slate-700">{{ data.asset }}</span>
@@ -450,12 +450,12 @@ const showWODialog = ref(false);
                                     </div>
                                 </template>
                             </Column>
-                            <Column field="priority" header="PRIORITÉ">
+                            <Column field="priority" :header="t('dashboard.workOrders.columns.priority')">
                                 <template #body="{data}">
                                     <span :class="priorityClass(data.priority)">{{ data.priority }}</span>
                                 </template>
                             </Column>
-                            <Column field="technician" header="ASSIGNÉ">
+                            <Column field="technician" :header="t('dashboard.workOrders.columns.assigned')">
                                 <template #body="{data}">
                                     <div class="flex items-center gap-2">
                                         <Avatar :image="data.tech_img" shape="circle" size="small" />
@@ -463,12 +463,12 @@ const showWODialog = ref(false);
                                     </div>
                                 </template>
                             </Column>
-                            <Column field="progress" header="AVANCEMENT">
+                            <Column field="progress" :header="t('dashboard.workOrders.columns.progress')">
                                 <template #body="{data}">
                                     <Knob v-model="data.progress" :size="35" readonly strokeWidth="8" rangeColor="#F1F5F9" valueColor="#6366F1" />
                                 </template>
                             </Column>
-                            <Column header="ACTIONS">
+                            <Column :header="t('dashboard.workOrders.columns.actions')">
                                 <template #body>
                                     <Button icon="pi pi-external-link" class="p-button-rounded p-button-text p-button-sm" />
                                 </template>
@@ -480,7 +480,7 @@ const showWODialog = ref(false);
                 <Card v-show="sections.stockAlerts.visible" data-section-id="stockAlerts" class="col-span-12 xl:col-span-5 !rounded-xl border-none shadow-xl shadow-slate-200/40 bg-white overflow-hidden section-container">
 
                     <template #title>
-                        <div @dblclick="toggleSection('stockAlerts')" class="px-4 pt-2 font-black text-slate-800 section-title">Alerte Stock Critique</div>
+                        <div @dblclick="toggleSection('stockAlerts')" class="px-4 pt-2 font-black text-slate-800 section-title">{{ t('dashboard.stockAlerts.title') }}</div>
                     </template>
                     <template #content>
                         <div class="space-y-4 px-2">
@@ -491,20 +491,20 @@ const showWODialog = ref(false);
                                     </div>
                                     <div>
                                         <p class="font-black text-slate-800 text-sm">{{ part.reference }}</p>
-                                        <p class="text-[10px] text-slate-400 font-bold uppercase">REF: {{ part.reference }}</p>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase">{{ t('dashboard.stockAlerts.ref') }} {{ part.reference }}</p>
                                     </div>
                                 </div>
                                 <div class="text-right">
                                     <p class="text-xs font-black" :class="part.quantity < part.min_quantity ? 'text-rose-500' : 'text-slate-600'">
-                                        {{ part.quantity }} / {{ part.min_quantity }} <span class="text-[9px]">UNITÉS</span>
+                                        {{ part.quantity }} / {{ part.min_quantity }} <span class="text-[9px]">{{ t('dashboard.stockAlerts.units') }}</span>
                                     </p>
-                                    <Button v-if="part.quantity < part.min_quantity" label="Commander" class="p-button-text p-button-xs !p-0 font-bold text-primary-600" />
+                                    <Button v-if="part.quantity < part.min_quantity" :label="t('dashboard.stockAlerts.order')" class="p-button-text p-button-xs !p-0 font-bold text-primary-600" />
                                 </div>
                             </div>
                         </div>
 
                         <div class="mt-8 p-4 bg-primary-50/50 rounded-xl">
-                            <h4 class="text-[10px] font-black text-primary-400 uppercase mb-4 text-center">Rotation de Stock (30j)</h4>
+                            <h4 class="text-[10px] font-black text-primary-400 uppercase mb-4 text-center">{{ t('dashboard.stockRotation.title') }}</h4>
                             <div class="h-[120px]">
                                 <Chart type="bar" :data="stockRotationData" :options="miniChartOptions" />
                             </div>
@@ -516,7 +516,7 @@ const showWODialog = ref(false);
             <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 section-container">
                 <div v-show="sections.preventiveCalendar.visible" data-section-id="preventiveCalendar" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
                     <div @dblclick="toggleSection('preventiveCalendar')" class="flex justify-between items-center mb-6 section-title">
-                        <h3 class="font-black text-slate-800 tracking-tight">Calendrier Préventif</h3>
+                        <h3 class="font-black text-slate-800 tracking-tight">{{ t('dashboard.preventiveCalendar.title') }}</h3>
                         <i class="pi pi-calendar-plus text-primary-500 text-xl cursor-pointer"></i>
                     </div>
                     <div class="space-y-4">
@@ -530,7 +530,7 @@ const showWODialog = ref(false);
                                 <p class="text-xs text-slate-400">{{ event.duration }} • {{ event.team }}</p>
                                 <div class="flex gap-1 mt-2">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    <span class="text-[9px] font-black text-slate-400 uppercase">Confirmé</span>
+                                    <span class="text-[9px] font-black text-slate-400 uppercase">{{ t('dashboard.preventiveCalendar.confirmed') }}</span>
                                 </div>
                             </div>
                         </div>
@@ -538,18 +538,18 @@ const showWODialog = ref(false);
                 </div>
 
                 <div v-show="sections.riskMatrix.visible" data-section-id="riskMatrix" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <h3 @dblclick="toggleSection('riskMatrix')" class="font-black text-slate-800 mb-6 section-title">Matrice de Risque Actifs</h3>
+                    <h3 @dblclick="toggleSection('riskMatrix')" class="font-black text-slate-800 mb-6 section-title">{{ t('dashboard.riskMatrix.title') }}</h3>
                     <div class="h-[300px]">
                         <Chart type="radar" :data="props.riskMatrixData" :options="radarOptions" />
                     </div>
                     <div class="mt-4 p-4 bg-rose-50 rounded-xl">
-                        <p class="text-[10px] text-rose-600 font-black uppercase mb-1"><i class="pi pi-exclamation-circle"></i> Risque Critique</p>
-                        <p class="text-xs font-bold text-rose-900">Groupe Hydraulique G2 : Vibration hors tolérance (8.2mm/s)</p>
+                        <p class="text-[10px] text-rose-600 font-black uppercase mb-1"><i class="pi pi-exclamation-circle"></i> {{ t('dashboard.riskMatrix.criticalRisk') }}</p>
+                        <p class="text-xs font-bold text-rose-900">{{ t('dashboard.riskMatrix.criticalRiskExample') }}</p>
                     </div>
                 </div>
 
                 <div v-show="sections.technicianEfficiency.visible" data-section-id="technicianEfficiency" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <h3 @dblclick="toggleSection('technicianEfficiency')" class="font-black text-slate-800 mb-6 section-title">Efficacité Technicienne</h3>
+                    <h3 @dblclick="toggleSection('technicianEfficiency')" class="font-black text-slate-800 mb-6 section-title">{{ t('dashboard.technicianEfficiency.title') }}</h3>
                     <div class="space-y-6">
                         <div v-for="user in props.technicianEfficiency" :key="user.name">
                             <div class="flex justify-between items-center mb-2">
@@ -565,8 +565,8 @@ const showWODialog = ref(false);
                                 </template>
                             </ProgressBar>
                             <div class="flex justify-between mt-2 text-[9px] font-bold text-slate-400 uppercase">
-                                <span>{{ user.completed }} WO Terminés</span>
-                                <span>{{ user.backlog }} en attente</span>
+                                <span>{{ t('dashboard.technicianEfficiency.completed', { count: user.completed }) }}</span>
+                                <span>{{ t('dashboard.technicianEfficiency.pending', { count: user.backlog }) }}</span>
                             </div>
                         </div>
                     </div>
@@ -581,10 +581,10 @@ const showWODialog = ref(false);
                             <div @dblclick="toggleSection('mainChart')" class="flex justify-between items-center p-5 cursor-pointer hover:bg-slate-50 transition-colors">
                                 <div class="flex items-center gap-3">
                                     <div class="w-1.5 h-8 bg-primary-600 rounded-full"></div>
-                                    <span class="text-xl font-black text-slate-800 tracking-tight">Flux de Maintenance & Temps d'Arrêt</span>
+                                    <span class="text-xl font-black text-slate-800 tracking-tight">{{ t('dashboard.mainChart.title') }}</span>
                                 </div>
                                 <div class="flex gap-2">
-                                    <Button icon="pi pi-download" class="p-button-rounded p-button-text p-button-secondary hover:bg-primary-50" v-tooltip.top="'Exporter PDF'" />
+                                    <Button icon="pi pi-download" class="p-button-rounded p-button-text p-button-secondary hover:bg-primary-50" v-tooltip.top="t('dashboard.mainChart.exportPdf')" />
                                     <Button icon="pi pi-ellipsis-h" class="p-button-rounded p-button-text p-button-secondary" />
                                 </div>
                             </div>
@@ -596,15 +596,15 @@ const showWODialog = ref(false);
 
                             <div class="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/80 border-t border-slate-100 mt-4">
                                 <div class="p-5 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ratio Disponibilité</p>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.availabilityRatio') }}</p>
                                     <p class="text-2xl font-black text-primary-600">{{ props.availabilityRate || 0 }}%</p>
                                 </div>
                                 <div class="p-5 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Moyen Clôture</p>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.avgClosure') }}</p>
                                     <p class="text-2xl font-black text-slate-800">{{ props.averageClosureTime || 0 }} <span class="text-xs font-medium text-slate-500">hrs</span></p>
                                 </div>
                                 <div class="p-5 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Efficacité Équipe</p>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.teamEfficiency') }}</p>
                                     <p class="text-2xl font-black" :class="props.teamEfficiencyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'">
                                         {{ props.teamEfficiencyChange >= 0 ? '+' : '' }}{{ props.teamEfficiencyChange || 0 }}%
                                     </p>
@@ -631,7 +631,7 @@ const showWODialog = ref(false);
                         class="!rounded-xl border-none shadow-lg shadow-slate-200/50 bg-white overflow-hidden h-fit">
                         <template #title>
                             <div @dblclick="toggleSection('statusDoughnut')" class="flex justify-between items-center p-5 cursor-pointer border-b border-slate-50">
-                                <span class="text-lg font-bold text-slate-800">Charge par Statut</span>
+                                <span class="text-lg font-bold text-slate-800">{{ t('dashboard.statusDoughnut.title') }}</span>
                                 <i class="pi pi-info-circle text-slate-300"></i>
                             </div>
                         </template>
@@ -646,7 +646,7 @@ const showWODialog = ref(false);
                                 </div>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center pt-[-40px] pointer-events-none">
                                     <span class="text-5xl font-[1000] text-slate-800 tracking-tighter">{{ activeTasksCount }}</span>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">En cours</span>
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">{{ t('dashboard.statusDoughnut.inProgress') }}</span>
                                 </div>
                             </div>
                         </template>
@@ -661,7 +661,7 @@ const showWODialog = ref(false);
 
                         <h3 @dblclick="toggleSection('budget')" class="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mb-8 cursor-pointer flex items-center gap-2">
                             <span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
-                            Finances Maintenance
+                            {{ t('dashboard.budget.title') }}
                         </h3>
 
                         <div class="mb-8 relative z-10">
@@ -694,15 +694,15 @@ const showWODialog = ref(false);
                     <template #title>
                         <div @dblclick="toggleSection('criticalityAnalysis')" class="flex items-center gap-3 px-2 pt-2 section-title">
                             <i class="pi pi-exclamation-triangle text-rose-500 text-xl"></i>
-                            <span class="text-lg font-black text-slate-800">Analyse de Criticité Équipements</span>
+                            <span class="text-lg font-black text-slate-800">{{ t('dashboard.criticalityAnalysis.title') }}</span>
                         </div>
                     </template>
                     <template #content>
                         <div class="h-[400px]">
                             <Chart type="bar" :data="{
-                                labels: props.topFailingEquipmentsChart?.labels || ['CNC-01', 'POMPE-P2', 'TURBINE-X', 'COMP-04', 'LIGNE-3'],
+                                labels: props.topFailingEquipmentsChart?.labels || ['CNC-01', 'POMPE-P2', 'TURBINE-X', 'COMP-04', 'LIGNE-3'], // Keep as is, data driven
                                 datasets: [{
-                                    label: 'Nombre de pannes',
+                                    label: t('dashboard.criticalityAnalysis.failuresCount'),
                                     data: props.topFailingEquipmentsChart?.data || [15, 12, 9, 8, 5],
                                     backgroundColor: ['#EF4444', '#F43F5E', '#FB7185', '#FDA4AF', '#FECDD3'],
                                     borderRadius: 12,
@@ -721,13 +721,13 @@ const showWODialog = ref(false);
                 <Card v-show="sections.recentInterventions.visible" data-section-id="recentInterventions" class="col-span-12 xl:col-span-5 !rounded-xl border-none shadow-xl shadow-slate-200/50 bg-white overflow-hidden section-container">
                     <template #title>
                         <div @dblclick="toggleSection('recentInterventions')" class="flex justify-between items-center px-4 pt-2 section-title">
-                            <span class="text-lg font-black text-slate-800">Flux d'Interventions</span>
-                            <Button label="Voir Tout" class="p-button-text p-button-sm font-bold" />
+                            <span class="text-lg font-black text-slate-800">{{ t('dashboard.recentInterventions.title') }}</span>
+                            <Button :label="t('dashboard.recentInterventions.seeAll')" class="p-button-text p-button-sm font-bold" />
                         </div>
                     </template>
                     <template #content>
                         <DataTable :value="props.recentInterventions || []" :rows="5" class="p-datatable-sm custom-table">
-                            <Column field="equipment" header="ACTIF">
+                            <Column field="equipment" :header="t('dashboard.recentInterventions.columns.asset')">
                                 <template #body="slotProps">
                                     <div class="flex items-center gap-3">
                                         <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
@@ -737,19 +737,19 @@ const showWODialog = ref(false);
                                     </div>
                                 </template>
                             </Column>
-                            <Column field="priority" header="PRIORITÉ">
+                            <Column field="priority" :header="t('dashboard.recentInterventions.columns.priority')">
                                 <template #body="slotProps">
                                     <Tag :value="slotProps.data.priority" :severity="getPrioritySeverity(slotProps.data.priority)" class="!text-[9px] !px-2" />
                                 </template>
                             </Column>
-                            <Column field="technician" header="TECH">
+                            <Column field="technician" :header="t('dashboard.recentInterventions.columns.tech')">
                                 <template #body="slotProps">
                                     <AvatarGroup>
                                         <Avatar :image="slotProps.data.tech_image" shape="circle" size="small" v-tooltip.top="slotProps.data.technician" />
                                     </AvatarGroup>
                                 </template>
                             </Column>
-                            <Column field="status" header="ÉTAT">
+                            <Column field="status" :header="t('dashboard.recentInterventions.columns.status')">
                                 <template #body="slotProps">
                                     <i :class="['pi', slotProps.data.status === 'Completed' ? 'pi-check-circle text-emerald-500' : 'pi-spin pi-spinner text-amber-500']"></i>
                                  </template>
@@ -758,17 +758,17 @@ const showWODialog = ref(false);
 
                         <div class="mt-8 p-4 bg-primary-50 rounded-3xl flex justify-around items-center" >
                             <div class="text-center">
-                                <p class="text-[9px] font-black text-primary-400 uppercase">En cours</p>
+                                <p class="text-[9px] font-black text-primary-400 uppercase">{{ t('dashboard.recentInterventions.inProgress') }}</p>
                                 <p class="text-lg font-black text-primary-700">{{ props.inProgressWorkOrdersCount || 0 }}</p>
                             </div>
                             <div class="w-px h-8 bg-primary-200"></div>
                             <div class="text-center">
-                                <p class="text-[9px] font-black text-primary-400 uppercase">En attente</p>
+                                <p class="text-[9px] font-black text-primary-400 uppercase">{{ t('dashboard.recentInterventions.pending') }}</p>
                                 <p class="text-lg font-black text-primary-700">{{ props.awaitingWorkOrdersCount || 0 }}</p>
                             </div>
                             <div class="w-px h-8 bg-primary-200"></div>
                             <div class="text-center">
-                                <p class="text-[9px] font-black text-primary-400 uppercase">Clôturés (24h)</p>
+                                <p class="text-[9px] font-black text-primary-400 uppercase">{{ t('dashboard.recentInterventions.closed24h') }}</p>
                                 <p class="text-lg font-black text-primary-700">{{ props.completedLast24hCount || 0 }}</p>
                             </div>
                         </div>
@@ -781,25 +781,25 @@ const showWODialog = ref(false);
                     <template #content>
                         <div @dblclick="toggleSection('stockFlow')" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-4 section-title">
                             <div class="lg:col-span-4">
-                                <h3 class="text-2xl font-black text-slate-800 mb-2">Flux Stocks & Pièces</h3>
-                                <p class="text-slate-400 text-sm mb-6 font-medium">Analyse des entrées/sorties de composants critiques sur les 30 derniers jours.</p>
+                                <h3 class="text-2xl font-black text-slate-800 mb-2">{{ t('dashboard.stockFlow.title') }}</h3>
+                                <p class="text-slate-400 text-sm mb-6 font-medium">{{ t('dashboard.stockFlow.description') }}</p>
                                 <div class="space-y-4">
                                     <div class="flex justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-100 transition hover:shadow-lg hover:border-emerald-200">
-                                        <span class="text-emerald-700 font-bold">Réapprovisionnement</span>
+                                        <span class="text-emerald-700 font-bold">{{ t('dashboard.stockFlow.restock') }}</span>
                                         <span class="font-black text-emerald-800">+{{ props.totalStockIn || 0 }} art.</span>
                                     </div>
                                     <div class="flex justify-between p-4 bg-rose-50 rounded-xl border border-rose-100 transition hover:shadow-lg hover:border-rose-200">
-                                        <span class="text-rose-700 font-bold">Consommation</span>
+                                        <span class="text-rose-700 font-bold">{{ t('dashboard.stockFlow.consumption') }}</span>
                                         <span class="font-black text-rose-800">-{{ props.totalStockOut || 0 }} art.</span>
                                     </div>
                                 </div>
                             </div>
                             <div class="lg:col-span-8 h-[300px]">
                                 <Chart type="line" :data="{
-                                    labels: props.sparePartsMovement?.labels || ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+                                    labels: props.sparePartsMovement?.labels || ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'], // Keep as is, data driven
                                     datasets: [
-                                        { label: 'Entrées', borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, data: props.sparePartsMovement?.entries || [20, 45, 30, 60], tension: 0.4 },
-                                        { label: 'Sorties', borderColor: '#EF4444', data: props.sparePartsMovement?.exits || [15, 30, 45, 25], tension: 0.4 }
+                                        { label: t('dashboard.stockFlow.entries'), borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, data: props.sparePartsMovement?.entries || [20, 45, 30, 60], tension: 0.4 },
+                                        { label: t('dashboard.stockFlow.exits'), borderColor: '#EF4444', data: props.sparePartsMovement?.exits || [15, 30, 45, 25], tension: 0.4 }
                                     ]
                                 }" :options="{ ...mainChartOptions, plugins: { legend: { position: 'bottom' } } }" class="h-full" />
                             </div>
@@ -810,7 +810,7 @@ const showWODialog = ref(false);
 
         </div>
 
-        <Dialog v-model:visible="showWODialog" header="Créer un Ordre de Travail" :modal="true" class="w-full max-w-2xl">
+        <Dialog v-model:visible="showWODialog" :header="t('dashboard.createWoDialog.title')" :modal="true" class="w-full max-w-2xl">
             </Dialog>
 
     </AppLayout>

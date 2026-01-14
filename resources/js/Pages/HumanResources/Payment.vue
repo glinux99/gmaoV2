@@ -111,7 +111,7 @@ const filteredPayables = computed(() => {
     }
 });
 
-watch(() => form.payable_type, () => { form.payable_id = null; });
+// watch(() => form.payable_type, () => { form.payable_id = null; });
 
 // --- ACTIONS ---
 const openNew = () => {
@@ -129,7 +129,8 @@ const editPayment = (payment) => {
     Object.assign(form, {
         ...payment,
         payment_date: payment.payment_date ? new Date(payment.payment_date) : null,
-        payable_type: payment.payable_type, // Ensure payable_type is set for editing
+        payable_type: payment.payable_type,
+        paid_by: payment.paid_by.id, // Ensure payable_type is set for editing
     });
     editing.value = true;
     paymentDialog.value = true;
@@ -318,7 +319,7 @@ const getPayableAvatarLabel = (type, id) => {
             :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }"
         >
             <div>
-                <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+                <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50 rounded-xl">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200">
                             <i class="pi pi-dollar text-xl"></i>

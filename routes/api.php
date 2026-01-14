@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\InterventionRequestController;
+use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
@@ -28,6 +29,7 @@ Route::put('/interventions/{intervention}/validate', [InterventionRequestControl
 Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::get('quantumx/models', [ReportController::class, 'fetchData']);
 
-Route::apiResource("maintenancesx", ConnectionController::class);Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::apiResource("maintenancesx", LeaveController::class);
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

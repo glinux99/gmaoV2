@@ -543,9 +543,9 @@ const getPrioritySeverity = (priority) => {
                 <ConfirmDialog></ConfirmDialog>
 
                 <Toolbar class="mb-4">
-                    <template #start>
+                    <!-- <template #start>
                         <Button label="Nouvelle Maintenance" icon="pi pi-plus" class="mr-2" @click="openNew" />
-                    </template>
+                    </template> -->
                     <template #end>
                         <div class="flex items-center gap-2">
                             <IconField>
