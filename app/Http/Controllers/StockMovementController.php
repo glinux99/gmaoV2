@@ -33,8 +33,15 @@ class StockMovementController extends Controller
     public function index(Request $request)
     {
         // Utilisation de select explicite pour éviter les conflits d'IDs avec les jointures
-        $query = StockMovement::query()
-            ->with(['movable', 'sourceRegion', 'destinationRegion', 'user'])
+        $query = StockMovement::with([
+                'movable' => function ($morphTo) {
+                    $morphTo->morphWith([
+                        SparePart::class => ['label'], // Charger la relation 'label' uniquement pour les SparePart
+                    ]);
+                },
+                'sourceRegion',
+                'destinationRegion',
+                'user'])
             ->select('stock_movements.*');
 
         // --- Gestion des filtres de la requête ---
@@ -42,6 +49,23 @@ class StockMovementController extends Controller
         $regionId = $filters['region_id']['value'] ?? null;
         $movementType = $filters['type']['value'] ?? $request->input('movementType'); // ajouter ici ou recuprer le mouvement type
         $globalFilter = $filters['global']['value'] ?? null;
+
+        // Si le mouvement est de type 'exit' ou 'entry' et que la région source est égale à la région de destination,
+        // cela signifie qu'il n'y a pas de mouvement inter-régional, donc on peut ignorer ces filtres.
+        if (in_array($movementType, ['exit', 'entry']) && isset($filters['source_region_id']['value']) && isset($filters['destination_region_id']['value']) && $filters['source_region_id']['value'] === $filters['destination_region_id']['value']) {
+            unset($filters['source_region_id']);
+            unset($filters['destination_region_id']);
+        }
+
+        // Si la région source est vide, utiliser la région de destination pour le filtre
+        if (empty($filters['source_region_id']['value']) && !empty($filters['destination_region_id']['value'])) {
+            $filters['source_region_id']['value'] = $filters['destination_region_id']['value'];
+        }
+
+        // Si la région de destination est vide, utiliser la région source pour le filtre
+        if (empty($filters['destination_region_id']['value']) && !empty($filters['source_region_id']['value'])) {
+            $filters['destination_region_id']['value'] = $filters['source_region_id']['value'];
+        }
         $sortField = $request->input('sortField');
 
 
@@ -76,7 +100,7 @@ class StockMovementController extends Controller
         // Charge tous les articles uniques, sans filtre de région, pour les mouvements d'entrée.
         // Cela évite de recharger la page et optimise la sélection.
         $masterMovableItems = [
-            'spare_parts' => SparePart::select('id', 'reference', 'label_id')->distinct('reference')->get(),
+            'spare_parts' => SparePart::with('label:id,designation')->select('id', 'reference', 'label_id')->distinct('reference')->get(),
             'equipments'  => Equipment::select('id', 'tag', 'designation')->get(),
             'meters'      => Meter::select('id', 'serial_number', 'model')->get(),
             'keypads'     => Keypad::select('id', 'serial_number', 'model')->get(),
@@ -96,7 +120,7 @@ class StockMovementController extends Controller
         // dd(SparePart::whereHasStockInRegion(1)->withStockInRegion(1)->get());
         // On charge les articles d'une région seulement si c'est une sortie ou un transfert.
         if ($regionId && in_array($movementType, ['exit', 'transfer'])) {
-            $movableItems['spare_parts'] = SparePart::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get();
+            $movableItems['spare_parts'] = SparePart::with('label:id,designation')->whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get();
             $movableItems['equipments'] = Equipment::whereHasStockInRegion($regionId)->withStockInRegion($regionId)->get();
             $movableItems['meters'] = Meter::where('region_id', $regionId)->orWhereNull('region_id')->get();
             $movableItems['keypads'] = Keypad::where('region_id', $regionId)->orWhereNull('region_id')->get();

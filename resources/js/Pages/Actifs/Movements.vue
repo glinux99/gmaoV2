@@ -209,7 +209,7 @@ const itemLabel = (item) => {
 
     if (item.serial_number) return `${item.serial_number} (${item.model || 'N/A'})`; // Pour Meters, Keypads
     // Pour les pièces détachées, on affiche le stock calculé
-    if (item.reference) return `${item.reference} (${item.label?.name || 'N/A'})${stockInfo}`;
+    if (item.reference) return `${item.reference} (${item.label?.designation || 'N/A'})${stockInfo}`;
     if (item.tag) return `${item.tag} - ${item.designation}`; // Pour Equipments
     return `ID: ${item.id}`;
 };
@@ -225,6 +225,18 @@ watch(() => form.type, () => {
     form.items = []; // Vider le panier
 });
 
+// NOUVEAU : Synchroniser les régions pour les entrées et sorties
+watch(() => [form.type, form.source_region_id, form.destination_region_id], ([type, source, dest]) => {
+    if (type === 'entry') {
+        if (dest !== source) {
+            form.source_region_id = dest;
+        }
+    } else if (type === 'exit') {
+        if (source !== dest) {
+            form.destination_region_id = source;
+        }
+    }
+});
 watch(() => form.source_region_id, (newRegionId, oldRegionId) => {
     form.items = [];
     newItem.value.movable_id = null;
@@ -251,9 +263,9 @@ watch(() => form.items, (newItems, oldItems) => {
     if (form.type === 'entry') return; // Pas de gestion de stock pour les entrées
 
     const getListAndId = (item) => {
-        const typeKey = Object.keys(localMovableItems.value).find(key => item.movable_type.toLowerCase().includes(key.slice(0, -1)));
+        const typeKey = Object.keys(props.movableItems).find(key => item.movable_type.toLowerCase().includes(key.slice(0, -1)));
         if (!typeKey) return { list: null, id: null };
-        return { list: localMovableItems.value[typeKey], id: item.movable_id };
+        return { list: props.movableItems[typeKey], id: item.movable_id };
     };
 
     // Rétablir le stock des anciens items
@@ -411,7 +423,13 @@ const getMovableTypeLabel = (type) => {
 
 const getMovableItemDisplay = (movable) => {
     if (!movable) return 'N/A';
-    return movable.serial_number || movable.reference || movable.tag || movable.designation || `ID: ${movable.id}`;
+
+    // Priorité au label de la pièce détachée
+    if (movable.label && movable.label.designation) {
+        return movable.label.designation;
+    }
+    // Sinon, on retourne la désignation, le modèle ou un identifiant de secours
+    return movable.designation || movable.model || `ID: ${movable.id}`;
 };
 
 const getMovementTypeSeverity = (type) => {
@@ -578,13 +596,17 @@ const movementStats = computed(() => {
 
                     <Column v-if="visibleColumns.includes('movable')" field="movable" :header="t('stockMovements.table.item')" sortable style="min-width: 15rem;">
                         <template #body="{ data }">
-                            <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{{ getMovableItemDisplay(data.movable) }}</span>
+                           <div class=" text-center">
+                               <span class="font-bold text-slate-800 tracking-tight block">{{ getMovableItemDisplay(data.movable) }}</span>
+                               <span class="font-mono text-xs text-slate-500 block">{{ data.movable?.reference || data.movable?.tag || data.movable?.serial_number || 'N/A' }}</span>
+                           </div>
                         </template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('type')" field="type" :header="t('stockMovements.table.type')" sortable filterField="type" :showFilterMatchModes="false" style="min-width: 10rem;">
                         <template #body="{ data }">
                             <Tag :value="t(`stockMovements.movementTypes.${data.type.toLowerCase()}`)"
+
                                  :severity="getMovementTypeSeverity(data.type)"
                                  :icon="getMovementTypeIcon(data.type)"
                                  class="uppercase text-[9px] px-2" />
@@ -730,11 +752,60 @@ const movementStats = computed(() => {
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.itemType') }}</label>
                                     <Dropdown v-model="newItem.movable_type" :options="movableTypeOptions" optionLabel="label" optionValue="value" :placeholder="t('stockMovements.form.itemTypePlaceholder')" class="w-full quantum-input-v16" :disabled="isItemSelectionDisabled"/>
                                 </div>
-                                <div class="field">
+<div class="field max-w-full">
+  <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">
+    {{ t('stockMovements.form.item') }}
+  </label>
+ <Dropdown
+  v-model="newItem.movable_id"
+  :options="availableItems"
+  optionValue="id"
+  :placeholder="t('stockMovements.form.itemPlaceholder')"
+  :disabled="!newItem.movable_type || isItemSelectionDisabled"
+  filter
+  class="w-full quantum-input-v16"
+  :scrollHeight="'200px'"
+  :panelStyle="{'max-width': '100%'}"
+>
+  <template #value="slotProps">
+    <div v-if="slotProps.value" class="flex flex-col min-w-0">
+      <span class="font-bold text-sm truncate leading-tight text-slate-700 flex justify-between items-center">
+        <span>
+            {{
+              availableItems.find(i => i.id === slotProps.value)?.label?.designation ||
+              availableItems.find(i => i.id === slotProps.value)?.designation ||
+              slotProps.value
+            }}
+        </span>
+        <span v-if="form.type !== 'entry'" class="text-xs bg-slate-200 text-slate-600 font-mono px-1.5 py-0.5 rounded ml-2">
+           {{
+                availableItems.find(i => i.id === slotProps.value)?.stock_in_region ?? 'N/A'
+            }}
+        </span>
+      </span>
+    </div>
+    <span v-else>
+      {{ slotProps.placeholder }}
+    </span>
+  </template>
 
-                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.item') }}</label>
-                                    <Dropdown v-model="newItem.movable_id" :options="availableItems" :optionLabel="itemLabel" optionValue="id" :placeholder="t('stockMovements.form.itemPlaceholder')" :disabled="!newItem.movable_type || isItemSelectionDisabled" filter class="w-full quantum-input-v16" />
-                                </div>
+  <template #option="slotProps">
+    <div class="flex flex-col min-w-0 overflow-hidden">
+        <div class="flex justify-between items-center">
+            <span class="font-bold text-sm truncate leading-tight">
+                {{ slotProps.option.label?.designation || slotProps.option.designation || 'N/A' }}
+            </span>
+            <span v-if="form.type !== 'entry'" class="text-xs bg-primary-100 text-primary-700 font-mono px-1.5 py-0.5 rounded">
+       Stock:   {{ slotProps.option.stock_in_region ?? slotProps.option.quantity ?? 'N/A' }}
+            </span>
+        </div>
+      <span class="text-[10px] text-slate-500 truncate">
+        {{ slotProps.option.reference || slotProps.option.serial_number || slotProps.option.tag || `ID: ${slotProps.option.id}` }}
+      </span>
+    </div>
+  </template>
+</Dropdown>
+</div>
 
                                 <div class="field">
                                     <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.quantity') }}</label>
@@ -813,6 +884,7 @@ const movementStats = computed(() => {
 .v16-select-button :deep(.p-highlight) {
     background: #1e293b !important;
     color: white !important;
+
     border-color: #1e293b !important;
 }
 </style>

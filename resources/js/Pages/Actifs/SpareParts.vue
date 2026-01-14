@@ -31,6 +31,8 @@ const props = defineProps({
     queryParams: Object,
     // --- NOUVEAU: Propriété pour les erreurs d'importation ---
     import_errors: Array,
+    sparePartStats: Object, // NOUVEAU: Propriété pour les statistiques
+    import_errors: Array,
 });
 
 const characteristicTypes = ref([
@@ -129,13 +131,6 @@ const allColumns = ref([
     { field: 'user.name', header: 'Responsable' },
 ]);
 const visibleColumns = ref(allColumns.value.slice(0, 5).map(col => col.field));
-
-const sparePartStats = computed(() => {
-    const total = props.spareParts.data.length;
-    const lowStock = props.spareParts.data.filter(p => p.quantity <= p.min_quantity).length;
-    const totalValue = props.spareParts.data.reduce((sum, p) => sum + (p.quantity * p.price), 0);
-    return { total, lowStock, totalValue };
-});
 
 // --- NOUVEAU: Logique pour l'importation ---
 const openImportDialog = () => {
@@ -327,7 +322,7 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
             <ConfirmDialog />
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                  <div class="flex items-center gap-4">
-                    <div class="flex h-16 w-16 items-center justify-center rounded-[1rem] bg-primary-600 shadow-xl shadow-primary-200 text-white text-2xl">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-xl bg-primary-600 shadow-xl shadow-primary-200 text-white text-2xl">
                          <i class="pi pi-box"></i>
                     </div>
                     <div>
@@ -539,7 +534,7 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
 
             <div class="col-span-12 lg:col-span-7 space-y-6">
 
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200/60">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200/60">
                     <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
                         <span class="w-2 h-2 bg-primary-500 rounded-full"></span>
                         Informations Générales
@@ -567,7 +562,7 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
                     </div>
                 </div>
 
-                <div v-if="selectedLabelCharacteristics.length > 0" class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200/60">
+                <div v-if="selectedLabelCharacteristics.length > 0" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200/60">
                     <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
                         <i class="pi pi-sliders-h text-primary-500"></i>
                         Spécifications Techniques
@@ -588,29 +583,55 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
 
             <div class="col-span-12 lg:col-span-5 space-y-6">
 
-                <div class="bg-primary-600 p-8 rounded-[2.5rem] shadow-xl shadow-primary-500/20 text-white relative overflow-hidden">
+                <div class="bg-primary-600 p-8 rounded-xl shadow-xl shadow-primary-500/20 text-white relative overflow-hidden">
                     <i class="pi pi-chart-line absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12"></i>
 
-                    <div class="relative z-10">
-                        <label class="text-[10px] font-black uppercase opacity-70 mb-2 block">{{ t('spareParts.form.price') }} (EUR)</label>
-                        <InputNumber v-model="form.price" mode="currency" currency="EUR" locale="fr-FR"
-                            class="v11-price-input w-full"
-                            :pt="{ input: { class: 'bg-transparent border-none text-white text-4xl font-black p-0 focus:ring-0 shadow-none' } }" />
+                   <div class="relative z-10 p-4 bg-white/5 rounded-xl backdrop-blur-sm border border-white/10">
+    <div class="mb-6">
+        <label class="text-[10px] font-black uppercase opacity-60 mb-1 block tracking-tighter">
+            {{ t('spareParts.form.price') }} (EUR)
+        </label>
+        <InputNumber
+            v-model="form.price"
+            mode="currency"
+            currency="EUR"
+            locale="fr-FR"
+            class="w-full"
+            :pt="{
+                input: { class: 'bg-transparent border-none text-white text-4xl font-black p-0 focus:ring-0 shadow-none selection:bg-blue-500/30' }
+            }"
+        />
+    </div>
 
-                        <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/20">
-                            <div class="flex flex-col gap-1 text-center border-r border-white/20">
-                                <span class="text-[10px] font-bold opacity-70 uppercase tracking-widest">Actuel</span>
-                                <InputNumber v-model="form.quantity" class="v11-compact-num" :pt="{ input: { class: 'bg-transparent border-none text-white text-xl font-bold p-0 text-center shadow-none' } }" />
-                            </div>
-                            <div class="flex flex-col gap-1 text-center">
-                                <span class="text-[10px] font-bold opacity-70 uppercase tracking-widest">Alerte Min</span>
-                                <InputNumber v-model="form.min_quantity" class="v11-compact-num" :pt="{ input: { class: 'bg-transparent border-none text-white text-xl font-bold p-0 text-center shadow-none' } }" />
-                            </div>
-                        </div>
-                    </div>
+    <div class="grid grid-cols-2 gap-0 mt-4 pt-4 border-t border-white/10">
+        <div class="flex flex-col gap-1 text-center border-r border-white/10 px-2">
+            <span class="text-[9px] font-bold opacity-50 uppercase tracking-widest">Actuel</span>
+            <InputNumber
+                v-model="form.quantity"
+                :min="0"
+                class="w-full"
+                :pt="{
+                    input: { class: 'bg-transparent border-none text-white text-xl font-bold p-0 text-center focus:ring-0 shadow-none' }
+                }"
+            />
+        </div>
+
+        <div class="flex flex-col gap-1 text-center px-2">
+            <span class="text-[9px] font-bold opacity-50 uppercase tracking-widest">Alerte Min</span>
+            <InputNumber
+                v-model="form.min_quantity"
+                :min="0"
+                class="w-full"
+                :pt="{
+                    input: { class: 'bg-transparent border-none text-orange-400 text-xl font-bold p-0 text-center focus:ring-0 shadow-none' }
+                }"
+            />
+        </div>
+    </div>
+</div>
                 </div>
 
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200/60">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200/60">
                     <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Emplacement</h3>
                     <div class="space-y-4">
                         <div class="flex flex-col gap-2">

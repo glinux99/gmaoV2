@@ -746,6 +746,7 @@
       "itemType": "Type d'item",
       "itemTypePlaceholder": "Choisir le type d'item...",
       "item": "Item Spécifique",
+      "addItem":"Ajouter un item",
       "itemPlaceholder": "Rechercher ou sélectionner un item...",
       "movementType": "Type de Mouvement",
       "quantity": "Quantité",

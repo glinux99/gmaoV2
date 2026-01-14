@@ -28,49 +28,47 @@ class SparePartController extends Controller
         $search = $request->input('search');
         $perPage = $request->input('per_page', 10);
 
-        if ($regionId) {
-            // Si une région est sélectionnée, on retourne les pièces de cette région.
-            $query = SparePart::with(['label', 'user', 'sparePartCharacteristics.labelCharacteristic', 'region', 'unity'])
-                ->where('region_id', $regionId);
+       // 1. Requête de base
+$baseQuery = SparePart::query();
 
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('reference', 'like', '%' . $search . '%')
-                      ->orWhere('location', 'like', '%' . $search . '%')
-                      ->orWhereHas('label', fn($l) => $l->where('designation', 'like', '%' . $search . '%'));
-                });
-            }
-            $spareParts = $query->paginate($perPage)->withQueryString();
-        } else {
-            // Si aucune région n'est sélectionnée, on groupe par référence et on somme les quantités.
-            $query = SparePart::with(['label', 'user'])
-                ->select(
-                    'reference',
-                    'label_id',
-                    DB::raw('MIN(price) as price'), // On prend le premier prix trouvé
-                    DB::raw('MIN(location) as location'), // On prend le premier emplacement trouvé
-                    DB::raw('MIN(user_id) as user_id'), // On prend le premier responsable trouvé
-                    DB::raw('SUM(quantity) as quantity'),
-                    DB::raw('SUM(min_quantity) as min_quantity')
-                )
-                ->groupBy('reference', 'label_id');
+// 2. Filtres
+if ($regionId) {
+    $baseQuery->where('region_id', $regionId);
+}
 
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('reference', 'like', '%' . $search . '%')
-                      ->orWhereHas('label', fn($l) => $l->where('designation', 'like', '%' . $search . '%'));
-                });
-            }
-            $spareParts = $query->paginate($perPage)->withQueryString();
-        }
+if ($search) {
+    $baseQuery->where(function ($q) use ($search) {
+        $q->where('reference', 'like', '%' . $search . '%')
+          ->orWhere('location', 'like', '%' . $search . '%')
+          ->orWhereHas('label', fn($l) => $l->where('designation', 'like', '%' . $search . '%'));
+    });
+}
+
+// 3. Calcul des statistiques (utiliser clone pour chaque calcul indépendant)
+$sparePartStats = [
+    // On clone pour ne pas polluer la requête de base
+    'total'      => (clone $baseQuery)->distinct('reference')->count('reference'),
+
+    // On clone et on ajoute le filtre spécifique au stock bas
+    'lowStock'   => (clone $baseQuery)->whereColumn('quantity', '<=', 'min_quantity')->count(),
+
+    // On clone pour calculer la somme totale sans les filtres de stock ci-dessus
+    'totalValue' => (clone $baseQuery)->sum(DB::raw('quantity * price')),
+];
+
+
+        // 4. Préparer la requête pour la pagination avec les relations nécessaires
+        $paginatedQuery = $baseQuery->with(['label', 'user', 'sparePartCharacteristics.labelCharacteristic', 'region', 'unity']);
 
         return Inertia::render('Actifs/SpareParts', [
-            'spareParts' => $spareParts,
+            'spareParts' => $paginatedQuery->paginate($perPage)->withQueryString(),
             'labels' => Label::with('labelCharacteristics')->get(), // To select a label for the spare part
             'users' => User::all(['id', 'name']), // Pass users for the responsible person dropdown,
             'regions' => Region::get(), // To select a region for the spare part,
             'unities' => Unity::get(), // To select a unity for the spare part,
             'filters' => $request->only(['search', 'region_id']),
+            // On passe les statistiques calculées au backend
+            'sparePartStats' => $sparePartStats,
         ]);
     }
 
