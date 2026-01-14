@@ -80,7 +80,9 @@ class ActivityController extends Controller
         $query->with(['task.instructions', 'activityInstructions', 'instructionAnswers', 'task.serviceOrders', 'maintenance', 'sparePartActivities.sparePart', 'assignable', 'region', 'zone', 'equipment']);
 
         // Préparer les pièces détachées avec le stock par région
-        $allParts = SparePart::with('region:id,designation')->get();
+        // CORRECTION : On ne charge que les pièces qui ont réellement du stock.
+        $allParts = SparePart::where('quantity', '>', 0)->with('region:id,designation')->get();
+
         $sparePartsByRef = $allParts->groupBy('reference')->map(function ($parts, $ref) {
             $firstPart = $parts->first();
             $stocks = $parts->mapWithKeys(function ($part) {
@@ -273,9 +275,16 @@ public function store(Request $request)
                     $finalValue = $value;
 
                     // If the answer is a file (for image or signature), store it
-                    if (($currentType === 'image' || $currentType === 'signature') && is_a($value, 'Illuminate\Http\UploadedFile')) {
-                        $path = $value->store('instruction_answers', 'public');
-                        $finalValue = $path;
+                    if (($currentType === 'image' || $currentType === 'signature')) {
+                        if (is_array($value)) {
+                            $paths = [];
+                            foreach ($value as $file) {
+                                if (is_a($file, 'Illuminate\Http\UploadedFile')) {
+                                    $paths[] = $file->store('instruction_answers', 'public');
+                                }
+                            }
+                            $finalValue = json_encode($paths);
+                        }
                     }
 
                     if ($realId) {
@@ -606,6 +615,7 @@ public function bulkStore(Request $request)
             'parent_id' => 'nullable|exists:activities,id',
             'stock_movements' => 'nullable|array',
             'equipment_ids' => 'nullable|array',
+            'images_to_delete' => 'nullable|array', // Pour la suppression explicite
             'equipment_ids.*' => 'exists:equipment,id',
             'stock_movements.*.movable_id' => 'required|integer',
             'stock_movements.*.movable_type' => 'required|string',
@@ -638,7 +648,7 @@ public function bulkStore(Request $request)
             $this->syncSpareParts($activity, $validated);
             // return $request;
             // --- 3. SYNCHRONISATION DES INSTRUCTIONS ET RÉPONSES ---
-            $this->syncInstructionsAndAnswers($activity, $validated);
+            $this->syncInstructionsAndAnswers($activity, $validated, $request->input('images_to_delete', []));
 
             // --- 4. GESTION DU SERVICE ORDER ---
             $this->processServiceOrder($activity, $validated);
@@ -726,7 +736,7 @@ public function bulkStore(Request $request)
     /**
      * Synchronize instructions and their answers.
      */
-    private function syncInstructionsAndAnswers(Activity $activity, array $data)
+    private function syncInstructionsAndAnswers(Activity $activity, array $data, array $imagesToDelete = [])
     {
         // Récupérer toutes les instructions (existantes et nouvelles) pour vérifier leur type
         $instructionIdMap = [];
@@ -762,11 +772,38 @@ public function bulkStore(Request $request)
             $finalValue = $value;
 
             // Si la réponse est un fichier (pour image ou signature), on le stocke
-            if (($currentType === 'image' || $currentType === 'signature') && is_a($value, 'Illuminate\Http\UploadedFile')) {
-                // Stocke le fichier dans 'public/instruction_answers' et récupère le chemin
-                $path = $value->store('instruction_answers', 'public');
-                $finalValue = $path; // On sauvegarde uniquement le chemin
+            if (($currentType === 'image' || $currentType === 'signature')) {
+                if (is_array($value)) {
+                    // Récupérer l'ancienne réponse pour fusionner les images
+                    $existingAnswer = InstructionAnswer::where('activity_id', $activity->id)
+                        ->where('activity_instruction_id', $realId)
+                        ->first();
+
+                    $existingPaths = [];
+                    if ($existingAnswer && !empty($existingAnswer->value)) {
+                        $decoded = json_decode($existingAnswer->value, true);
+                        if (is_array($decoded)) {
+                            $existingPaths = $decoded;
+                        }
+                    }
+
+                    // Conserver les chemins existants qui ne sont pas dans la liste de suppression
+                    $keptPaths = array_diff($existingPaths, $imagesToDelete);
+
+                    // Ajouter les nouveaux fichiers téléversés qui sont dans la requête
+                    $paths = [];
+                    foreach ($value as $file) {
+                        if (is_a($file, 'Illuminate\Http\UploadedFile')) {
+                            $paths[] = $file->store('instruction_answers', 'public');
+                        }
+                    }
+                    $finalValue = json_encode(array_merge($keptPaths, $paths));
+                }
             }
+
+            // Supprimer physiquement les fichiers marqués pour suppression
+            $this->deleteStoredFiles($imagesToDelete);
+
 
             // S'assurer que l'ID de l'instruction est valide et qu'il fait partie des instructions de l'activité en cours
             if ($realId && in_array($realId, $incomingInstructionIds)) {
@@ -774,6 +811,20 @@ public function bulkStore(Request $request)
                     ['activity_id' => $activity->id, 'activity_instruction_id' => $realId],
                     ['value' => $finalValue, 'user_id' => Auth::id()]
                 );
+            }
+        }
+    }
+
+    /**
+     * Delete files from storage.
+     * @param array $filesToDelete
+     */
+    private function deleteStoredFiles(array $filesToDelete)
+    {
+        foreach ($filesToDelete as $filePath) {
+            // Basic security check to prevent directory traversal
+            if (str_starts_with($filePath, 'instruction_answers/')) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($filePath);
             }
         }
     }

@@ -130,6 +130,7 @@ const form = useForm({
     task_id: null,
     maintenance_id: null,
     equipment_ids: [], // Champ pour les équipements associés
+    images_to_delete: [], // NOUVEAU: Pour suivre les images supprimées
     stock_movements: [], // Nouveau système de gestion de stock
 });
 
@@ -163,18 +164,18 @@ const {
 const sparePartOptions = computed(() => {
     // La liste déroulante se base maintenant sur notre copie locale `localSpareParts`.
     const regionId = form.region_id;
-    if (!regionId) return [];
+    if (!regionId || !localSpareParts.value) return [];
 
     // Formater pour le dropdown en ajoutant la quantité en stock
-    return (localSpareParts.value || [])
+    // CORRECTION : On filtre pour ne montrer que les pièces qui ont du stock dans la région sélectionnée.
+    return localSpareParts.value
+        .filter(part => part.stocks_by_region && part.stocks_by_region[regionId] > 0) // Filtrer les pièces qui ont du stock dans la région
         .map(part => {
-            const stockInRegion = part.stocks_by_region?.[regionId] || 0;
             return {
-                label: `${part.reference} (${t('sparePartMovements.stockLabel')}: ${stockInRegion})`,
-                value: part.id, // On utilise l'ID de référence
+                label: `${part.reference} (${t('sparePartMovements.stockLabel')}: ${part.stocks_by_region[regionId]})`,
+                value: part.id, // On utilise l'ID de la pièce de référence
             };
-        })
-        .filter(part => part.label.includes(`${t('sparePartMovements.stockLabel')}:`) && !part.label.includes(`${t('sparePartMovements.stockLabel')}: 0`)); // Optionnel: ne montrer que les pièces en stock
+        });
 });
 
 
@@ -433,17 +434,26 @@ const editActivity = (activity) => {
     form.spare_parts_returned = [];
 
     const answers = {};
-    // Utiliser les réponses déjà parsées
-    const instructionAnswers = parseJson(rawActivity?.instruction_answers || activity.instruction_answers);
     const activityInstructions = activity.task?.instructions || rawActivity.activity_instructions || [];
 
-    if (instructionAnswers && Array.isArray(instructionAnswers)) {
-        instructionAnswers.forEach(answer => {
+    if (activity.instruction_answers && Array.isArray(activity.instruction_answers)) {
+        activity.instruction_answers.forEach(answer => {
             const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
             const instruction = activityInstructions.find(i => i.id === instructionId);
-            answers[instructionId] = instruction?.type === 'boolean'
-                ? String(answer.value)
-                : answer.value;
+
+            if (instruction) {
+                if (instruction.type === 'boolean') {
+                    answers[instructionId] = String(answer.value);
+                } else if (instruction.type === 'image' || instruction.type === 'signature') {
+                    try {
+                        answers[instructionId] = JSON.parse(answer.value);
+                    } catch (e) {
+                        answers[instructionId] = answer.value ? [answer.value] : []; // Rétrocompatibilité
+                    }
+                } else {
+                    answers[instructionId] = answer.value;
+                }
+            }
         });
     }
     form.instruction_answers = answers;
@@ -491,16 +501,27 @@ const createSubActivity = (parentActivity) => {
 
     // Copie des réponses aux instructions (logique complexe de l'héritage)
     const answers = {}; // Initialize answers as an empty object
-    const instructionAnswers = parseJson(parentActivity.instruction_answers); // Parse parent's instruction answers
     // Determine the source of instructions, prioritizing task instructions, then activity instructions
     const instructions = parentActivity.task?.instructions || parseJson(parentActivity.instructions) || [];
-    if (instructionAnswers && Array.isArray(instructionAnswers)) {
-        instructionAnswers.forEach(answer => {
+
+    if (parentActivity.instruction_answers && Array.isArray(parentActivity.instruction_answers)) {
+        parentActivity.instruction_answers.forEach(answer => {
             const instructionId = answer.task_instruction_id ?? answer.activity_instruction_id;
             const instruction = instructions.find(i => i.id === instructionId);
-            answers[instructionId] = instruction?.type === 'boolean'
-                ? String(answer.value)
-                : answer.value;
+
+            if (instruction) {
+                if (instruction.type === 'boolean') {
+                    answers[instructionId] = String(answer.value);
+                } else if (instruction.type === 'image' || instruction.type === 'signature') {
+                    try {
+                        answers[instructionId] = JSON.parse(answer.value);
+                    } catch (e) {
+                        answers[instructionId] = answer.value ? [answer.value] : [];
+                    }
+                } else {
+                    answers[instructionId] = answer.value;
+                }
+            }
         });
     }
     form.instruction_answers = answers;
@@ -508,12 +529,27 @@ const createSubActivity = (parentActivity) => {
     activityDialogVisible.value = true;
 };
 
+// NOUVEAU: Fonction pour gérer la suppression d'image
+const removeImage = (instructionId, imgIndex) => {
+    const answerArray = form.instruction_answers[instructionId];
+    if (!answerArray) return;
+
+    const imageToRemove = answerArray[imgIndex];
+
+    // Si c'est une image existante (string), on l'ajoute à la liste de suppression
+    if (typeof imageToRemove === 'string') {
+        form.images_to_delete.push(imageToRemove);
+    }
+
+    // On la retire de l'affichage
+    answerArray.splice(imgIndex, 1);
+};
 // Fonction unifiée pour Créer ou Sauvegarder
 const saveActivity = () => {
     form.service_order_cost = serviceOrderCost.value;
 
     // Détecter si des fichiers sont présents dans les réponses
-    const hasFiles = Object.values(form.instruction_answers).some(answer => answer instanceof File);
+    const hasFiles = Object.values(form.instruction_answers).some(answer => Array.isArray(answer) ? answer.some(a => a instanceof File) : answer instanceof File);
 
     const url = form.id ? route('activities.update', form.id) : route('activities.store');
     const successMessage = form.id ? t('myActivities.toast.activityUpdated') : t('myActivities.toast.subActivityCreated');
@@ -557,7 +593,19 @@ const saveActivity = () => {
                 });
             } else if (key === 'instruction_answers') {
                 for (const answerKey in value) {
-                    formData.append(`instruction_answers[${answerKey}]`, value[answerKey] ?? '');
+                    const answerValue = value[answerKey];
+                    if (Array.isArray(answerValue)) {
+                        // Si c'est un tableau de fichiers
+                        answerValue.forEach(file => formData.append(`instruction_answers[${answerKey}][]`, file));
+                    } else if (answerValue instanceof Date) {
+                        // Si c'est une date, on la formate
+                        formData.append(`instruction_answers[${answerKey}]`, answerValue.toISOString().slice(0, 10));
+                    } else if (typeof answerValue === 'boolean') {
+                        // Convertir les booléens en 1 ou 0
+                        formData.append(`instruction_answers[${answerKey}]`, answerValue ? '1' : '0');
+                    } else {
+                        formData.append(`instruction_answers[${answerKey}]`, answerValue ?? '');
+                    }
                 }
             } else if (Array.isArray(value)) {
                  value.forEach((item, index) => {
@@ -637,6 +685,14 @@ const removeInstruction = (index, instructionId) => {
 
 // Formateurs de date pour l'ergonomie
 const formatDateTime = (date) => date ? new Date(date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+
+// Fonction pour créer une URL d'objet côté client uniquement
+const createObjectUrl = (file) => {
+    if (typeof window !== 'undefined' && window.URL) {
+        return window.URL.createObjectURL(file);
+    }
+    return '';
+};
 </script>
 <script>
 const exportCSV = () => {
@@ -941,20 +997,35 @@ const exportCSV = () => {
                                              :options="[{label:'OUI', value:'1'}, {label:'NON', value:'0'}]" optionLabel="label" optionValue="value" class="quantum-sb-mini" />
                                 <div v-else-if="instruction.type === 'image' || instruction.type === 'signature'">
                                     <!-- Si une image est déjà sauvegardée (le chemin est une chaîne) -->
-                                    <div v-if="typeof form.instruction_answers[instruction.id] === 'string' && form.instruction_answers[instruction.id]" class="flex items-center gap-2">
-                                        <Image :src="`/storage/${form.instruction_answers[instruction.id]}`" alt="Aperçu" width="40" height="40" imageClass="object-cover rounded-md border border-slate-200" preview />
-                                        <Button icon="pi pi-replay" text rounded severity="secondary" @click="form.instruction_answers[instruction.id] = null" v-tooltip.top="'Remplacer l\'image'" />
+                                    <div v-if="Array.isArray(form.instruction_answers[instruction.id]) && form.instruction_answers[instruction.id].length > 0" class="flex flex-wrap items-center gap-2">
+                                        <div v-for="(image, imgIndex) in form.instruction_answers[instruction.id]" :key="imgIndex" class="relative group">
+                                            <Image v-if="typeof image === 'string'" :src="`/storage/${image}`" alt="Aperçu" width="40" height="40" imageClass="object-cover rounded-md border border-slate-200" preview />
+                                            <Image v-else :src="createObjectUrl(image)" alt="Aperçu local" width="40" height="40" imageClass="object-cover rounded-md border border-slate-200" preview />
+                                            <Button icon="pi pi-times" rounded text severity="danger" class="absolute -top-2 -right-2 !h-5 !w-5 bg-white/80 backdrop-blur-sm opacity-0 group-hover:opacity-100" @click="removeImage(instruction.id, imgIndex)" />
+                                        </div>
+                                        <label class="flex items-center justify-center w-10 h-10 border-2 border-dashed border-slate-300 rounded-md cursor-pointer hover:bg-slate-100">
+                                            <i class="pi pi-plus text-slate-400"></i>
+                                            <input type="file" accept="image/*" multiple class="hidden" @input="event => form.instruction_answers[instruction.id].push(...event.target.files)" />
+                                        </label>
                                     </div>
                                     <!-- Sinon, afficher le champ de téléversement -->
                                     <input v-else
                                            type="file"
                                            accept="image/*"
-                                           @input="form.instruction_answers[instruction.id] = $event.target.files[0]"
+                                           multiple
+                                           @input="form.instruction_answers[instruction.id] = Array.from($event.target.files)"
                                            class="block w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-semibold file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200"
                                     />
                                 </div>
+
+                                <Calendar v-else-if="instruction.type === 'date'"
+                                          v-model="form.instruction_answers[instruction.id]"
+                                          class="w-full"
+                                          :pt="{ input: { class: '!p-1.5 !bg-slate-50 !border-none !text-xs !rounded-lg' } }"
+                                          dateFormat="yy-mm-dd" />
                                 <InputText v-else v-model="form.instruction_answers[instruction.id]" class="w-full !p-1.5 !bg-slate-50 !border-none !text-xs !rounded-lg" :type="instruction.type === 'number' ? 'number' : 'text'" />
                             </div>
+
                         </div>
                         <Button icon="pi pi-trash" text severity="danger" size="small" @click="removeInstruction(index, instruction.id)" class="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
