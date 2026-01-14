@@ -81,4 +81,26 @@ public function spareParts()
     {
         return $this->attributes['stock_in_region'] ?? 0;
     }
+
+    /**
+     * Accesseur pour calculer dynamiquement la quantité totale en stock.
+     *
+     * @return \Illuminate\Database\Eloquent\Casts\Attribute
+     */
+    public function quantity(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: function ($value) {
+                // Calcule la somme des entrées (entry) et transferts entrants
+                $inflows = $this->stockMovements()
+                    ->whereIn('type', ['entry', 'transfer'])
+                    ->sum('quantity');
+
+                // Calcule la somme des sorties (exit) et transferts sortants
+                $outflows = $this->stockMovements()
+                    ->whereIn('type', ['exit'])->sum('quantity');
+                return $inflows - $outflows;
+            }
+        );
+    }
 }
