@@ -509,41 +509,76 @@ const createSubActivity = (parentActivity) => {
 
 // Fonction unifiée pour Créer ou Sauvegarder
 const saveActivity = () => {
-    // Étape 1: Préparation des données finales
-    console.log(form.data());
     form.service_order_cost = serviceOrderCost.value;
 
-    // Convertir les objets Date en ISO string formaté pour MySQL
-    const dataToSend = {
-        ...form.data(),
-        actual_start_time: form.actual_start_time ? new Date(form.actual_start_time).toISOString().slice(0, 19).replace('T', ' ') : null,
-        actual_end_time: form.actual_end_time ? new Date(form.actual_end_time).toISOString().slice(0, 19).replace('T', ' ') : null,
-    };
+    // Détecter si des fichiers sont présents dans les réponses
+    const hasFiles = Object.values(form.instruction_answers).some(answer => answer instanceof File);
 
-    // Déterminer la route et la méthode
-    const method = form.id ? 'put' : 'post';
-    const routeName = !form.id ? 'activities.store' : 'activities.update';
-    const routeParams = isCreatingSubActivity.value ? {} : form.id;
-    const successMessage = isCreatingSubActivity.value ? t('myActivities.toast.subActivityCreated') : t('myActivities.toast.activityUpdated');
+    const url = form.id ? route('activities.update', form.id) : route('activities.store');
+    const successMessage = form.id ? t('myActivities.toast.activityUpdated') : t('myActivities.toast.subActivityCreated');
 
-    const handler = {
+    // Utiliser la méthode `submit` d'Inertia qui gère FormData automatiquement
+    form.transform(data => {
+        // Toujours transformer les dates, que ce soit pour JSON ou FormData
+        const transformedData = {
+            ...data,
+            actual_start_time: data.actual_start_time ? new Date(data.actual_start_time).toISOString().slice(0, 19).replace('T', ' ') : null,
+            actual_end_time: data.actual_end_time ? new Date(data.actual_end_time).toISOString().slice(0, 19).replace('T', ' ') : null,
+        };
+
+        // Si on met à jour, il faut simuler la méthode PUT
+        if (form.id) {
+            transformedData._method = 'PUT';
+        }
+
+        // Si nous n'avons pas de fichiers, nous pouvons simplement retourner l'objet.
+        // Inertia l'enverra en JSON.
+        if (!hasFiles) {
+            return transformedData;
+        }
+
+        // Si on a des fichiers, il faut construire l'objet FormData manuellement
+        // pour gérer les tableaux d'objets correctement.
+        const formData = new FormData();
+        for (const key in transformedData) {
+            const value = transformedData[key];
+
+            if (key === 'instructions') {
+                value.forEach((instr, index) => {
+                    for (const instrKey in instr) {
+                        let valueToAppend = instr[instrKey];
+                        // Convertir le booléen en 1 ou 0 pour la validation FormData
+                        if (instrKey === 'is_required') {
+                            valueToAppend = valueToAppend ? 1 : 0;
+                        }
+                        formData.append(`instructions[${index}][${instrKey}]`, valueToAppend ?? '');
+                    }
+                });
+            } else if (key === 'instruction_answers') {
+                for (const answerKey in value) {
+                    formData.append(`instruction_answers[${answerKey}]`, value[answerKey] ?? '');
+                }
+            } else if (Array.isArray(value)) {
+                 value.forEach((item, index) => {
+                    formData.append(`${key}[${index}]`, item);
+                });
+            }
+            else if (value !== null) {
+                formData.append(key, value);
+            }
+        }
+        return formData;
+    }).post(url, {
         onSuccess: () => {
             hideDialog();
             toast.add({ severity: 'success', summary: t('myActivities.toast.success'), detail: successMessage, life: 3000 });
         },
         onError: (errors) => {
             console.error(errors);
-
-            toast.add({ severity: 'error', summary: t('myActivities.toast.error'), detail: t('myActivities.toast.saveError'), life: 3000 });
-        }
-    };
-
-    // Étape 2: Soumission via Inertia
-    if (method === 'post') {
-        form.transform(() => dataToSend).post(route(routeName), handler);
-    } else {
-        form.transform(() => dataToSend).put(route(routeName, routeParams), handler);
-    }
+            toast.add({ severity: 'error', summary: t('myActivities.toast.error'), detail: Object.values(errors).join(' '), life: 5000 });
+        },
+        forceFormData: hasFiles, // Force l'envoi en multipart/form-data si des fichiers sont présents
+    });
 };
 
 // --- LOGIQUE D'AJOUT D'INSTRUCTIONS DYNAMIQUES ---
@@ -903,7 +938,21 @@ const exportCSV = () => {
                             <div class="flex justify-end min-w-[120px]">
                                 <SelectButton v-if="instruction.type === 'boolean'" v-model="form.instruction_answers[instruction.id]"
                                              :options="[{label:'OUI', value:'1'}, {label:'NON', value:'0'}]" optionLabel="label" optionValue="value" class="quantum-sb-mini" />
-                                <InputText v-else v-model="form.instruction_answers[instruction.id]" class="w-full !p-1.5 !bg-slate-50 !border-none !text-xs !rounded-lg" />
+                                <div v-else-if="instruction.type === 'image' || instruction.type === 'signature'">
+                                    <!-- Si une image est déjà sauvegardée (le chemin est une chaîne) -->
+                                    <div v-if="typeof form.instruction_answers[instruction.id] === 'string' && form.instruction_answers[instruction.id]" class="flex items-center gap-2">
+                                        <img :src="`/storage/${form.instruction_answers[instruction.id]}`" alt="Aperçu" class="w-10 h-10 object-cover rounded-md border border-slate-200" />
+                                        <Button icon="pi pi-replay" text rounded severity="secondary" @click="form.instruction_answers[instruction.id] = null" v-tooltip.top="'Remplacer l\'image'" />
+                                    </div>
+                                    <!-- Sinon, afficher le champ de téléversement -->
+                                    <input v-else
+                                           type="file"
+                                           accept="image/*"
+                                           @input="form.instruction_answers[instruction.id] = $event.target.files[0]"
+                                           class="block w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-semibold file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200"
+                                    />
+                                </div>
+                                <InputText v-else v-model="form.instruction_answers[instruction.id]" class="w-full !p-1.5 !bg-slate-50 !border-none !text-xs !rounded-lg" :type="instruction.type === 'number' ? 'number' : 'text'" />
                             </div>
                         </div>
                         <Button icon="pi pi-trash" text severity="danger" size="small" @click="removeInstruction(index, instruction.id)" class="opacity-0 group-hover:opacity-100 transition-opacity" />

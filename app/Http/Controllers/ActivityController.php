@@ -146,10 +146,12 @@ public function store(Request $request)
         'instructions' => 'nullable|array',
         'region_id' => 'nullable|exists:regions,id',
         'zone_id' => 'nullable|exists:zones,id',
-        'instructions.*.id' => 'required',
+        'instructions.*.id' => 'required', // Can be a temporary 'new_' ID or an existing ID
+        'instructions.*.is_required' => 'nullable|boolean',
         'instructions.*.label' => 'required|string',
-        'instruction_answers' => 'nullable|array',
-        'instruction_answers.*' => 'nullable|string|max:255',
+        'instructions.*.type' => 'required|string', // Added for instruction type validation
+        'instruction_answers' => 'nullable|array', // Allow array of answers
+        'instruction_answers.*' => 'nullable', // Allow any type, will be handled in controller
         'service_order_cost' => 'nullable|numeric|min:0',
         'service_order_description' => 'nullable|string|required_with:service_order_cost',
         'maintenance_id' => 'nullable|exists:maintenances,id',
@@ -244,30 +246,43 @@ public function store(Request $request)
         // 5. GESTION DES INSTRUCTIONS (Questions + Réponses)
         if ($request->has('instructions')) {
             $instructionIdMap = [];
+            $instructionTypes = []; // To store the type of each instruction
 
             foreach ($request->instructions as $instrData) {
                 $tempId = $instrData['id'];
+                $type = $instrData['type'] ?? 'text';
 
                 if (is_string($tempId) && str_starts_with($tempId, 'new_')) {
                     $newInstruction = $activity->activityInstructions()->create([
                         'label' => $instrData['label'],
-                        'type' => $instrData['type'] ?? 'text',
+                        'type' => $type,
                         'is_required' => $instrData['is_required'] ?? false,
                     ]);
                     $instructionIdMap[$tempId] = $newInstruction->id;
+                    $instructionTypes[$newInstruction->id] = $type;
                 } else {
                     $instructionIdMap[$tempId] = $tempId;
+                    $instructionTypes[$tempId] = $type;
                 }
             }
 
             if ($request->has('instruction_answers')) {
                 foreach ($request->instruction_answers as $tempId => $value) {
                     $realId = $instructionIdMap[$tempId] ?? null;
+                    $currentType = $instructionTypes[$realId] ?? 'text';
+                    $finalValue = $value;
+
+                    // If the answer is a file (for image or signature), store it
+                    if (($currentType === 'image' || $currentType === 'signature') && is_a($value, 'Illuminate\Http\UploadedFile')) {
+                        $path = $value->store('instruction_answers', 'public');
+                        $finalValue = $path;
+                    }
+
                     if ($realId) {
                         InstructionAnswer::create([
                             'activity_id' => $activity->id,
                             'activity_instruction_id' => $realId,
-                            'value' => $value,
+                            'value' => $finalValue,
                             'user_id' => Auth::id()
                         ]);
                     }
@@ -556,6 +571,7 @@ public function bulkStore(Request $request)
     {
         // Note: 'task_id' and 'maintenance_id' are typically not updated directly on an existing activity
         // as they define the context. If they need to be updated, additional logic would be required.
+        // return $request;
         $validated = $request->validate([
             'user_id' => 'nullable|exists:users,id',
             'actual_start_time' => 'nullable|date',
@@ -575,10 +591,10 @@ public function bulkStore(Request $request)
             'instructions.*.id' => 'required',
             'instructions.*.label' => 'required|string',
             'instructions.*.type' => 'required|string',
-            'instructions.*.is_required' => 'boolean',
+            'instructions.*.is_required' => 'nullable|boolean',
             'instructions.*.options' => 'nullable|array',
             'instruction_answers' => 'nullable|array',
-            'instruction_answers.*' => 'nullable|string|max:255', // Assuming answers are strings
+            'instruction_answers.*' => 'nullable', // Allow any type, will be handled in controller
             'service_order_cost' => 'nullable|numeric|min:0',
             'service_order_description' => 'nullable|string|required_with:service_order_cost',
             'maintenance_id' => 'nullable|exists:maintenances,id',
@@ -712,21 +728,27 @@ public function bulkStore(Request $request)
      */
     private function syncInstructionsAndAnswers(Activity $activity, array $data)
     {
+        // Récupérer toutes les instructions (existantes et nouvelles) pour vérifier leur type
         $instructionIdMap = [];
         $incomingInstructionIds = [];
+        $instructionTypes = []; // Pour stocker le type de chaque instruction
 
         // Create or update instructions
         foreach ($data['instructions'] ?? [] as $instrData) {
             $tempId = $instrData['id'] ?? null;
+            $type = $instrData['type'] ?? 'text';
+
             if (is_string($tempId) && str_starts_with($tempId, 'new_')) {
                 $newInstr = $activity->activityInstructions()->create(Arr::only($instrData, ['label', 'type', 'is_required', 'options']));
                 $instructionIdMap[$tempId] = $newInstr->id;
                 $incomingInstructionIds[] = $newInstr->id;
+                $instructionTypes[$newInstr->id] = $type;
             } else {
                 if (!$tempId) continue; // Skip if no ID is provided for an existing instruction
                 $activity->activityInstructions()->where('id', $tempId)->update(Arr::only($instrData, ['label']));
                 $instructionIdMap[$tempId] = $tempId;
                 $incomingInstructionIds[] = (int)$tempId;
+                $instructionTypes[(int)$tempId] = $type;
             }
         }
 
@@ -734,14 +756,23 @@ public function bulkStore(Request $request)
         $activity->activityInstructions()->whereNotIn('id', $incomingInstructionIds)->delete();
 
         // Update or create answers
-
         foreach ($data['instruction_answers'] ?? [] as $tempId => $value) {
             $realId = $instructionIdMap[$tempId] ?? $tempId;
+            $currentType = $instructionTypes[$realId] ?? 'text';
+            $finalValue = $value;
+
+            // Si la réponse est un fichier (pour image ou signature), on le stocke
+            if (($currentType === 'image' || $currentType === 'signature') && is_a($value, 'Illuminate\Http\UploadedFile')) {
+                // Stocke le fichier dans 'public/instruction_answers' et récupère le chemin
+                $path = $value->store('instruction_answers', 'public');
+                $finalValue = $path; // On sauvegarde uniquement le chemin
+            }
+
             // S'assurer que l'ID de l'instruction est valide et qu'il fait partie des instructions de l'activité en cours
             if ($realId && in_array($realId, $incomingInstructionIds)) {
                 InstructionAnswer::updateOrCreate(
                     ['activity_id' => $activity->id, 'activity_instruction_id' => $realId],
-                    ['value' => $value, 'user_id' => Auth::id()]
+                    ['value' => $finalValue, 'user_id' => Auth::id()]
                 );
             }
         }

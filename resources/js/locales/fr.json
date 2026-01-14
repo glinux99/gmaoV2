@@ -1859,7 +1859,9 @@
       "number": "Nombre",
       "boolean": "Oui/Non",
       "date": "Date",
-      "textarea": "Zone de texte"
+      "textarea": "Zone de texte",
+      "image": "Fichier",
+      "signature": "signature"
     },
 
     "displayOptions": {
