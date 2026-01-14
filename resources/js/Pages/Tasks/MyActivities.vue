@@ -27,6 +27,7 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import OverlayPanel from 'primevue/overlaypanel';
 import { useSpareParts } from '@/composables/useSpareParts';
+import Image from 'primevue/image';
 // --- COMPOSABLES ---
 
 
@@ -941,7 +942,7 @@ const exportCSV = () => {
                                 <div v-else-if="instruction.type === 'image' || instruction.type === 'signature'">
                                     <!-- Si une image est déjà sauvegardée (le chemin est une chaîne) -->
                                     <div v-if="typeof form.instruction_answers[instruction.id] === 'string' && form.instruction_answers[instruction.id]" class="flex items-center gap-2">
-                                        <img :src="`/storage/${form.instruction_answers[instruction.id]}`" alt="Aperçu" class="w-10 h-10 object-cover rounded-md border border-slate-200" />
+                                        <Image :src="`/storage/${form.instruction_answers[instruction.id]}`" alt="Aperçu" width="40" height="40" imageClass="object-cover rounded-md border border-slate-200" preview />
                                         <Button icon="pi pi-replay" text rounded severity="secondary" @click="form.instruction_answers[instruction.id] = null" v-tooltip.top="'Remplacer l\'image'" />
                                     </div>
                                     <!-- Sinon, afficher le champ de téléversement -->
