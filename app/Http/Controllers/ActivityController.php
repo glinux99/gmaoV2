@@ -581,6 +581,7 @@ public function bulkStore(Request $request)
         // Note: 'task_id' and 'maintenance_id' are typically not updated directly on an existing activity
         // as they define the context. If they need to be updated, additional logic would be required.
         // return $request;
+
         $validated = $request->validate([
             'user_id' => 'nullable|exists:users,id',
             'actual_start_time' => 'nullable|date',
@@ -687,51 +688,116 @@ public function bulkStore(Request $request)
     /**
      * Synchronize spare parts for an activity.
      */
-    private function syncSpareParts(Activity $activity, array $data)
-    {
-        // Revert old stock movements
-        foreach ($activity->sparePartActivities as $spa) {
-            if ($spa->sparePart) {
-                if ($spa->type === 'used') {
-                    // Ensure quantity_used is not null before incrementing
-                    $spa->sparePart->increment('quantity', $spa->quantity_used ?? 0);
-                } elseif ($spa->type === 'returned') {
-                    // Ensure quantity_returned is not null before decrementing
-                    $spa->sparePart->decrement('quantity', $spa->quantity_returned ?? 0);
-                }
-            }
-        }
-        $activity->sparePartActivities()->delete();
-        $activity->expenses()->where('category', 'parts')->delete();
+  private function syncSpareParts(Activity $activity, array $data)
+{
 
-        // Apply new movements
-        $partsUsed = $data['spare_parts_used'] ?? [];
-        foreach ($partsUsed as $partData) {
-            $sparePart = SparePart::find($partData['id']);
-            if ($sparePart) {
-                $activity->sparePartActivities()->create([
-                    'spare_part_id' => $sparePart->id,
-                    'type' => 'used',
-                    'quantity_used' => $partData['quantity']
-                ]);
-                $activity->expenses()->create(['description' => 'Pièce utilisée: ' . $sparePart->reference, 'amount' => ($sparePart->price ?? 0) * $partData['quantity'], 'category' => 'parts', 'user_id' => Auth::id(), 'expense_date' => now(), 'status' => 'pending']);
-                $sparePart->decrement('quantity', $partData['quantity']);
-            }
-        }
+    $regionId = $activity->region_id;
 
-        $partsReturned = $data['spare_parts_returned'] ?? [];
-        foreach ($partsReturned as $partData) {
-            $sparePart = SparePart::find($partData['id']);
-            if ($sparePart) {
-                $activity->sparePartActivities()->create([
-                    'spare_part_id' => $sparePart->id,
-                    'type' => 'returned',
-                    'quantity_returned' => $partData['quantity']
-                ]);
-                $sparePart->increment('quantity', $partData['quantity']);
+    // 1. Annuler les anciens mouvements de stock
+    foreach ($activity->sparePartActivities()->with('sparePart')->get() as $spa) {
+        $partInRegion = SparePart::where('reference', $spa->sparePart->reference)
+                                 ->where('region_id', $regionId)->first();
+        if ($partInRegion) {
+            if ($spa->type === 'used') {
+                // Rendre la pièce au stock
+                $partInRegion->increment('quantity', $spa->quantity_used);
+            } elseif ($spa->type === 'returned') {
+                // Reprendre la pièce du stock
+                $partInRegion->decrement('quantity', $spa->quantity_used);
             }
         }
     }
+
+    // Nettoyage des anciennes entrées
+    $activity->sparePartActivities()->delete();
+    $activity->expenses()->where('category', 'parts')->delete();
+
+    // 2. Application des nouveaux mouvements : UTILISÉS (USED)
+    $partsUsed = $data['spare_parts_used'] ?? [];
+    foreach ($partsUsed as $partData) {
+        if (empty($partData['id'])) continue;
+
+        $sparePart = SparePart::find($partData['id']);
+        if ($sparePart) {
+            $qty = $partData['quantity'] ?? 0;
+            $partInRegion = SparePart::where('reference', $sparePart->reference)->where('region_id', $regionId)->first();
+
+            if (!$partInRegion || $partInRegion->quantity < $qty) {
+                throw new \Exception("Stock insuffisant pour la pièce {$sparePart->reference} dans la région. Requis: {$qty}, Disponible: " . ($partInRegion->quantity ?? 0));
+            }
+
+            $activity->sparePartActivities()->create([
+                'spare_part_id' => $sparePart->id,
+                'type' => 'used',
+                'quantity_used' => $qty,
+                'quantity' => $qty // Sécurité: on remplit les deux colonnes possibles
+            ]);
+
+            // Création de la dépense
+            $activity->expenses()->create([
+                'description' => 'Pièce utilisée: ' . $sparePart->reference,
+                'amount' => ($sparePart->price ?? 0) * $qty,
+                'category' => 'parts',
+                'user_id' => Auth::id(),
+                'expense_date' => now(),
+                'status' => 'pending'
+            ]);
+
+            // Décrémenter le stock
+            $partInRegion->decrement('quantity', $qty);
+
+        }
+    }
+
+    // 3. Application des nouveaux mouvements : RETOURNÉS (RETURNED)
+    $partsReturned = $data['spare_parts_returned'] ?? [];
+    //   return $partsReturned;
+     foreach ($partsReturned as $partData) {
+        if (empty($partData['id'])) continue;
+
+        $sparePart = SparePart::find($partData['id']);
+        if ($sparePart) {
+            $qty = $partData['quantity'] ?? 0;
+
+            // Pour un retour, on incrémente le stock de la région
+            $partInRegion = SparePart::firstOrCreate(
+                ['reference' => $sparePart->reference, 'region_id' => $regionId],
+                [
+                    'label_id' => $sparePart->label_id,
+                    'price' => $sparePart->price,
+                    'min_quantity' => $sparePart->min_quantity,
+                    'quantity' => 0,
+                    'user_id' => Auth::id()
+                ]
+            );
+            $partInRegion->increment('quantity', $qty);
+
+            $activity->sparePartActivities()->create([
+                'spare_part_id' => $sparePart->id,
+                'type' => 'returned',
+                'quantity_used' => $qty,
+            ]);
+        }
+    }
+
+}
+
+    private function createStockMovement(Activity $activity, SparePart $sparePart, string $type, int $quantity, ?int $sourceRegionId, ?int $destinationRegionId)
+    {
+        \App\Models\StockMovement::create([
+            'movable_type' => get_class($sparePart),
+            'movable_id' => $sparePart->id,
+            'type' => $type,
+            'quantity' => $quantity,
+            'source_region_id' => $sourceRegionId,
+            'destination_region_id' => $destinationRegionId,
+            'date' => now(),
+            'notes' => "Mouvement généré par l'activité #{$activity->id}: " . ($activity->title ?? 'Sans titre'),
+            'user_id' => Auth::id(),
+            'responsible_user_id' => $activity->assignable_type === 'App\Models\User' ? $activity->assignable_id : null,
+        ]);
+    }
+
 
     /**
      * Synchronize instructions and their answers.

@@ -393,30 +393,17 @@ const hideDialog = () => {
 const editActivity = (activity) => {
     isCreatingSubActivity.value = false;
 
-    // Remplir le formulaire avec les données existantes
+    // 1. Recherche de l'activité brute pour les instructions
+    const rawActivity = props.activities.data.find(a => a.id === activity.id) || {};
+
+    // 2. Remplissage des champs simples
     form.id = activity.id;
     form.title = activity?.title || activity.maintenance?.title || t('myActivities.common.unnamedActivity');
     form.problem_resolution_description = activity.problem_resolution_description || '';
     form.proposals = activity.proposals || '';
-
-    const rawActivity = props.activities.data.find(a => a.id === activity.id);
     form.assignable_type = activity.assignable_type;
     form.assignable_id = activity.assignable_id;
-
-    // Charger les instructions de l'activité (ou de la tâche si aucune n'existe)
-    form.instructions = rawActivity.activity_instructions?.length > 0
-        ? rawActivity.activity_instructions
-        : (rawActivity.task?.instructions || []);
-
-    // Initialiser les réponses aux instructions
-    form.instruction_answers = {};
-
     form.additional_information = activity.additional_information || '';
-    // Assigner les dates comme objets Date pour le PrimeVue Calendar
-    form.actual_start_time = activity.actual_start_time ? new Date(activity.actual_start_time) : null;
-    form.scheduled_start_time = activity.scheduled_start_time ? new Date(activity.scheduled_start_time) : null;
-    form.actual_end_time = activity.actual_end_time ? new Date(activity.actual_end_time) : null;
-
     form.jobber = activity.jobber || '';
     form.user_id = activity.user_id;
     form.status = activity.status;
@@ -426,15 +413,42 @@ const editActivity = (activity) => {
     form.zone_id = activity.zone_id;
     form.maintenance_id = activity.maintenance_id;
     form.service_order_cost = activity.service_order_cost || 0;
-    form.equipment_ids = activity.equipment?.map(e => e.id) || []; // Charger les IDs des équipements associés
     form.service_order_description = activity.service_order_description || t('myActivities.defaults.sparePartPayment');
 
-    // Ancien système de stock (à migrer si nécessaire ou à ignorer si on repart de zéro)
-    form.spare_parts_used = [];
-    form.spare_parts_returned = [];
+    // 3. Dates (Objets Date pour PrimeVue Calendar)
+    form.actual_start_time = activity.actual_start_time ? new Date(activity.actual_start_time) : null;
+    form.scheduled_start_time = activity.scheduled_start_time ? new Date(activity.scheduled_start_time) : null;
+    form.actual_end_time = activity.actual_end_time ? new Date(activity.actual_end_time) : null;
+
+    // 4. Équipements
+    form.equipment_ids = activity.equipment?.map(e => e.id) || [];
+
+    // 5. CORRECTION PIÈCES DÉTACHÉES (Utilisées et Retournées)
+    // On s'assure que sparePartActivities existe avant de filter
+    const spaList = activity.spare_part_activities || activity.sparePartActivities || [];
+
+    form.spare_parts_used = spaList
+        .filter(spa => spa.type === 'used')
+        .map(spa => ({
+            id: spa.spare_part_id,
+            quantity: spa.quantity || spa.quantity_used || 0 // Supporte les deux noms de colonnes possibles
+        }));
+
+    form.spare_parts_returned = spaList
+        .filter(spa => spa.type === 'returned')
+        .map(spa => ({
+            id: spa.spare_part_id,
+            quantity: spa.quantity || spa.quantity_used || 0
+        }));
+
+    // 6. Instructions & Réponses
+    // Charger les instructions
+    form.instructions = rawActivity.activity_instructions?.length > 0
+        ? rawActivity.activity_instructions
+        : (rawActivity.task?.instructions || []);
 
     const answers = {};
-    const activityInstructions = activity.task?.instructions || rawActivity.activity_instructions || [];
+    const activityInstructions = form.instructions; // Utiliser celles qu'on vient de charger
 
     if (activity.instruction_answers && Array.isArray(activity.instruction_answers)) {
         activity.instruction_answers.forEach(answer => {
@@ -446,9 +460,10 @@ const editActivity = (activity) => {
                     answers[instructionId] = String(answer.value);
                 } else if (instruction.type === 'image' || instruction.type === 'signature') {
                     try {
-                        answers[instructionId] = JSON.parse(answer.value);
+                        // Si c'est déjà un objet/tableau, on ne parse pas
+                        answers[instructionId] = typeof answer.value === 'string' ? JSON.parse(answer.value) : answer.value;
                     } catch (e) {
-                        answers[instructionId] = answer.value ? [answer.value] : []; // Rétrocompatibilité
+                        answers[instructionId] = answer.value ? [answer.value] : [];
                     }
                 } else {
                     answers[instructionId] = answer.value;
