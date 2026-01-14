@@ -87,20 +87,20 @@ public function spareParts()
      *
      * @return \Illuminate\Database\Eloquent\Casts\Attribute
      */
-    public function quantity(): \Illuminate\Database\Eloquent\Casts\Attribute
-    {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
-            get: function ($value) {
-                // Calcule la somme des entrées (entry) et transferts entrants
-                $inflows = $this->stockMovements()
-                    ->whereIn('type', ['entry', 'transfer'])
-                    ->sum('quantity');
+    // public function quantity(): \Illuminate\Database\Eloquent\Casts\Attribute
+    // {
+    //     return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+    //         get: function ($value) {
+    //             // Calcule la somme des entrées (entry) et transferts entrants
+    //             $inflows = $this->stockMovements()
+    //                 ->whereIn('type', ['entry', 'transfer'])
+    //                 ->sum('quantity');
 
-                // Calcule la somme des sorties (exit) et transferts sortants
-                $outflows = $this->stockMovements()
-                    ->whereIn('type', ['exit'])->sum('quantity');
-                return $inflows - $outflows;
-            }
-        );
-    }
+    //             // Calcule la somme des sorties (exit) et transferts sortants
+    //             $outflows = $this->stockMovements()
+    //                 ->whereIn('type', ['exit'])->sum('quantity');
+    //             return $inflows - $outflows;
+    //         }
+    //     );
+    // }
 }

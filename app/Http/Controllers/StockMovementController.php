@@ -305,17 +305,20 @@ public function update(Request $request, $id)
             if ($validated['type'] === 'entry' && isset($validated['destination_region_id'])) {
                 // Incrémente le stock de la pièce dans la région de destination.
                 // Crée la pièce dans cette région si elle n'existe pas.
-                $part = SparePart::firstOrCreate(
+                $part = SparePart::updateOrCreate(
                     ['reference' => $movable->reference, 'region_id' => $validated['destination_region_id']], // Attributs de recherche
                     [ // Attributs de création
                         'label_id' => $movable->label_id,
                         'price' => $movable->price,
                         'min_quantity' => $movable->min_quantity,
-                        'quantity' => 0,
+                        'quantity' => DB::raw("quantity + $quantity"),
                         'user_id' => Auth::id() // Ajout du user_id ici
                     ]
                 );
-                $part->increment('quantity', $quantity);
+
+                // Met à jour la quantité de la pièce parente (sans région)
+                SparePart::where('reference', $movable->reference)
+                    ->whereNull('region_id')->increment('quantity', $quantity);
 
             } elseif ($validated['type'] === 'exit' && isset($validated['source_region_id'])) {
                 // Décrémente le stock de la pièce dans la région source.
@@ -325,23 +328,26 @@ public function update(Request $request, $id)
                     $part->decrement('quantity', $quantity);
                 }
 
+                // Met à jour la quantité de la pièce parente (sans région)
+                SparePart::where('reference', $movable->reference)
+                    ->whereNull('region_id')->decrement('quantity', $quantity);
+
             } elseif ($validated['type'] === 'transfer') {
                 // Décrémente la source
                 SparePart::where('reference', $movable->reference)
                          ->where('region_id', $validated['source_region_id'])
                          ->decrement('quantity', $quantity);
                 // Incrémente la destination (en la créant si besoin)
-                $destPart = SparePart::firstOrCreate(
+                $destPart = SparePart::updateOrCreate(
                     ['reference' => $movable->reference, 'region_id' => $validated['destination_region_id']],
                     [ // Attributs de création
                         'label_id' => $movable->label_id,
                         'price' => $movable->price,
                         'min_quantity' => $movable->min_quantity,
-                        'quantity' => 0,
+                        'quantity' => DB::raw("quantity + $quantity"),
                         'user_id' => Auth::id() // Ajout du user_id ici
                     ]
                 );
-                $destPart->increment('quantity', $quantity);
             }
         } elseif ($item['movable_type'] === Equipment::class) {
             $quantity = $item['quantity'];

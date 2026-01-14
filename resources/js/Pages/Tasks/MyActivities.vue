@@ -61,11 +61,30 @@ const expandedRows = ref([]);
 
 // 1. Pour les Dropdowns (Status, Types, etc.)
 const statusOptions = computed(() => {
-    const rawObject = tm('myActivities.statusOptions');
-    return Object.entries(rawObject).map(([value, label]) => ({
-        label: rt(label),
-        value: value
-    }));
+    const activityStatus = tm('myActivities.status');
+    let options = {};
+
+    // Vérifie si les statuts d'activité existent et ne sont pas vides
+    if (activityStatus && Object.keys(activityStatus).length > 0) {
+        options = { ...activityStatus };
+    } else {
+        // Si vide, utilise une liste de secours complète
+        options = {
+            ...tm('equipments.statusOptions'), // Statuts d'équipement
+            // Statuts d'activité en dur comme fallback
+            'in_progress': 'En cours',
+            'completed': 'Terminée',
+            'suspended': 'Suspendue',
+            'canceled': 'Annulée',
+            'scheduled': 'Planifiée',
+            'completed_with_issues': 'Terminée avec problèmes',
+            'to_be_reviewed_later': 'À revoir plus tard',
+            'awaiting_resources': 'En attente de ressources',
+            'pending': 'En attente'
+        };
+    }
+
+    return Object.entries(options).map(([value, label]) => ({ label: rt(label), value }));
 });
 
 const instructionTypes = computed(() => {
@@ -491,6 +510,7 @@ const createSubActivity = (parentActivity) => {
 // Fonction unifiée pour Créer ou Sauvegarder
 const saveActivity = () => {
     // Étape 1: Préparation des données finales
+    console.log(form.data());
     form.service_order_cost = serviceOrderCost.value;
 
     // Convertir les objets Date en ISO string formaté pour MySQL
@@ -691,6 +711,7 @@ const exportCSV = () => {
                         </template>
 
                         <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'status'">
+
                             <Dropdown v-model="lazyParams.filters['status'].value" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('myActivities.table.filterByStatus')" class="p-column-filter" showClear />
                         </template>
                         <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'title'">

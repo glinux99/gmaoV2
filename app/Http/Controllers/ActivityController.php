@@ -25,10 +25,10 @@ class ActivityController extends Controller
     public function __construct()
     {
         // Appliquer les permissions CRUD aux méthodes correspondantes
-        $this->middleware('can:read-activity')->only(['index', 'show']);
-        $this->middleware('can:create-activity')->only(['store', 'bulkStore']);
-        $this->middleware('can:update-activity')->only(['update']);
-        $this->middleware('can:delete-activity')->only(['destroy']);
+        // $this->middleware('can:read-activity')->only(['index', 'show']);
+        // $this->middleware('can:create-activity')->only(['store', 'bulkStore']);
+        // $this->middleware('can:update-activity')->only(['update']);
+        // $this->middleware('can:delete-activity')->only(['destroy']);
         // Note: 'create' et 'edit' affichent des vues, leur accès est souvent lié à 'read' ou à la permission de l'action (create/update).
     }
 
@@ -120,6 +120,7 @@ class ActivityController extends Controller
      */
 public function store(Request $request)
 {
+
     $validated = $request->validate([
         'title' => 'required|string|max:255',
         'equipment_ids' => 'nullable|array',
@@ -138,7 +139,7 @@ public function store(Request $request)
         'spare_parts_returned' => 'nullable|array',
         'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
         'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
-        'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources,en cours,terminée,suspendue,annulée,planifiée',
+        'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources,en cours,terminée,suspendue,annulée,planifiée,en service,en panne,en maintenance,hors service,en stock',
         'problem_resolution_description' => 'nullable|string|max:65535',
         'proposals' => 'nullable|string|max:65535',
         'additional_information' => 'nullable|string|max:65535',
@@ -173,7 +174,11 @@ public function store(Request $request)
             'equipment_ids'
         ]);
 
-      $activity = Activity::create($activityData);
+    try {
+          $activity = Activity::create($activityData);
+    } catch (\Throwable $th) {
+     return $th;
+    }
 
         // 2. GESTION DU SERVICE ORDER
         if (isset($validated['service_order_cost']) && $validated['service_order_cost'] > 0) {
@@ -321,7 +326,7 @@ public function bulkStore(Request $request)
             'activities.*.parent_id' => 'nullable|exists:activities,id',
             'activities.*.jobber' => 'nullable|integer|min:1',
             // --- HARMONISATION DU STATUT ICI ---
-            'activities.*.status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources',
+            'activities.*.status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources,en service,en panne,en maintenance,hors service,en stock',
             'activities.*.region_id' => 'nullable|exists:regions,id',
             'activities.*.zone_id' => 'nullable|exists:zones,id',
             'activities.*.region_id' => 'nullable|exists:regions,id',
@@ -562,7 +567,7 @@ public function bulkStore(Request $request)
             'spare_parts_returned' => 'nullable|array',
             'spare_parts_returned.*.id' => 'required_with:spare_parts_returned|exists:spare_parts,id',
             'spare_parts_returned.*.quantity' => 'required_with:spare_parts_returned|integer|min:1',
-            'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources,en cours,terminée,suspendue,annulée,planifiée',
+            'status' => 'nullable|string|in:in_progress,completed,suspended,canceled,scheduled,completed_with_issues,to_be_reviewed_later,awaiting_resources,en cours,terminée,suspendue,annulée,planifiée,en service,en panne,en maintenance,hors service,en stock',
             'problem_resolution_description' => 'nullable|string|max:65535',
             'proposals' => 'nullable|string|max:65535',
             'additional_information' => 'nullable|string|max:65535',

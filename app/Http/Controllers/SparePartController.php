@@ -33,7 +33,9 @@ $baseQuery = SparePart::query();
 
 // 2. Filtres
 if ($regionId) {
-    $baseQuery->where('region_id', $regionId);
+    $baseQuery->where('region_id', $regionId); // Filtre par région si fournie
+} else {
+    $baseQuery->whereNull('region_id'); // Sinon, n'affiche que les pièces sans région
 }
 
 if ($search) {

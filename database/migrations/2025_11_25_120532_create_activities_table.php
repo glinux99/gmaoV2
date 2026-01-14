@@ -34,7 +34,7 @@ return new class extends Migration
             $table->string('title')->nullable(); // Ex: 'in_progress', 'completed', 'suspended', 'canceled'
             $table->text('problem_resolution_description')->nullable(); // Description de la résolution du problème
             $table->text('proposals')->nullable(); // Propositions ou recommandations
-            $table->json('additional_information')->nullable(); // Informations additionnelles génériques
+            $table->text('additional_information')->nullable(); // Informations additionnelles génériques
 
             $table->timestamps();
         });
