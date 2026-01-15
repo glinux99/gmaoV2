@@ -38,6 +38,8 @@ class Maintenance extends Model implements HasMedia
         'estimated_duration',
         'started_at',
         'completed_at',
+        'labor_cost',
+        'material_cost',
         'cost',
 
         // Champs de récurrence (Ajoutés)

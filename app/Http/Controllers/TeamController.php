@@ -63,19 +63,21 @@ class TeamController extends Controller
            'team_leader_id' => 'nullable|exists:users,id',
            // Le champ 'members' est un tableau d'IDs
            'members' => 'array',
+           'nombre_tacherons' => 'nullable|integer|min:0',
            // Chaque élément du tableau 'members' doit exister dans la table 'users'
            'members.*' => 'exists:users,id',
         ]);
 
         // 2. Définir le leader si non fourni
         if (empty($validated['team_leader_id'])) {
-            $validated['team_leader_id'] = Auth::id();
+            $validated['team_leader_id'] = null;
         }
 
         // 3. Création de la nouvelle équipe
         $team = Team::create([
             'name' => $validated['name'],
             'team_leader_id' => $validated['team_leader_id'],
+            'nombre_tacherons' => $validated['nombre_tacherons'] ?? 0,
         ]);
 
         // 4. Attacher les membres (Correction majeure ici)
@@ -117,17 +119,20 @@ class TeamController extends Controller
             'name' => 'required|string|max:255',
             'team_leader_id' => 'nullable|exists:users,id',
             'members' => 'array',
+            'nombre_tacherons' => 'nullable|integer|min:0',
             'members.*' => 'exists:users,id',
         ]);
 
         // If team_leader_id is not provided, set the current authenticated user as the team leader
         if (empty($validated['team_leader_id'])) {
-            $validated['team_leader_id'] = Auth::id();
+            $validated['team_leader_id'] = null;
         }
 
         $team->update([
             'name' => $validated['name'],
             'team_leader_id' => $validated['team_leader_id'],
+            'nombre_tacherons' => $validated['nombre_tacherons'] ?? 0,
+
         ]);
 
         if (isset($validated['members'])) {

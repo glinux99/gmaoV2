@@ -19,6 +19,7 @@ import Dropdown from 'primevue/dropdown';
 import MultiSelect from 'primevue/multiselect';
 import Calendar from 'primevue/calendar';
 import Toast from 'primevue/toast';
+import InputNumber from 'primevue/inputnumber';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Avatar from 'primevue/avatar';
 import AvatarGroup from 'primevue/avatargroup';
@@ -55,6 +56,7 @@ const allColumns = ref([
     { field: 'team_leader', header: t('teams.fields.leader') },
     { field: 'region.designation', header: t('equipments.table.region') },
     { field: 'members', header: t('teams.fields.members') },
+    { field: 'nombre_tacherons', header: 'Tâcherons' },
 ]);
 
 const visibleColumns = ref(allColumns.value.map(col => col.field));
@@ -81,7 +83,7 @@ const form = useForm({
     id: null,
     name: '',
     team_leader_id: null,
-    creation_date: null,
+    nombre_tacherons: 0,
     members: [],
 });
 
@@ -103,7 +105,6 @@ const exportCSV = () => dt.value.exportCSV();
 
 const openCreate = () => {
     form.reset();
-    form.creation_date = new Date();
     isModalOpen.value = true;
 };
 
@@ -111,18 +112,18 @@ const editTeam = (team) => {
     form.id = team.id;
     form.name = team.name;
     form.team_leader_id = team.team_leader_id;
-    form.creation_date = new Date(team.creation_date);
+    form.nombre_tacherons = team.nombre_tacherons || 0;
     form.members = team.members ? team.members.map(m => m.id) : [];
     isModalOpen.value = true;
 };
 
 const updateTeamName = () => {
-    if (form.team_leader_id && form.creation_date) {
+    if (form.team_leader_id && !form.id) { // Se déclenche uniquement à la création
         const leader = props.technicians.find(t => t.id === form.team_leader_id);
         if (leader) {
-            const date = new Date(form.creation_date);
+            const date = new Date();
             const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Add 1 because months are 0-indexed
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
             const day = date.getDate().toString().padStart(2, '0');
             form.name = `${leader.name.split(' ')[0]}-${year}${month}${day}`;
         }
@@ -297,6 +298,15 @@ const deleteTeam = (team) => {
                         </template>
                     </Column>
 
+                    <Column field="nombre_tacherons" header="Tâcherons" sortable v-if="visibleColumns.includes('nombre_tacherons')">
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-user-minus text-slate-400"></i>
+                                <span class="text-sm font-medium text-slate-600">{{ data.nombre_tacherons || 0 }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
                     <Column :header="t('teams.fields.members')" v-if="visibleColumns.includes('members')">
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">
@@ -304,7 +314,7 @@ const deleteTeam = (team) => {
                                     <Avatar v-for="m in data.members.slice(0, 3)" :key="m.id" :label="m.name[0]" shape="circle" class="!border-2 !border-white !bg-primary-100 !text-primary-700 !font-bold" />
                                     <Avatar v-if="data.members.length > 3" :label="`+${data.members.length - 3}`" shape="circle" class="!bg-slate-800 !text-white !text-xs" />
                                 </AvatarGroup>
-                                <span class="text-[10px] font-black uppercase text-slate-400">{{ data.members?.length || 0 }} pers.</span>
+                                <span class="text-[10px] font-black uppercase text-slate-400">{{ data.total_members_count || 0 }} pers.</span>
                             </div>
                         </template>
                     </Column>
@@ -363,15 +373,14 @@ const deleteTeam = (team) => {
                                 <label class="text-xs font-black text-slate-500 uppercase">{{ t('teams.fields.name') }}</label>
                                 <InputText v-model="form.name" :placeholder="t('teams.placeholders.name')" class="w-full py-3.5 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary-50" />
                             </div>
-                            <div class="flex flex-col gap-2 hidden">
-                                <label class="text-xs font-black text-slate-500 uppercase">{{ t('teams.fields.creationDate') }}</label>
-                                <Calendar v-model="form.creation_date" showIcon :showOnFocus="false" dateFormat="dd/mm/yy" @date-select="updateTeamName"
-                                          class="w-full rounded-xl border-slate-200" inputClass="py-3.5 rounded-xl border-slate-200" />
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Nombre de Tâcherons</label>
+                                <InputNumber v-model="form.nombre_tacherons" inputId="integeronly" class="w-full" inputClass="py-3.5 rounded-xl border-slate-200" />
                             </div>
 
 
 
-                            <div class="md:col-span-2 flex flex-col gap-2">
+                            <div class="md:col-span-2 flex flex-col gap-2 mt-4">
                                 <label class="text-xs font-black text-slate-500 uppercase">{{ t('teams.fields.members') }}</label>
                                 <MultiSelect v-model="form.members" :options="technicians" optionLabel="name" optionValue="id"
                                              :placeholder="t('teams.placeholders.members')" filter display="chip" class="rounded-xl border-slate-200 py-1" />

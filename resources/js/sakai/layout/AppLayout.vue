@@ -8,6 +8,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import Calendar from 'primevue/calendar';
 import Dropdown from 'primevue/dropdown';
 import Toast from 'primevue/toast';
+import { useI18n } from 'vue-i18n';
 
 const { layoutConfig, layoutState, isSidebarActive, resetMenu } = useLayout();
 
@@ -54,6 +55,7 @@ const isOutsideClicked = (event) => {
 };
 
 // --- Gestion des Filtres de Date ---
+const { t } = useI18n();
 
 const page = usePage();
 
@@ -145,15 +147,15 @@ watch(dateRange, (newDates) => {
             <div class="px-0 py-4">
                 <div class="flex items-center justify-end gap-2 p-3 bg-white rounded-lg shadow-sm border">
                     <i class="pi pi-calendar text-xl text-gray-600"></i>
-                    <h4 class="font-semibold text-gray-700 m-0 hidden md:block">Période :</h4>
+                    <h4 class="font-semibold text-gray-700 m-0 hidden md:block">{{ t('period') }} :</h4>
 
                     <Dropdown
                         v-model="filterType"
                         :options="[
-                            { label: 'Ce mois-ci', value: 'this_month' },
-                            { label: 'Mois dernier', value: 'last_month' },
-                            { label: 'Semaine dernière', value: 'last_week' },
-                            { label: 'Personnalisé', value: 'custom' }
+                            { label: t('date_filters.this_month'), value: 'this_month' },
+                            { label: t('date_filters.last_month'), value: 'last_month' },
+                            { label: t('date_filters.last_week'), value: 'last_week' },
+                            { label: t('date_filters.custom'), value: 'custom' }
                         ]"
                         optionLabel="label"
                         optionValue="value"

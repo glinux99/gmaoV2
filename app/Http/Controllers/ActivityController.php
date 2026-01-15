@@ -676,6 +676,9 @@ public function bulkStore(Request $request)
                 }
             }
 
+            // Mettre à jour le coût de la maintenance parente
+            $this->updateMaintenanceCost($activity);
+
             DB::commit();
             return redirect()->route('activities.index')->with('success', 'Activité mise à jour avec succès.');
 
@@ -685,6 +688,72 @@ public function bulkStore(Request $request)
             return redirect()->back()->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage())->withInput();
         }
     }
+
+    /**
+     * Recalculate and update the cost of the parent maintenance.
+     */
+    private function updateMaintenanceCost(Activity $activity)
+    {
+        // Trouver la maintenance parente, soit directement, soit via une activité parente.
+        $maintenance = null;
+        if ($activity->maintenance_id) {
+            $maintenance = $activity->maintenance;
+        } elseif ($activity->parent_id) {
+            $maintenance = $activity->parent->maintenance;
+        }
+
+        // Si aucune maintenance n'est associée, on arrête.
+        if (!$maintenance) {
+            return;
+        }
+
+        // Récupérer toutes les activités (principales et sous-activités) liées à cette maintenance.
+        $allActivities = Activity::where('maintenance_id', $maintenance->id)
+            ->orWhereIn('parent_id', function ($query) use ($maintenance) {
+                $query->select('id')->from('activities')->where('maintenance_id', $maintenance->id);
+            })
+            ->with(['assignable', 'expenses' => function ($query) {
+                $query->where('category', 'parts');
+            }])
+            ->get();
+
+        $totalLaborCost = 0;
+        $totalMaterialCost = 0;
+
+        $tacheronRate = 0.76;
+        $technicianRate = 2.92;
+
+        foreach ($allActivities as $act) {
+            // Calcul du coût du matériel
+            $totalMaterialCost += $act->expenses->sum('amount');
+
+            // Calcul du coût de la main d'œuvre
+            if ($act->actual_start_time && $act->actual_end_time) {
+                $durationInHours = $act->actual_start_time->diffInHours($act->actual_end_time);
+
+                if ($durationInHours > 0) {
+                    $assignable = $act->assignable;
+                    if ($assignable instanceof \App\Models\Team) {
+                        $technicianCount = $assignable->members()->count();
+                        $tacheronCount = $assignable->nombre_tacherons ?? 0;
+
+                        $totalLaborCost += ($technicianCount * $technicianRate * $durationInHours);
+                        $totalLaborCost += ($tacheronCount * $tacheronRate * $durationInHours);
+                    } elseif ($assignable instanceof \App\Models\User) {
+                        // Un utilisateur seul est considéré comme un technicien
+                        $totalLaborCost += (1 * $technicianRate * $durationInHours);
+                    }
+                }
+            }
+        }
+
+        // Mise à jour du coût total dans la maintenance
+        $maintenance->labor_cost = $totalLaborCost;
+        $maintenance->material_cost = $totalMaterialCost;
+        $maintenance->cost = $totalLaborCost + $totalMaterialCost; // Le coût total est la somme des deux
+        $maintenance->save();
+    }
+
 
     /**
      * Synchronize spare parts for an activity.

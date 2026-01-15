@@ -1161,6 +1161,7 @@
         "user": "Technician",
         "team": "Team"
     },
+    "period": "Period",
     "recurrence": {
         "none": "None",
         "daily": "Daily",

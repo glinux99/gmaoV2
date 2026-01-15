@@ -32,7 +32,7 @@ class MaintenanceController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
 
-        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region', 'statusHistories.user'])
+        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region', 'statusHistories.user', 'labor_cost', 'material_cost'])
             ->whereBetween('scheduled_start_date', [
                 Carbon::parse($startDate)->startOfDay(),
                 Carbon::parse($endDate)->endOfDay()

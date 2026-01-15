@@ -19,8 +19,14 @@ class Team extends Model
     protected $fillable = [
         'name',
         'team_leader_id',
+        'nombre_tacherons',
     ];
 
+    protected $appends = ['total_members_count'];
+
+    public function getTotalMembersCountAttribute() {
+        return $this->members()->count() + ($this->nombre_tacherons ?? 0);
+    }
     /**
      * Obtenir le chef d'équipe (un utilisateur).
      */
