@@ -24,7 +24,7 @@ return new class extends Migration
     $table->decimal('cost', 10, 2)->nullable();
 
 
-    // Champs de récurrence
+    // Champs de récurrence x
     $table->string('recurrence_type')->nullable();
     $table->integer('recurrence_interval')->nullable();
     $table->integer('recurrence_month_interval')->nullable();
