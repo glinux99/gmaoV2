@@ -1926,7 +1926,8 @@
       "instructionsAndActions": "Consignes & Actions",
       "answersCount": "{count} réponse(s)",
       "completeActivityTooltip": "Compléter / Voir l'activité",
-      "associatedSubActivities": "Sous-activités associées"
+      "associatedSubActivities": "Sous-activités associées",
+      "noSubActivities": "Pas de sous-activité associée à cette activité"
     },
 
     "table": {

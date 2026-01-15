@@ -769,92 +769,133 @@ const exportCSV = () => {
             </div>
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable ref="dt" :value="parentActivities" dataKey="id" v-model:expandedRows="expandedRows"
-                    lazy paginator :totalRecords="activities.total"
-                    :rows="activities.per_page"
-                    @page="onPage($event)" @sort="onSort($event)"
-                    v-model:filters="lazyParams.filters" filterDisplay="menu"
-                    :globalFilterFields="['title', 'jobber', 'status']"
-                    class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport" responsiveLayout="scroll"
-                    :currentPageReportTemplate="t('myActivities.table.report')">
+               <DataTable
+    ref="dt"
+    :value="parentActivities"
+    dataKey="id"
+    v-model:expandedRows="expandedRows"
+    lazy
+    paginator
+    :totalRecords="activities.total"
+    :rows="activities.per_page"
+    @page="onPage($event)"
+    @sort="onSort($event)"
+    v-model:filters="lazyParams.filters"
+    filterDisplay="menu"
+    :globalFilterFields="['title', 'jobber', 'status']"
+    class="p-datatable-sm quantum-table"
+    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+    responsiveLayout="scroll"
+    :currentPageReportTemplate="t('myActivities.table.report')"
+>
+    <template #header>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
+            <IconField iconPosition="left">
+                <InputIcon class="pi pi-search text-slate-400" />
+                <InputText v-model="lazyParams.filters['global'].value" :placeholder="t('myActivities.table.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+            </IconField>
 
-                    <template #header>
-                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
-                            <IconField iconPosition="left">
-                                <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="lazyParams.filters['global'].value" :placeholder="t('myActivities.table.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
-                            </IconField>
-                            <Dropdown v-model="lazyParams.filters['team_id'].value"
-                                :options="props.teams" optionLabel="name" optionValue="id"
-                                :placeholder="t('myActivities.table.filterByTeam')"
-                                showClear class="w-full md:w-60 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!bg-white"
-                            />
-                            <div class="flex items-center gap-2">
-                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="resetFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
-                                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" v-tooltip.bottom="t('common.exportCSV')" />
-                                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="t('common.selectColumns')" />
-                            </div>
+            <div class="flex items-center gap-2">
+                <Dropdown v-model="lazyParams.filters['team_id'].value"
+                    :options="props.teams" optionLabel="name" optionValue="id"
+                    :placeholder="t('myActivities.table.filterByTeam')"
+                    showClear class="w-full md:w-60 !rounded-2xl !border-slate-200 !bg-slate-50/50 focus:!bg-white"
+                />
+                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="resetFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
+                <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" v-tooltip.bottom="t('common.exportCSV')" />
+                <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="t('common.selectColumns')" />
+            </div>
+        </div>
+    </template>
+
+    <Column expander headerStyle="width: 3rem" />
+
+    <Column v-for="col in allColumns.filter(c => visibleColumns.includes(c.field))"
+            :key="col.field"
+            :field="col.field"
+            :header="col.header"
+            sortable
+            :filterField="col.field">
+
+        <template #body="{ data, field }">
+            <span v-if="field === 'title'" class="font-bold text-slate-800 tracking-tight">
+                {{ data?.title || t('myActivities.common.unnamedActivity') }}
+            </span>
+
+            <Tag v-else-if="field === 'status'"
+                 :value="getStatusLabel(data.status)"
+                 :severity="getStatusSeverity(data.status)"
+                 class="uppercase text-[9px] px-2" />
+
+            <span v-else-if="field.includes('time') || field.includes('date')" class="text-slate-600 text-sm font-mono">
+                {{ formatDateTime(data[field]) }}
+            </span>
+
+            <div v-else-if="field === 'jobber'" class="flex items-center gap-2">
+                <i :class="[
+                    'pi',
+                    data.assignable_type?.includes('Team') ? 'pi-users' : 'pi-user',
+                    'text-slate-500'
+                ]"></i>
+                <span class="text-slate-700 text-sm">{{ data.assignable?.name || data.jobber || 'N/A' }}</span>
+            </div>
+
+            <span v-else-if="field === 'region.designation'" class="text-slate-600 text-sm">{{ data.region?.designation }}</span>
+            <span v-else-if="field === 'zone.title'" class="text-slate-600 text-sm">{{ data.zone?.title }}</span>
+
+            <span v-else>{{ data[field] }}</span>
+        </template>
+
+        <template #filter="{ filterModel }" v-if="col.field === 'status'">
+            <Dropdown v-model="lazyParams.filters['status'].value" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('myActivities.table.filterByStatus')" class="p-column-filter" showClear />
+        </template>
+
+        <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'title'">
+            <InputText v-model="filterModel.constraints[0].value" type="text" @input="filterCallback()" class="p-column-filter" :placeholder="t('myActivities.table.filterByTask')" />
+        </template>
+    </Column>
+
+    <Column headerStyle="width: 8rem; text-align: right">
+        <template #body="{ data }">
+            <div class="flex justify-end gap-2">
+                <Button icon="pi pi-plus"
+                        class="p-button-rounded p-button-text p-button-secondary"
+                        @click="createSubActivity(data)"
+                        v-tooltip.left="t('myActivities.common.createSubActivity')"
+                        v-if="!data.parent_id" />
+
+                <Button icon="pi pi-arrow-right"
+                        class="p-button-rounded p-button-text p-button-secondary"
+                        @click="editActivity(data)"
+                        v-tooltip.left="t('myActivities.common.completeActivityTooltip')" />
+            </div>
+        </template>
+    </Column>
+
+    <template #expansion="{ data }">
+        <div class="bg-slate-50 px-4 md:px-12 py-4 border-y border-slate-200">
+            <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                {{ t('myActivities.common.associatedSubActivities') }}
+            </h4>
+            <div class="space-y-2">
+                <div v-for="subActivity in getSubActivities(data.id)" :key="subActivity.id"
+                     class="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-primary-200 transition-colors">
+                    <div class="flex items-center gap-4">
+                        <Tag :value="getStatusLabel(subActivity.status)" :severity="getStatusSeverity(subActivity.status)" class="uppercase text-[9px] px-2" />
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm text-slate-700">{{ subActivity.title || subActivity.task?.title || subActivity.maintenance?.title }}</span>
+                            <span class="text-xs text-slate-500">{{ subActivity.assignable?.name || subActivity.jobber || 'N/A' }}</span>
                         </div>
-                    </template>
-
-                    <Column :expander="true" headerStyle="width: 3rem" />
-
-                    <Column v-for="col in allColumns.filter(c => visibleColumns.includes(c.field))" :key="col.field" :field="col.field" :header="col.header" sortable :filterField="col.field">
-                        <template #body="{ data, field }">
-                            <span v-if="field === 'title'" class="font-bold text-slate-800 tracking-tight">
-                                {{ data?.title ||  t('myActivities.common.unnamedActivity') }}
-                            </span>
-                            <Tag v-else-if="field === 'status'" :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" class="uppercase text-[9px] px-2" />
-                            <span v-else-if="field.includes('time')" class="text-slate-600 text-sm font-mono">{{ formatDateTime(data[field]) }}</span>
-                            <!-- Logique pour la colonne Technicien/Jobber -->
-                            <div v-else-if="field === 'jobber'" class="flex items-center gap-2">
-                                <i v-if="data.assignable_type === 'App\\Models\\Team'" class="pi pi-users text-slate-500"></i>
-                                <i v-else-if="data.assignable_type === 'App\\Models\\User'" class="pi pi-user text-slate-500"></i>
-                                <span class="text-slate-700 text-sm">{{ data.assignable?.name || data.jobber || 'N/A' }}</span>
-                            </div> <!-- N/A est une abréviation internationale, pas besoin de traduction -->
-                            <span v-else-if="field === 'region.designation'" class="text-slate-600 text-sm">{{ data.region?.designation }}</span>
-                            <span v-else-if="field === 'zone.title'" class="text-slate-600 text-sm">{{ data.zone?.title }}</span>
-                            <span v-else>{{ data[field] }}</span>
-                        </template>
-
-                        <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'status'">
-
-                            <Dropdown v-model="lazyParams.filters['status'].value" :options="statusOptions" optionLabel="label" optionValue="value" :placeholder="t('myActivities.table.filterByStatus')" class="p-column-filter" showClear />
-                        </template>
-                        <template #filter="{ filterModel, filterCallback }" v-if="col.field === 'title'">
-                            <InputText v-model="filterModel.constraints[0].value" type="text" @input="filterCallback()" class="p-column-filter" :placeholder="t('myActivities.table.filterByTask')" />
-                        </template>
-                    </Column>
-
-                    <Column headerStyle="width: 5rem; text-align: right">
-                        <template #body="{ data }">
-                            <div class="flex justify-end gap-2">
-                                <Button icon="pi pi-plus" class="p-button-rounded p-button-text p-button-secondary" @click="createSubActivity(data)" v-tooltip.left="t('myActivities.common.createSubActivity')" v-if="!data.parent_id" />
-                                <Button icon="pi pi-arrow-right" class="p-button-rounded p-button-text p-button-secondary" @click="editActivity(data)" v-tooltip.left="t('myActivities.common.completeActivityTooltip')" />
-                            </div>
-                        </template>
-                    </Column>
-
-                    <template #expansion="{ data }">
-                        <div class="bg-slate-100/50 px-12 py-4 border-t border-b border-slate-200" v-if="getSubActivities(data.id).length > 0">
-                            <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">{{ t('myActivities.common.associatedSubActivities') }}</h4>
-                            <div class="space-y-2">
-                                <div v-for="subActivity in getSubActivities(data.id)" :key="subActivity.id"
-                                     class="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-primary-200 transition-colors">
-                                    <div class="flex items-center gap-4">
-                                        <Tag :value="getStatusLabel(subActivity.status)" :severity="getStatusSeverity(subActivity.status)" class="uppercase text-[9px] px-2" />
-                                        <div class="flex flex-col">
-                                            <span class="font-bold text-sm text-slate-700">{{ subActivity.task?.title || subActivity.maintenance?.title }}</span>
-                                            <span class="text-xs text-slate-500">{{ subActivity.assignable?.name || subActivity.jobber }}</span>
-                                        </div>
-                                    </div>
-                                    <Button icon="pi pi-arrow-right" class="p-button-rounded p-button-text p-button-secondary" @click="editActivity(subActivity)" v-tooltip.left="t('myActivities.common.completeActivityTooltip')" />
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-
-                </DataTable>
+                    </div>
+                    <Button icon="pi pi-arrow-right" class="p-button-rounded p-button-text p-button-secondary" @click="editActivity(subActivity)" />
+                </div>
+                <div v-if="getSubActivities(data.id).length === 0" class="text-xs text-slate-400 italic">
+                    {{ t('myActivities.common.noSubActivities') }}
+                </div>
+            </div>
+        </div>
+    </template>
+</DataTable>
             </div>
 
             <OverlayPanel ref="op" class="p-4">

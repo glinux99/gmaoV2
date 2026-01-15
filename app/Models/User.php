@@ -109,8 +109,8 @@ public function teams()
  */
 public function getProfilePhotoUrlAttribute(): ?string
 {
-    if (method_exists($this, 'getFirstMediaUrl')) {
-        $url = $this->getFirstMediaUrl('avatar');
+    if (method_exists($this, 'getLastMediaUrl')) {
+        $url = $this->getLastMediaUrl('avatar');
         return $url ?: null;
     }
     return null;
