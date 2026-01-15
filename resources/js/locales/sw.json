@@ -1,1191 +1,2234 @@
 {
-    "dashboard": {
-        "users": "Utilisateurs",
-        "active_tasks": "Tâches Actives",
-        "time_spent_h": "Temps Passé (h)",
-        "avg_intervention_time": "Tps Moyen Interv.",
-        "by_status": "Par Statut",
-        "by_priority": "Par Priorité",
-        "incoming_parts": "Pièces entrantes",
-        "outgoing_parts": "Pièces sortantes",
-        "interventions_count": "Nombre d'interventions",
-        "stopped": "Stoppée",
-        "degraded": "Dégradée",
-        "improvement": "Amélioration",
-        "avg_resolution_time": "Délai de résolution moyen",
-        "delay_hours": "Délai (Heures)",
-        "financial_tracking": "Suivi Financier",
-        "total_budget": "Budget Total",
-        "service_expenses": "Dépenses de prestation",
-        "total_validated_expenses": "Total Dépense validée",
-        "key_metrics_overview": "Aperçu des Métriques Clés",
-        "from_last_period": "depuis la dernière période",
-        "detailed_visualizations": "Visualisations Détaillées",
-        "monthly_intervention_volume_title": "Volume mensuel des interventions et délai moyen de résolution",
-        "monthly_intervention_volume_subtitle": "Statut et temps de résolution sur la période",
-        "spare_parts_movement_title": "Mouvements des Pièces Détachées",
-        "spare_parts_movement_subtitle": "Entrées et sorties sur la période sélectionnée",
-        "failures_by_type_title": "Pannes par type de défaut",
-        "failures_by_type_subtitle": "Répartition des causes de défauts",
-        "interventions_by_type_title": "Interventions par type",
-        "interventions_by_type_subtitle": "Total des actions menées : {count}",
-        "tasks_distribution_title": "Répartition des Tâches",
-        "filter_by": "Filtrer par",
-        "view_by": "Vue par {type}",
-        "status": "statut",
-        "priority": "priorité"
+"dashboard": {
+    "title 2": "MaintenX Enterprise ERP - v2.0",
+    "title": "Tableau de bord",
+    "generatedAt": "Généré pa : {time}",
+    "liveData": "LIVE",
+    "manageSections": "Ku-organiser l'affichage ya ba sections",
+    "filters": {
+      "title": "FILTRES AVANCÉS",
+      "zonePlaceholder": "Chagua zone",
+      "equipmentPlaceholder": "Chagua équipement"
     },
-    "topbar": {
-        "menuModes": {
-            "static": "Statique",
-            "overlay": "Overlay"
-        },
-        "themes": {
-            "light": "Clair",
-            "dark": "Sombre",
-            "accent": "Accent"
-        },
-        "languages": {
-            "french": "Français",
-            "english": "Anglais",
-            "swahili": "Swahili",
-            "german": "Allemand"
-        },
-        "toggle_sidebar": "Basculer le menu latéral",
-        "search_placeholder": "Rechercher un dossier, un agent ou un service...",
-        "status": {
-            "connected": "Connecté"
-        },
-        "userMenu": {
-            "edit_profile": "Éditer Profil",
-            "security": "Sécurité",
-            "logout": "Fermer Session"
-        }
+    "sparklines": {
+      "workOrders": "Ba tâches ziko active",
+      "backlog": "Backlog (Ba retards)",
+      "laborHours": "Masaa ya kazi",
+      "avgMttr": "MTTR ya wastani"
     },
-    "menu": {
-        "dashboard": {
-            "title": "Tableau de bord",
-            "home": "Accueil",
-            "analytics": "Analytiques"
-        },
-        "assetManagement": {
-            "title": "Gestion des actifs",
-            "inventories": "Inventaires",
-            "spareParts": "Pièces détachées",
-            "equipments": "Équipements"
-        },
-        "taskManagement": {
-            "title": "Gestion des tâches",
-            "agenda": "Agenda",
-            "myActivities": "Mes activités",
-            "workOrder": "Ordre de travail",
-            "interventionRequests": "Demandes d'intervention",
-            "maintenancePlan": "Plan de maintenance",
-            "connections": "Connexions",
-            "expenses": "Dépenses"
-        },
-        "teamManagement": {
-            "title": "Gestion d'équipe",
-            "teams": "Équipes",
-            "technicians": "Techniciens"
-        },
-        "hrManagement": {
-            "title": "Gestion RH",
-            "employees": "Employés",
-            "leaves": "Congés",
-            "attendances": "Présences",
-            "payroll": "Paie"
-        },
-        "systemConfiguration": {
-            "title": "Configuration du système",
-            "userManagement": "Gestion des utilisateurs",
-            "users": "Utilisateurs",
-            "roles": "Rôles",
-            "permissions": "Permissions",
-            "reports": "Rapports",
-            "maps": "Cartes",
-            "regions": "Régions",
-            "rollingStock": "Matériel roulant",
-            "units": "Unités",
-            "labels": "Étiquettes",
-            "systemPriority": "Priorité du système"
-        },
-        "dateFilter": {
-            "thisMonth": "Ce mois-ci",
-            "lastMonth": "Le mois dernier",
-            "lastWeek": "La semaine dernière",
-            "custom": "Personnalisé"
-        }
+    "stockRotation": {
+      "title": "Alerte Pièces Détachées"
     },
-    "equipments": {
-        "title": "Gestion des Équipements",
-        "headTitle": "Équipements",
-        "addNew": "Ajouter un équipement",
-        "searchPlaceholder": "Rechercher...",
-        "export": "Exporter",
-        "deleteSelected": "Supprimer ({count})",
-        "deleteSelectedSingle": "Supprimer",
-        "table": {
-            "report": "Affichage de {first} à {last} sur {totalRecords} équipements",
-            "tag": "Tag",
-            "designation": "Désignation",
-            "type": "Type",
-            "brand": "Marque",
-            "model": "Modèle",
-            "region": "Région",
-            "status": "Statut",
-            "quantity": "Quantité",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Modifier l'Équipement",
-            "createTitle": "Créer un nouvel Équipement",
-            "parentLabel": "Équipement Parent (pour créer à partir du stock)",
-            "parentPlaceholder": "Optionnel: Sélectionner un parent",
-            "tag": "Tag",
-            "designation": "Désignation",
-            "type": "Type d'équipement",
-            "typePlaceholder": "Sélectionner un type",
-            "addType": "Ajouter un nouveau type",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "brand": "Marque",
-            "model": "Modèle",
-            "power": "Puissance (kW)",
-            "serialNumber": "Numéro de série",
-            "price": "Prix",
-            "status": "Statut",
-            "statusPlaceholder": "Sélectionner un statut",
-            "stockQuantity": "Quantité en stock",
-            "purchaseDate": "Date d'achat",
-            "warrantyEnd": "Fin de garantie",
-            "location": "Emplacement",
-            "importCharacteristics": "Importer les caractéristiques préexistantes",
-            "importCharacteristicsPlaceholder": "Optionnel: Sélectionner un label pour ajouter ses caractéristiques",
-            "characteristicNamePlaceholder": "Nom de la caractéristique",
-            "characteristicTypePlaceholder": "Type",
-            "characteristicValueText": "Valeur (Texte)",
-            "characteristicValueNumber": "Valeur (Nombre)",
-            "characteristicValueDate": "Valeur (Date)",
-            "characteristicValue": "Valeur",
-            "existingFile": "Fichier existant",
-            "addCharacteristic": "Ajouter une caractéristique",
-            "cancel": "Annuler",
-            "save": "Sauvegarder"
-        },
-        "typeDialog": {
-            "title": "Nouveau Type d'Équipement",
-            "name": "Nom du type",
-            "description": "Description",
-            "cancel": "Annuler",
-            "create": "Créer"
-        },
-        "toast": {
-            "success": "Succès",
-            "updateSuccess": "Équipement mis à jour avec succès.",
-            "createSuccess": "Équipement créé avec succès.",
-            "deleteSuccess": "Équipement supprimé avec succès.",
-            "bulkDeleteSuccess": "Équipements supprimés avec succès.",
-            "saveError": "Erreur de Sauvegarde",
-            "error": "Erreur",
-            "deleteError": "Une erreur est survenue lors de la suppression.",
-            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse.",
-            "typeCreateSuccess": "Type d'équipement créé avec succès.",
-            "typeSaveError": "Erreur lors de la sauvegarde du type d'équipement"
-        },
-        "confirm": {
-            "deleteHeader": "Confirmation de suppression",
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'équipement \"{name}\" ?",
-            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les équipements sélectionnés ?",
-            "cancel": "Annuler",
-            "delete": "Supprimer"
-        },
-        "statusOptions": {
-            "in_service": "En Service",
-            "down": "En Panne",
-            "in_maintenance": "En Maintenance",
-            "out_of_service": "Hors Service",
-            "in_stock": "En Stock"
-        },
-        "characteristicTypes": {
-            "text": "Texte",
-            "number": "Nombre",
-            "date": "Date",
-            "file": "Fichier",
-            "boolean": "Oui/Non"
-        }
+    "sections": {
+      "kpis": "Indicateurs Clés (KPIs)",
+      "sparklines": "Tendances Rapides",
+      "workOrders": "File d'attente (OT)",
+      "stockAlerts": "Ba alertes ya Stock & Pièces",
+      "preventiveCalendar": "Calendrier ya Préventif",
+      "riskMatrix": "Matrice ya ba risques",
+      "technicianEfficiency": "Efficacité ya ba Techniciens",
+      "mainChart": "Flux ya Maintenance",
+      "statusDuration": "Durée par Statut",
+      "statusDoughnut": "Répartition Globale",
+      "budget": "Analyse ya Budget",
+      "criticalityAnalysis": "Analyse ya Criticité",
+      "recentInterventions": "Ba interventions ya sasa",
+      "stockFlow": "Flux ya Stock",
+      "reset": "Ku-reset vue"
     },
-    "spareParts": {
-        "title": "Gestion des Pièces Détachées",
-        "headTitle": "Pièces Détachées",
-        "toolbar": {
-            "add": "Ajouter une pièce détachée",
-            "searchPlaceholder": "Rechercher...",
-            "export": "Exporter"
-        },
-        "table": {
-            "report": "Affichage de {first} à {last} sur {totalRecords} pièces détachées",
-            "name": "Nom",
-            "reference": "Référence",
-            "equipment": "Équipement",
-            "location": "Emplacement",
-            "quantity": "Quantité",
-            "min_quantity": "Quantité Min.",
-            "price": "Prix Unitaire",
-            "partType": "Type de pièce",
-            "responsible": "Responsable",
-            "characteristics": "Caractéristiques",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Modifier la Pièce Détachée",
-            "createTitle": "Créer une nouvelle Pièce Détachée",
-            "editSubtitle": "Mettre à jour les informations de la pièce détachée.",
-            "createSubtitle": "Remplissez les informations pour créer une nouvelle pièce.",
-            "partType": "Type de pièce",
-            "partTypePlaceholder": "Sélectionner un type",
-            "reference": "Référence",
-            "quantity": "Quantité",
-            "min_quantity": "Quantité Min.",
-            "price": "Prix Unitaire",
-            "location": "Emplacement",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "responsible": "Responsable",
-            "responsiblePlaceholder": "Sélectionner un responsable",
-            "characteristicValues": "Valeurs des caractéristiques",
-            "description": "Description",
-            "equipment": "Équipement (pour cette pièce)",
-            "equipmentPlaceholder": "Optionnel: Sélectionner un équipement",
-            "supplier": "Fournisseur",
-            "supplierPlaceholder": "Sélectionner un fournisseur",
-            "purchaseDate": "Date d'achat",
-            "warrantyEnd": "Fin de garantie",
-            "addCharacteristic": "Ajouter une caractéristique",
-            "characteristicNamePlaceholder": "Nom de la caractéristique",
-            "characteristicTypePlaceholder": "Type",
-            "characteristicValueText": "Valeur (Texte)",
-            "characteristicValueNumber": "Valeur (Nombre)",
-            "characteristicValueDate": "Valeur (Date)",
-            "characteristicValue": "Valeur",
-            "existingFile": "Fichier existant",
-            "cancel": "Annuler",
-            "save": "Sauvegarder"
-        },
-        "toast": {
-            "success": "Succès",
-            "updateSuccess": "Pièce détachée mise à jour avec succès.",
-            "createSuccess": "Pièce détachée créée avec succès.",
-            "deleteSuccess": "Pièce détachée supprimée avec succès.",
-            "bulkDeleteSuccess": "Pièces détachées supprimées avec succès.",
-            "saveError": "Erreur de Sauvegarde",
-            "error": "Erreur",
-            "deleteError": "Une erreur est survenue lors de la suppression.",
-            "bulkDeleteError": "Une erreur est survenue lors de la suppression en masse."
-        },
-        "validation": {
-            "characteristicRequired": "La caractéristique \"{characteristic}\" est obligatoire."
-        },
-        "confirm": {
-            "deleteHeader": "Confirmation de suppression",
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer la pièce détachée \"{name}\" ?",
-            "bulkDeleteMessage": "Êtes-vous sûr de vouloir supprimer les pièces détachées sélectionnées ?",
-            "cancel": "Annuler",
-            "delete": "Supprimer"
-        }
+    "kpis": {
+      "availability": "Disponibilité",
+      "availabilityDesc": "Taux ya fonctionnement opérationnel",
+      "preventiveRate": "Taux ya Préventif",
+      "preventiveRateDesc": "Ratio préventif vs correctif",
+      "mtbf": "MTBF",
+      "mtbfDesc": "Muda wa wastani kati ya ba pannes",
+      "oee": "TRS (OEE)",
+      "oeeDesc": "Taux ya Rendement Synthétique",
+      "activeTasks": "Ba tâches active",
+      "backlog": "Arriéré",
+      "laborHours": "Muda wa kazi",
+      "avgMttr": "MTTR ya wastani"
     },
- "sparePartMovements": {
-        "title": "Mouvements des Pièces de Rechange",
-        "headTitle": "Gestion des Stocks - Mouvements",
-        "subtitle": "Suivi des entrées et sorties de stock",
-        "stockLabel": "Stock actuel",
-        "toolbar": {
-            "addMovement": "Nouveau Mouvement",
-            "searchPlaceholder": "Rechercher un mouvement...",
-            "export": "Exporter CSV"
-        },
-        "table": {
-            "sparePart": "Pièce de Rechange",
-            "user": "Utilisateur",
-            "type": "Type",
-            "quantity": "Quantité",
-            "location": "Emplacement",
-            "notes": "Notes",
-            "date": "Date",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "createTitle": "Enregistrer un mouvement",
-            "editTitle": "Modifier le mouvement",
-            "createSubtitle": "Remplissez les informations ci-dessous pour ajouter un mouvement de stock.",
-            "editSubtitle": "Modifier les détails du mouvement sélectionné."
-        },
-        "form": {
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "sparePart": "Pièce de Rechange",
-            "sparePartPlaceholder": "Sélectionner une pièce",
-            "user": "Utilisateur",
-            "userPlaceholder": "Sélectionner l'utilisateur",
-            "movementType": "Type de mouvement",
-            "movementTypePlaceholder": "Entrée ou Sortie ?",
-            "quantity": "Quantité",
-            "location": "Emplacement spécifique",
-            "unity": "Unité / Service",
-            "unityPlaceholder": "Sélectionner l'unité",
-            "notes": "Notes complémentaires"
-        },
-        "movementTypes": {
-            "entry": "Entrée",
-            "exit": "Sortie"
-        },
-        "confirm": {
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer le mouvement pour la pièce {reference} ?"
-        },
-        "toast": {
-            "createSuccess": "Le mouvement a été enregistré avec succès.",
-            "updateSuccess": "Le mouvement a été mis à jour avec succès.",
-            "deleteSuccess": "Le mouvement a été supprimé.",
-            "saveError": "Erreur lors de l'enregistrement du mouvement.",
-            "error": "Erreur",
-            "deleteError": "Impossible de supprimer ce mouvement."
-        }
+    "workOrders": {
+      "title": "Ba Ordres de Travail iko mu cours",
+      "urgent": "{count} ya haraka (Urgent)",
+      "inProgress": "{count} iko mu cours",
+      "columns": {
+        "id": "ID",
+        "equipment": "Équipement",
+        "priority": "Priorité",
+        "assigned": "Assigné",
+        "progress": "Progression",
+        "actions": "Actions"
+      }
     },
-
-    "characteristics": {
-        "types": {
-            "text": "Texte",
-            "number": "Nombre",
-            "date": "Date",
-            "image": "Image",
-            "boolean": "Booléen",
-            "select": "Liste de sélection"
-        }
+    "stockAlerts": {
+      "title": "Alerte Pièces Détachées",
+      "ref": "Réf:",
+      "units": "unités",
+      "order": "Ku-commander"
+    },
+    "preventiveCalendar": {
+      "title": "Planning Préventif",
+      "confirmed": "Confirmé"
+    },
+    "riskMatrix": {
+      "title": "Analyse ya ba Risques",
+      "criticalRisk": "Risque Critique imekuwa détecté",
+      "criticalRiskExample": "Vibration ya ajabu kwenye palier moteur principal"
+    },
+    "technicianEfficiency": {
+      "title": "Charge ya Équipe",
+      "completed": "{count} imesha malizika",
+      "pending": "{count} iko mu attente"
+    },
+    "mainChart": {
+      "title": "Analyse ya Performance",
+      "exportPdf": "Ku-exporter mu PDF",
+      "availabilityRatio": "Ratio ya Disponibilité",
+      "avgClosure": "Clôture ya wastani",
+      "teamEfficiency": "Efficacité ya Équipe"
+    },
+    "statusDoughnut": {
+      "title": "Répartition ya ba Tâches",
+      "inProgress": "Ba tâches ziko active"
+    },
+    "budget": {
+      "title": "Consommation ya Budget ya Maintenance"
+    },
+    "criticalityAnalysis": {
+      "title": "Top 5 Équipements Critiques",
+      "failuresCount": "Hesabu ya ba pannes"
+    },
+    "recentInterventions": {
+      "title": "Ba interventions za mwisho",
+      "seeAll": "Angalia yote",
+      "inProgress": "Iko mu cours",
+      "pending": "Mu attente",
+      "closed24h": "Ilisha fungwa (24h)",
+      "columns": {
+        "asset": "Actif",
+        "priority": "Priorité",
+        "tech": "Tech.",
+        "status": "Statut"
+      }
+    },
+    "stockFlow": {
+      "title": "Flux ya Stock",
+      "description": "Mouvements ya ba pièces ya rechange mu siku 30 za mwisho",
+      "restock": "Réapprovisionnement",
+      "consumption": "Consommation",
+      "entries": "Ma entrées",
+      "exits": "Ma sorties"
+    },
+    "createWoDialog": {
+      "title": "Ordre de Travail mpya"
+    }
+  },
+  "meters": {
+    "title": "Gestion ya ba Compteurs",
+    "titleHtml": "Gestion ya <span class='text-primary-600'>ba Compteurs</span>",
+    "subtitle": "Actifs ya Mesure & Facturation",
+    "active_tasks": "Ba tâches active",
+    "time_spent_h": "Muda uliopita (h)",
+    "avg_intervention_time": "Muda wa wastani wa Interv.",
+    "by_status": "Par Statut",
+    "by_priority": "Par Priorité",
+    "incoming_parts": "Pièces zinazo ingia",
+    "outgoing_parts": "Pièces zinazo toka",
+    "interventions_count": "Hesabu ya ba interventions",
+    "stopped": "Imesimama (Stoppée)",
+    "degraded": "Imeharibika kiasi (Dégradée)",
+    "improvement": "Maendeleo (Amélioration)",
+    "avg_resolution_time": "Délai ya wastani ya résolution",
+    "delay_hours": "Délai (Masaa)",
+    "financial_tracking": "Suivi ya kifedha (Financier)",
+    "total_budget": "Budget yote",
+    "service_expenses": "Gharama za prestation",
+    "total_validated_expenses": "Jumla ya gharama zenye zilikubaliwa",
+    "key_metrics_overview": "Aperçu ya ba Métriques Clés",
+    "from_last_period": "tangu kipindi kilichopita",
+    "detailed_visualizations": "Visualisations Détaillées",
+    "monthly_intervention_volume_title": "Volume ya mwezi ya ba interventions na délai ya wastani",
+    "monthly_intervention_volume_subtitle": "Statut na muda wa résolution mu kipindi hiki",
+    "spare_parts_movement_title": "Mouvements ya ba Pièces Détachées",
+    "spare_parts_movement_subtitle": "Ma entrées na sorties mu muda wenye umechaguliwa",
+    "failures_by_type_title": "Ba pannes par type ya défaut",
+    "failures_by_type_subtitle": "Répartition ya sababu za défauts",
+    "interventions_by_type_title": "Ba interventions par type",
+    "interventions_by_type_subtitle": "Jumla ya actions zote : {count}",
+    "tasks_distribution_title": "Répartition ya ba Tâches",
+    "filter_by": "Filtrer par",
+    "view_by": "Angalia par {type}",
+    "status_label": "statut",
+    "priority_label": "priorité",
+    "status": {
+      "in_stock": "Mu Stock",
+      "available": "Iko disponible"
+    },
+    "actions": {
+      "transfer": "Ku-transférer",
+      "delete": "Ku-supprimer",
+      "import": "Ku-importer",
+      "add": "Ongeza Compteur",
+      "close_details": "Funga ba détails",
+      "confirm_transfer": "Kuhakikisha (Confirmer) transfert"
+    },
+    "stats": {
+      "total": "Jumla ya ba Compteurs",
+      "active": "Active",
+      "faulty": "Défectueux",
+      "in_stock": "Mu Stock",
+      "stock_by_region": "Stock par Région",
+      "stock_detail_for": "Détail ya Stock kwa :",
+      "distribution_by_status": "Répartition par Statut"
+    },
+    "table": {
+      "report": "Kuonyesha kuanzia {first} mpaka {last} kati ya ba compteurs {totalRecords}",
+      "search_placeholder": "Tafuta (Ba N° série mingi na virgule)",
+      "serial_number": "N° ya Série",
+      "type": "Type",
+      "status": "Statut",
+      "connection_full_name": "Client mwenye anahusika",
+      "installation_date": "Tarehe ya ku-installer",
+      "region_name": "Région",
+      "zone_name": "Zone",
+      "is_additional": "Ya nyongeza (Supplémentaire)",
+      "notes": "Notes",
+      "unassigned": "Haija assignewa",
+      "filter": {
+        "by_serial": "Filtrer par N° ya série",
+        "by_type": "Filtrer par type",
+        "by_status": "Filtrer par statut",
+        "by_client": "Filtrer par client"
+      }
+    },
+    "dialog": {
+      "transfer_title": "Transfert ya Stock",
+      "transfer_subtitle": "Mouvement kati ya ba régions",
+      "add_by_serial": "Ongeza compteur kwa kutumia N° ya série",
+      "to_transfer_count": "Ba compteurs za ku-transférer ({count})",
+      "destination_region": "Région ya kuenda (Destination)",
+      "editTitle": "Modifer Compteur",
+      "createTitle": "Ongeza Compteur",
+      "subtitle": "Gestion ya ba informations ya compteur"
+    },
+    "messages": {
+      "no_stock": "Hakuna hata compteur moja mu stock.",
+      "no_meter_selected": "Hakuna hata compteur moja yenye imechaguliwa kwa ajili ya transfert."
+    },
+    "form": {
+      "serial_number": "Numéro ya Série",
+      "serial_number_placeholder": "Ingiza numéro ya série",
+      "manufacturer": "Fabricant",
+      "manufacturer_placeholder": "Ingiza jina la fabricant",
+      "model": "Modèle",
+      "model_placeholder": "Ingiza modèle",
+      "type": "Type",
+      "type_placeholder": "Chagua type",
+      "status": "Statut",
+      "status_placeholder": "Chagua statut",
+      "connection": "Raccordement",
+      "connection_placeholder": "Chagua raccordement",
+      "installation_date": "Tarehe ya ku-installer",
+      "region": "Région",
+      "region_placeholder": "Chagua région",
+      "zone": "Zone",
+      "zone_placeholder": "Chagua zone",
+      "is_additional": "Compteur ya nyongeza",
+      "notes": "Notes",
+      "notes_placeholder": "Ongeza ba notes hapa"
+    },
+    "history": {
+      "title": "Historique ya ba Transferts",
+      "by_user": "Na : {user}",
+      "none": "Hakuna hata historique ya transfert kwa hii compteur."
     },
     "confirm": {
-        "deleteHeader": "Confirmation de suppression",
-        "cancel": "Annuler",
-        "delete": "Supprimer"
-    }
-    ,
-    "engins": {
-        "title": "Gestion des Engins",
-        "headTitle": "Liste des Engins",
-        "subtitle": "{count} Unités en ligne",
-        "toolbar": {
-            "addEngin": "Ajouter un engin",
-            "searchPlaceholder": "Rechercher...",
-            "export": "Exporter",
-            "resetFilters": "Réinitialiser les filtres",
-            "searchByName": "Rechercher par nom"
-        },
-        "table": {
-            "designation": "Nom / Désignation",
-            "immatriculation": "Immatriculation",
-            "type": "Type d'Engin",
-            "region": "Région",
-            "dateAcquisition": "Date d'Acquisition",
-            "hourMeter": "Compteur Horaire",
-            "actions": "Actions",
-            "category": "Catégorie",
-            "assignment": "Affectation"
-        },
-        "form": {
-            "type": "Type d'Engin",
-            "typePlaceholder": "Sélectionner un type",
-            "designation": "Désignation",
-            "immatriculation": "Immatriculation",
-            "region": "Région",
-            "regionPlaceholder": "Sélectionner une région",
-            "dateAcquisition": "Date de mise en service",
-            "datePlaceholder": "Sélectionner la date",
-            "hourMeter": "Compteur Horaire"
-        },
-        "dialog": {
-            "createTitle": "Créer un nouvel Engin",
-            "editTitle": "Modifier l'Engin",
-            "createSubtitle": "Saisissez les informations pour le nouvel engin.",
-            "editSubtitle": "Mettez à jour les informations de l'engin sélectionné."
-        },
-        "confirm": {
-            "deleteMessage": "Êtes-vous sûr de vouloir supprimer l'engin \"{name}\" ?",
-            "header": "Confirmation"
-        },
-        "toast": {
-            "createSuccess": "Engin créé avec succès.",
-            "updateSuccess": "Engin mis à jour avec succès.",
-            "deleteSuccess": "Engin supprimé avec succès.",
-            "saveError": "Une erreur est survenue lors de l'enregistrement.",
-            "deleteError": "Erreur lors de la suppression."
-        },
-        "common": {
-            "update": "Mettre à jour",
-            "save": "Enregistrer",
-            "cancel": "Annuler",
-            "noPlate": "SANS PLAQUE"
-        }
+      "bulkDeleteMessage": "Uko na uhakika unataka ku-supprimer ba compteurs {count} zenye umechagua ?",
+      "bulkDeleteHeader": "Confirmation ya ku-supprimer kwa pamoja (en masse)",
+      "delete": "Supprimer"
     },
-    "dataTable": {
-        "currentPageReportEngins": "Affichage de {first} à {last} sur {totalRecords} engins"
-    },
-    "common": {
-    "save": "Sauvegarder",
-    "cancel": "Annuler",
-    "yes": "Oui",
-    "no": "Non",
-    "success": "Succès",
-    "error": "Erreur",
-    "info": "Information",
-    "confirmation": "Confirmation",
-    "deleteConfirmation": "Confirmation de suppression",
-    "actions": "Actions",
-    "search": "Rechercher...",
-    "searchByName": "Rechercher par nom",
-    "export": "Exporter",
-    "errorOccurred": "Une erreur est survenue.",
-    "paginationReport": "Affichage de {first} à {last} sur {total} éléments"
-  },
-  "labels": {
-    "title": "Gestion des Labels",
-    "fields": {
-      "name": "Nom",
-      "description": "Description",
-      "color": "Couleur",
-      "style": "Style / Couleur",
-      "characteristics": "Attributs Techniques",
-      "charName": "Nom de la caractéristique",
-      "charType": "Type",
-      "isRequiredShort": "Requis"
-    },
-    "actions": {
-      "add": "Ajouter un label",
-      "addChar": "Ajouter une caractéristique"
-    },    "toolbar": {
-      "resetFilters": "Réinitialiser"    },
-    "types": {
-      "text": "Texte",
-      "number": "Nombre",
-      "date": "Date",
-      "file": "Fichier",
-      "boolean": "Boolean",
-      "select": "Liste déroulante"
-    },
-    "dialog": {
-      "createTitle": "Créer un nouveau Label",
-      "editTitle": "Modifier le Label",
-      "createSubtitle": "Créez un nouveau label.",
-      "editSubtitle": "Mettez à jour les informations du label."
-    },
-    "validation": {
-      "nameRequired": "Le nom est requis."
-    },
-    "messages": {
-      "createSuccess": "Label créé avec succès",
-      "updateSuccess": "Label mis à jour avec succès",
-      "deleteSuccess": "Label supprimé avec succès",
-      "confirmDelete": "Êtes-vous sûr de vouloir supprimer le label \"{name}\" ?",
-      "confirmChange": "Vous avez modifié des caractéristiques. Cela peut affecter les données existantes. Continuer ?",
-      "confirmCharDelete": "Supprimer la caractéristique \"{name}\" ? Cette action est irréversible.",
-      "charRemovedInfo": "La caractéristique sera supprimée lors de la sauvegarde.",
-      "deleteError": "Erreur lors de la suppression."
+    "filter": {
+      "by_client": "Filtrer par client",
+      "by_status": "Filtrer par statut",
+      "by_serial": "Filtrer par N° ya série",
+      "by_type": "Filtrer par type",
+      "byType": "Filtrer par type",
+      "brand": "Filtrer par marque",
+      "byUser": "Filtrer par utilisateur"
     }
   },
-  "common": {
-    "save": "Sauvegarder",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "import": "Importer",
-    "export": "Exporter",
-    "search": "Rechercher...",
-    "success": "Succès",
-    "error": "Erreur",
-    "attention": "Attention",
-    "confirmation": "Confirmation",
-    "deleteConfirmation": "Confirmation de suppression",
-    "actions": "Actions",
-    "chooseFile": "Choisir un fichier",
-    "paginationReport": "Affichage de {first} à {last} sur {total} régions",
-    "errorOccurred": "Une erreur est survenue.",
-    "saveChanges": "Valider les modifications",
-    "create": "Créer le profil"
-  },
-  "regions": {
-    "title": "Gestion des Régions",
-    "fields": {
-      "designation": "Désignation",
-      "type": "Type de Centrale",
-      "power": "Puissance (MW)"
-    },
+  "keypads": {
+    "title": "Gestion ya ba Claviers",
+    "titleHtml": "Gestion ya <span class='text-primary-600'>ba Claviers</span>",
+    "subtitle": "Actifs ya contrôle & d'interface",
     "actions": {
-      "add": "Ajouter une région",
-      "deleteSelected": "Supprimer la sélection"
+      "transfer": "Ku-transférer",
+      "delete": "Ku-supprimer",
+      "add": "Ongeza Clavier",
+      "close_details": "Funga ba détails",
+      "confirm_transfer": "Confirmer transfert"
     },
-    "types": {
-      "thermique": "Thermique",
-      "solaire": "Solaire",
-      "hydraulique": "Hydraulique",
-      "eolienne": "Éolienne"
+    "stats": {
+      "total": "Jumla ya ba Claviers",
+      "installed": "Zenye zisha installewa",
+      "available": "Disponibles",
+      "faulty": "Défectueux",
+      "stock_by_region": "Stock par Région",
+      "stock_detail_for": "Détail ya Stock kwa :",
+      "distribution_by_status": "Répartition par Statut"
     },
-    "dialog": {
-      "createTitle": "Créer une nouvelle Région",
-      "editTitle": "Modifier la Région",
-      "importTitle": "Importer des Régions",
-      "importSubtitle": "Téléchargez un fichier CSV ou Excel pour importer de nouvelles régions."
+    "table": {
+      "report": "Kuonyesha kuanzia {first} mpaka {last} kati ya ba claviers {totalRecords}",
+      "search_placeholder": "Tafuta kwa N° ya série...",
+      "serial_number": "N° ya Série",
+      "model": "Modèle",
+      "manufacturer": "Fabricant",
+      "type": "Type",
+      "status": "Statut",
+      "connection_full_name": "Client mwenye anahusika",
+      "meter_serial_number": "Compteur yenye inahusika",
+      "installation_date": "Tarehe ya ku-installer",
+      "region_name": "Région",
+      "zone_name": "Zone",
+      "notes": "Notes",
+      "unassigned": "Haija assignewa"
     },
-    "validation": {
-      "nameRequired": "La désignation est requise."
-    },
-    "messages": {
-      "createSuccess": "Région créée avec succès",
-      "updateSuccess": "Région mise à jour avec succès",
-      "deleteSuccess": "Région supprimée avec succès",
-      "bulkDeleteSuccess": "Les régions sélectionnées ont été supprimées.",
-      "confirmDelete": "Voulez-vous supprimer la région \"{name}\" ?",
-      "confirmBulkDelete": "Voulez-vous supprimer les {count} régions sélectionnées ?",
-      "selectFile": "Veuillez sélectionner un fichier à importer.",
-      "importStarted": "Importation lancée."
-    }
-  },
-  "unities": {
-        "title": "Gestion des Unités",
-        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
-        "fields": {
-            "name": "Désignation",
-            "symbol": "Symbole / Abréviation"
-        },
-        "actions": {
-            "add": "Ajouter une unité"
-        },
-        "dialog": {
-            "createTitle": "Créer une unité",
-            "editTitle": "Modifier l'unité",
-            "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
-            "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
-        },
-        "validation": {
-            "nameRequired": "Le nom de l'unité est obligatoire."
-        },
-        "messages": {
-            "createSuccess": "Unité créée avec succès.",
-            "updateSuccess": "Unité mise à jour avec succès.",
-            "deleteSuccess": "Unité supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
-        }
-    },
-    "employees": {
-        "title": "Gestion des Employés",
-        "count_label": "Employés enregistrés",
-        "actions": {
-            "add": "Ajouter un employé"
-        },
-        "fields": {
-            "first_name": "Prénom",
-            "last_name": "Nom",
-            "email": "Email",
-            "phone": "Téléphone",
-            "status": "Statut d'emploi",
-            "salary": "Salaire",
-            "hire_date": "Date d'embauche",
-            "job_title": "Poste / Fonction",
-            "notes": "Observations"
-        },
-        "status": {
-            "active": "Actif",
-            "on_leave": "En congé",
-            "terminated": "Contrat terminé"
-        },
-        "dialog": {
-            "new": "Nouvel Employé",
-            "edit": "Modifier l'Employé"
-        },
-        "messages": {
-            "saved": "L'employé a été enregistré avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
-            "deleteSuccess": "Employé supprimé."
-        }
-    },
-    "technicians": {
-        "title": "Gestion des Techniciens",
-        "subtitle": "Base de données Master",
-        "actions": {
-            "add": "Enrôler Technicien",
-            "exportExcel": "Export Excel",
-            "exportPDF": "Export PDF",
-            "deleteSelected": "Supprimer la sélection"
-        },
-        "toolbar": {
-            "searchPlaceholder": "Rechercher par nom, email...",
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser",
-            "showColumns": "Afficher les colonnes"
-        }
-    },
-    "teams": {
-        "title": "Unités de Terrain",
-        "subtitle": "Management des ressources",
-        "actions": {
-            "add": "Nouvelle Équipe"
-        },
-        "toolbar": {
-            "searchPlaceholder": "Rechercher une unité...",
-            "filterByRegion": "Toutes les régions",
-            "filterByLeader": "Tous les leaders",
-            "resetFilters": "Réinitialiser les filtres"
-        },
-        "fields": {
-            "name": "Désignation de l'Unité",
-            "leader": "Commandement",
-            "members": "Effectifs"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Unité",
-            "editTitle": "Fiche de l'Unité"
-        },
-        "placeholders": {
-            "name": "Ex: EQP-DELTA-01",
-            "leader": "Désigner un leader",
-            "members": "Sélectionner les membres"
-        },
-        "stats": {
-            "total_teams": "Total Équipes",
-            "total_members": "Total Membres",
-            "avg_members": "Membres / Équipe",
-            "with_leader": "Avec Leader"
-        },
-        "messages": {
-            "createSuccess": "Équipe créée avec succès.",
-            "updateSuccess": "Équipe mise à jour avec succès.",
-            "deleteSuccess": "Équipe supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'équipe \"{name}\" ?"
-        }
-    },
-    "spareParts": {
-        "title": "Inventory Control",
-        "headTitle": "Gestion des Pièces de Rechange",
-        "toolbar": {
-            "searchPlaceholder": "Rechercher une référence ou un composant...",
-            "add": "Nouvel Actif",
-            "export": "Exporter la base"
-        },
-        "table": {
-            "ref": "REF",
-            "component": "Composant",
-            "stockAlerte": "Stock / Alerte",
-            "price": "Prix HT",
-            "actions": "Actions"
-        },
-        "form": {
-            "partType": "Type de Composant",
-            "partTypePlaceholder": "Sélectionner la catégorie",
-            "reference": "Référence Constructeur",
-            "quantity": "Quantité en Stock",
-            "min_quantity": "Seuil d'Alerte",
-            "price": "Prix Unitaire HT",
-            "location": "Localisation Physique",
-            "region": "Entité / Région",
-            "regionPlaceholder": "Affecter une zone",
-            "responsible": "Superviseur Responsable",
-            "responsiblePlaceholder": "Choisir un gestionnaire",
-            "characteristicValues": "Spécifications Techniques"
-        },
-        "dialog": {
-            "createTitle": "Nouvelle Entrée Stock",
-            "editTitle": "Configuration Technique",
-            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
-            "editSubtitle": "Modification des paramètres et des seuils logistiques"
-        }
-    },
-    "validation": {
-        "required": "Le champ {field} est strictement obligatoire",
-        "invalid": "Format de donnée incorrect pour {field}"
+    "filter": {
+      "by_serial": "Filtrer par N° ya série",
+      "by_status": "Filtrer par statut",
+      "by_client": "Filtrer par client",
+      "by_meter": "Filtrer par compteur",
+      "by_type": "Filtrer par type"
     },
     "dialog": {
-        "cancel": "Abandonner",
-        "save": "Valider l'entrée",
-        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
-        "editTitle": "Modifier le Raccordement",
-        "createTitle": "Nouveau Raccordement"
+      "editTitle": "Modifier Clavier",
+      "createTitle": "Ongeza Clavier",
+      "subtitle": "Gestion ya ba informations ya clavier",
+      "transfer_title": "Transfert ya Stock ya ba Claviers",
+      "add_by_serial": "Ongeza clavier kwa kutumia N° ya série",
+      "to_transfer_count": "Ba claviers za ku-transférer ({count})",
+      "destination_region": "Région ya kuenda (Destination)"
     },
-    "connections": {
-        "title": "Gestion des Raccordements",
-        "headTitle": "Raccordements",
-        "subtitle": "Clients & Points de connexion",
-        "addNew": "Nouveau Raccordement",
-        "import": "Importer",
-        "delete": "Supprimer",
-        "closest": "Plus proches",
-        "exportCSV": "Exporter en CSV",
-        "selectColumns": "Choisir les colonnes",
-        "searchPlaceholder": "Rechercher...",
-        "actions": "Actions",
-        "importDialog": {
-            "title": "Importer depuis Excel/CSV",
-            "chooseFile": "Choisir un fichier",
-            "startImport": "Lancer l'import"
-        },
-        "dialog": {
-            "editTitle": "Modifier le Raccordement",
-            "createTitle": "Nouveau Raccordement",
-            "customerCode": "Code Client",
-            "firstName": "Prénom",
-            "lastName": "Nom",
-            "phone": "Téléphone",
-            "region": "Région",
-            "zone": "Zone",
-            "status": "Statut",
-            "gpsLatitude": "Latitude GPS",
-            "gpsLongitude": "Longitude GPS",
-            "cancel": "Annuler",
-            "save": "Enregistrer"
-        }
-    },
-    "expenses": {
-        "title": "Gestion des Dépenses",
-        "headTitle": "Dépenses",
-        "subtitle": "Suivi des coûts et validation",
-        "addNew": "Nouvelle Dépense",
-        "approveSelected": "Approuver Sélection",
-        "rejectSelected": "Rejeter Sélection",
-        "export": "Exporter en CSV",
-        "searchPlaceholder": "Rechercher...",
-        "selectColumns": "Choisir les colonnes",
-        "table": {
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date",
-            "category": "Catégorie",
-            "status": "Statut",
-            "createdBy": "Créé par",
-            "linkedTo": "Lié à",
-            "approvedBy": "Approuvé par",
-            "notes": "Notes",
-            "selectedTotal": "Total sélectionné"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Dépense",
-            "editTitle": "Modifier la Dépense",
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date de la dépense",
-            "category": "Catégorie",
-            "linkedToType": "Type d'élément lié",
-            "linkedToItem": "Élément lié",
-            "notes": "Notes / Justificatif"
-        },
-        "confirm": {
-            "header": "Confirmation de {action}",
-            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
-            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
-        },
-        "toast": {
-            "success": "Succès",
-            "error": "Erreur",
-            "updateSuccess": "Dépense mise à jour avec succès.",
-            "createSuccess": "Dépense créée avec succès.",
-            "deleteSuccess": "Dépense supprimée avec succès.",
-            "statusUpdateSuccess": "Dépense {action} avec succès.",
-            "statusUpdateError": "La mise à jour du statut a échoué.",
-            "bulkStatusUpdateSuccess": "{count} dépenses {action} avec succès.",
-            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
-        },
-        "filter": {
-            "status": "Filtrer par statut",
-            "category": "Filtrer par catégorie",
-            "dateRange": "Filtrer par date"
-        }
-    },
-    "title": "Gestion des Labels",
-    "fields": {
-      "name": "Nom",
-      "description": "Description",
-      "color": "Couleur",
-      "style": "Style / Couleur",
-      "characteristics": "Attributs Techniques",
-      "charName": "Nom de la caractéristique",
-      "charType": "Type",
-      "isRequiredShort": "Requis"
-    },
-    "actions": {
-      "add": "Ajouter un label",
-      "addChar": "Ajouter une caractéristique"
-    },    "toolbar": {
-      "resetFilters": "Réinitialiser"    },
-    "types": {
-      "text": "Texte",
-      "number": "Nombre",
-      "date": "Date",
-      "file": "Fichier",
-      "boolean": "Boolean",
-      "select": "Liste déroulante"
-    },
-    "dialog": {
-      "createTitle": "Créer un nouveau Label",
-      "editTitle": "Modifier le Label",
-      "createSubtitle": "Créez un nouveau label.",
-      "editSubtitle": "Mettez à jour les informations du label."
-    },
-    "validation": {
-      "nameRequired": "Le nom est requis."
-    },
-    "messages": {
-      "createSuccess": "Label créé avec succès",
-      "updateSuccess": "Label mis à jour avec succès",
-      "deleteSuccess": "Label supprimé avec succès",
-      "confirmDelete": "Êtes-vous sûr de vouloir supprimer le label \"{name}\" ?",
-      "confirmChange": "Vous avez modifié des caractéristiques. Cela peut affecter les données existantes. Continuer ?",
-      "confirmCharDelete": "Supprimer la caractéristique \"{name}\" ? Cette action est irréversible.",
-      "charRemovedInfo": "La caractéristique sera supprimée lors de la sauvegarde.",
-      "deleteError": "Erreur lors de la suppression."
-    }
-  ,
-  "common": {
-    "save": "Sauvegarder",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "import": "Importer",
-    "export": "Exporter",
-    "search": "Rechercher...",
-    "success": "Succès",
-    "error": "Erreur",
-    "attention": "Attention",
-    "confirmation": "Confirmation",
-    "deleteConfirmation": "Confirmation de suppression",
-    "actions": "Actions",
-    "chooseFile": "Choisir un fichier",
-    "paginationReport": "Affichage de {first} à {last} sur {total} régions",
-    "errorOccurred": "Une erreur est survenue."
-  },
-  "regions": {
-    "title": "Gestion des Régions",
-    "fields": {
-      "designation": "Désignation",
-      "type": "Type de Centrale",
-      "power": "Puissance (MW)",
-      "status": "Hali"
-    },
-    "actions": {
-      "add": "Ajouter une région",
-      "deleteSelected": "Supprimer la sélection"
-    },
-    "types": {
-      "thermique": "Thermique",
-      "solaire": "Solaire",
-      "hydraulique": "Hydraulique",
-      "eolienne": "Éolienne"
-    },
-    "dialog": {
-      "createTitle": "Créer une nouvelle Région",
-      "editTitle": "Modifier la Région",
-      "importTitle": "Importer des Régions",
-      "importSubtitle": "Téléchargez un fichier CSV ou Excel pour importer de nouvelles régions."
-    },
-    "validation": {
-      "nameRequired": "La désignation est requise."
-    },
-    "messages": {
-      "createSuccess": "Région créée avec succès",
-      "updateSuccess": "Région mise à jour avec succès",
-      "deleteSuccess": "Région supprimée avec succès",
-      "bulkDeleteSuccess": "Les régions sélectionnées ont été supprimées.",
-      "confirmDelete": "Voulez-vous supprimer la région \"{name}\" ?",
-      "confirmBulkDelete": "Voulez-vous supprimer les {count} régions sélectionnées ?",
-      "selectFile": "Veuillez sélectionner un fichier à importer.",
-      "importStarted": "Importation lancée."
+    "form": {
+      "serial_number": "Numéro ya Série",
+      "serial_number_placeholder": "Ingiza numéro ya série",
+      "manufacturer": "Fabricant",
+      "manufacturer_placeholder": "Ingiza fabricant",
+      "model": "Modèle",
+      "model_placeholder": "Ingiza modèle",
+      "type": "Type",
+      "type_placeholder": "Chagua type",
+      "status": "Statut",
+      "status_placeholder": "Chagua statut",
+      "connection": "Raccordement",
+      "connection_placeholder": "Chagua raccordement",
+      "meter": "Compteur",
+      "meter_placeholder": "Chagua compteur",
+      "installation_date": "Tarehe ya ku-installer",
+      "region": "Région",
+      "region_placeholder": "Chagua région",
+      "zone": "Zone",
+      "connection_has_keypad": "Raccordement iko na clavier",
+      "zone_placeholder": "Chagua zone",
+      "has_keypad": "Iko na clavier",
+      "notes": "Notes",
+      "notes_placeholder": "Ongeza ba notes hapa"
     },
     "status": {
-        "active": "Inayotumika",
-        "inactive": "Haitumiki"
+      "available": "Iko disponible",
+      "installed": "Zimesha installewa",
+      "faulty": "Défectueux",
+      "in_stock": "Mu Stock"
+    },
+    "messages": {
+      "no_stock": "Hakuna hata clavier moja mu stock.",
+      "no_keypad_selected": "Hakuna hata clavier moja yenye imechaguliwa kwa ajili ya transfert."
+    },
+    "confirm": {
+      "deleteMessage": "Uko na uhakika unataka ku-supprimer clavier n°{serial_number} ?",
+      "deleteHeader": "Confirmation ya ku-supprimer",
+      "bulkDeleteMessage": "Uko na uhakika unataka ku-supprimer ba claviers {count} zenye umechagua ?",
+      "bulkDeleteHeader": "Confirmation ya ku-supprimer kwa pamoja (en masse)"
+    },
+    "toast": {
+      "deleteSuccess": "Clavier imesha futwa (supprimé) vizuri.",
+      "bulkDeleteSuccess": "Ba claviers {count} zimesha futwa vizuri.",
+      "bulkDeleteError": "Kuna kosa imetokea wakati wa ku-supprimer en masse.",
+      "selectDestinationRegion": "Tafadhali chagua région ya destination.",
+      "transferSuccess": "Clavier {count} imesha transféréwa vizuri.",
+      "transferError": "Kuna kosa imetokea wakati wa ku-transférer ba claviers."
     }
   },
-  "unities": {
-        "title": "Gestion des Unités",
-        "subtitle": "Définissez les unités de mesure (kg, m, pcs, etc.)",
-        "fields": {
-            "name": "Désignation",
-            "symbol": "Symbole / Abréviation"
-        },
-        "actions": {
-            "add": "Ajouter une unité"
-        },
-        "dialog": {
-            "createTitle": "Créer une unité",
-            "editTitle": "Modifier l'unité",
-            "createSubtitle": "Ajoutez une nouvelle unité de mesure à votre système.",
-            "editSubtitle": "Modifiez les informations de l'unité sélectionnée."
-        },
-        "validation": {
-            "nameRequired": "Le nom de l'unité est obligatoire."
-        },
-        "messages": {
-            "createSuccess": "Unité créée avec succès.",
-            "updateSuccess": "Unité mise à jour avec succès.",
-            "deleteSuccess": "Unité supprimée avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer l'unité \"{name}\" ?"
-        }
-    },
-    "employees": {
-        "title": "Gestion des Employés",
-        "count_label": "Employés enregistrés",
-        "actions": {
-            "add": "Ajouter un employé"
-        },
-        "fields": {
-            "first_name": "Prénom",
-            "last_name": "Nom",
-            "email": "Email",
-            "phone": "Téléphone",
-            "status": "Statut d'emploi",
-            "salary": "Salaire",
-            "hire_date": "Date d'embauche",
-            "job_title": "Poste / Fonction",
-            "notes": "Observations"
-        },
+  "topbar": {
+    "meters": {
+      "title": "Gestion ya ba Compteurs",
+      "subtitle": "Actifs ya Mesure & Facturation",
+      "actions": {
+        "transfer": "Ku-transférer",
+        "delete": "Ku-supprimer",
+        "import": "Ku-importer",
+        "add": "Ongeza Compteur",
+        "close_details": "Funga ba détails"
+      },
+      "stats": {
+        "total": "Jumla ya ba Compteurs",
+        "active": "Active",
+        "faulty": "Défectueux",
+        "in_stock": "Mu Stock",
+        "stock_by_region": "Stock par Région",
+        "stock_detail_for": "Détail ya Stock kwa :",
+        "distribution_by_status": "Répartition par Statut"
+      },
+      "table": {
+        "report": "Kuonyesha kuanzia {first} mpaka {last} kati ya ba compteurs {totalRecords}",
+        "search_placeholder": "Tafuta (Ba N° série mingi na virgule)"
+      },
+      "dialog": {
+        "transfer_title": "Transfert ya Stock",
+        "transfer_subtitle": "Mouvement kati ya ba régions",
+        "bulkDeleteMessage": "Uko na uhakika unataka ku-supprimer ba compteurs {count} zenye umechagua ?",
         "status": {
-            "active": "Actif",
-            "on_leave": "En congé",
-            "terminated": "Contrat terminé"
+          "active": "Active",
+          "faulty": "Défectueux",
+          "in_stock": "Mu Stock"
         },
-        "dialog": {
-            "new": "Nouvel Employé",
-            "edit": "Modifier l'Employé"
-        },
-        "messages": {
-            "saved": "L'employé a été enregistré avec succès.",
-            "confirmDelete": "Êtes-vous sûr de vouloir supprimer {name} ?",
-            "deleteSuccess": "Employé supprimé."
-        }
+        "add_by_serial": "Ongeza compteur kwa kutumia N° ya série",
+        "to_transfer_count": "Ba compteurs za ku-transférer ({count})",
+        "destination_region": "Région ya Destination"
+      },
+      "messages": {
+        "no_stock": "Hakuna hata compteur moja mu stock."
+      }
     },
-    "technicians": {
-        "title": "Gestion des Techniciens",
-        "subtitle": "Base de données Master",
-        "actions": {
-            "add": "Enrôler Technicien",
-            "exportExcel": "Export Excel",
-            "exportPDF": "Export PDF",
-            "deleteSelected": "Supprimer la sélection"
-        },
-        "toolbar": {
-            "searchPlaceholder": "Rechercher par nom, email...",
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser",
-            "showColumns": "Afficher les colonnes"
-        }
+    "menuModes": {
+      "static": "Statique",
+      "overlay": "Overlay"
     },
-    "spareParts": {
-        "title": "Inventory Control",
-        "headTitle": "Gestion des Pièces de Rechange",
-        "toolbar": {
-            "searchPlaceholder": "Rechercher une référence ou un composant...",
-            "add": "Nouvel Actif",
-            "export": "Exporter la base"
-        },
-        "table": {
-            "ref": "REF",
-            "component": "Composant",
-            "stockAlerte": "Stock / Alerte",
-            "price": "Prix HT",
-            "actions": "Actions"
-        },
-        "form": {
-            "partType": "Type de Composant",
-            "partTypePlaceholder": "Sélectionner la catégorie",
-            "reference": "Référence Constructeur",
-            "quantity": "Quantité en Stock",
-            "min_quantity": "Seuil d'Alerte",
-            "price": "Prix Unitaire HT",
-            "location": "Localisation Physique",
-            "region": "Entité / Région",
-            "regionPlaceholder": "Affecter une zone",
-            "responsible": "Superviseur Responsable",
-            "responsiblePlaceholder": "Choisir un gestionnaire",
-            "characteristicValues": "Spécifications Techniques"
-        },
-        "dialog": {
-            "createTitle": "Nouvelle Entrée Stock",
-            "editTitle": "Configuration Technique",
-            "createSubtitle": "Enregistrement d'un nouvel actif dans l'inventaire centralisé",
-            "editSubtitle": "Modification des paramètres et des seuils logistiques"
-        }
+    "themes": {
+      "light": "Mwangaza (Clair)",
+      "dark": "Giza (Sombre)",
+      "accent": "Accent"
     },
-    "validation": {
-        "required": "Le champ {field} est strictement obligatoire",
-        "invalid": "Format de donnée incorrect pour {field}"
+    "languages": {
+      "french": "Kifaransa",
+      "english": "Kiingereza",
+      "swahili": "Kiswahili",
+      "german": "Kijerumani"
+    },
+    "toggle_sidebar": "Fungua/Funga menu ya pembeni",
+    "search_placeholder": "Tafuta dossier, agent au service...",
+    "status": {
+      "connected": "Iko connected"
+    },
+    "userMenu": {
+      "edit_profile": "Ku-modifier Profil",
+      "security": "Sécurité",
+      "logout": "Funga Session"
+    }
+  },
+  "menu": {
+    "dashboard": {
+      "title": "Tableau de bord",
+      "home": "Nyumbani (Accueil)",
+      "analytics": "Analytiques"
+    },
+    "assetManagement": {
+      "title": "Gestion ya ba actifs",
+      "inventories": "Inventaires",
+      "spareParts": "Pièces détachées",
+      "equipments": "Ba Équipements",
+      "networks": "Ba Réseaux"
+    },
+    "taskManagement": {
+      "title": "Gestion ya ba tâches",
+      "agenda": "Agenda",
+      "myActivities": "Shughuli zangu (Activités)",
+      "workOrder": "Ordre de travail",
+      "interventionRequests": "Maombi ya intervention",
+      "maintenancePlan": "Plan ya maintenance",
+      "connections": "Ba Connexions",
+      "expenses": "Gharama (Dépenses)"
+    },
+    "teamManagement": {
+      "title": "Gestion ya équipe",
+      "teams": "Ba Équipes",
+      "technicians": "Ba Techniciens"
+    },
+    "hrManagement": {
+      "title": "Gestion RH",
+      "employees": "Ba Employés",
+      "leaves": "Ba Congés",
+      "attendances": "Mahudhurio (Présences)",
+      "payroll": "Mishahara (Paie)"
+    },
+    "systemConfiguration": {
+      "title": "Configuration ya système",
+      "userManagement": "Gestion ya ba utilisateurs",
+      "users": "Ba Utilisateurs",
+      "roles": "Ba Rôles",
+      "permissions": "Ba Permissions",
+      "reports": "Ba Rapports",
+      "maps": "Ma Cartes",
+      "regions": "Ba Régions",
+            "zones": "Ba Zones",
+            "rollingStock": "Matériel roulant",
+      "units": "Ba Unités",
+      "labels": "Étiquettes",
+      "meters": "Ba Compteurs",
+      "keyboards": "Ba Claviers",
+      "systemPriority": "Priorité ya système"
+    },
+    "dateFilter": {
+      "thisMonth": "Mwezi huu",
+      "lastMonth": "Mwezi uliopita",
+      "lastWeek": "Juma lililopita",
+      "custom": "Personnalisé"
+    }
+  },
+  "equipments": {
+    "title": "Gestion ya ba Équipements",
+    "headTitle": "Ba Équipements",
+    "addNew": "Ongeza équipement",
+    "searchPlaceholder": "Tafuta...",
+    "subtitle": "Base de données Master & Cycle de vie",
+    "stats": {
+      "total": "Jumla ya ba Équipements",
+      "in_service": "Inatumika (En Service)",
+      "in_stock": "Iko mu Stock",
+      "down": "Iko mu Panne"
+    },
+    "export": "Ku-exporter",
+    "deleteSelected": "Supprimer ({count})",
+    "deleteSelectedSingle": "Supprimer",
+    "table": {
+      "report": "Kuonyesha kuanzia {first} mpaka {last} kati ya ba équipements {totalRecords}",
+      "tag": "Tag",
+      "designation": "Désignation",
+      "type": "Type",
+      "brand": "Marque",
+      "model": "Modèle",
+      "region": "Région",
+      "status": "Statut",
+      "quantity": "Quantité",
+      "filter": {
+        "tag": "Filtrer par tag",
+        "designation": "Filtrer par désignation",
+        "type": "Filtrer par type",
+        "region": "Filtrer par région",
+        "status": "Filtrer par statut",
+        "brand": "Filtrer par marque"
+      },
+      "actions": "Actions"
     },
     "dialog": {
-        "cancel": "Abandonner",
-        "save": "Valider l'entrée",
-        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet actif ?",
-        "editTitle": "Modifier le Raccordement",
-        "createTitle": "Nouveau Raccordement"
+      "editTitle": "Modifier Équipement",
+      "createTitle": "Créer Équipement mpya",
+      "parentLabel": "Équipement Parent (kwa ajili ya kuanzisha kutoka mu stock)",
+      "parentPlaceholder": "Optionnel: Chagua parent",
+      "tag": "Tag",
+      "designation": "Désignation",
+      "type": "Type ya équipement",
+      "typePlaceholder": "Chagua type",
+      "addType": "Ongeza type mpya",
+      "region": "Région",
+      "regionPlaceholder": "Chagua région",
+      "brand": "Marque",
+      "model": "Modèle",
+      "power": "Puissance (kW)",
+      "serialNumber": "Numéro ya série",
+      "price": "Bei",
+      "cadence_nominale": "Cadence Nominale (pièces/h)",
+      "risk_vibration": "Niveau ya Risque: Vibration",
+      "risk_chaleur": "Niveau ya Risque: Chaleur",
+      "risk_cycle": "Niveau ya Risque: Cycle/Usure",
+      "risk_bruit": "Niveau ya Risque: Bruit",
+      "risk_electrique": "Niveau ya Risque: Électrique",
+      "status": "Statut",
+      "statusPlaceholder": "Chagua statut",
+      "stockQuantity": "Quantité mu stock",
+      "purchaseDate": "Tarehe ya kununua",
+      "warrantyEnd": "Mwisho wa garantie",
+      "location": "Mahali (Emplacement)",
+      "importCharacteristics": "Ku-importer ba caractéristiques ziko tayari",
+      "importCharacteristicsPlaceholder": "Optionnel: Chagua label ili uongeze caractéristiques zake",
+      "characteristicNamePlaceholder": "Jina la caractéristique",
+      "characteristicTypePlaceholder": "Type",
+      "characteristicValueText": "Valeur (Texte)",
+      "characteristicValueNumber": "Valeur (Nombre)",
+      "characteristicValueDate": "Valeur (Date)",
+      "characteristicValue": "Valeur",
+      "existingFile": "Fichier iko tayari",
+      "addCharacteristic": "Ongeza caractéristique",
+      "cancel": "Annuler",
+      "save": "Ku-sauvegarder"
     },
-    "connections": {
-        "title": "Gestion des Raccordements",
-        "headTitle": "Raccordements",
-        "subtitle": "Clients & Points de connexion",
-        "addNew": "Nouveau Raccordement",
-        "import": "Importer",
-        "delete": "Supprimer",
-        "closest": "Plus proches",
-        "exportCSV": "Exporter en CSV",
-        "selectColumns": "Choisir les colonnes",
-        "searchPlaceholder": "Rechercher...",
-        "actions": "Actions",
-        "importDialog": {
-            "title": "Importer depuis Excel/CSV",
-            "chooseFile": "Choisir un fichier",
-            "startImport": "Lancer l'import"
-        },
-        "dialog": {
-            "editTitle": "Modifier le Raccordement",
-            "createTitle": "Nouveau Raccordement",
-            "customerCode": "Code Client",
-            "firstName": "Prénom",
-            "lastName": "Nom",
-            "phone": "Téléphone",
-            "region": "Région",
-            "zone": "Zone",
-            "status": "Statut",
-            "gpsLatitude": "Latitude GPS",
-            "gpsLongitude": "Longitude GPS",
-            "cancel": "Annuler",
-            "save": "Enregistrer",
-            "customerCode": "Nambari ya Mteja",
-            "firstName": "Jina la Kwanza",
-            "lastName": "Jina la Ukoo",
-            "phone": "Simu",
-            "region": "Mkoa",
-            "zone": "Kanda",
-            "status": "Hali"
-        },
-        "table": {
-            "customerCode": "Nambari ya Mteja",
-            "fullName": "Jina Kamili",
-            "region": "Mkoa",
-            "zone": "Kanda",
-            "status": "Hali",
-            "phone": "Simu",
-            "latitude": "Latitudo",
-            "longitude": "Longitudo",
-            "verified": "Imethibitishwa",
-            "amountPaid": "Kiasi Kilicholipwa",
-            "connectionDate": "Tarehe ya Kuunganishwa",
-            "meterNumber": "Nambari ya Mita",
-            "keypadNumber": "Nambari ya Kitufe"
-        },
-        "stats": {
-            "total": "Jumla ya Viunganisho",
-            "active": "Vinavyotumika",
-            "verified": "Vilivyothibitishwa",
-            "pending": "Vinasubiri"
-        },
-        "confirm": {
-            "deleteHeader": "Thibitisha Kufuta",
-            "bulkDeleteMessage": "Una uhakika unataka kufuta viunganisho {count} vilivyochaguliwa?"
-        }
+    "typeDialog": {
+      "title": "Type ya Équipement mpya",
+      "name": "Jina la type",
+      "description": "Description",
+      "cancel": "Annuler",
+      "create": "Créer"
     },
-    "expenses": {
-        "title": "Gestion des Dépenses",
-        "headTitle": "Dépenses",
-        "subtitle": "Suivi des coûts et validation",
-        "addNew": "Nouvelle Dépense",
-        "approveSelected": "Approuver Sélection",
-        "rejectSelected": "Rejeter Sélection",
-        "export": "Exporter en CSV",
-        "toolbar": {
-            "advancedFilters": "Filtres Avancés",
-            "resetFilters": "Réinitialiser"
-        },
-        "searchPlaceholder": "Rechercher...",
-        "selectColumns": "Choisir les colonnes",
-        "table": {
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date",
-            "category": "Catégorie",
-            "status": "Statut",
-            "createdBy": "Créé par",
-            "linkedTo": "Lié à",
-            "approvedBy": "Approuvé par",
-            "notes": "Notes",
-            "selectedTotal": "Total sélectionné"
-        },
-        "dialog": {
-            "createTitle": "Créer une nouvelle Dépense",
-            "editTitle": "Modifier la Dépense",
-            "description": "Description",
-            "amount": "Montant",
-            "date": "Date de la dépense",
-            "category": "Catégorie",
-            "linkedToType": "Type d'élément lié",
-            "linkedToItem": "Élément lié",
-            "notes": "Notes / Justificatif"
-        },
-        "confirm": {
-            "header": "Confirmation de {action}",
-            "single": "Êtes-vous sûr de vouloir {action} cette dépense ?",
-            "bulk": "Êtes-vous sûr de vouloir {action} les {count} dépenses sélectionnées ?"
-        },
-        "toast": {
-            "statusUpdateSuccess": "Dépense {action} avec succès.",
-            "statusUpdateError": "La mise à jour du statut a échoué.",
-            "bulkStatusUpdateSuccess": "{count} dépenses {status} avec succès.",
-            "bulkStatusUpdateError": "La mise à jour groupée a échoué."
-        }
+    "insufficientQuantityDialog": {
+      "title": "Quantité haitoshi",
+      "subtitle": "Alerte ya Stock",
+      "message": "Quantité yenye unaomba inapita stock iko disponible. Ukiendelea, stock itaingia mu négatif au kutakuwa rupture ya service.",
+      "cancel": "Annuler",
+      "performMovement": "Force mouvement",
+      "statusOptions": {
+        "in_service": "En Service",
+        "down": "En Panne",
+        "in_maintenance": "En Maintenance",
+        "out_of_service": "Hors Service",
+        "in_stock": "En Stock"
+      }
     },
-    "interventions": {
-        "title": "Interventions Field Service",
-        "subtitle": "Opérations & Maintenance Réseau",
-        "addNew": "Nouvelle Intervention",
-        "searchPlaceholder": "Rechercher une référence...",
-        "filters": "Filtres",
-        "deleteSelected": "Supprimer",
-        "selectColumns": "Colonnes actives",
-        "table": {
-            "reference": "Référence",
-            "status": "Statut",
-            "customerCode": "Code Client",
-            "clientName": "Nom Client",
-            "region": "Région",
-            "priority": "Priorité",
-            "deadline": "Échéance",
-            "assignedTo": "Assigné à",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Détails Intervention",
-            "createTitle": "Création de Ticket",
-            "origin": "Origine de la demande",
-            "externalClient": "Client Externe",
-            "internalAgent": "Agent Interne",
-            "searchPlaceholder": "Rechercher...",
-            "subjectDescription": "Sujet / Description",
-            "autoReference": "Référence auto",
-            "problemPlaceholder": "Expliquez le problème technique ici...",
-            "assignmentDeadline": "Assignation & Délai",
-            "priority": "Priorité",
-            "assignedTo": "Assigné à",
-            "deadline": "Échéance",
-            "region": "Région",
-            "zone": "Zone",
-            "notApplicable": "N/A",
-            "cancel": "Annuler",
-            "save": "Enregistrer l'Intervention"
-        },
-        "filtersPanel": {
-            "title": "Filtres avancés",
-            "status": "Statut",
-            "statusPlaceholder": "Tous",
-            "region": "Région",
-            "regionPlaceholder": "Toutes",
-            "priority": "Priorité",
-            "priorityPlaceholder": "Toutes",
-            "reset": "Réinitialiser",
-            "apply": "Appliquer"
-        },
-        "tooltips": {
-            "manage": "Gérer"
-        }
+    "toast": {
+      "success": "Imefaulu (Succès)",
+      "updateSuccess": "Équipement imewekwa sawa (mis à jour) vizuri.",
+      "createSuccess": "Équipement imetengenezwa vizuri.",
+      "deleteSuccess": "Équipement imefutwa vizuri.",
+      "insufficientQuantity": "Quantité haitoshi mu stock.",
+      "parentQuantityUpdated": "Quantité ya parent imewekwa sawa.",
+      "bulkDeleteSuccess": "Ba équipements zimefutwa vizuri.",
+      "saveError": "Kosa ya Sauvegarde",
+      "error": "Erreur",
+      "deleteError": "Kuna kosa imetokea wakati wa ku-supprimer.",
+      "bulkDeleteError": "Kuna kosa imetokea wakati wa ku-supprimer en masse.",
+      "typeCreateSuccess": "Type ya équipement imetengenezwa vizuri.",
+      "typeSaveError": "Kosa wakati wa ku-sauvegarder type ya équipement",
+      "parentQuantityUpdateError": "Kosa wakati wa ku-modifier quantité ya parent."
+    },
+    "confirm": {
+      "deleteHeader": "Confirmation ya ku-supprimer",
+      "deleteMessage": "Uko na uhakika unataka ku-supprimer équipement \"{name}\" ?",
+      "bulkDeleteMessage": "Uko na uhakika unataka ku-supprimer ba équipements zenye umechagua ?",
+      "cancel": "Annuler",
+      "delete": "Supprimer"
+    },
+    "validation": {
+      "quantityRequiredForChild": "Quantité inahitajika kwa ajili ya équipement enfant.",
+      "insufficientParentQuantity": "Quantité ya parent haitoshi au parent hayuko mu stock."
+    },
+    "statusOptions": {
+      "in_service": "En Service",
+      "down": "En Panne",
+      "in_maintenance": "En Maintenance",
+      "out_of_service": "Hors Service",
+      "in_stock": "En Stock"
+    },
+    "characteristicTypes": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Date",
+      "file": "Fichier",
+      "boolean": "Ndiyo/Hapana"
     }
+  },
+  "sparePartMovements": {
+    "title": "Mouvements ya ba Pièces de Rechange",
+    "headTitle": "Gestion ya ba Stocks - Mouvements",
+    "subtitle": "Suivi ya ma entrées na sorties ya stock",
+    "stockLabel": "Stock ya sasa",
+    "toolbar": {
+      "addMovement": "Mouvement mpya",
+      "searchPlaceholder": "Tafuta mouvement...",
+      "export": "Ku-exporter CSV"
+    },
+    "table": {
+      "sparePart": "Pièce ya Rechange",
+      "user": "Utilisateur",
+      "type": "Type",
+      "quantity": "Quantité",
+      "location": "Emplacement",
+      "notes": "Notes",
+      "date": "Tarehe",
+      "actions": "Actions"
+    },
+    "dialog": {
+      "createTitle": "Ku-enregistrer mouvement",
+      "editTitle": "Modifier mouvement",
+      "createSubtitle": "Jaza ba informations kwa ajili ya mouvement mpya.",
+      "editSubtitle": "Weka sawa ma détails ya mouvement yenye umechagua.",
+      "fluxIdentification": "Identification ya Flux",
+      "detailsValidation": "Détails & Validation"
+    },
+    "form": {
+      "region": "Région",
+      "regionPlaceholder": "Chagua région",
+      "sparePart": "Pièce ya Rechange",
+      "sparePartPlaceholder": "Chagua pièce",
+      "user": "Utilisateur",
+      "userPlaceholder": "Chagua utilisateur",
+      "movementType": "Type ya mouvement",
+      "movementTypePlaceholder": "Entrée au Sortie ?",
+      "quantity": "Quantité",
+      "location": "Emplacement précisé",
+      "unity": "Unité / Service",
+      "unityPlaceholder": "Chagua unité",
+      "notes": "Notes za nyongeza"
+    },
+    "movementTypes": {
+      "entry": "Entrée",
+      "exit": "Sortie"
+    },
+    "confirm": {
+      "deleteMessage": "Uko na uhakika unataka ku-supprimer mouvement ya pièce {reference} ?"
+    },
+    "filter": {
+      "byType": "Filtrer par type",
+      "byUser": "Filtrer par utilisateur"
+    },
+    "toast": {
+      "createSuccess": "Mouvement imesha hifadhiwa (enregistré) vizuri.",
+      "updateSuccess": "Mouvement imewekwa sawa (mis à jour) vizuri.",
+      "deleteSuccess": "Mouvement imefutwa (supprimé).",
+      "saveError": "Kosa wakati wa ku-enregistrer mouvement.",
+      "error": "Erreur",
+      "deleteError": "Haiwezekani ku-supprimer hii mouvement."
+    }
+  },
+"stockMovements": {
+    "title": "Mouvements ya Stock",
+    "headTitle": "Gestion ya ba Mouvements ya Stock",
+    "subtitle": "Kufuata namna actifs inapita",
+    "toolbar": {
+      "addMovement": "Mouvement Mpya",
+      "searchPlaceholder": "Tafuta item, mupikaji kazi..."
+    },
+    "table": {
+      "itemType": "Aina ya item",
+      "item": "Item",
+      "type": "Aina ya Mouvement",
+      "quantity": "Quantité",
+      "source": "Source (Kutoka)",
+      "destination": "Destination (Kwenda)",
+      "user": "Mupikaji kazi",
+      "date": "Tarehe"
+    },
+    "stats": {
+      "total": "Mouvements Zote",
+      "entries": "Ma Entrées",
+      "exits": "Ma Sorties",
+      "transfers": "Ma Transferts",
+      "uniqueParts": "Pièces za pekee"
+    },
+    "filter": {
+      "byType": "Chuja kwa aina",
+      "byUser": "Chuja kwa mupikaji kazi",
+      "byRegion": "Chuja kwa région...",
+      "byItemType": "Kwa aina ya item",
+      "byItem": "Chuja kwa item"
+    },
+    "dialog": {
+      "createTitle": "Enregistrer Mouvement ya Stock",
+      "editTitle": "Badilisha Mouvement",
+      "createSubtitle": "Jaza habari kwa ajili ya mouvement mpya.",
+      "editSubtitle": "Sasaisha (update) maelezo ya mouvement.",
+      "itemIdentification": "Identification ya Item",
+      "detailsValidation": "Détails & Validation",
+      "itemsInMovement": "Ma Items ndani ya mouvement",
+      "noItems": "Hakuna item ilichaguliwa",
+      "itemSelection": "Kuchagua Item",
+      "addItem": "Ongeza item",
+      "deleteSelectedMessage": "Unapenda kutosha hii ma items {count} ulichagua?"
+    },
+    "form": {
+      "itemType": "Aina ya item",
+      "itemTypePlaceholder": "Chagua aina ya item...",
+      "item": "Item ya pekee",
+      "addItem": "Ongeza item",
+      "itemPlaceholder": "Tafuta au chagua item...",
+      "movementType": "Aina ya Mouvement",
+      "quantity": "Quantité",
+      "sourceRegion": "Région ya kutoka",
+      "sourceRegionPlaceholder": "Chagua région kwenye inatoka",
+      "destinationRegion": "Région ya kufika",
+      "destinationRegionPlaceholder": "Chagua région kwenye inaenda",
+      "user": "Inafanywa na",
+      "responsibleUser": "Mupikaji kazi responsable",
+      "intendedForUser": "Inaenda kwa mupikaji kazi",
+      "userPlaceholder": "Chagua mupikaji kazi",
+      "notes": "Maelezo zingine"
+    },
+    "movableTypes": {
+      "spare_part": "Pièce Détachée",
+      "equipment": "Équipement",
+      "meter": "Compteur",
+      "keypad": "Clavier",
+      "engin": "Engin"
+    },
+    "movementTypes": {
+      "entry": "Entrée",
+      "exit": "Sortie",
+      "transfer": "Transfert",
+      "movableTypeOptions": [
+        { "label": "Pièce Détachée", "value": "App\\Models\\SparePart" },
+        { "label": "Équipement", "value": "App\\Models\\Equipment" },
+        { "label": "Compteur", "value": "App\\Models\\Meter" },
+        { "label": "Clavier", "value": "App\\Models\\Keypad" },
+        { "label": "Engin", "value": "App\\Models\\Engin" }
+      ]
+    },
+    "confirm": {
+      "deleteMessage": "Uko hakika unapenda kutosha mouvement N°{id}?"
+    },
+    "toast": {
+      "createSuccess": "Mouvement imewekwa muzuri.",
+      "updateSuccess": "Mouvement imebadilishwa muzuri.",
+      "deleteSuccess": "Mouvement imetoshwa.",
+      "noItems": "Tafadhali ongeza hata item moja kwa mouvement.",
+      "saveError": "Shida imetokea wakati wa ku-enregistrer mouvement."
+    }
+  },
+  "characteristics": {
+    "types": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Tarehe",
+      "image": "Picha",
+      "boolean": "Booléen",
+      "select": "Liste ya kuchagua"
+    }
+  },
+  "confirm": {
+    "deleteHeader": "Hakikisho ya kutosha",
+    "cancel": "Acha",
+    "bulkDeleteMessage": "Uko hakika unapenda kutosha hizi ma compteurs {count} ulichagua?",
+    "bulkDeleteHeader": "Hakikisho ya kutosha mingi mara moja",
+    "delete": "Tosha",
+    "deleteConfirmation": "Uko hakika unapenda kutosha hii kitu?"
+  },
+  "engins": {
+    "title": "Gestion ya ma Engins",
+    "headTitle": "Liste ya ma Engins",
+    "subtitle": "Ma Unités {count} ziko en ligne",
+    "toolbar": {
+      "advancedFilters": "Filtres za ndani zaidi",
+      "showColumns": "Onyesha ma colonnes",
+      "deleteSelected": "Tosha vile vilichaguliwa",
+      "addEngin": "Ongeza engin",
+      "searchPlaceholder": "Tafuta...",
+      "export": "Exporter",
+      "resetFilters": "Rudisha ma filtres mwanzo",
+      "searchByName": "Tafuta kwa jina"
+    },
+    "table": {
+      "designation": "Jina / Désignation",
+      "immatriculation": "Immatriculation",
+      "type": "Aina ya Engin",
+      "region": "Région",
+      "dateAcquisition": "Tarehe ya kununuliwa",
+      "hourMeter": "Compteur Horaire",
+      "actions": "Actions",
+      "category": "Catégorie",
+      "assignment": "Affectation"
+    },
+    "form": {
+      "type": "Aina ya Engin",
+      "typePlaceholder": "Chagua aina",
+      "designation": "Désignation",
+      "immatriculation": "Immatriculation",
+      "region": "Région",
+      "regionPlaceholder": "Chagua région",
+      "dateAcquisition": "Tarehe ya kuanza kazi",
+      "datePlaceholder": "Chagua tarehe",
+      "hourMeter": "Compteur Horaire"
+    },
+    "dialog": {
+      "createTitle": "Fungula Engin mpya",
+      "editTitle": "Badilisha Engin",
+      "createSubtitle": "Andika habari kwa ajili ya engin mpya.",
+      "editSubtitle": "Sasaisha habari za hii engin."
+    },
+    "confirm": {
+      "deleteMessage": "Uko hakika unapenda kutosha engin \"{name}\"?",
+      "header": "Hakikisho"
+    },
+    "toast": {
+      "createSuccess": "Engin imefungulwa muzuri.",
+      "updateSuccess": "Engin imebadilishwa muzuri.",
+      "deleteSuccess": "Engin imetoshwa muzuri.",
+      "saveError": "Shida imetokea wakati wa ku-enregistrer.",
+      "deleteError": "Shida imetokea wakati wa kutosha."
+    },
+    "common": {
+      "update": "Mettre à jour",
+      "save": "Enregistrer",
+      "cancel": "Acha",
+      "noPlate": "HAKUNA PLAQUE",
+      "create": "Fungula"
+    }
+  },
+  "dataTable": {
+    "currentPageReportEngins": "Inaonyesha kuanzia {first} mupaka {last} kati ya ma engins {totalRecords}"
+  },
+  "labels": {
+    "title": "Gestion ya ma Labels",
+    "fields": {
+      "labelParameters": "Paramètres ya Label",
+      "labelParametersSubtitle": "Tengeneza jina, rangi na maelezo.",
+      "technicalAttributes": "Attributs za Technique",
+      "technicalAttributesSubtitle": "Weka ma points de contrôle ya hii aina ya actif.",
+      "name": "Jina",
+      "description": "Maelezo",
+      "color": "Rangi",
+      "style": "Style / Rangi",
+      "characteristics": "Attributs za Technique",
+      "charName": "Jina la caractéristique",
+      "charType": "Aina",
+      "isRequiredShort": "Inalazimishwa"
+    },
+    "actions": {
+      "add": "Ongeza label",
+      "addChar": "Ongeza caractéristique"
+    },
+    "toolbar": {
+      "resetFilters": "Rudisha mwanzo",
+      "searchPlaceholder": "Tafuta label..."
+    },
+    "types": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Tarehe",
+      "file": "Fichier",
+      "boolean": "Boolean",
+      "select": "Liste ya kuchagua"
+    },
+    "dialog": {
+      "createTitle": "Fungula Label mpya",
+      "editTitle": "Badilisha Label",
+      "labelParameters": "Paramètres ya Label",
+      "labelParametersSubtitle": "Tengeneza jina, rangi na maelezo.",
+      "createSubtitle": "Tengeneza label mpya.",
+      "editSubtitle": "Sasaisha habari za label."
+    },
+    "stats": {
+      "total": "Jumla ya ma Labels",
+      "withChars": "Iko na ma Attributs"
+    },
+    "validation": {
+      "nameRequired": "Jina ni lazima."
+    },
+    "messages": {
+      "createSuccess": "Label imefungulwa muzuri",
+      "updateSuccess": "Label imebadilishwa muzuri",
+      "deleteSuccess": "Label imetoshwa muzuri",
+      "confirmDelete": "Uko hakika unapenda kutosha label \"{name}\"?",
+      "confirmChange": "Umebadilisha ma caractéristiques. Inaweza kuharibu ma données za zamani. Endelea?",
+      "confirmCharDelete": "Tosha caractéristique \"{name}\"? Hii action hairudi nyuma.",
+      "charRemovedInfo": "Caractéristique itatoshwa wakati wa ku-sauvegarder.",
+      "deleteError": "Shida imetokea wakati wa kutosha."
+    }
+  },
+  "common": {
+    "save": "Sauvegarder",
+    "update": "Mettre à jour",
+    "create": "Fungula",
+    "selectedCount": "Umechagua ma items {count}",
+    "deleteSelection": "Tosha",
+    "columns": "Ma Colonnes",
+    "approve": "Approuver",
+    "confirm": "Hakikisha",
+    "reject": "Rejeter",
+    "cancel": "Acha",
+    "delete": "Tosha",
+    "import": "Importer",
+    "export": "Exporter",
+    "exportCSV": "Exporter kwa CSV",
+    "search": "Tafuta...",
+    "success": "Imefaulu",
+    "error": "Makosa",
+    "attention": "Angalia muzuri",
+    "confirmation": "Hakikisho",
+    "deleteConfirmation": "Hakikisho ya kutosha",
+    "actions": "Actions",
+    "chooseFile": "Chagua fichier",
+    "paginationReport": "Inaonyesha kuanzia {first} mupaka {last} kati ya ma régions {total}",
+    "errorOccurred": "Kuna shida imetokea.",
+    "selectColumns": "Chagua ma colonnes",
+    "customize_columns": "Tengeneza ma colonnes namna unapenda",
+    "columnSelector": {
+      "title": "Tengeneza ma colonnes",
+      "placeholder": "Chagua ma colonnes"
+    },
+    "types": {
+      "annual": "Ya mwaka",
+      "columns": "Ma Colonnes",
+      "shoeSize": "Pointure ya viatu",
+      "clothingSize": "Taille ya nguo",
+      "password": "Mot de passe",
+      "confirmPassword": "Hakikisha mot de passe",
+      "removePhoto": "Tosha picha",
+      "sick": "Magonjwa",
+      "rtt": "RTT",
+      "exceptional": "Exceptionnel"
+    },
+    "status": {
+      "approved": "Approuvé",
+      "pending": "Inangojea",
+      "rejected": "Rejeté"
+    },
+    "exportCsv": "Exporter kwa CSV",
+    "notApplicable": "N/A",
+    "uploadPhotoAriaLabel": "Pakia picha ya profile",
+    "unspecifiedDate": "Tarehe haijajulikana",
+    "resetFilters": "Rudisha ma filtres mwanzo",
+    "unnamedActivity": "Activité haina jina",
+    "workOrderId": "#WorkOrderID: {id}",
+    "problemResolution": "Shida/Solution:",
+    "proposals": "Mapendekezo:",
+    "additionalInfo": "Habari zingine:",
+    "technician": "Intervenant:",
+    "instructionAnswers": "Majibu kwa ma Instructions:",
+    "usedParts": "Pièces zilizotumiwa:",
+    "returnedParts": "Pièces zilizorudishwa:",
+    "actualEndTime": "Saa ya kuisha kabisa:",
+    "associatedTaskDetails": "Maelezo ya kazi inayohusika",
+    "priority": "Priorité:",
+    "description": "Maelezo:",
+    "createSubActivity": "Fungula sous-activité",
+    "complete": "Maliza",
+    "taskTitle": "Jina la Kazi",
+    "actualStart": "Mwanzo kabisa",
+    "usedPartsCount": "Pièce {count}",
+    "returnedPartsCount": "Pièce {count}",
+    "answersCount": "Majibu {count}",
+    "instructionsAndActions": "Instructions/Actions",
+    "completeActivityTooltip": "Maliza/Badilisha Activité",
+    "invalidDate": "Tarehe haiko sawa",
+    "notSet": "Haijaandikwa",
+    "instructionNotFound": "Instruction ID {id} (Haionekani)",
+    "date_format_placeholder": "JJ/MM/AAAA"
+  },
+  "payments": {
+    "title": "Gestion ya ma Paiements",
+    "subtitle": "Kufuata namna feza zinapita",
+    "newTransaction": "Transaction Mpya",
+    "stats": {
+      "totalFlux": "Jumla ya Feza",
+      "transactions": "Transactions",
+      "pending": "Inangojea",
+      "average": "Moyenne"
+    },
+    "table": {
+      "amount": "Montant",
+      "beneficiary": "Bénéficiaire",
+      "status": "Statut",
+      "date": "Tarehe ya Valeur",
+      "actions": "Actions"
+    },
+    "payableTypes": {
+      "employee": "Mupikaji kazi",
+      "supplier": "Fournisseur",
+      "user": "Mupikaji kazi wa ndani"
+    },
+    "statusTypes": {
+      "pending": "Inangojea",
+      "completed": "Imemalizika",
+      "failed": "Imefeli"
+    },
+    "dialog": {
+      "financeSettings": "Paramètres ya finance",
+      "financeSubtitle": "Tafadhali jaza maelezo ya namna feza zinatoka au kuingia",
+      "amountLabel": "Montant (USD)",
+      "valueDate": "Tarehe ya valeur",
+      "beneficiaryType": "Aina ya Bénéficiaire",
+      "specificBeneficiary": "Bénéficiaire wa pekee",
+      "notes": "Notes na Références",
+      "required": "Inalazimishwa"
+    },
+    "toast": {
+      "saved": "Transaction imewekwa muzuri.",
+      "deleted": "Transaction imetoshwa.",
+      "deleteConfirmation": "Uko hakika unapenda kutosha paiement ya {amount} kwa {beneficiary}?",
+      "message": "Uko hakika unapenda kutosha hizi ma compteurs {count} ulichagua?",
+      "header": "Hakikisho ya kutosha mingi mara moja"
+    }
+  },
+  "technicians": {
+    "title": "Gestion ya ma Techniciens",
+    "subtitle": "Base de données Master",
+    "createTitle": "Andikisha mufundi mpya",
+    "editTitle": "Badilisha profile ya mufundi",
+    "actions": {
+      "add": "Andikisha Technicien",
+      "exportExcel": "Export Excel",
+      "exportPDF": "Export PDF",
+      "deleteSelected": "Tosha vile vilichaguliwa"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Tafuta kwa jina, email...",
+      "advancedFilters": "Filtres za ndani zaidi",
+      "resetFilters": "Rudisha mwanzo",
+      "showColumns": "Onyesha ma colonnes"
+    },
+    "stats": {
+      "total": "Jumla ya ma Techniciens",
+      "supervisors": "Superviseurs",
+      "chiefs": "Mawakubwa",
+      "daily": "Ya kila siku",
+      "weekly": "Ya kila juma",
+      "monthly": "Ya kila mwezi"
+    },
+    "fields": {
+      "name": "Mufundi",
+      "fonction": "Kazi yake",
+      "region": "Région",
+      "numero": "Téléphone",
+      "email": "Email",
+      "pointure": "Pointure",
+      "size": "Taille",
+      "phone": "Téléphone",
+      "created_at": "Ilifungulwa tarehe",
+      "updated_at": "Ilibadilishwa tarehe",
+      "last_login_at": "Connection ya mwisho",
+      "last_login_ip": "IP ya connection ya mwisho",
+      "sessions": "Sessions zinatumika",
+      "current_session": "Session ya sasa",
+      "teams": "Ma Équipes",
+      "language": "Lugha"
+    }
+  },
+  "users": {
+    "title": "Gestion ya ma Utilisateurs",
+    "subtitle": "Simamia ma comptes ya watu na ma rôles zao.",
+    "actions": {
+      "add": "Ongeza utilisateur",
+      "deleteSelected": "Tosha vile vilichaguliwa"
+    },
+    "fields": {
+      "name": "Jina lote",
+      "email": "Email",
+      "role": "Rôle",
+      "created_at": "Ilifungulwa tarehe",
+      "phone": "Téléphone",
+      "last_login_at": "Connection ya mwisho",
+      "last_login_ip": "IP ya connection ya mwisho",
+      "sessions": "Sessions Actives",
+      "region": "Région",
+      "zone": "Zone",
+      "status": "Statut",
+      "current_session": "Session ya sasa",
+      "teams": "Ma Équipes",
+      "language": "Lugha",
+      "workEmail": "Email ya Kazi",
+      "fullName": "Jina Lote",
+      "assignmentAndRole": "Affectation na rôle",
+      "safetyData": "Données ya sécurité",
+      "accountSecurity": "Sécurité ya compte",
+      "function": "Kazi yake"
+    },
+    "stats": {
+      "total": "Jumla ya Utilisateurs",
+      "admin": "Administrateurs",
+      "technician": "Ma Techniciens",
+      "manager": "Ma Managers",
+      "client": "Ma Clients",
+      "operator": "Ma Opérateurs",
+      "magasinier": "Ma Magasiniers",
+      "engineer": "Ingénieurs",
+      "network-engineer": "Ingénieurs Réseau",
+      "superadmin": "Super-Administrateurs",
+      "visitor": "Visiteurs"
+    },
+    "editTitle": "Badilisha utilisateur",
+    "createTitle": "Fungula utilisateur",
+    "dialog": {
+      "editTitle": "Badilisha utilisateur",
+      "createTitle": "Fungula utilisateur"
+    },
+    "messages": {
+      "deleteConfirmation": "Unapenda kutosha kabisa {name}?",
+      "bulkDeleteConfirmation": "Uko hakika unapenda kutosha hawa ma utilisateurs {count} ulichagua?",
+      "deleteSuccess": "Utilisateur ametoshwa",
+      "bulkDeleteSuccess": "Utilisateurs {count} wametoshwa.",
+      "operationSuccess": "Kazi imefaulu",
+      "validationError": "Tafadhali tengeneza makosa."
+    },
+    "confirm": {
+      "deleteMessage": "Unapenda kutosha kabisa {name}?",
+      "bulkDeleteMessage": "Uko hakika unapenda kutosha hawa ma utilisateurs {count} ulichagua?"
+    },
+    "searchPlaceholder": "Tafuta item, mupikaji kazi...",
+    "placeholders": {
+      "fullName": "Jina Lote",
+      "workEmail": "Email ya Kazi",
+      "assignmentAndRole": "Affectation na rôle",
+      "function": "Kazi yake",
+      "shoeSize": "Pointure",
+      "clothingSize": "Taille ya nguo",
+      "password": "Mot de passe",
+      "confirmPassword": "Hakikisha mot de passe mpya",
+      "phone": "Téléphone",
+      "region": "Région",
+      "selectRole": "Chagua rôle"
+    },
+    "form": {
+      "generalInfo": "Habari za Kawaida",
+      "assignmentAndRole": "Affectation na rôle",
+      "accountSecurity": "Sécurité ya compte",
+      "safetyData": "Données ya sécurité"
+    }
+  },
+  "teams": {
+    "title": "Unités ya Terrain",
+    "subtitle": "Management ya ma ressources",
+    "actions": {
+      "add": "Équipe Mpya"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Tafuta unité...",
+      "filterByRegion": "Ma régions zote",
+      "filterByLeader": "Ma leaders wote",
+      "resetFilters": "Rudisha mwanzo"
+    },
+    "fields": {
+      "name": "Jina la Unité",
+      "leader": "Commandement",
+      "members": "Watu wako ndani"
+    },
+    "dialog": {
+      "createTitle": "Fungula Unité mpya",
+      "editTitle": "Fiche ya Unité"
+    },
+    "placeholders": {
+      "name": "Mfano: EQP-DELTA-01",
+      "leader": "Chagua leader",
+      "members": "Chagua watu wa ndani"
+    },
+    "stats": {
+      "total_teams": "Jumla ya ma Équipes",
+      "total_members": "Jumla ya ma Watu",
+      "avg_members": "Watu kwa kila Équipe",
+      "with_leader": "Iko na Leader"
+    },
+    "messages": {
+      "createSuccess": "Équipe imefungulwa muzuri.",
+      "updateSuccess": "Équipe imebadilishwa muzuri.",
+      "deleteSuccess": "Équipe imetoshwa muzuri.",
+      "confirmDelete": "Uko hakika unapenda kutosha équipe \"{name}\"?"
+    }
+  },
+  "dialog": {
+    "createTitle": "Raccordement / Label Mpya",
+    "editTitle": "Badilisha Raccordement / Label",
+    "createSubtitle": "Tengeneza kitu kipya ndani ya système.",
+    "editSubtitle": "Sasaisha habari zilizoandikwa.",
+    "cancel": "Acha",
+    "save": "Hakikisha kuingia",
+    "confirmDelete": "Uko hakika unapenda kutosha hii actif?"
+  },
+  "validation": {
+    "required": "Hii nafasi ya {field} ni lazima kabisa",
+    "nameRequired": "Jina ni lazima.",
+    "invalid": "Namna ya habari haiko sawa kwa {field}"
+  },
+  "stockMovements": {
+    "title": "Mouvements ya Stock",
+    "headTitle": "Gestion ya ba Mouvements ya Stock",
+    "subtitle": "Kufuata namna actifs inapita",
+    "toolbar": {
+      "addMovement": "Mouvement Mpya",
+      "searchPlaceholder": "Tafuta item, mupikaji kazi..."
+    },
+    "table": {
+      "itemType": "Aina ya item",
+      "item": "Item",
+      "type": "Aina ya Mouvement",
+      "quantity": "Quantité",
+      "source": "Source (Kutoka)",
+      "destination": "Destination (Kwenda)",
+      "user": "Mupikaji kazi",
+      "date": "Tarehe"
+    },
+    "stats": {
+      "total": "Mouvements Zote",
+      "entries": "Ma Entrées",
+      "exits": "Ma Sorties",
+      "transfers": "Ma Transferts",
+      "uniqueParts": "Pièces za pekee"
+    },
+    "filter": {
+      "byType": "Chuja kwa aina",
+      "byUser": "Chuja kwa mupikaji kazi",
+      "byRegion": "Chuja kwa région...",
+      "byItemType": "Kwa aina ya item",
+      "byItem": "Chuja kwa item"
+    },
+    "dialog": {
+      "createTitle": "Enregistrer Mouvement ya Stock",
+      "editTitle": "Badilisha Mouvement",
+      "createSubtitle": "Jaza habari kwa ajili ya mouvement mpya.",
+      "editSubtitle": "Sasaisha (update) maelezo ya mouvement.",
+      "itemIdentification": "Identification ya Item",
+      "detailsValidation": "Détails & Validation",
+      "itemsInMovement": "Ma Items ndani ya mouvement",
+      "noItems": "Hakuna item ilichaguliwa",
+      "itemSelection": "Kuchagua Item",
+      "addItem": "Ongeza item",
+      "deleteSelectedMessage": "Unapenda kutosha hii ma items {count} ulichagua?"
+    }
+  },
 
+  "connections": {
+    "title": "Gestion ya ma Raccordements",
+    "headTitle": "Ma Raccordements",
+    "titleHtml": "Gestion ya ma <span class='text-primary-600'>Raccordements</span>",
+    "subtitle": "Ba Clients na ma Points ya connexion",
+    "addNew": "Raccordement Mpya",
+    "import": "Ku-importer",
+    "delete": "Tosha",
+    "closest": "Ya karibu zaidi",
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif",
+      "pending": "En attente",
+      "suspended": "Imesimamishwa",
+      "fraud": "Fraude / Wizi"
+    },
+    "toast": {
+      "saveSuccess": "Raccordement imewekwa muzuri."
+    },
+    "exportCSV": "Exporter kwa CSV",
+    "selectColumns": "Chagua ma colonnes",
+    "searchPlaceholder": "Tafuta...",
+    "actions": "Actions",
+    "importDialog": {
+      "title": "Ku-importer kutoka Excel/CSV",
+      "chooseFile": "Chagua fichier",
+      "startImport": "Anza ku-import"
+    },
+    "dialog": {
+      "editTitle": "Badilisha Raccordement",
+      "createTitle": "Raccordement Mpya",
+      "clientInfo": "Habari za mteja (Client)",
+      "technicalData": "Données Techniques",
+      "adminInfo": "Administration",
+      "searchClient": "Tafuta mteja mwenye tayari iko",
+      "searchClientPlaceholder": "Andika jina au code ya mteja...",
+      "customerCodePlaceholder": "Inatokea yenyewe kama ni kure",
+      "customerCode": "Code ya Mteja",
+      "firstName": "Prénom",
+      "lastName": "Jina (Nom)",
+      "phone": "Téléphone",
+      "region": "Région",
+      "zone": "Zone",
+      "status": "Statut",
+      "gpsLatitude": "Latitude GPS",
+      "gpsLongitude": "Longitude GPS",
+      "cancel": "Acha (Annuler)",
+      "save": "Enregistrer",
+      "selectMeter": "Chagua compteur iko disponible",
+      "selectKeypad": "Chagua clavier iko disponible"
+    },
+    "table": {
+      "customerCode": "Code Mteja",
+      "fullName": "Jina Lote",
+      "region": "Région",
+      "zone": "Zone",
+      "status": "Statut",
+      "phone": "Téléphone",
+      "latitude": "Lat.",
+      "longitude": "Long.",
+      "verified": "Vérifié",
+      "amountPaid": "Montant ya kulipwa",
+      "connectionDate": "Tarehe ya Raccordement",
+      "meterNumber": "N° ya Compteur",
+      "keypadNumber": "N° ya Clavier"
+    },
+    "stats": {
+      "total": "Jumla ya Raccordements",
+      "active": "Zile ziko Actifs",
+      "verified": "Zile ziko Vérifiés",
+      "pending": "Zile zinangojea"
+    },
+    "confirm": {
+      "deleteHeader": "Hakikisho ya kutosha",
+      "bulkDeleteMessage": "Uko hakika unapenda kutosha hizi raccordements {count} ulichagua?"
+    }
+  },
 
+  "expenses": {
+    "title": "Gestion ya ma Dépenses",
+    "headTitle": "Ma Dépenses",
+    "subtitle": "Kufuata ma coûts na ku-valider",
+    "addNew": "Dépense Mpya",
+    "approveSelected": "Approuver vile vilichaguliwa",
+    "rejectSelected": "Rejeter vile vilichaguliwa",
+    "export": "Exporter kwa CSV",
+    "searchPlaceholder": "Tafuta...",
+    "selectColumns": "Chagua ma colonnes",
+    "toolbar": {
+      "advancedFilters": "Filtres za ndani zaidi",
+      "resetFilters": "Rudisha mwanzo"
+    },
+    "table": {
+      "description": "Description",
+      "amount": "Montant",
+      "date": "Tarehe",
+      "category": "Catégorie",
+      "status": "Statut",
+      "createdBy": "Ilifanywa na",
+      "linkedTo": "Inahusu nani/nini",
+      "approvedBy": "Ilikubaliwa na (Approved by)",
+      "notes": "Notes",
+      "selectedTotal": "Jumla ya vile vilichaguliwa"
+    },
+    "dialog": {
+      "createTitle": "Fungula Dépense mpya",
+      "editTitle": "Badilisha Dépense",
+      "description": "Description",
+      "amount": "Montant",
+      "date": "Tarehe ya dépense",
+      "category": "Catégorie",
+      "linkedToType": "Aina ya kitu inayohusika",
+      "linkedToItem": "Kitu inayohusika",
+      "notes": "Notes / Justificatif"
+    },
+    "confirm": {
+      "header": "Hakikisho ya {action}",
+      "single": "Uko hakika unapenda ku-{action} hii dépense?",
+      "bulk": "Uko hakika unapenda ku-{action} hizi ma dépenses {count} ulichagua?"
+    },
+    "toast": {
+      "success": "Imefaulu (Succès)",
+      "error": "Makosa (Erreur)",
+      "updateSuccess": "Dépense imebadilishwa muzuri.",
+      "createSuccess": "Dépense imefungulwa muzuri.",
+      "deleteSuccess": "Dépense imetoshwa muzuri.",
+      "statusUpdateSuccess": "Dépense ya {action} imefaulu.",
+      "statusUpdateError": "Kubadilisha statut imefeli.",
+      "bulkStatusUpdateSuccess": "Ma dépenses {count} za {action} zimefaulu.",
+      "bulkStatusUpdateError": "Kubadilisha statut ya mingi imefeli."
+    },
+    "filter": {
+      "status": "Chuja kwa statut",
+      "category": "Chuja kwa catégorie",
+      "dateRange": "Chuja kwa tarehe",
+      "paymentMethod": "Chuja kwa mode ya paiement",
+      "project": "Chuja kwa projet",
+      "vehicle": "Chuja kwa gari (véhicule)",
+      "provider": "Chuja kwa fournisseur",
+      "apply": "Tumia ma filtres"
+    },
+    "stats": {
+      "totalAmount": "Montant Yote",
+      "pending": "Dépenses zinangojea",
+      "average": "Moyenne ya gharama"
+    }
+  },
+
+  "labels": {
+    "title": "Gestion ya ma Labels",
+    "fields": {
+      "name": "Jina",
+      "description": "Maelezo",
+      "color": "Rangi",
+      "style": "Style / Rangi",
+      "characteristics": "Attributs Techniques",
+      "charName": "Jina la caractéristique",
+      "charType": "Aina",
+      "isRequiredShort": "Inalazimishwa"
+    },
+    "actions": {
+      "add": "Ongeza label",
+      "addChar": "Ongeza caractéristique"
+    },
+    "toolbar": {
+      "resetFilters": "Rudisha mwanzo"
+    },
+    "types": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Tarehe",
+      "file": "Fichier",
+      "boolean": "Boolean",
+      "select": "Liste ya kuchagua"
+    },
+    "messages": {
+      "createSuccess": "Label imefungulwa muzuri",
+      "updateSuccess": "Label imebadilishwa muzuri",
+      "deleteSuccess": "Label imetoshwa muzuri",
+      "confirmDelete": "Uko hakika unapenda kutosha label \"{name}\"?",
+      "confirmChange": "Umebadilisha ma caractéristiques. Inaweza kuharibu ma données za zamani. Endelea?",
+      "confirmCharDelete": "Tosha caractéristique \"{name}\"? Hii action hairudi nyuma.",
+      "charRemovedInfo": "Caractéristique itatoshwa wakati wa ku-sauvegarder.",
+      "deleteError": "Shida imetokea wakati wa kutosha."
+    }
+  },
+
+  "unities": {
+    "title": "Gestion ya ma Unités",
+    "subtitle": "Weka ma unités ya kipimo (kg, m, pcs, etc.)",
+    "fields": {
+      "name": "Désignation",
+      "symbol": "Symbole / Abréviation"
+    },
+    "actions": {
+      "add": "Ongeza unité"
+    },
+    "dialog": {
+      "createTitle": "Fungula unité",
+      "editTitle": "Badilisha unité",
+      "createSubtitle": "Ongeza aina mpya ya kipimo ndani ya système.",
+      "editSubtitle": "Sasaisha habari za hii unité."
+    },
+    "validation": {
+      "nameRequired": "Jina la unité ni lazima."
+    },
+    "messages": {
+      "createSuccess": "Unité imefungulwa muzuri.",
+      "updateSuccess": "Unité imebadilishwa muzuri.",
+      "deleteSuccess": "Unité imetoshwa muzuri.",
+      "confirmDelete": "Uko hakika unapenda kutosha unité \"{name}\"?"
+    }
+  },
+
+  "employees": {
+    "title": "Gestion ya ma Employés",
+    "count_label": "Wapikaji kazi walioandikwa",
+    "actions": {
+      "add": "Ongeza mupikaji kazi"
+    },
+    "fields": {
+      "first_name": "Prénom",
+      "last_name": "Jina (Nom)",
+      "email": "Email",
+      "phone": "Téléphone",
+      "status": "Statut ya kazi",
+      "salary": "Mishahara (Salaire)",
+      "hire_date": "Tarehe ya kuingia kazi",
+      "job_title": "Poste / Kazi yake",
+      "notes": "Observations / Maelezo"
+    },
+    "status": {
+      "active": "Actif",
+      "on_leave": "Iko mu congé",
+      "terminated": "Mkataba umeisha"
+    },
+    "dialog": {
+      "new": "Mupikaji kazi Mpya",
+      "edit": "Badilisha mupikaji kazi"
+    },
+    "messages": {
+      "saved": "Mupikaji kazi amewekwa muzuri.",
+      "confirmDelete": "Uko hakika unapenda kutosha {name}?",
+      "deleteSuccess": "Mupikaji kazi ametoshwa."
+    }
+  },
+
+  "interventions": {
+    "title": "Gestion ya ma Interventions",
+    "headTitle": "Interventions <span class='text-primary-600'>Field Service</span>",
+    "subtitle": "Opérations na Maintenance ya Réseau",
+    "addNew": "Intervention Mpya",
+    "searchPlaceholder": "Tafuta référence...",
+    "filters": "Ma Filtres",
+    "deleteSelected": "Tosha",
+    "selectColumns": "Ma colonnes ziko actives",
+    "notAssigned": "Haija-assignewa mtu",
+    "notApplicable": "N/A",
+    "dialog": {
+      "editTitle": "Détails ya Intervention",
+      "createTitle": "Kufungula Ticket",
+      "gmaoConsole": "Console ya administration GMAO v2025",
+      "origin": "Kwenye ombi inatoka",
+      "externalClient": "Mteja wa inje",
+      "internalAgent": "Agent wa ndani",
+      "searchPlaceholder": "Tafuta...",
+      "subjectDescription": "Sujet / Description",
+      "autoReference": "Référence ya yenyewe",
+      "problemPlaceholder": "Fasiria shida ya technique hapa...",
+      "assignmentDeadline": "Assignation na Muda",
+      "priority": "Priorité",
+      "assignedTo": "Imepewa kwa",
+      "deadline": "Échéance",
+      "region": "Région",
+      "zone": "Zone",
+      "cancel": "Acha (Annuler)",
+      "save": "Enregistrer Intervention",
+      "classification": "Classification",
+      "interventionReason": "Sababu ya intervention",
+      "selectReason": "Chagua sababu moja",
+      "category": "Catégorie",
+      "technicalComplexity": "Complexité Technique",
+      "planningTracking": "Planification na Kufuata (Suivi)",
+      "minTime": "Muda ya chini (h)",
+      "maxTime": "Muda ya juu (h)",
+      "autoConfig": "Auto-configuration",
+      "settingsApplied": "Paramètres zimetumika kwa : {reason}",
+      "validateIntervention": "Valider Intervention"
+    },
+    "filtersPanel": {
+      "title": "Filtres za ndani zaidi",
+      "status": "Statut",
+      "statusPlaceholder": "Zote",
+      "region": "Région",
+      "regionPlaceholder": "Zote",
+      "priority": "Priorité",
+      "priorityPlaceholder": "Zote",
+      "reset": "Rudisha mwanzo",
+      "apply": "Tumia"
+    },
+    "tooltips": {
+      "manage": "Simamia (Gérer)"
+    },
+    "assignableTypes": {
+      "technician": "Technicien",
+      "team": "Équipe"
+    },
+    "table": {
+      "reference": "Référence",
+      "reason": "Motif",
+      "complexity": "Complexité",
+      "completedAt": "Iliisha tarehe",
+      "category": "Catégorie",
+      "description": "Description",
+      "status": "Statut",
+      "customerCode": "Code ya Mteja",
+      "clientName": "Jina la Mteja",
+      "region": "Région",
+      "priority": "Priorité",
+      "deadline": "Échéance",
+      "assignedTo": "Imepewa kwa",
+      "actions": "Actions",
+      "report": "Inaonyesha kuanzia {first} mupaka {last} kati ya {totalRecords} interventions"
+    },
+    "stats": {
+      "total": "Jumla ya Interventions",
+      "pending": "En Attente",
+      "in_progress": "En Cours",
+      "completed": "Terminées",
+      "notValidated": "Hazija-validewa",
+      "reason": "Motif",
+      "complexity": "Complexité",
+      "completedAt": "Iliisha tarehe",
+      "category": "Catégorie"
+    },
+    "status": {
+      "notValidated": "Haija-validewa"
+    }
+  },
+
+  "regions": {
+    "title": "Gestion ya Parc Énergétique",
+    "headTitle": "Gestion ya ",
+    "headTitle2": "Parc",
+    "subtitle": "Supervision technique ya ma régions énergétiques",
+    "actions": {
+      "add": "Région Mpya",
+      "resetFilters": "Rudisha ma Filtres mwanzo"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Tafuta kila kitu...",
+      "searchByName": "Tafuta kwa jina",
+      "allTypes": "Ma aina zote"
+    },
+    "stats": {
+      "total": "Jumla ya Régions",
+      "totalMW": "Puissance Yote",
+      "avgPower": "Puissance Moyenne",
+      "highPerf": "Haute Performance"
+    },
+    "types": {
+      "thermique": "Thermique",
+      "solaire": "Solaire",
+      "hydraulique": "Hydraulique",
+      "eolienne": "Éolienne",
+      "reseauElectrique": "Réseau Électrique",
+      "autreSource": "Source ingine"
+    },
+    "fields": {
+      "designation": "Désignation",
+      "type": "Source",
+      "power": "Capacité (MW)",
+      "notes": "Notes Techniques",
+      "status": "Statut",
+      "code": "Code"
+    },
+    "dialog": {
+      "createTitle": "Configuration Mpya ya Région",
+      "editTitle": "Update ya Technique ya Région",
+      "regionSettings": "Paramètres ya région",
+      "productionInfo": "Jaza habari za production"
+    },
+    "placeholders": {
+      "designation": "Mfano: Centrale Nord-Est",
+      "notes": "Détails zingine, consigne za sécurité...",
+      "code": "Code"
+    },
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    }
+  },
+
+  "maintenances": {
+    "title": "Gestion ya ma Maintenances",
+    "headTitle": "Ma Maintenances",
+    "subtitle": "Opérations za préventives & correctives",
+    "exportExcel": "Export Excel",
+    "new": "Maintenance Mpya",
+    "searchPlaceholder": "Tafuta maintenance...",
+    "resetTooltip": "Rudisha mwanzo",
+    "columnsTooltip": "Chagua ma colonnes",
+    "deleteSelected": "Tosha vile vilichaguliwa",
+    "columns": {
+      "title": "Jina la maintenance",
+      "equipments": "Équipement(s)",
+      "assignable": "Imepewa kwa",
+      "status": "Statut",
+      "priority": "Priorité",
+      "scheduled_start_date": "Mwanzo uliopangwa",
+      "description": "Description",
+      "estimated_duration": "Muda uliokadiriwa",
+      "cost": "Gharama (Coût)",
+      "region": "Région",
+      "recurrence_type": "Récurrence",
+      "actions": "Actions"
+    },
+    "activityDialog": {
+      "title": "Système ya Planification ya ma Activités",
+      "batchManagerTitle": "Batch Activity Manager",
+      "batchManagerSubtitle": "Version 12.0 • Enterprise Asset Management",
+      "parentMaintenance": "Maintenance ya Mzazi",
+      "activityVolume": "Volume ya ma activités",
+      "newActivity": "Activité Mpya",
+      "activityNamePlaceholder": "Pa jina la activité...",
+      "statusLabel": "Statut:",
+      "duplicateTooltip": "Dupliquer",
+      "attribution": "Attribution",
+      "entityTypePlaceholder": "Aina ya entité",
+      "responsiblePlaceholder": "Chagua mufundi responsable",
+      "concernedAssets": "Assets zinazohusika",
+      "searchEquipmentsPlaceholder": "Tafuta ma équipements...",
+      "estimatedCost": "Coût uliokadiriwa",
+      "planning": "Planification",
+      "priority": "Priorité",
+      "durationInMinutes": "Muda (m)",
+      "executionPeriod": "Kipindi cha kufanya kazi",
+      "start": "Mwanzo",
+      "end": "Mwisho",
+      "checklist": "Checklist",
+      "addInstruction": "Ongeza instruction",
+      "instructionPlaceholder": "Instruction...",
+      "selectType": "Chagua aina",
+      "zeroInstructions": "Hakuna instruction.",
+      "spareParts": "Pièces Détachées",
+      "resetForm": "Rudisha formulaire mwanzo",
+      "cancel": "Acha",
+      "validateAndDeploy": "Valider na kutoa (Deploy)"
+    },
+    "formDialog": {
+      "editTitle": "Badilisha Maintenance",
+      "createTitle": "Fungula Maintenance mpya",
+      "technicalReportTitle": "Rapport Technique ya Intervention",
+      "gmaoConsole": "Console ya administration GMAO v2025 • High-Performance System",
+      "missionId": "Identification ya mission",
+      "interventionTitle": "Jina la intervention",
+      "interventionTitlePlaceholder": "Mfano: Maintenance préventive Trimestre 1",
+      "concernedEquipments": "Équipements zinazohusika",
+      "selectAssets": "Chagua ma actifs...",
+      "detailedDescription": "Maelezo ya ndani zaidi",
+      "generalInstructions": "Instructions za ujumla kwa équipe...",
+      "configPerEquipment": "Configuration kwa kila équipement",
+      "showControlPoints": "Tengeneza ma points ya contrôle",
+      "hideControlPoints": "Ficha",
+      "noEquipmentSelected": "Hakuna équipement ilichaguliwa",
+      "parentGroupLabel": "Équipements ya kiwango cha kwanza",
+      "clone": "Cloner",
+      "addInstruction": "Ongeza instruction",
+      "instructionLabelPlaceholder": "Libellé (mf: Angalia niveau ya mafuta)",
+      "required": "Inalazimishwa",
+      "noSpecificInstruction": "Hakuna instruction ya pekee iliyoandikwa",
+      "logisticsAndTiming": "Logistique & Timing",
+      "plannedStart": "Mwanzo uliopangwa",
+      "actualStart": "Tarehe ya kuanza",
+      "plannedEnd": "Mwisho uliopangwa",
+      "actualEnd": "Tarehe ya kuisha",
+      "interventionResponsible": "Responsable wa intervention",
+      "assignableTypePlaceholder": "Aina",
+      "assignableSelectPlaceholder": "Chagua...",
+      "maintenanceType": "Aina ya maintenance",
+      "currentStatus": "Statut ya sasa",
+      "priorityLevel": "Kiwango cha Priorité",
+      "interventionRegion": "Région ya intervention",
+      "recurrenceCycle": "Cycle ya Récurrence",
+      "frequency": "Fréquence",
+      "dailyInterval": "Intervalle ya kila siku",
+      "daysSelection": "Kuchagua ma siku",
+      "dayOfMonth": "Siku (Tarehe)",
+      "everyNMonths": "Kila baada ya (Miezi)",
+      "startMonth": "Mwezi wa kuanza",
+      "earlyReminder": "Rappel ya mbele (Push/Email)",
+      "customRule": "Sheria ya pekee (Cron/Text)",
+      "customRulePlaceholder": "Mfano: Kila Jumatatu ya pili ya mwezi",
+      "estimatedDuration": "Muda uliokadiriwa",
+      "estimatedBudget": "Budget uliokadiriwa",
+      "cancelChanges": "Acha mabadiliko",
+      "savePlan": "Sauvegarder Plan ya Maintenance"
+    },
+    "copyDialog": {
+      "title": "Kunakili (Copy) ma Instructions",
+      "subtitle": "Chagua ma équipements unataka kupelea ma instructions",
+      "apply": "Tumia kope hiyo",
+      "cancel": "Acha"
+    },
+    "status": {
+      "scheduled": "Planifiée",
+      "in_progress": "En cours",
+      "completed": "Terminée",
+      "completed_with_issues": "Terminée na shida",
+      "suspended": "Suspendue",
+      "canceled": "Annulée",
+      "awaiting_resources": "Inangojea ma ressources",
+      "to_be_reviewed_later": "Ya kuangalia baadaye"
+    },
+    "priority": {
+      "low": "Basse",
+      "medium": "Moyenne",
+      "high": "Haute",
+      "urgent": "Urgente"
+    },
+    "assignableTypes": {
+      "none": "Hakuna",
+      "user": "Technicien",
+      "team": "Équipe"
+    },
+    "recurrence": {
+      "none": "Hakuna",
+      "daily": "Ya kila siku",
+      "weekly": "Ya kila juma",
+      "monthly": "Ya kila mwezi",
+      "quarterly": "Ya kila miezi tatu",
+      "biannual": "Ya kila miezi sita",
+      "annual": "Ya kila mwaka",
+      "custom": "Ya pekee"
+    }
+  },
+
+  "myActivities": {
+    "title": "Ma Activités yangu",
+    "subtitle": "Simamia na kufuata ma activités na ma interventions zako zote.",
+    "timelineTitle": "Chronologie ya ma activités yangu",
+    "timelineSubtitle": "Kufuata namna ma interventions na kazi zako zinaendelea.",
+    "columnsPlaceholder": "Chagua ma colonnes ya kuonyesha",
+    "noActivitiesTitle": "Hakuna activité iliyoonekana",
+    "noActivitiesSubtitle": "Inaonekana huna kazi au intervention yoyote iliyopangwa kwa sasa.",
+    "addNew": "Activité Mpya",
+    "subActivityFor": "Sous-activité kwa ajili ya : {title}",
+    "unknownReference": "Référence haijulikani",
+    "stats": {
+      "total": "Jumla ya ma Activités",
+      "in_progress": "Ziko mu kazi",
+      "completed": "Zimeisha",
+      "scheduled": "Zimepangwa"
+    },
+    "status": {
+      "scheduled": "Planifiée",
+      "in_progress": "En cours",
+      "completed": "Terminée",
+      "completed_with_issues": "Terminée na shida",
+      "suspended": "Suspendue",
+      "canceled": "Annulée",
+      "awaiting_resources": "Inangojea ma ressources",
+      "pending": "En attente"
+    },
+    "instructionTypes": {
+      "text": "Texte",
+      "number": "Nombre",
+      "boolean": "Ndiyo/Hapana",
+      "date": "Tarehe",
+      "textarea": "Zone ya texte",
+      "image": "Fichier",
+      "signature": "Signature"
+    },
+    "displayOptions": {
+      "actual_end_time": "Tarehe ya kuisha kabisa",
+      "proposals": "Mapendekezo",
+      "jobber": "Technicien",
+      "additional_information": "Habari zingine",
+      "spare_parts_used": "Pièces zilizotumiwa",
+      "spare_parts_returned": "Pièces zilirudishwa"
+    },
+    "boolean": {
+      "yes": "Ndiyo",
+      "no": "Hapana"
+    },
+    "defaults": {
+      "sparePartPayment": "Règlement ya ma pièces de rechange"
+    },
+    "toast": {
+      "jsonParseError": "Shida imetokea wakati wa kusoma ma données JSON.",
+      "subActivityCreated": "Sous-activité imefungulwa muzuri.",
+      "activityUpdated": "Activité imesasaishwa muzuri.",
+      "success": "Imefaulu (Succès)",
+      "error": "Makosa (Erreur)",
+      "saveError": "Shida imetokea wakati wa ku-sauvegarder.",
+      "warning": "Angalia muzuri",
+      "instructionLabelRequired": "Libellé ya consigne ni lazima.",
+      "added": "Imeongezwa",
+      "instructionAdded": "Consigne imeongezwa kwa formulaire.",
+      "instructionRemoved": "Consigne imetoshwa",
+      "listUpdated": "Liste imesasaishwa."
+    },
+    "common": {
+      "instructionNotFound": "Consigne haionekani (ID: {id})",
+      "invalidDate": "Tarehe haiko sawa",
+      "notSet": "Haijaandikwa",
+      "unspecifiedDate": "Tarehe haijaandikwa",
+      "unnamedActivity": "Activité haina jina",
+      "workOrderId": "OT #{id}",
+      "problemResolution": "Maelezo ya namna shida ilitatuliwa:",
+      "proposals": "Mapendekezo / Recommandations:",
+      "additionalInfo": "Informations zingine:",
+      "technician": "Technicien / Intervenant:",
+      "instructionAnswers": "Majibu kwa ma consigne",
+      "usedParts": "Pièces de rechange zilizotumika",
+      "returnedParts": "Pièces de rechange zilirudishwa",
+      "actualEndTime": "Iliisha tarehe:",
+      "associatedTaskDetails": "Maelezo ya kazi inayohusika",
+      "priority": "Priorité:",
+      "description": "Description:",
+      "createSubActivity": "Fungula sous-activité",
+      "complete": "Maliza / Badilisha",
+      "taskTitle": "Kazi (Tâche)",
+      "status": "Statut",
+      "actualStart": "Mwanzo kabisa",
+      "notApplicable": "N/A",
+      "usedPartsCount": "{count} pièce(s) zilitumiwa",
+      "returnedPartsCount": "{count} pièce(s) zilirudishwa",
+      "instructionsAndActions": "Consignes & Actions",
+      "answersCount": "Majibu {count}",
+      "completeActivityTooltip": "Kumaliza / Kuona activité",
+      "associatedSubActivities": "Sous-activités zinazohusika",
+      "noSubActivities": "Hakuna sous-activité inayohusika na hii activité"
+    },
+    "table": {
+      "task": "Kazi",
+      "status": "Statut",
+      "start_time": "Saa ya kuanza",
+      "end_time": "Saa ya kuisha",
+      "technician": "Technicien",
+      "report": "Inaonyesha kuanzia {first} mupaka {last} kati ya {totalRecords} activités",
+      "searchPlaceholder": "Tafuta activité...",
+      "filterByTeam": "Chuja kwa équipe",
+      "filterByRegion": "Chuja kwa région",
+      "filterByDate": "Chuja kwa tarehe",
+      "region": "Région",
+      "zone": "Zone",
+      "filterByStatus": "Chuja kwa statut",
+      "filterByTask": "Chuja kwa kazi"
+    },
+    "dialog": {
+      "subActivityInitialization": "Kuanzisha sous-activité",
+      "technicalInterventionReport": "Rapport d'intervention technique",
+      "missionSettings": "Paramètres ya mission",
+      "assignationType": "Aina ya affectation",
+      "assignationTypes": {
+        "user": "Mtumishi peke yake",
+        "team": "Équipe"
+      },
+      "responsibleTechnician": "Technicien responsable",
+      "responsibleTeam": "Équipe responsable",
+      "currentStatus": "Statut ya Sasa",
+      "region": "Région",
+      "zone": "Zone",
+      "timestamps": "Horodatage (Muda)",
+      "start": "Mwanzo",
+      "end": "Mwisho",
+      "activityTitle": "Jina la activité",
+      "gmaoAdminConsole": "Console d'administration GMAO",
+      "resolutionTitle": "Maelezo ya intervention na solution",
+      "resolutionPlaceholder": "Andika kwa urefu shida uliyokuta, hatua za diagnostic na solution uliyofanya...",
+      "recommendationsLabel": "Recommandations / Propositions",
+      "clientRecommendationsPlaceholder": "Mapendekezo na mashauri kwa mteja...",
+      "internalNotes": "Notes Internes",
+      "adminOnly": "ADMIN TU",
+      "internalNotesPlaceholder": "Maelezo ambayo mteja hawezi kuona...",
+      "addInstructionPlaceholder": "Libellé ya consigne mpya...",
+      "selectTypePlaceholder": "Aina ya valeur",
+      "checklistTitle": "Check-list ya intervention",
+      "checklistPoints": "{count} points za contrôle",
+      "removeInstructionTitle": "Tosha hii consigne",
+      "missionConfigTitle": "Configuration ya mission",
+      "usedStock": "Stock ilitumiwa",
+      "returnedStock": "Retour Stock",
+      "htValuation": "Valorisation HT",
+      "billingNotesPlaceholder": "Notes za facturation...",
+      "financialImpactLabel": "Impact ya feza",
+      "billingLabelPlaceholder": "Libellé kwa ajili ya facturation...",
+      "cancelButton": "Acha",
+      "createSubActivityButton": "Fungula sous-activité",
+      "publishReportButton": "Toa rapport",
+      "sparePartModalUsedTitle": "Ongeza ma pièces zilizotumika",
+      "sparePartModalReturnedTitle": "Ongeza ma pièces zilirudishwa",
+      "associatedEquipments": "Équipements zinazohusika",
+      "selectEquipmentsPlaceholder": "Chagua ma équipements...",
+      "referencesLabel": "Références ya ma pièces",
+      "searchPartPlaceholder": "Tafuta pièce...",
+      "unitQuantityLabel": "Quantité (kwa kila unité)",
+      "closeButton": "Funga",
+      "validateButton": "Valider",
+      "transferSuccess": "{count} compteur(s) zimehamishwa muzuri.",
+      "transferError": "Shida imetokea wakati wa kuhamisha.",
+      "fileInvalid": "Fichier ya ku-importer haiko sawa."
+    }
+  },
+  "date_filters": {
+    "this_month": "Mwezi huu",
+    "last_month": "Mwezi uliopita",
+    "last_week": "Juma lililopita",
+    "custom": "Maalum"
+  },
+"leaves": {
+    "title": "Gestion ya ma Congés",
+    "subtitle": "Ma Demandes {count} zimeandikwa",
+    "newRequest": "Demande Mpya",
+    "stats": {
+      "total": "Jumla ya ma Demandes",
+      "pending": "En Attente",
+      "approved": "Zimekubaliwa",
+      "rejected": "Zimekataliwa"
+    },
+    "table": {
+      "applicant": "Mwenye kuomba (Demandeur)",
+      "type": "Aina",
+      "period": "Période",
+      "status": "État",
+      "actions": "Actions",
+      "approvalDate": "Tarehe ya ku-approuver",
+      "approvedBy": "Ilikubaliwa na",
+      "rejectedBy": "Ilikataliwa na",
+      "report": "Inaonyesha kuanzia {first} mupaka {last} kati ya {totalRecords} demandes"
+    },
+    "dialog": {
+      "editTitle": "Update ya Congé",
+      "createTitle": "Demande ya Congé Mpya",
+      "headerTitle": "Planification ya kutoonekana (Absence)",
+      "headerSubtitle": "Tafadhali jaza maelezo ya demande yako",
+      "applicant": "Collaborateur",
+      "applicantPlaceholder": "Chagua mwenye anaomba",
+      "startDate": "Tarehe ya kuanza",
+      "endDate": "Tarehe ya kuisha",
+      "leaveType": "Aina ya congé",
+      "reason": "Sababu ya demande (Motif)",
+      "reasonPlaceholder": "Fasiria kwa kifupi sababu ya congé...",
+      "attachment": "Justificatif (PDF, Image)",
+      "attachmentChoose": "Chagua fichier",
+      "sendRequest": "Tuma demande"
+    },
+    "toast": {
+      "success": "Opération imefaulu muzuri"
+    },
+    "types": {
+      "annual": "Congé ya mwaka",
+      "sick": "Maladie",
+      "rtt": "RTT",
+      "exceptional": "Exceptionnel (Hali ya pekee)"
+    },
+    "status": {
+      "pending": "En attente",
+      "approved": "Ime-approuvewa",
+      "rejected": "Imekataliwa"
+    },
+    "confirm": {
+      "statusChange": "Kubadilisha statut"
+    }
+  },
+
+  "networks": {
+    "title": "Superviseur ya Réseau",
+    "newProject": "PROJET_MPYA",
+    "newEmptyProject": "PROJET_MPYA_YA_BURE",
+    "defaultEquipment": "Équipement Standard",
+    "defaultComponent": "Composant",
+    "monitoringLive": "Monitoring en direct (Live)",
+    "systemUpdated": "Système imesasaishwa",
+    "defaultRegion": "Région haija-définiwa",
+    "networkLoaded": "Réseau {name} imefunguka",
+    "deleteConfirmMessage": "Unapenda kutosha hii réseau kabisa? Ma données hazitarudi tena.",
+    "deleteConfirmHeader": "Hakikisho ya kutosha",
+    "deletedSuccess": "Réseau imetoshwa muzuri",
+    "deletedSummary": "Imetoshwa",
+    "infrastructureDirectory": "Répertoire ya ma infrastructures",
+    "newNetwork": "Réseau Mpya",
+    "elements": "Éléments",
+    "liveFlux": "Live Flux",
+    "save": "Sauvegarder",
+    "stats": {
+      "title": "Ma Stats ya Live",
+      "equipments": "Équipements",
+      "activeFlux": "Ma Flux ya sasa (Actifs)",
+      "sources": "Ma Sources",
+      "status": {
+        "optimal": "Iko muzuri sana (Optimal)",
+        "unstable": "Haitulii (Instable)",
+        "critical": "Iko mu hatari (Critique)"
+      }
+    },
+    "status": {
+      "optimal": "Optimal",
+      "unstable": "Instable",
+      "critical": "Critique"
+    },
+    "dialog": {
+      "editTitle": "Badilisha Composant",
+      "tag": "Tag ya Identification",
+      "designation": "Désignation Technique",
+      "injectionPoint": "Point d'injection",
+      "injectionPointSubtitle": "Source ya nguvu (énergie) ya kwanza",
+      "location": "Mahali iko (Localisation)",
+      "region": "Région",
+      "meter": "Compteur",
+      "meter_placeholder": "Chagua compteur moja",
+      "manufacturer": "Fabricant (Mwenye kuitengeneza)",
+      "model": "Modèle",
+      "zone": "Zone",
+      "selectRegion": "Chagua région",
+      "selectZone": "Chagua zone",
+      "insertButton": "Iweke kwenye schéma"
+    }
+  },
+
+  "profile": {
+    "title": "Profil yangu",
+    "headTitle": "Profil ya Mtumiaji",
+    "sections": {
+      "about": "Kuhusu mimi (À Propos)",
+      "security": "Sécurité ya Compte",
+      "securitySubtitle": "Sasaisha (Update) mot de passe yako kwa kulinda compte.",
+      "preferences": "Préférences & Notifications",
+      "preferencesSubtitle": "Simamia namna unapenda kupata habari."
+    },
+    "fields": {
+      "fullName": "Jina lote",
+      "email": "Adresse e-mail",
+      "memberSince": "Mwanachama tangu",
+      "roles": "Ma Rôles & Permissions",
+      "currentPassword": "Mot de passe ya sasa",
+      "newPassword": "Mot de passe mpya",
+      "confirmPassword": "Hakikisha mot de passe mpya"
+    },
+    "actions": {
+      "updatePassword": "Sasaisha mot de passe",
+      "savePreferences": "Sauvegarder preferences"
+    },
+    "preferences": {
+      "emailNotifications": "Notifications kwa Email",
+      "emailNotificationsDesc": "Kupata ma alertes ya lazima kwa email.",
+      "smsNotifications": "Notifications kwa SMS",
+      "smsNotificationsDesc": "Kupata ma alertes za haraka (urgentes) kwa SMS.",
+      "darkMode": "Mode ya Giza (Sombre)",
+      "darkModeDesc": "Kuweka interface mu rangi ya giza."
+    },
+    "messages": {
+      "noRoles": "Hakuna rôle ulipewa."
+    },
+    "toast": {
+      "passwordUpdated": "Mot de passe imesasaishwa muzuri."
+    }
+  },
+
+  "spareParts": {
+    "title": "Gestion ya ma Pièces Détachées",
+    "headTitle": "Gestion ya ma Pièces de Rechange",
+    "toolbar": {
+      "searchPlaceholder": "Tafuta référence au composant...",
+      "add": "Actif Mpya",
+      "export": "Exporter base yote",
+      "filterByRegion": "Chuja kwa région"
+    },
+    "table": {
+      "report": "Inaonyesha kuanzia {first} mupaka {last} kati ya {totalRecords} pièces",
+      "ref": "REF",
+      "name": "Jina",
+      "component": "Composant",
+      "reference": "Référence",
+      "equipment": "Équipement",
+      "location": "Emplacement",
+      "quantity": "Quantité",
+      "stockAlerte": "Stock / Alerte",
+      "min_quantity": "Seuil ya Alerte",
+      "price": "Bei (Prix HT)",
+      "partType": "Aina ya pièce",
+      "responsible": "Responsable",
+      "characteristics": "Caractéristiques",
+      "actions": "Actions"
+    },
+    "form": {
+      "partType": "Aina ya Composant",
+      "partTypePlaceholder": "Chagua catégorie",
+      "reference": "Référence ya Constructeur",
+      "quantity": "Quantité ndani ya Stock",
+      "min_quantity": "Seuil ya Alerte",
+      "price": "Bei kwa moja (Unitaire HT)",
+      "location": "Mahali iko (Localisation Physique)",
+      "region": "Entité / Région",
+      "regionPlaceholder": "Ipe zone fulani",
+      "responsible": "Superviseur Responsable",
+      "responsiblePlaceholder": "Chagua gestionnaire mmoja",
+      "characteristicValues": "Spécifications Techniques",
+      "description": "Description",
+      "equipment": "Équipement (kwa ajili ya hii pièce)",
+      "equipmentPlaceholder": "Optionnel: Chagua équipement",
+      "supplier": "Mupikaji (Fournisseur)",
+      "supplierPlaceholder": "Chagua fournisseur mmoja",
+      "purchaseDate": "Tarehe ya kununuliwa",
+      "warrantyEnd": "Mwisho wa garantie"
+    },
+    "dialog": {
+      "createTitle": "Muingizo ya Stock Mpya",
+      "editTitle": "Configuration Technique",
+      "createSubtitle": "Kuandika actif mpya ndani ya inventaire",
+      "editSubtitle": "Kubadilisha ma paramètres na ma seuils ya logistique",
+      "partType": "Aina ya pièce",
+      "partTypePlaceholder": "Chagua aina moja",
+      "reference": "Référence",
+      "quantity": "Quantité",
+      "min_quantity": "Quantité Min.",
+      "price": "Bei (Prix Unitaire)",
+      "location": "Emplacement",
+      "region": "Région",
+      "regionPlaceholder": "Chagua région",
+      "responsible": "Responsable",
+      "responsiblePlaceholder": "Chagua responsable",
+      "characteristicValues": "Valeurs za ma caractéristiques",
+      "addCharacteristic": "Ongeza caractéristique",
+      "characteristicNamePlaceholder": "Jina la caractéristique",
+      "characteristicTypePlaceholder": "Aina",
+      "characteristicValueText": "Valeur (Texte)",
+      "characteristicValueNumber": "Valeur (Nombre)",
+      "characteristicValueDate": "Valeur (Tarehe)",
+      "characteristicValue": "Valeur",
+      "existingFile": "Fichier iko tayari",
+      "cancel": "Acha (Annuler)",
+      "save": "Sauvegarder"
+    },
+    "toast": {
+      "success": "Imefaulu (Succès)",
+      "updateSuccess": "Pièce détachée imesasaishwa muzuri.",
+      "createSuccess": "Pièce détachée imefungulwa muzuri.",
+      "deleteSuccess": "Pièce détachée imetoshwa muzuri.",
+      "bulkDeleteSuccess": "Ma pièces détachées zimetoshwa muzuri.",
+      "saveError": "Shida ya ku-sauvegarder",
+      "error": "Makosa (Erreur)",
+      "deleteError": "Shida imetokea wakati wa kutosha.",
+      "bulkDeleteError": "Shida imetokea wakati wa kutosha ma pièces mingi."
+    },
+    "validation": {
+      "characteristicRequired": "Caractéristique \"{characteristic}\" ni lazima."
+    },
+    "confirm": {
+      "deleteHeader": "Hakikisho ya kutosha",
+      "deleteMessage": "Uko hakika unapenda kutosha pièce détachée \"{name}\"?",
+      "bulkDeleteMessage": "Uko hakika unapenda kutosha hizi ma pièces détachées ulichagua?",
+      "cancel": "Acha",
+      "delete": "Tosha"
+    }
+  }
 }

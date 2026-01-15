@@ -1,57 +1,424 @@
 {
     "dashboard": {
-        "users": "Users",
+        "title 2": "MaintenX Enterprise ERP - v2.0",
+        "title": "Dashboard",
+        "generatedAt": "Generated at: {time}",
+        "liveData": "LIVE",
+        "manageSections": "Manage the display of sections",
+        "filters": {
+            "title": "ADVANCED FILTERS",
+            "zonePlaceholder": "Select a zone",
+            "equipmentPlaceholder": "Select an equipment"
+        },
+        "sparklines": {
+            "workOrders": "Active Tasks",
+            "backlog": "Backlog (Delays)",
+            "laborHours": "Work Hours",
+            "avgMttr": "MTTR Average"
+        },
+        "stockRotation": {
+            "title": "Spare Parts Alert"
+        },
+        "sections": {
+            "kpis": "Key Performance Indicators (KPIs)",
+            "sparklines": "Fast Trends",
+            "workOrders": "Queue (OT)",
+            "stockAlerts": "Stock & Parts Alerts",
+            "preventiveCalendar": "Preventive Calendar",
+            "riskMatrix": "Risk Matrix",
+            "technicianEfficiency": "Technician Efficiency",
+            "mainChart": "Maintenance Flow",
+            "statusDuration": "Duration per Status",
+            "statusDoughnut": "Overall Distribution",
+            "budget": "Budget Analysis",
+            "criticalityAnalysis": "Criticality Analysis",
+            "recentInterventions": "Recent Interventions",
+            "stockFlow": "Stock Flow",
+            "reset": "Reset the view"
+        },
+        "kpis": {
+            "availability": "Availability",
+            "availabilityDesc": "Operational operating rate",
+            "preventiveRate": "Preventive Rate",
+            "preventiveRateDesc": "Preventive vs. corrective ratio",
+            "mtbf": "MTBF",
+            "mtbfDesc": "Mean time between failures",
+            "oee": "TRS (OEE)",
+            "oeeDesc": "Synthetic Yield",
+            "activeTasks": "Active Tasks",
+            "backlog": "Backlog",
+            "laborHours": "Working Hours",
+            "avgMttr": "MTTR Average"
+        },
+        "workOrders": {
+            "title": "Work Orders in Progress",
+            "urgent": "{count} Urgent",
+            "inProgress": "{count} In Progress",
+            "columns": {
+                "id": "ID",
+                "equipment": "Equipment",
+                "priority": "Priority",
+                "assigned": "Assigned",
+                "progress": "Progression",
+                "actions": "Actions"
+            }
+        },
+        "stockAlerts": {
+            "title": "Spare Parts Alert",
+            "ref": "Ref:",
+            "units": "units",
+            "order": "Order"
+        },
+        "preventiveCalendar": {
+            "title": "Preventive Planning",
+            "confirmed": "Confirmed"
+        },
+        "riskMatrix": {
+            "title": "Risk Analysis",
+            "criticalRisk": "Critical Risk Detected",
+            "criticalRiskExample": "Abnormal vibration on main motor bearing"
+        },
+        "technicianEfficiency": {
+            "title": "Team Management",
+            "completed": "{count} completed",
+            "pending": "{count} pending"
+        },
+        "mainChart": {
+            "title": "Performance Analysis",
+            "exportPdf": "Export as PDF",
+            "availabilityRatio": "Availability Ratio",
+            "avgClosure": "Average Closing",
+            "teamEfficiency": "Team Efficiency"
+        },
+        "statusDoughnut": {
+            "title": "Task Allocation",
+            "inProgress": "Active Tasks"
+        },
+        "budget": {
+            "title": "Maintenance Budget Consumption"
+        },
+        "criticalityAnalysis": {
+            "title": "Top 5 Critical Equipment",
+            "failuresCount": "Number of failures"
+        },
+        "recentInterventions": {
+            "title": "Latest Interventions",
+            "seeAll": "See all",
+            "inProgress": "In progress",
+            "pending": "Pending",
+            "closed24h": "Closed (24h)",
+            "columns": {
+                "asset": "Active",
+                "priority": "Priority",
+                "tech": "Tech.",
+                "status": "Status"
+            }
+        },
+        "stockFlow": {
+            "title": "Stock Flow",
+            "description": "Spare parts movements over the last 30 days",
+            "restock": "Replenishment",
+            "consumption": "Consumption",
+            "entries": "Entrées",
+            "exits": "Exits"
+        },
+        "createWoDialog": {
+            "title": "New Work Order"
+        }
+    },
+    "meters": {
+        "title": "Meter Management",
+        "titleHtml": "Management of <span class='text-primary-600'>Counters</span>",
+        "subtitle": "Measurement & Billing Assets",
         "active_tasks": "Active Tasks",
-        "time_spent_h": "Time Spent (h)",
-        "avg_intervention_time": "Avg. Intervention Time",
+        "time_spent_h": "Past Time (h)",
+        "avg_intervention_time": "Average Intervention Time.",
         "by_status": "By Status",
         "by_priority": "By Priority",
-        "incoming_parts": "Incoming Parts",
-        "outgoing_parts": "Outgoing Parts",
+        "incoming_parts": "Incoming parts",
+        "outgoing_parts": "Outgoing parts",
         "interventions_count": "Number of interventions",
         "stopped": "Stopped",
         "degraded": "Degraded",
         "improvement": "Improvement",
-        "avg_resolution_time": "Avg. Resolution Time",
+        "avg_resolution_time": "Average resolution time",
         "delay_hours": "Delay (Hours)",
         "financial_tracking": "Financial Tracking",
         "total_budget": "Total Budget",
         "service_expenses": "Service Expenses",
         "total_validated_expenses": "Total Validated Expenses",
         "key_metrics_overview": "Key Metrics Overview",
-        "from_last_period": "since last period",
+        "from_last_period": "since the last period",
         "detailed_visualizations": "Detailed Visualizations",
-        "monthly_intervention_volume_title": "Monthly intervention volume and average resolution time",
+        "monthly_intervention_volume_title": "Monthly volume of interventions and average resolution time",
         "monthly_intervention_volume_subtitle": "Status and resolution time over the period",
-        "spare_parts_movement_title": "Spare Parts Movements",
+        "spare_parts_movement_title": "Movements of Spare Parts",
         "spare_parts_movement_subtitle": "Entries and exits over the selected period",
-        "failures_by_type_title": "Failures by defect type",
-        "failures_by_type_subtitle": "Distribution of defect causes",
+        "failures_by_type_title": "Failures by type of fault",
+        "failures_by_type_subtitle": "Distribution of the causes of failures",
         "interventions_by_type_title": "Interventions by type",
-        "interventions_by_type_subtitle": "Total actions taken: {count}",
-        "tasks_distribution_title": "Tasks Distribution",
+        "interventions_by_type_subtitle": "Total actions carried out: {count}",
+        "tasks_distribution_title": "Task Distribution",
         "filter_by": "Filter by",
         "view_by": "View by {type}",
-        "status": "status",
-        "priority": "priority"
+        "status_label": "status",
+        "priority_label": "priority",
+        "status": {
+            "in_stock": "In Stock",
+            "available": "Available"
+        },
+        "actions": {
+            "transfer": "Transfer",
+            "delete": "Delete",
+            "import": "Import",
+            "add": "Add Counter",
+            "close_details": "Close details",
+            "confirm_transfer": "Confirm the transfer"
+        },
+        "stats": {
+            "total": "Total Meters",
+            "active": "Assets",
+            "faulty": "Defective",
+            "in_stock": "In Stock",
+            "stock_by_region": "Stock by Region",
+            "stock_detail_for": "Stock Details for:",
+            "distribution_by_status": "Distribution by Status"
+        },
+        "table": {
+            "report": "Displaying from {first} to {last} on {totalRecords} counters",
+            "search_placeholder": "Search (multiple serial numbers with comma)",
+            "serial_number": "Serial Number",
+            "type": "Type",
+            "status": "Status",
+            "connection_full_name": "Client Associé",
+            "installation_date": "Installation Date",
+            "region_name": "Region",
+            "zone_name": "Zone",
+            "is_additional": "Additional",
+            "notes": "Notes",
+            "unassigned": "Not assigned",
+            "filter": {
+                "by_serial": "Filter by Serial Number",
+                "by_type": "Filter by type",
+                "by_status": "Filter by status",
+                "by_client": "Filter by client"
+            }
+        },
+        "dialog": {
+            "transfer_title": "Stock Transfer",
+            "transfer_subtitle": "Inter-regional movement",
+            "add_by_serial": "Add one counter per serial number",
+            "to_transfer_count": "Counters to transfer ({count})",
+            "destination_region": "Destination Region",
+            "editTitle": "Edit the Counter",
+            "createTitle": "Add a Counter",
+            "subtitle": "Managing Meter Information"
+        },
+        "messages": {
+            "no_stock": "No counter in stock.",
+            "no_meter_selected": "No meter selected for transfer."
+        },
+        "form": {
+            "serial_number": "Serial Number",
+            "serial_number_placeholder": "Enter the serial number",
+            "manufacturer": "Manufacturer",
+            "manufacturer_placeholder": "Enter the manufacturer",
+            "model": "Model",
+            "model_placeholder": "Enter the model",
+            "type": "Type",
+            "type_placeholder": "Select the type",
+            "status": "Status",
+            "status_placeholder": "Select the status",
+            "connection": "Connection",
+            "connection_placeholder": "Select a connection",
+            "installation_date": "Installation Date",
+            "region": "Region",
+            "region_placeholder": "Select a region",
+            "zone": "Zone",
+            "zone_placeholder": "Select a zone",
+            "is_additional": "Additional counter",
+            "notes": "Notes",
+            "notes_placeholder": "Add notes here"
+        },
+        "history": {
+            "title": "Transfer History",
+            "by_user": "By: {user}",
+            "none": "No transfer history for this meter."
+        },
+        "confirm": {
+            "bulkDeleteMessage": "Are you sure you want to delete the selected {count} counters?",
+            "bulkDeleteHeader": "Bulk Delete Confirmation",
+            "delete": "Delete"
+        },
+        "filter": {
+            "by_client": "Filter by client",
+            "by_status": "Filter by status",
+            "by_serial": "Filter by Serial Number",
+            "by_type": "Filter by type",
+            "byType": "Filter by type",
+            "brand": "Filter by brand",
+            "byUser": "Filter by user"
+        }
+    },
+    "keypads": {
+        "title": "Keyboard Management",
+        "titleHtml": "Management of <span class='text-primary-600'>Keyboards</span>",
+        "subtitle": "Control & Interface Assets",
+        "actions": {
+            "transfer": "Transfer",
+            "delete": "Delete",
+            "add": "Add Keyboard",
+            "close_details": "Close details",
+            "confirm_transfer": "Confirm the transfer"
+        },
+        "stats": {
+            "total": "Total Keyboards",
+            "installed": "Installed",
+            "available": "Available",
+            "faulty": "Defective",
+            "stock_by_region": "Stock by Region",
+            "stock_detail_for": "Stock Details for:",
+            "distribution_by_status": "Distribution by Status"
+        },
+        "table": {
+            "report": "Displaying {first} to {last} on {totalRecords} keyboards",
+            "search_placeholder": "Search by Serial Number...",
+            "serial_number": "Serial Number",
+            "model": "Model",
+            "manufacturer": "Manufacturer",
+            "type": "Type",
+            "status": "Status",
+            "connection_full_name": "Client Associé",
+            "meter_serial_number": "Associated Meter",
+            "installation_date": "Installation Date",
+            "region_name": "Region",
+            "zone_name": "Zone",
+            "notes": "Notes",
+            "unassigned": "Not assigned"
+        },
+        "filter": {
+            "by_serial": "Filter by Serial Number",
+            "by_status": "Filter by status",
+            "by_client": "Filter by client",
+            "by_meter": "Filter by meter",
+            "by_type": "Filter by type"
+        },
+        "dialog": {
+            "editTitle": "Edit the Keyboard",
+            "createTitle": "Add a Keyboard",
+            "subtitle": "Keyboard Information Management",
+            "transfer_title": "Keyboard Stock Transfer",
+            "add_by_serial": "Add a keyboard by serial number",
+            "to_transfer_count": "Keyboards to transfer ({count})",
+            "destination_region": "Destination Region"
+        },
+        "form": {
+            "serial_number": "Serial Number",
+            "serial_number_placeholder": "Enter the serial number",
+            "manufacturer": "Manufacturer",
+            "manufacturer_placeholder": "Enter the manufacturer",
+            "model": "Model",
+            "model_placeholder": "Enter the model",
+            "type": "Type",
+            "type_placeholder": "Select the type",
+            "status": "Status",
+            "status_placeholder": "Select the status",
+            "connection": "Connection",
+            "connection_placeholder": "Select a connection",
+            "meter": "Counter",
+            "meter_placeholder": "Select a meter",
+            "installation_date": "Installation Date",
+            "region": "Region",
+            "region_placeholder": "Select a region",
+            "zone": "Zone",
+            "connection_has_keypad": "The connection has a keypad",
+            "zone_placeholder": "Select a zone",
+            "has_keypad": "Has a keyboard",
+            "notes": "Notes",
+            "notes_placeholder": "Add notes here"
+        },
+        "status": {
+            "available": "Available",
+            "installed": "Installed",
+            "faulty": "Defective",
+            "in_stock": "In Stock"
+        },
+        "messages": {
+            "no_stock": "No keyboards available in stock.",
+            "no_keypad_selected": "No keyboard selected for transfer."
+        },
+        "confirm": {
+            "deleteMessage": "Are you sure you want to delete keyboard number {serial_number}?",
+            "deleteHeader": "Delete confirmation",
+            "bulkDeleteMessage": "Are you sure you want to delete the {count} selected keyboards?",
+            "bulkDeleteHeader": "Bulk Delete Confirmation"
+        },
+        "toast": {
+            "deleteSuccess": "Keyboard successfully deleted.",
+            "bulkDeleteSuccess": "{count} keyboards successfully deleted.",
+            "bulkDeleteError": "An error occurred during bulk deletion.",
+            "selectDestinationRegion": "Please select a destination region.",
+            "transferSuccess": "{count} keyboard(s) successfully transferred.",
+            "transferError": "An error occurred while transferring keyboards."
+        }
     },
     "topbar": {
+        "meters": {
+            "title": "Meter Management",
+            "subtitle": "Measurement & Billing Assets",
+            "actions": {
+                "transfer": "Transfer",
+                "delete": "Delete",
+                "import": "Import",
+                "add": "Add Counter",
+                "close_details": "Close details"
+            },
+            "stats": {
+                "total": "Total Meters",
+                "active": "Assets",
+                "faulty": "Defective",
+                "in_stock": "In Stock",
+                "stock_by_region": "Stock by Region",
+                "stock_detail_for": "Stock Details for:",
+                "distribution_by_status": "Distribution by Status"
+            },
+            "table": {
+                "report": "Displaying from {first} to {last} on {totalRecords} counters",
+                "search_placeholder": "Search (multiple serial numbers with comma)"
+            },
+            "dialog": {
+                "transfer_title": "Stock Transfer",
+                "transfer_subtitle": "Inter-regional movement",
+                "bulkDeleteMessage": "Are you sure you want to delete the selected {count} counters?",
+                "status": {
+                    "active": "Active",
+                    "faulty": "Defective",
+                    "in_stock": "In Stock"
+                },
+                "add_by_serial": "Add one counter per serial number",
+                "to_transfer_count": "Counters to transfer ({count})",
+                "destination_region": "Destination Region"
+            },
+            "messages": {
+                "no_stock": "No counter in stock."
+            }
+        },
         "menuModes": {
             "static": "Static",
             "overlay": "Overlay"
         },
         "themes": {
-            "light": "Light",
+            "light": "Clear",
             "dark": "Dark",
             "accent": "Accent"
         },
         "languages": {
-            "french": "French",
+            "french": "Français",
             "english": "English",
             "swahili": "Swahili",
-            "german": "German"
+            "German": "Allemand"
         },
-        "toggle_sidebar": "Toggle sidebar",
+        "toggle_sidebar": "Toggle the sidebar menu",
         "search_placeholder": "Search for a file, an agent or a service...",
         "status": {
             "connected": "Connected"
@@ -59,7 +426,7 @@
         "userMenu": {
             "edit_profile": "Edit Profile",
             "security": "Security",
-            "logout": "Logout"
+            "logout": "Close Session"
         }
     },
     "menu": {
@@ -72,12 +439,13 @@
             "title": "Asset Management",
             "inventories": "Inventories",
             "spareParts": "Spare Parts",
-            "equipments": "Equipments"
+            "equipment": "Equipment",
+            "networks": "Networks"
         },
         "taskManagement": {
             "title": "Task Management",
             "agenda": "Agenda",
-            "myActivities": "My Activities",
+            "myActivities": "My activities",
             "workOrder": "Work Order",
             "interventionRequests": "Intervention Requests",
             "maintenancePlan": "Maintenance Plan",
@@ -92,8 +460,8 @@
         "hrManagement": {
             "title": "HR Management",
             "employees": "Employees",
-            "leaves": "Leaves",
-            "attendances": "Attendances",
+            "leaves": "Holidays",
+            "Attendances": "Presences",
             "payroll": "Payroll"
         },
         "systemConfiguration": {
@@ -105,28 +473,38 @@
             "reports": "Reports",
             "maps": "Maps",
             "regions": "Regions",
-            "rollingStock": "Rolling Stock",
+            "zones": "Zones",
+            "rollingStock": "Rolling stock",
             "units": "Units",
             "labels": "Labels",
-            "systemPriority": "System Priority"
+            "meters": "Counters",
+            "keyboards": "Keyboards",
+            "systemPriority": "System priority"
         },
         "dateFilter": {
             "thisMonth": "This month",
             "lastMonth": "Last month",
             "lastWeek": "Last week",
-            "custom": "Custom"
+            "custom": "Personalized"
         }
     },
     "equipments": {
         "title": "Equipment Management",
-        "headTitle": "Equipments",
+        "headTitle": "Equipment",
         "addNew": "Add equipment",
         "searchPlaceholder": "Search...",
+        "subtitle": "Master Database & Lifecycle",
+        "stats": {
+            "total": "Total Equipment",
+            "in_service": "In Service",
+            "in_stock": "In Stock",
+            "down": "Out of order"
+        },
         "export": "Export",
         "deleteSelected": "Delete ({count})",
         "deleteSelectedSingle": "Delete",
         "table": {
-            "report": "Showing {first} to {last} of {totalRecords} equipments",
+            "report": "Displaying {first} to {last} on {totalRecords} equipment",
             "tag": "Tag",
             "designation": "Designation",
             "type": "Type",
@@ -135,74 +513,109 @@
             "region": "Region",
             "status": "Status",
             "quantity": "Quantity",
+            "filter": {
+                "tag": "Filter by tag",
+                "designation": "Filter by designation",
+                "type": "Filter by type",
+                "region": "Filter by region",
+                "status": "Filter by status",
+                "brand": "Filter by brand"
+            },
             "actions": "Actions"
         },
         "dialog": {
-            "editTitle": "Edit Equipment",
-            "createTitle": "Create New Equipment",
+            "editTitle": "Modify Equipment",
+            "createTitle": "Create a new Equipment",
             "parentLabel": "Parent Equipment (to create from stock)",
             "parentPlaceholder": "Optional: Select a parent",
             "tag": "Tag",
             "designation": "Designation",
-            "type": "Equipment Type",
+            "type": "Type of equipment",
             "typePlaceholder": "Select a type",
-            "addType": "Add new type",
+            "addType": "Add a new type",
             "region": "Region",
             "regionPlaceholder": "Select a region",
             "brand": "Brand",
             "model": "Model",
             "power": "Power (kW)",
-            "serialNumber": "Serial Number",
+            "serialNumber": "Serial number",
             "price": "Price",
+            "nominal_rate": "Nominal Rate (pieces/h)",
+            "risk_vibration": "Risk Level: Vibration",
+            "risk_chaleur": "Risk Level: Heat",
+            "risk_cycle": "Risk Level: Cycle/Wear",
+            "risk_bruit": "Risk Level: Noise",
+            "risk_electrique": "Risk Level: Electrical",
             "status": "Status",
             "statusPlaceholder": "Select a status",
-            "stockQuantity": "Stock Quantity",
-            "purchaseDate": "Purchase Date",
-            "warrantyEnd": "Warranty End",
+            "stockQuantity": "Quantity in stock",
+            "purchaseDate": "Purchase date",
+            "warrantyEnd": "End of warranty",
             "location": "Location",
             "importCharacteristics": "Import pre-existing characteristics",
             "importCharacteristicsPlaceholder": "Optional: Select a label to add its characteristics",
-            "characteristicNamePlaceholder": "Characteristic name",
+            "characteristicNamePlaceholder": "Characteristic Name",
             "characteristicTypePlaceholder": "Type",
             "characteristicValueText": "Value (Text)",
             "characteristicValueNumber": "Value (Number)",
             "characteristicValueDate": "Value (Date)",
             "characteristicValue": "Value",
             "existingFile": "Existing file",
-            "addCharacteristic": "Add characteristic",
+            "addCharacteristic": "Add a characteristic",
             "cancel": "Cancel",
             "save": "Save"
         },
         "typeDialog": {
-            "title": "New Equipment Type",
+            "title": "New Type of Equipment",
             "name": "Type name",
             "description": "Description",
             "cancel": "Cancel",
             "create": "Create"
         },
+        "insufficientQuantityDialog": {
+            "title": "Insufficient Quantity",
+            "subtitle": "Stock Alert",
+            "Message": "The quantity requested exceeds the available stock. Executing this transaction could result in negative stock or a service disruption.",
+            "cancel": "Cancel",
+            "performMovement": "Force the movement",
+            "statusOptions": {
+                "in_service": "In Service",
+                "down": "Out of order",
+                "in_maintenance": "In Maintenance",
+                "out_of_service": "Out of Service",
+                "in_stock": "In Stock"
+            }
+        },
         "toast": {
             "success": "Success",
-            "updateSuccess": "Equipment updated successfully.",
-            "createSuccess": "Equipment created successfully.",
-            "deleteSuccess": "Equipment deleted successfully.",
-            "bulkDeleteSuccess": "Equipments deleted successfully.",
+            "updateSuccess": "Equipment successfully updated.",
+            "createSuccess": "Equipment successfully created.",
+            "deleteSuccess": "Equipment successfully deleted.",
+            "InsufficientQuantity": "Insufficient quantity in stock.",
+            "parentQuantityUpdated": "The parent quantity has been updated.",
+            "bulkDeleteSuccess": "Equipment successfully deleted.",
             "saveError": "Save Error",
             "error": "Error",
             "deleteError": "An error occurred during deletion.",
             "bulkDeleteError": "An error occurred during bulk deletion.",
-            "typeCreateSuccess": "Equipment type created successfully.",
-            "typeSaveError": "Error while saving equipment type"
+            "typeCreateSuccess": "Type of equipment successfully created.",
+            "typeSaveError": "Error saving equipment type",
+            "parentQuantityUpdateError": "Error updating parent quantity."
         },
         "confirm": {
             "deleteHeader": "Delete confirmation",
-            "deleteMessage": "Are you sure you want to delete equipment \"{name}\"?",
-            "bulkDeleteMessage": "Are you sure you want to delete the selected equipments?",
+            "deleteMessage": "Are you sure you want to delete the device \"{name}\"?",
+            "bulkDeleteMessage": "Are you sure you want to delete the selected equipment?",
             "cancel": "Cancel",
             "delete": "Delete"
         },
+        "validation": {
+            "QuantityRequiredForChild": "The quantity is required for a child's item.",
+            "insufficientParentQuantity": "The parent quantity is insufficient or the parent is not in stock."
+        },
         "statusOptions": {
             "in_service": "In Service",
-            "down": "Out of Order",
+            "down": "Out of order",
             "in_maintenance": "In Maintenance",
             "out_of_service": "Out of Service",
             "in_stock": "In Stock"
@@ -215,89 +628,10 @@
             "boolean": "Yes/No"
         }
     },
-    "spareParts": {
-        "title": "Spare Parts Management",
-        "headTitle": "Spare Parts",
-        "toolbar": {
-            "add": "Add spare part",
-            "searchPlaceholder": "Search...",
-            "export": "Export"
-        },
-        "table": {
-            "report": "Showing {first} to {last} of {totalRecords} spare parts",
-            "name": "Name",
-            "reference": "Reference",
-            "equipment": "Equipment",
-            "location": "Location",
-            "quantity": "Quantity",
-            "min_quantity": "Min. Quantity",
-            "price": "Unit Price",
-            "partType": "Part Type",
-            "responsible": "Responsible",
-            "characteristics": "Characteristics",
-            "actions": "Actions"
-        },
-        "dialog": {
-            "editTitle": "Edit Spare Part",
-            "createTitle": "Create New Spare Part",
-            "editSubtitle": "Update spare part information.",
-            "createSubtitle": "Fill in the information to create a new part.",
-            "partType": "Part Type",
-            "partTypePlaceholder": "Select a type",
-            "reference": "Reference",
-            "quantity": "Quantity",
-            "min_quantity": "Min. Quantity",
-            "price": "Unit Price",
-            "location": "Location",
-            "region": "Region",
-            "regionPlaceholder": "Select a region",
-            "responsible": "Responsible",
-            "responsiblePlaceholder": "Select a responsible",
-            "characteristicValues": "Characteristic values",
-            "description": "Description",
-            "equipment": "Equipment (for this part)",
-            "equipmentPlaceholder": "Optional: Select an equipment",
-            "supplier": "Supplier",
-            "supplierPlaceholder": "Select a supplier",
-            "purchaseDate": "Purchase Date",
-            "warrantyEnd": "Warranty End",
-            "addCharacteristic": "Add characteristic",
-            "characteristicNamePlaceholder": "Characteristic name",
-            "characteristicTypePlaceholder": "Type",
-            "characteristicValueText": "Value (Text)",
-            "characteristicValueNumber": "Value (Number)",
-            "characteristicValueDate": "Value (Date)",
-            "characteristicValue": "Value",
-            "existingFile": "Existing file",
-            "cancel": "Cancel",
-            "save": "Save"
-        },
-        "toast": {
-            "success": "Success",
-            "updateSuccess": "Spare part updated successfully.",
-            "createSuccess": "Spare part created successfully.",
-            "deleteSuccess": "Spare part deleted successfully.",
-            "bulkDeleteSuccess": "Spare parts deleted successfully.",
-            "saveError": "Save Error",
-            "error": "Error",
-            "deleteError": "An error occurred during deletion.",
-            "bulkDeleteError": "An error occurred during bulk deletion."
-        },
-        "validation": {
-            "characteristicRequired": "The characteristic \"{characteristic}\" is required."
-        },
-        "confirm": {
-            "deleteHeader": "Delete confirmation",
-            "deleteMessage": "Are you sure you want to delete the spare part \"{name}\"?",
-            "bulkDeleteMessage": "Are you sure you want to delete the selected spare parts?",
-            "cancel": "Cancel",
-            "delete": "Delete"
-        }
-    },
     "sparePartMovements": {
-        "title": "Spare Parts Movements",
-        "headTitle": "Stock Management - Movements",
-        "subtitle": "Stock entry and exit tracking",
+        "title": "Movements of Spare Parts",
+        "headTitle": "Inventory Management - Movements",
+        "subtitle": "Tracking of stock entries and exits",
         "stockLabel": "Current stock",
         "toolbar": {
             "addMovement": "New Movement",
@@ -305,7 +639,7 @@
             "export": "Export CSV"
         },
         "table": {
-            "sparePart": "Spare Part",
+            "sparePart": "Replacement Part",
             "user": "User",
             "type": "Type",
             "quantity": "Quantity",
@@ -316,39 +650,153 @@
         },
         "dialog": {
             "createTitle": "Record a movement",
-            "editTitle": "Edit movement",
-            "createSubtitle": "Fill in the information below to add a stock movement.",
-            "editSubtitle": "Modify the details of the selected movement."
+            "editTitle": "Edit the movement",
+            "createSubtitle": "Fill in the information for a new move.",
+            "editSubtitle": "Update the details of the selected movement.",
+            "fluxIdentification": "Flow Identification",
+            "detailsValidation": "Details & Validation"
         },
         "form": {
             "region": "Region",
             "regionPlaceholder": "Select a region",
-            "sparePart": "Spare Part",
+            "sparePart": "Replacement Part",
             "sparePartPlaceholder": "Select a part",
             "user": "User",
-            "userPlaceholder": "Select user",
-            "movementType": "Movement type",
+            "userPlaceholder": "Select the user",
+            "movementType": "Movement Type",
             "movementTypePlaceholder": "Entry or Exit?",
             "quantity": "Quantity",
             "location": "Specific location",
             "unity": "Unit / Service",
-            "unityPlaceholder": "Select unit",
+            "unityPlaceholder": "Select the unit",
             "notes": "Additional notes"
         },
         "movementTypes": {
-            "entry": "Entry",
+            "entry": "Entrance",
             "exit": "Exit"
         },
         "confirm": {
             "deleteMessage": "Are you sure you want to delete the movement for part {reference}?"
         },
+        "filter": {
+            "byType": "Filter by type",
+            "byUser": "Filter by user"
+        },
         "toast": {
-            "createSuccess": "The movement was recorded successfully.",
-            "updateSuccess": "The movement was updated successfully.",
-            "deleteSuccess": "The movement was deleted.",
-            "saveError": "Error while recording the movement.",
+            "createSuccess": "The move has been successfully recorded.",
+            "updateSuccess": "The update was successful.",
+            "deleteSuccess": "The move has been deleted.",
+            "saveError": "Error recording movement.",
             "error": "Error",
-            "deleteError": "Unable to delete this movement."
+            "deleteError": "Unable to delete this move."
+        }
+    },
+    "stockMovements": {
+        "title": "Stock Movements",
+        "headTitle": "Stock Movement Management",
+        "subtitle": "Complete asset traceability",
+        "toolbar": {
+            "addMovement": "New Movement",
+            "searchPlaceholder": "Search for an item, a user..."
+        },
+        "table": {
+            "itemType": "Item Type",
+            "item": "Item",
+            "type": "Movement Type",
+            "quantity": "Quantity",
+            "source": "Source",
+            "destination": "Destination",
+            "user": "User",
+            "date": "Date"
+        },
+        "stats": {
+            "total": "Total Movements",
+            "entries": "Entrées",
+            "exits": "Exits",
+            "transfers": "Transfers",
+            "uniqueParts": "Unique Pieces"
+        },
+        "filter": {
+            "byType": "Filter by type",
+            "byUser": "Filter by user",
+            "byRegion": "Filter by region...",
+            "byItemType": "By item type",
+            "byItem": "Filter by item"
+        },
+        "dialog": {
+            "createTitle": "Record a Stock Movement",
+            "editTitle": "Modify the Movement",
+            "createSubtitle": "Fill in the information for a new move.",
+            "editSubtitle": "Update the movement details.",
+            "itemIdentification": "Item Identification",
+            "detailsValidation": "Details & Validation",
+            "itemsInMovement": "Items in motion",
+            "noItems": "No items selected",
+            "itemSelection": "Item Selection",
+            "addItem": "Add an item",
+            "deleteSelectedMessage": "Do you want to delete the selected {count} items?"
+        },
+        "form": {
+            "itemType": "Item Type",
+            "itemTypePlaceholder": "Choose the item type...",
+            "item": "Specific Item",
+            "addItem": "Add an item",
+            "itemPlaceholder": "Search or select an item...",
+            "movementType": "Movement Type",
+            "quantity": "Quantity",
+            "sourceRegion": "Source Region",
+            "sourceRegionPlaceholder": "Select the starting region",
+            "destinationRegion": "Destination Region",
+            "destinationRegionPlaceholder": "Select the arrival region",
+            "user": "Operated by",
+            "responsibleUser": "Responsible User",
+            "intendedForUser": "Intended for the user",
+            "userPlaceholder": "Select the user",
+            "notes": "Additional notes"
+        },
+        "movableTypes": {
+            "spare_part": "Spare Part",
+            "equipment": "Equipment",
+            "meter": "Counter",
+            "keypad": "Keyboard",
+            "engine": "Engine"
+        },
+        "movementTypes": {
+            "entry": "Entrance",
+            "exit": "Exit",
+            "transfer": "Transfer",
+            "movableTypeOptions": [
+                {
+                    "label": "Spare Part",
+                    "value": "App\\Models\\SparePart"
+                },
+                {
+                    "label": "Equipment",
+                    "value": "App\\Models\\Equipment"
+                },
+                {
+                    "label": "Counter",
+                    "value": "App\\Models\\Meter"
+                },
+                {
+                    "label": "Keyboard",
+                    "value": "App\\Models\\Keypad"
+                },
+                {
+                    "label": "Engin",
+                    "value": "App\\Models\\Engin"
+                }
+            ]
+        },
+        "confirm": {
+            "deleteMessage": "Are you sure you want to delete transaction number {id}?"
+        },
+        "toast": {
+            "createSuccess": "The move has been successfully recorded.",
+            "updateSuccess": "The update was successful.",
+            "deleteSuccess": "The move has been deleted.",
+            "noItems": "Please add at least one item to the move.",
+            "saveError": "Error saving movement."
         }
     },
     "characteristics": {
@@ -364,60 +812,62 @@
     "confirm": {
         "deleteHeader": "Delete confirmation",
         "cancel": "Cancel",
+        "bulkDeleteMessage": "Are you sure you want to delete the selected {count} counters?",
+        "bulkDeleteHeader": "Bulk Delete Confirmation",
         "delete": "Delete",
         "deleteConfirmation": "Are you sure you want to delete this item?"
     },
-    "engins": {
-        "title": "Vehicle Management",
-        "headTitle": "Vehicle List",
-        "subtitle": "{count} Units online",
+    "engines": {
+        "title": "Equipment Management",
+        "headTitle": "List of Equipment",
+        "subtitle": "{count} Online Units",
         "toolbar": {
             "advancedFilters": "Advanced Filters",
             "showColumns": "Show columns",
-            "deleteSelected": "Delete selection",
-            "addEngin": "Add vehicle",
+            "deleteSelected": "Delete the selection",
+            "addEngin": "Add a device",
             "searchPlaceholder": "Search...",
             "export": "Export",
-            "resetFilters": "Reset filters",
+            "resetFilters": "Reset the filters",
             "searchByName": "Search by name"
         },
         "table": {
             "designation": "Name / Designation",
-            "immatriculation": "Registration",
-            "type": "Vehicle Type",
+            "registration": "Registration",
+            "type": "Type of Equipment",
             "region": "Region",
             "dateAcquisition": "Acquisition Date",
             "hourMeter": "Hour Meter",
             "actions": "Actions",
             "category": "Category",
-            "assignment": "Assignment"
+            "assignment": "Affection"
         },
         "form": {
-            "type": "Vehicle Type",
+            "type": "Type of Equipment",
             "typePlaceholder": "Select a type",
             "designation": "Designation",
-            "immatriculation": "Registration",
+            "registration": "Registration",
             "region": "Region",
             "regionPlaceholder": "Select a region",
-            "dateAcquisition": "Service Entry Date",
-            "datePlaceholder": "Select date",
+            "dateAcquisition": "Date of commissioning",
+            "datePlaceholder": "Select the date",
             "hourMeter": "Hour Meter"
         },
         "dialog": {
-            "createTitle": "Create New Vehicle",
-            "editTitle": "Edit Vehicle",
-            "createSubtitle": "Enter information for the new vehicle.",
-            "editSubtitle": "Update the information of the selected vehicle."
+            "createTitle": "Create a new Engine",
+            "editTitle": "Edit Engine",
+            "createSubtitle": "Enter the information for the new device.",
+            "editSubtitle": "Update the information for the selected vehicle."
         },
         "confirm": {
-            "deleteMessage": "Are you sure you want to delete vehicle \"{name}\"?",
+            "deleteMessage": "Are you sure you want to delete the device \"{name}\"?",
             "header": "Confirmation"
         },
         "toast": {
-            "createSuccess": "Vehicle created successfully.",
-            "updateSuccess": "Vehicle updated successfully.",
-            "deleteSuccess": "Vehicle deleted successfully.",
-            "saveError": "An error occurred during recording.",
+            "createSuccess": "Engine created successfully.",
+            "updateSuccess": "Engine successfully updated.",
+            "deleteSuccess": "Device successfully deleted.",
+            "saveError": "An error occurred during saving.",
             "deleteError": "Error during deletion."
         },
         "common": {
@@ -429,27 +879,27 @@
         }
     },
     "dataTable": {
-        "currentPageReportEngins": "Showing {first} to {last} of {totalRecords} vehicles"
+        "currentPageReportEngins": "Displaying {first} to {last} on {totalRecords} engines"
     },
     "labels": {
-        "title": "Labels Management",
+        "title": "Label Management",
         "fields": {
             "labelParameters": "Label Parameters",
-            "labelParametersSubtitle": "Configure name, color and description.",
+            "labelParametersSubtitle": "Configure the name, color, and description.",
             "technicalAttributes": "Technical Attributes",
-            "technicalAttributesSubtitle": "Define control points for this asset type.",
+            "technicalAttributesSubtitle": "Define the control points for this asset type.",
             "name": "Name",
             "description": "Description",
             "color": "Color",
-            "style": "Style / Color",
+            "style": "Style / Colour",
             "characteristics": "Technical Attributes",
-            "charName": "Characteristic name",
+            "charName": "Feature Name",
             "charType": "Type",
             "isRequiredShort": "Required"
         },
         "actions": {
-            "add": "Add label",
-            "addChar": "Add characteristic"
+            "add": "Add a label",
+            "addChar": "Add a characteristic"
         },
         "toolbar": {
             "resetFilters": "Reset",
@@ -464,10 +914,10 @@
             "select": "Dropdown list"
         },
         "dialog": {
-            "createTitle": "Create New Label",
-            "editTitle": "Edit Label",
+            "createTitle": "Create a new Label",
+            "editTitle": "Edit the Label",
             "labelParameters": "Label Parameters",
-            "labelParametersSubtitle": "Configure name, color and description.",
+            "labelParametersSubtitle": "Configure the name, color, and description.",
             "createSubtitle": "Create a new label.",
             "editSubtitle": "Update label information."
         },
@@ -479,13 +929,13 @@
             "nameRequired": "Name is required."
         },
         "messages": {
-            "createSuccess": "Label created successfully",
-            "updateSuccess": "Label updated successfully",
-            "deleteSuccess": "Label deleted successfully",
-            "confirmDelete": "Are you sure you want to delete label \"{name}\"?",
-            "confirmChange": "You have modified characteristics. This may affect existing data. Continue?",
-            "confirmCharDelete": "Delete characteristic \"{name}\"? This action is irreversible.",
-            "charRemovedInfo": "The characteristic will be deleted upon saving.",
+            "createSuccess": "Label successfully created",
+            "updateSuccess": "Label successfully updated",
+            "deleteSuccess": "Label successfully deleted",
+            "confirmDelete": "Are you sure you want to delete the label \"{name}\"?",
+            "confirmChange": "You have modified some features. This may affect existing data. Continue?",
+            "confirmCharDelete": "Delete the feature \"{name}\"? This action is irreversible.",
+            "charRemovedInfo": "The feature will be removed during saving.",
             "deleteError": "Error during deletion."
         }
     },
@@ -493,10 +943,17 @@
         "save": "Save",
         "update": "Update",
         "create": "Create",
+        "selectedCount": "You have selected {count} items",
+        "deleteSelection": "Delete",
+        "columns": "Columns",
+        "approve": "Approve",
+        "confirm": "Confirm",
+        "reject": "Reject",
         "cancel": "Cancel",
         "delete": "Delete",
         "import": "Import",
         "export": "Export",
+        "exportCSV": "Export as CSV",
         "search": "Search...",
         "success": "Success",
         "error": "Error",
@@ -504,13 +961,25 @@
         "confirmation": "Confirmation",
         "deleteConfirmation": "Delete confirmation",
         "actions": "Actions",
-        "chooseFile": "Choose file",
-        "paginationReport": "Showing {first} to {last} of {total} regions",
+        "chooseFile": "Choose a file",
+        "paginationReport": "Displaying {first} to {last} across {total} regions",
         "errorOccurred": "An error has occurred.",
+        "selectColumns": "Choose the columns",
+        "customize_columns": "Customize columns",
+        "columnSelector": {
+            "title": "Customize the columns",
+            "placeholder": "Choose columns"
+        },
         "types": {
             "annual": "Annual",
-            "sick": "Sick leave",
-            "rtt": "RDO",
+            "columns": "Columns",
+            "shoeSize": "Shoe Size",
+            "clothingSize": "Clothing Size",
+            "password": "Password",
+            "confirmPassword": "Confirm password",
+            "removePhoto": "Delete the photo",
+            "sick": "Disease",
+            "rtt": "RTT",
             "exceptional": "Exceptional"
         },
         "status": {
@@ -518,18 +987,20 @@
             "pending": "Pending",
             "rejected": "Rejected"
         },
+        "exportCsv": "Export as CSV",
         "notApplicable": "N/A",
-        "unspecifiedDate": "Undefined date",
-        "resetFilters": "Reset filters",
+        "uploadPhotoAriaLabel": "Upload a profile picture",
+        "unspecifiedDate": "Date not defined",
+        "resetFilters": "Reset the filters",
         "unnamedActivity": "Untitled Activity",
         "workOrderId": "#WorkOrderID: {id}",
         "problemResolution": "Problem/Resolution:",
-        "proposals": "Proposals:",
+        "proposals": "Propositions:",
         "additionalInfo": "Additional Information:",
-        "technician": "Technician:",
-        "instructionAnswers": "Instruction Answers:",
-        "usedParts": "Used parts:",
-        "returnedParts": "Returned parts:",
+        "technician": "Intervenor:",
+        "instructionAnswers": "Responses to Instructions:",
+        "usedParts": "Parts used:",
+        "returnedParts": "Returned Parts:",
         "actualEndTime": "Actual end time:",
         "associatedTaskDetails": "Associated Task Details",
         "priority": "Priority:",
@@ -541,19 +1012,172 @@
         "actualStart": "Actual Start",
         "usedPartsCount": "{count} Part(s)",
         "returnedPartsCount": "{count} Part(s)",
-        "answersCount": "{count} Answer(s)",
+        "answersCount": "{count} Response(s)",
         "instructionsAndActions": "Instructions/Actions",
-        "completeActivityTooltip": "Complete/Modify Activity",
+        "completeActivityTooltip": "Complete/Edit Activity",
         "invalidDate": "Invalid date",
         "notSet": "Not specified",
-        "instructionNotFound": "Instruction ID {id} (Not Found)"
+        "instructionNotFound": "Instruction ID {id} (Not Found)",
+        "date_format_placeholder": "DD/MM/YYYY"
     },
+"maintenances": {
+    "title": "Maintenance Management",
+    "headTitle": "Maintenances",
+    "subtitle": "Preventive & Corrective Operations",
+    "exportExcel": "Export Excel",
+    "new": "New Maintenance",
+    "searchPlaceholder": "Search for maintenance...",
+    "resetTooltip": "Reset",
+    "columnsTooltip": "Choose columns",
+    "deleteSelected": "Delete selection",
+    "columns": {
+        "title": "Maintenance Title",
+        "equipments": "Equipment(s)",
+        "assignable": "Assigned to",
+        "status": "Status",
+        "priority": "Priority",
+        "scheduled_start_date": "Scheduled Start Date",
+        "description": "Description",
+        "estimated_duration": "Estimated Duration",
+        "cost": "Cost",
+        "region": "Region",
+        "recurrence_type": "Recurrence",
+        "recurrence_interval": "Recurrence Interval",
+        "recurrence_month_interval": "Month Interval",
+        "recurrence_days": "Recurrence Days",
+        "recurrence_day_of_month": "Day of Month",
+        "recurrence_month": "Recurrence Month",
+        "actions": "Actions"
+    },
+    "columnSelector": {
+        "title": "Select columns:",
+        "placeholder": "Choose columns"
+    },
+    "activityDialog": {
+        "title": "Activity Planning System",
+        "batchManagerTitle": "Batch Activity Manager",
+        "batchManagerSubtitle": "Version 12.0 • Enterprise Asset Management",
+        "parentMaintenance": "Parent Maintenance",
+        "activityVolume": "Activity Volume",
+        "newActivity": "New Activity",
+        "activityNamePlaceholder": "Name the activity...",
+        "statusLabel": "Status:",
+        "duplicateTooltip": "Duplicate",
+        "attribution": "Attribution",
+        "entityTypePlaceholder": "Entity Type",
+        "responsiblePlaceholder": "Select responsible",
+        "concernedAssets": "Concerned Assets",
+        "searchEquipmentsPlaceholder": "Search for equipment...",
+        "estimatedCost": "Estimated Cost",
+        "planning": "Planning",
+        "priority": "Priority",
+        "durationInMinutes": "Duration (m)",
+        "executionPeriod": "Execution Period",
+        "start": "Start",
+        "end": "End",
+        "checklist": "Checklist",
+        "addInstruction": "Add instruction",
+        "instructionPlaceholder": "Instruction...",
+        "selectType": "Select type",
+        "zeroInstructions": "Zero instructions.",
+        "spareParts": "Spare Parts",
+        "resetForm": "Reset form",
+        "cancel": "Cancel",
+        "validateAndDeploy": "Validate and Deploy"
+    },
+    "formDialog": {
+        "editTitle": "Edit Maintenance",
+        "createTitle": "Create New Maintenance",
+        "technicalReportTitle": "Technical Intervention Report",
+        "gmaoConsole": "CMMS Admin Console v2025 • High-Performance System",
+        "missionId": "Mission Identification",
+        "interventionTitle": "Intervention Title",
+        "interventionTitlePlaceholder": "Ex: Q1 Preventive Maintenance",
+        "concernedEquipments": "Concerned Equipment",
+        "selectAssets": "Select assets...",
+        "detailedDescription": "Detailed Description",
+        "generalInstructions": "General instructions for the team...",
+        "configPerEquipment": "Configuration per equipment",
+        "showControlPoints": "Configure control points",
+        "hideControlPoints": "Hide",
+        "noEquipmentSelected": "No equipment selected",
+        "parentGroupLabel": "First-level equipment",
+        "clone": "Clone",
+        "addInstruction": "Add instruction",
+        "instructionLabelPlaceholder": "Label (ex: Check oil level)",
+        "required": "Required",
+        "noSpecificInstruction": "No specific instruction defined",
+        "logisticsAndTiming": "Logistics & Timing",
+        "plannedStart": "Planned Start",
+        "actualStart": "Start Date",
+        "plannedEnd": "Planned End",
+        "actualEnd": "End Date",
+        "interventionResponsible": "Intervention Responsible",
+        "assignableTypePlaceholder": "Type",
+        "assignableSelectPlaceholder": "Select...",
+        "maintenanceType": "Maintenance Type",
+        "currentStatus": "Current Status",
+        "priorityLevel": "Priority Level",
+        "interventionRegion": "Intervention Region",
+        "recurrenceCycle": "Recurrence Cycle",
+        "frequency": "Frequency",
+        "dailyInterval": "Daily interval",
+        "daysSelection": "Days selection",
+        "dayOfMonth": "Day of Month",
+        "everyNMonths": "Every (Months)",
+        "startMonth": "Start Month",
+        "earlyReminder": "Early reminder (Push/Email)",
+        "customRule": "Custom rule (Cron/Text)",
+        "customRulePlaceholder": "Ex: Every 2nd Monday of the month",
+        "estimatedDuration": "Estimated duration",
+        "estimatedBudget": "Estimated Budget",
+        "cancelChanges": "Cancel changes",
+        "savePlan": "Save Maintenance Plan"
+    },
+    "copyDialog": {
+        "title": "Copy Instructions",
+        "subtitle": "Select target equipment",
+        "apply": "Apply copy",
+        "cancel": "Cancel"
+    },
+    "status": {
+        "scheduled": "Scheduled",
+        "in_progress": "In Progress",
+        "completed": "Completed",
+        "completed_with_issues": "Completed with issues",
+        "suspended": "Suspended",
+        "canceled": "Canceled",
+        "awaiting_resources": "Awaiting resources",
+        "to_be_reviewed_later": "To be reviewed later"
+    },
+    "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+    },
+    "assignableTypes": {
+        "none": "None",
+        "user": "Technician",
+        "team": "Team"
+    },
+    "recurrence": {
+        "none": "None",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "biannual": "Semi-annually",
+        "annual": "Annually",
+        "custom": "Custom"
+    }
+},
     "payments": {
-        "title": "Payments Management",
-        "subtitle": "Financial flow and transaction tracking",
+        "title": "Payment Management",
+        "subtitle": "Monitoring of financial flows and transactions",
         "newTransaction": "New Transaction",
         "stats": {
-            "totalFlux": "Total Flow",
+            "totalFlux": "Total Flux",
             "transactions": "Transactions",
             "pending": "Pending",
             "average": "Average"
@@ -566,19 +1190,19 @@
             "actions": "Actions"
         },
         "payableTypes": {
-            "employee": "Employee",
-            "supplier": "Supplier",
-            "user": "Internal User"
+            "employee": "employee",
+            "supplier": "Provider",
+            "user": "Internal user"
         },
         "statusTypes": {
             "pending": "Pending",
-            "completed": "Completed",
+            "completed": "Finished",
             "failed": "Failed"
         },
         "dialog": {
-            "financeSettings": "Financial settings",
-            "financeSubtitle": "Please enter the details of the fund movement",
-            "amountLabel": "Amount (XOF)",
+            "financeSettings": "Financial Settings",
+            "financeSubtitle": "Please provide details of the fund transfer",
+            "amountLabel": "Amount (USD)",
             "valueDate": "Value date",
             "beneficiaryType": "Beneficiary Type",
             "specificBeneficiary": "Specific Beneficiary",
@@ -586,15 +1210,17 @@
             "required": "Required"
         },
         "toast": {
-            "saved": "The transaction was recorded successfully.",
+            "saved": "The transaction has been successfully recorded.",
             "deleted": "Transaction deleted.",
-            "deleteConfirmation": "Are you sure you want to delete the payment of {amount} for {beneficiary}?"
+            "deleteConfirmation": "Are you sure you want to delete the payment of {amount} for {beneficiary}?",
+            "message": "Are you sure you want to delete the selected {count} counters?",
+            "header": "Bulk deletion confirmation"
         }
     },
     "columnSelector": {
-        "title": "Select columns",
+        "title": "Select the columns",
         "placeholder": "Choose columns",
-        "yes": "Yes",
+        "yes": "Oui",
         "no": "No",
         "info": "Information",
         "actions": "Actions",
@@ -602,89 +1228,38 @@
         "searchByName": "Search by name",
         "export": "Export",
         "errorOccurred": "An error has occurred.",
-        "paginationReport": "Showing {first} to {last} of {total} items",
+        "paginationReport": "Displaying {first} to {last} on {total} elements",
         "save": "Save",
         "cancel": "Cancel",
         "delete": "Delete",
         "import": "Import",
+        "export": "Export",
+        "import": "Import",
+        "search": "Search...",
         "success": "Success",
         "error": "Error",
         "attention": "Attention",
         "confirmation": "Confirmation",
         "deleteConfirmation": "Delete confirmation",
-        "chooseFile": "Choose file",
+        "actions": "Actions",
+        "chooseFile": "Choose a file",
+        "paginationReport": "Displaying {first} to {last} across {total} regions",
+        "errorOccurred": "An error has occurred.",
         "saveChanges": "Validate changes",
-        "create": "Create profile",
-        "total": "Total {item}"
-    },
-    "unities": {
-        "title": "Units Management",
-        "subtitle": "Define units of measurement (kg, m, pcs, etc.)",
-        "fields": {
-            "name": "Designation",
-            "symbol": "Symbol / Abbreviation"
-        },
-        "actions": {
-            "add": "Add unit"
-        },
-        "dialog": {
-            "createTitle": "Create unit",
-            "editTitle": "Edit unit",
-            "createSubtitle": "Add a new unit of measurement to your system.",
-            "editSubtitle": "Edit information of the selected unit."
-        },
-        "validation": {
-            "nameRequired": "Unit name is required."
-        },
-        "messages": {
-            "createSuccess": "Unit created successfully.",
-            "updateSuccess": "Unit updated successfully.",
-            "deleteSuccess": "Unit deleted successfully.",
-            "confirmDelete": "Are you sure you want to delete unit \"{name}\"?"
-        }
-    },
-    "employees": {
-        "title": "Employee Management",
-        "count_label": "Registered employees",
-        "actions": {
-            "add": "Add employee"
-        },
-        "fields": {
-            "first_name": "First Name",
-            "last_name": "Last Name",
-            "email": "Email",
-            "phone": "Phone",
-            "status": "Employment Status",
-            "salary": "Salary",
-            "hire_date": "Hire Date",
-            "job_title": "Job Title / Function",
-            "notes": "Observations"
-        },
-        "status": {
-            "active": "Active",
-            "on_leave": "On leave",
-            "terminated": "Contract terminated"
-        },
-        "dialog": {
-            "new": "New Employee",
-            "edit": "Edit Employee"
-        },
-        "messages": {
-            "saved": "Employee saved successfully.",
-            "confirmDelete": "Are you sure you want to delete {name}?",
-            "deleteSuccess": "Employee deleted."
-        }
+        "create": "Create the profile",
+        "total": "Total {item}",
+        "customize_columns": "Customize columns"
     },
     "technicians": {
-        "title": "Technicians Management",
+        "title": "Technician Management",
         "subtitle": "Master Database",
-        "createTitle": "Enroll new technician",
-        "editTitle": "Edit technician profile",
+        "createTitle": "Recruit a new technician",
+        "editTitle": "Edit the technician's profile",
         "actions": {
             "add": "Enroll Technician",
             "exportExcel": "Export Excel",
             "exportPDF": "Export PDF",
-            "deleteSelected": "Delete selection"
+            "deleteSelected": "Delete the selection"
         },
         "toolbar": {
             "searchPlaceholder": "Search by name, email...",
@@ -696,21 +1271,108 @@
             "total": "Total Technicians",
             "supervisors": "Supervisors",
             "chiefs": "Chiefs",
-            "daily": "Daily",
+            "daily": "Quotidien",
             "weekly": "Weekly",
             "monthly": "Monthly"
         },
         "fields": {
             "name": "Technician",
-            "fonction": "Function",
+            "function": "Function",
             "region": "Region",
-            "numero": "Phone",
+            "Number": "Telephone",
             "email": "Email",
-            "pointure": "Shoe Size",
+            "shoe size": "Shoe size",
             "size": "Size",
+            "phone": "Telephone",
             "created_at": "Created on",
             "updated_at": "Updated on",
-            "teams": "Teams"
+            "last_login_at": "Last login",
+            "last_login_ip": "Last login IP",
+            "sessions": "Active Sessions",
+            "current_session": "Current Session",
+            "teams": "Teams",
+            "language": "Language"
+        }
+    },
+    "users": {
+        "title": "User Management",
+        "subtitle": "Manage user accounts and their roles.",
+        "actions": {
+            "add": "Add a user",
+            "deleteSelected": "Delete the selection"
+        },
+        "fields": {
+            "name": "Full name",
+            "email": "Email",
+            "role": "Role",
+            "created_at": "Created on",
+            "phone": "Telephone",
+            "last_login_at": "Last login",
+            "last_login_ip": "Last login IP",
+            "sessions": "Active Sessions",
+            "region": "Region",
+            "zone": "Zone",
+            "status": "Status",
+            "current_session": "Current Session",
+            "teams": "Teams",
+            "language": "Language",
+            "workEmail": "Work Email",
+            "fullName": "Full Name",
+            "assignmentAndRole": "Assignment and role",
+            "safetyData": "Security Data",
+            "accountSecurity": "Account Security",
+            "function": "Function"
+        },
+        "stats": {
+            "total": "Total Users",
+            "admin": "Administrators",
+            "technician": "Technicians",
+            "manager": "Managers",
+            "client": "Clients",
+            "operator": "Operators",
+            "warehouseman": "Warehouse workers",
+            "engineer": "Engineers",
+            "network-engineer": "Network Engineers",
+            "superadmin": "Super-Administrators",
+            "visitor": "Visitors"
+        },
+        "editTitle": "Edit user",
+        "createTitle": "Create a user",
+        "dialog": {
+            "editTitle": "Edit user",
+            "createTitle": "Create a user"
+        },
+        "messages": {
+            "deleteConfirmation": "Do you want to permanently delete {name}?",
+            "bulkDeleteConfirmation": "Are you sure you want to delete the selected {count} users?",
+            "deleteSuccess": "User removed",
+            "bulkDeleteSuccess": "{count} users deleted.",
+            "operationSuccess": "Operation successful",
+            "validationError": "Please correct the errors."
+        },
+        "confirm": {
+            "deleteMessage": "Do you want to permanently delete {name}?",
+            "bulkDeleteMessage": "Are you sure you want to delete the selected {count} users?"
+        },
+        "searchPlaceholder": "Search for an item, a user...",
+        "placeholders": {
+            "fullName": "Full Name",
+            "workEmail": "Work Email",
+            "assignmentAndRole": "Assignment and role",
+            "function": "Function",
+            "shoeSize": "Shoe Size",
+            "clothingSize": "Clothing Size",
+            "password": "Password",
+            "confirmPassword": "Confirm the new password",
+            "phone": "Phone",
+            "region": "Region",
+            "selectRole": "Select a role"
+        },
+        "form": {
+            "generalInfo": "General Information",
+            "assignmentAndRole": "Assignment and role",
+            "accountSecurity": "Account Security",
+            "safetyData": "Security Data"
         }
     },
     "teams": {
@@ -723,20 +1385,20 @@
             "searchPlaceholder": "Search for a unit...",
             "filterByRegion": "All regions",
             "filterByLeader": "All leaders",
-            "resetFilters": "Reset filters"
+            "resetFilters": "Reset the filters"
         },
         "fields": {
             "name": "Unit Designation",
             "leader": "Command",
-            "members": "Staff"
+            "members": "Staffing"
         },
         "dialog": {
-            "createTitle": "Create New Unit",
-            "editTitle": "Unit File"
+            "createTitle": "Create a new Unit",
+            "editTitle": "Unit Profile"
         },
         "placeholders": {
             "name": "Ex: EQP-DELTA-01",
-            "leader": "Assign a leader",
+            "leader": "To appoint a leader",
             "members": "Select members"
         },
         "stats": {
@@ -746,10 +1408,978 @@
             "with_leader": "With Leader"
         },
         "messages": {
-            "createSuccess": "Team created successfully.",
-            "updateSuccess": "Team updated successfully.",
-            "deleteSuccess": "Team deleted successfully.",
-            "confirmDelete": "Are you sure you want to delete team \"{name}\"?"
+            "createSuccess": "Team successfully created.",
+            "updateSuccess": "Team successfully updated.",
+            "deleteSuccess": "Team successfully deleted.",
+            "confirmDelete": "Are you sure you want to delete the team \"{name}\"?"
+        }
+    },
+    "dialog": {
+        "createTitle": "New Connection / Label",
+        "editTitle": "Edit the Connection / Label",
+        "createSubtitle": "Create a new element in the system.",
+        "editSubtitle": "Update the saved information.",
+        "cancel": "Abandon",
+        "save": "Confirm entry",
+        "confirmDelete": "Are you sure you want to delete this asset?"
+    },
+    "validation": {
+        "required": "The {field} field is strictly mandatory",
+        "nameRequired": "Name is required.",
+        "invalid": "Incorrect data format for {field}"
+    },
+    "connections": {
+        "title": "Connection Management",
+        "headTitle": "Connections",
+        "titleHtml": "Management of <span class='text-primary-600'>Connections</span>",
+        "subtitle": "Clients & Connection Points",
+        "addNew": "New Connection",
+        "import": "Import",
+        "delete": "Delete",
+        "closest": "Closer",
+        "status": {
+            "active": "Active",
+            "inactive": "Inactive",
+            "pending": "Pending",
+            "suspended": "Suspended",
+            "fraud": "Fraud"
+        },
+        "toast": {
+            "saveSuccess": "Connection successfully recorded."
+        },
+        "exportCSV": "Export as CSV",
+        "selectColumns": "Choose the columns",
+        "searchPlaceholder": "Search...",
+        "actions": "Actions",
+        "importDialog": {
+            "title": "Import from Excel/CSV",
+            "chooseFile": "Choose a file",
+            "startImport": "Start import"
+        },
+        "dialog": {
+            "editTitle": "Modify the Connection",
+            "createTitle": "New Connection",
+            "clientInfo": "Client Information",
+            "technicalData": "Technical Data",
+            "adminInfo": "Administration",
+            "searchClient": "Search for an existing client",
+            "searchClientPlaceholder": "Enter a client name or code...",
+            "customerCodePlaceholder": "Automatically generated if empty",
+            "customerCode": "Customer Code",
+            "firstName": "First name",
+            "lastName": "Name",
+            "phone": "Telephone",
+            "region": "Region",
+            "zone": "Zone",
+            "status": "Status",
+            "gpsLatitude": "GPS Latitude",
+            "gpsLongitude": "GPS Longitude",
+            "cancel": "Cancel",
+            "save": "Save",
+            "selectMeter": "Select an available meter",
+            "selectKeypad": "Select an available keyboard"
+        },
+        "table": {
+            "customerCode": "Customer Code",
+            "fullName": "Full Name",
+            "region": "Region",
+            "zone": "Zone",
+            "status": "Status",
+            "phone": "Telephone",
+            "latitude": "Lat.",
+            "longitude": "Long.",
+            "verified": "Verified",
+            "amountPaid": "Amount Paid",
+            "connectionDate": "Connection Date",
+            "meterNumber": "Meter Number",
+            "keypadNumber": "Keyboard Number"
+        },
+        "stats": {
+            "total": "Total Connections",
+            "active": "Assets",
+            "verified": "Verified",
+            "pending": "Pending"
+        },
+        "confirm": {
+            "deleteHeader": "Delete confirmation",
+            "bulkDeleteMessage": "Are you sure you want to delete the selected {count} connections?"
+        }
+    },
+    "expenses": {
+        "title": "Expense Management",
+        "headTitle": "Expenses",
+        "subtitle": "Cost tracking and validation",
+        "addNew": "New Expense",
+        "approveSelected": "Approve Selection",
+        "rejectSelected": "Reject Selection",
+        "export": "Export to CSV",
+        "searchPlaceholder": "Search...",
+        "selectColumns": "Choose the columns",
+        "toolbar": {
+            "advancedFilters": "Advanced Filters",
+            "resetFilters": "Reset"
+        },
+        "table": {
+            "description": "Description",
+            "amount": "Amount",
+            "date": "Date",
+            "category": "Category",
+            "status": "Status",
+            "createdBy": "Created by",
+            "linkedTo": "Linked to",
+            "approvedBy": "Approved by",
+            "notes": "Notes",
+            "selectedTotal": "Selected Total"
+        },
+        "dialog": {
+            "createTitle": "Create a new Expense",
+            "editTitle": "Modify the Expense",
+            "description": "Description",
+            "amount": "Amount",
+            "date": "Date of expenditure",
+            "category": "Category",
+            "linkedToType": "Linked element type",
+            "linkedToItem": "Linked Item",
+            "notes": "Notes / Supporting document"
+        },
+        "confirm": {
+            "header": "Confirmation of {action}",
+            "single": "Are you sure you want to {action} this expense?",
+            "bulk": "Are you sure you want to {action} the {count} selected expenses?"
+        },
+        "toast": {
+            "success": "Success",
+            "error": "Error",
+            "updateSuccess": "Expense updated successfully.",
+            "createSuccess": "Spend created successfully.",
+            "deleteSuccess": "Expense successfully deleted.",
+            "statusUpdateSuccess": "Spending {action} was successful.",
+            "statusUpdateError": "Status update failed.",
+            "bulkStatusUpdateSuccess": "{count} spending {action} successfully.",
+            "bulkStatusUpdateError": "Bulk update failed."
+        },
+        "filter": {
+            "status": "Filter by status",
+            "category": "Filter by category",
+            "dateRange": "Filter by date",
+            "paymentMethod": "Filter by payment method",
+            "project": "Filter by project",
+            "vehicle": "Filter by vehicle",
+            "provider": "Filter by provider",
+            "apply": "Apply filters"
+        },
+        "stats": {
+            "totalAmount": "Total Amount",
+            "pending": "Pending expenses",
+            "average": "Average Cost"
+        }
+    },
+    "title": "Label Management",
+    "fields": {
+        "name": "Name",
+        "description": "Description",
+        "color": "Color",
+        "style": "Style / Colour",
+        "characteristics": "Technical Attributes",
+        "charName": "Feature Name",
+        "charType": "Type",
+        "isRequiredShort": "Required"
+    },
+    "actions": {
+        "add": "Add a label",
+        "addChar": "Add a characteristic"
+    },
+    "toolbar": {
+        "resetFilters": "Reset"
+    },
+    "types": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "file": "File",
+        "boolean": "Boolean",
+        "select": "Dropdown list"
+    },
+    "messages": {
+        "createSuccess": "Label successfully created",
+        "updateSuccess": "Label successfully updated",
+        "deleteSuccess": "Label successfully deleted",
+        "confirmDelete": "Are you sure you want to delete the label \"{name}\"?",
+        "confirmChange": "You have modified some features. This may affect existing data. Continue?",
+        "confirmCharDelete": "Delete the feature \"{name}\"? This action is irreversible.",
+        "charRemovedInfo": "The feature will be removed during saving.",
+        "deleteError": "Error during deletion."
+    },
+    "unities": {
+        "title": "Unit Management",
+        "subtitle": "Define the units of measurement (kg, m, pcs, etc.)",
+        "fields": {
+            "name": "Designation",
+            "symbol": "Symbol / Abbreviation"
+        },
+        "actions": {
+            "add": "Add a unit"
+        },
+        "dialog": {
+            "createTitle": "Create a unit",
+            "editTitle": "Edit unit",
+            "createSubtitle": "Add a new unit of measurement to your system.",
+            "editSubtitle": "Edit the information for the selected unit."
+        },
+        "validation": {
+            "nameRequired": "The unit name is required."
+        },
+        "messages": {
+            "createSuccess": "Unit created successfully.",
+            "updateSuccess": "Unit successfully updated.",
+            "deleteSuccess": "Unit successfully deleted.",
+            "confirmDelete": "Are you sure you want to delete the unit \"{name}\"?"
+        }
+    },
+    "employees": {
+        "title": "Employee Management",
+        "count_label": "Registered Employees",
+        "actions": {
+            "add": "Add an employee"
+        },
+        "fields": {
+            "first_name": "First name",
+            "last_name": "Name",
+            "email": "Email",
+            "phone": "Telephone",
+            "status": "Employment status",
+            "salary": "Salary",
+            "hire_date": "Date of hire",
+            "job_title": "Position / Function",
+            "notes": "Observations"
+        },
+        "status": {
+            "active": "Active",
+            "on_leave": "On leave",
+            "terminated": "Contract ended"
+        },
+        "dialog": {
+            "new": "New Employee",
+            "edit": "Edit Employee"
+        },
+        "messages": {
+            "saved": "The employee has been successfully registered.",
+            "confirmDelete": "Are you sure you want to delete {name}?",
+            "deleteSuccess": "Employee deleted."
+        }
+    },
+    "interventions": {
+        "title": "Intervention Management",
+        "headTitle": "Interventions <span class='text-primary-600'>Field Service</span>",
+        "subtitle": "Network Operations & Maintenance",
+        "addNew": "New Intervention",
+        "searchPlaceholder": "Search for a reference...",
+        "filters": "Filters",
+        "deleteSelected": "Delete",
+        "selectColumns": "Active Columns",
+        "notAssigned": "Not assigned",
+        "notApplicable": "N/A",
+        "dialog": {
+            "editTitle": "Intervention Details",
+            "createTitle": "Ticket Creation",
+            "gmaoConsole": "GMAO administration console v2025",
+            "origin": "Origin of the request",
+            "externalClient": "External Client",
+            "internalAgent": "Internal Agent",
+            "searchPlaceholder": "Search...",
+            "subjectDescription": "Subject / Description",
+            "autoReference": "Auto Reference",
+            "problemPlaceholder": "Explain the technical problem here...",
+            "assignmentDeadline": "Assignment & Deadline",
+            "priority": "Priority",
+            "assignedTo": "Assigned to",
+            "deadline": "Deadline",
+            "region": "Region",
+            "zone": "Zone",
+            "notApplicable": "N/A",
+            "cancel": "Cancel",
+            "save": "Save the Intervention",
+            "classification": "Classification",
+            "interventionReason": "Intervention reason",
+            "selectReason": "Select a reason",
+            "category": "Category",
+            "technical Complexity": "Technical Complexity",
+            "planningTracking": "Planning & Tracking",
+            "minTime": "Min Time (h)",
+            "maxTime": "Max Time (h)",
+            "autoConfig": "Auto-configuration",
+            "settingsApplied": "Settings applied for: {reason}",
+            "validateIntervention": "Validate the Intervention"
+        },
+        "filtersPanel": {
+            "title": "Advanced Filters",
+            "status": "Status",
+            "statusPlaceholder": "All",
+            "region": "Region",
+            "regionPlaceholder": "All",
+            "priority": "Priority",
+            "priorityPlaceholder": "All",
+            "reset": "Reset",
+            "apply": "Apply"
+        },
+        "tooltips": {
+            "manage": "Manage"
+        },
+        "assignableTypes": {
+            "technician": "Technician",
+            "team": "Team"
+        },
+        "table": {
+            "reference": "Reference",
+            "reason": "Motif",
+            "complexity": "Complexity",
+            "completedAt": "Completed on",
+            "category": "Category",
+            "description": "Description",
+            "status": "Status",
+            "customerCode": "Customer Code",
+            "clientName": "Client Name",
+            "region": "Region",
+            "priority": "Priority",
+            "deadline": "Deadline",
+            "assignedTo": "Assigned to",
+            "actions": "Actions",
+            "report": "Displaying {first} to {last} of {totalRecords} interventions"
+        },
+        "stats": {
+            "total": "Total Interventions",
+            "pending": "Pending",
+            "in_progress": "En Cours",
+            "completed": "Finished",
+            "notValidated": "Not Validated",
+            "reason": "Motif",
+            "complexity": "Complexity",
+            "completedAt": "Completed on",
+            "category": "Category"
+        },
+        "status": {
+            "notValidated": "Not validated"
+        }
+    },
+    "regions": {
+        "title": "Energy Park Management",
+        "headTitle": "Management of the ",
+        "headTitle2": "Park",
+        "subtitle": "Technical supervision of energy regions",
+        "actions": {
+            "add": "New Region",
+            "resetFilters": "Reset Filters"
+        },
+        "toolbar": {
+            "searchPlaceholder": "Global search...",
+            "searchByName": "Search by name",
+            "allTypes": "All types"
+        },
+        "stats": {
+            "total": "Total Regions",
+            "totalMW": "Total Power",
+            "avgPower": "Average Power",
+            "highPerf": "High Performance"
+        },
+        "types": {
+            "thermal": "Thermal",
+            "solar": "Solar",
+            "hydraulics": "Hydraulics",
+            "wind turbine": "Wind turbine",
+            "reseauElectrique": "Réseau Électrique",
+            "otherSource": "Other Source"
+        },
+        "fields": {
+            "designation": "Designation",
+            "type": "Source",
+            "power": "Capacity (MW)",
+            "notes": "Technical Notes",
+            "status": "Status",
+            "code": "Code"
+        },
+        "dialog": {
+            "createTitle": "New Region Configuration",
+            "editTitle": "Technical Update of the Region",
+            "regionSettings": "Region Settings",
+            "productionInfo": "Complete the production information"
+        },
+        "placeholders": {
+            "designation": "Ex: Northeast Central",
+            "notes": "Additional details, safety instructions...",
+            "code": "Code"
+        },
+        "status": {
+            "active": "Active",
+            "inactive": "Inactive"
+        }
+    },
+    "maintenance": {
+        "title": "Maintenance Management",
+        "headTitle": "Maintenance",
+        "subtitle": "Preventive & corrective operations",
+        "exportExcel": "Export Excel",
+        "new": "New Maintenance",
+        "searchPlaceholder": "Search for maintenance...",
+        "resetTooltip": "Reset",
+        "columnsTooltip": "Choose columns",
+        "deleteSelected": "Delete the selection",
+        "columns": {
+            "title": "Maintenance Title",
+            "equipments": "Equipment(s)",
+            "assignable": "Assigned to",
+            "status": "Status",
+            "priority": "Priority",
+            "scheduled_start_date": "Planned Start",
+            "description": "Description",
+            "estimated_duration": "Estimated Duration",
+            "cost": "Cost",
+            "region": "Region",
+            "recurrence_type": "Recurrence",
+            "recurrence_interval": "Recurrence Interval",
+            "recurrence_month_interval": "Month Interval",
+            "recurrence_days": "Recurrence Days",
+            "recurrence_day_of_month": "Day of the Month",
+            "recurrence_month": "Monthly Recurrence",
+            "actions": "Actions"
+        },
+        "columnSelector": {
+            "title": "Select the columns:",
+            "placeholder": "Choose columns"
+        },
+        "activityDialog": {
+            "title": "Activity Planning System",
+            "batchManagerTitle": "Batch Activity Manager",
+            "batchManagerSubtitle": "Version 12.0 • Enterprise Asset Management",
+            "parentMaintenance": "Parent Maintenance",
+            "activityVolume": "Activity Volume",
+            "newActivity": "New Activity",
+            "activityNamePlaceholder": "Name the activity...",
+            "statusLabel": "Status:",
+            "duplicateTooltip": "Duplicate",
+            "attribution": "Attribution",
+            "entityTypePlaceholder": "Entity type",
+            "responsiblePlaceholder": "Select the responsible person",
+            "concernedAssets": "Assets Concerned",
+            "searchEquipmentsPlaceholder": "Search for equipment...",
+            "estimatedCost": "Estimated cost",
+            "planning": "Planning",
+            "priority": "Priority",
+            "durationInMinutes": "Duration (m)",
+            "executionPeriod": "Execution period",
+            "start": "Beginning",
+            "end": "End",
+            "checklist": "Checklist",
+            "addInstruction": "Add an instruction",
+            "instructionPlaceholder": "Instruction...",
+            "selectType": "Select the type",
+            "zeroInstructions": "Zero instructions.",
+            "spareParts": "Spare Parts",
+            "resetForm": "Reset the form",
+            "cancel": "Cancel",
+            "validateAndDeploy": "Validate and Deploy"
+        },
+        "formDialog": {
+            "editTitle": "Modify Maintenance",
+            "createTitle": "Create a new Maintenance",
+            "technicalReportTitle": "Technical Intervention Report",
+            "gmaoConsole": "CMMS Administration Console v2025 • High-Performance System",
+            "missionId": "Mission identification",
+            "interventionTitle": "Title of the intervention",
+            "interventionTitlePlaceholder": "Ex: Preventive Maintenance Quarter 1",
+            "concernEquipments": "Equipments concerned",
+            "selectAssets": "Select the assets...",
+            "detailedDescription": "Detailed description",
+            "generalInstructions": "General instructions for the team...",
+            "configPerEquipment": "Configuration per equipment",
+            "showControlPoints": "Configure control points",
+            "hideControlPoints": "Hide",
+            "noEquipmentSelected": "No equipment selected",
+            "parentGroupLabel": "First-level equipment",
+            "clone": "Clone",
+            "addInstruction": "Add an instruction",
+            "instructionLabelPlaceholder": "Label (e.g., Check oil level)",
+            "required": "Required",
+            "noSpecificInstruction": "No specific instruction defined",
+            "logisticsAndTiming": "Logistics & Timing",
+            "plannedStart": "Planned start",
+            "actualStart": "Start date",
+            "plannedEnd": "Planned End",
+            "actualEnd": "End date",
+            "interventionResponsible": "Responsible for the intervention",
+            "assignableTypePlaceholder": "Type",
+            "assignableSelectPlaceholder": "Select...",
+            "maintenanceType": "Maintenance Type",
+            "currentStatus": "Current Status",
+            "priorityLevel": "Priority Level",
+            "interventionRegion": "Intervention Region",
+            "recurrenceCycle": "Recurrence Cycle",
+            "frequency": "Frequency",
+            "dailyInterval": "Daily Interval",
+            "daysSelection": "Selection of days",
+            "dayOfMonth": "The (Day)",
+            "everyNMonths": "Every (Month)",
+            "startMonth": "Start Month",
+            "earlyReminder": "Early Reminder (Push/Email)",
+            "customRule": "Custom rule (Cron/Text)",
+            "customRulePlaceholder": "Ex: Every 2nd Monday of the month",
+            "estimatedDuration": "Estimated duration",
+            "estimatedBudget": "Estimated Budget",
+            "cancelChanges": "Cancel changes",
+            "savePlan": "Save the Maintenance Plan"
+        },
+        "copyDialog": {
+            "title": "Copy the Instructions",
+            "subtitle": "Select the target equipment",
+            "apply": "Apply the copy",
+            "cancel": "Cancel"
+        },
+        "status": {
+            "scheduled": "Planned",
+            "in_progress": "In progress",
+            "completed": "Finished",
+            "completed_with_issues": "Completed with problems",
+            "suspended": "Suspended",
+            "canceled": "Cancelled",
+            "awaiting_resources": "Waiting for resources",
+            "to_be_reviewed_later": "To be reviewed later"
+        },
+        "priority": {
+            "low": "Bass",
+            "medium": "Average",
+            "high": "High",
+            "urgent": "Urgent"
+        },
+        "assignableTypes": {
+            "none": "None",
+            "user": "Technician",
+            "team": "Team"
+        },
+        "recurrence": {
+            "none": "None",
+            "daily": "Quotidien",
+            "weekly": "Weekly",
+            "monthly": "Monthly",
+            "quarterly": "Trimonthly",
+            "biannual": "Seminar",
+            "annual": "Annual",
+            "custom": "Personalized"
+        }
+    },
+    "myActivities": {
+        "title": "My Activities",
+        "subtitle": "Manage and track all your activities and interventions.",
+        "timelineTitle": "Chronology of my activities",
+        "timelineSubtitle": "Track the progress of your assigned tasks and interventions.",
+        "columnsPlaceholder": "Choose the columns to display",
+        "noActivitiesTitle": "No activity found",
+        "noActivitiesSubtitle": "It appears you have no tasks or interventions scheduled at the moment.",
+        "addNew": "New Activity",
+        "subActivityFor": "Subactivity for: {title}",
+        "unknownReference": "Unknown reference",
+        "stats": {
+            "total": "Total Activities",
+            "in_progress": "En Cours",
+            "completed": "Finished(s)",
+            "scheduled": "Planned"
+        },
+        "status": {
+            "scheduled": "Planned",
+            "in_progress": "In progress",
+            "completed": "Finished",
+            "completed_with_issues": "Completed with problems",
+            "suspended": "Suspended",
+            "canceled": "Cancelled",
+            "awaiting_resources": "Waiting for resources",
+            "pending": "Pending"
+        },
+        "instructionTypes": {
+            "text": "Text",
+            "number": "Number",
+            "boolean": "Yes/No",
+            "date": "date",
+            "textarea": "Text area",
+            "image": "File",
+            "signature": "signature"
+        },
+        "displayOptions": {
+            "actual_end_time": "Actual end date",
+            "proposals": "Proposals",
+            "jobber": "Technician",
+            "additional_information": "Additional information",
+            "spare_parts_used": "Used parts",
+            "spare_parts_returned": "Returned parts"
+        },
+        "boolean": {
+            "yes": "Oui",
+            "no": "No"
+        },
+        "defaults": {
+            "sparePartPayment": "Spare parts payment"
+        },
+        "toast": {
+            "jsonParseError": "Error parsing JSON data.",
+            "subActivityCreated": "Subactivity successfully created.",
+            "activityUpdated": "Activity successfully updated.",
+            "success": "Success",
+            "error": "Error",
+            "saveError": "An error occurred during the save process.",
+            "warning": "Attention",
+            "instructionLabelRequired": "The instruction label is required.",
+            "added": "Added",
+            "instructionAdded": "Instruction added to the form.",
+            "instructionRemoved": "Instruction removed",
+            "listUpdated": "The list has been updated."
+        },
+        "common": {
+            "instructionNotFound": "Instruction not found (ID: {id})",
+            "invalidDate": "Invalid date",
+            "notSet": "Not defined",
+            "unspecifiedDate": "Unspecified date",
+            "unnamedActivity": "Unnamed Activity",
+            "workOrderId": "OT #{id}",
+            "problemResolution": "Description of the problem resolution:",
+            "proposals": "Proposals / Recommendations:",
+            "additionalInfo": "Additional information:",
+            "technician": "Technician / Intervenor:",
+            "instructionAnswers": "Responses to instructions",
+            "usedParts": "Used spare parts",
+            "returnedParts": "Returned spare parts",
+            "actualEndTime": "Completed on:",
+            "associatedTaskDetails": "Associated Task Details",
+            "priority": "Priority:",
+            "description": "Description:",
+            "createSubActivity": "Create a sub-activity",
+            "complete": "Complete / Modify",
+            "taskTitle": "Task",
+            "status": "Status",
+            "actualStart": "Actual start",
+            "notApplicable": "N/A",
+            "usedPartsCount": "{count} part(s) used",
+            "returnedPartsCount": "{count} returned part(s)",
+            "instructionsAndActions": "Instructions & Actions",
+            "answersCount": "{count} answer(s)",
+            "completeActivityTooltip": "Complete / View activity",
+            "associatedSubActivities": "Associated Subactivities",
+            "noSubActivities": "No sub-activities associated with this activity"
+        },
+        "table": {
+            "task": "Task",
+            "status": "Status",
+            "start_time": "Start time",
+            "end_time": "End time",
+            "technician": "Technician",
+            "report": "Displaying {first} to {last} on {totalRecords} activities",
+            "searchPlaceholder": "Search for an activity...",
+            "filterByTeam": "Filter by team",
+            "filterByRegion": "Filter by region",
+            "filterByDate": "Filter by date",
+            "region": "Region",
+            "zone": "Zone",
+            "filterByStatus": "Filter by status",
+            "filterByTask": "Filter by task"
+        },
+        "dialog": {
+            "subActivityInitialization": "Initialization of a sub-activity",
+            "technicalInterventionReport": "Technical Intervention Report",
+            "missionSettings": "Mission Settings",
+            "assignmentType": "Assignment Type",
+            "assignmentTypes": {
+                "user": "Single user",
+                "team": "Team"
+            },
+            "responsibleTechnician": "Responsible Technician",
+            "responsibleTeam": "Responsible Team",
+            "currentStatus": "Current Status",
+            "region": "Region",
+            "zone": "Zone",
+            "timestamps": "Time stamp",
+            "start": "Beginning",
+            "end": "End",
+            "activityTitle": "Activity Title",
+            "gmaoAdminConsole": "GMAO administration console",
+            "resolutionTitle": "Description of the intervention and resolution",
+            "resolutionPlaceholder": "Describe in detail the problem encountered, the diagnostic steps and the solution implemented...",
+            "recommendationsLabel": "Recommendations / Proposals",
+            "clientRecommendationsPlaceholder": "Advice and recommendations for the client...",
+            "internalNotes": "Internal Notes",
+            "adminOnly": "ADMIN ONLY",
+            "internalNotesPlaceholder": "Details not visible to the client...",
+            "addInstructionPlaceholder": "New instruction label...",
+            "selectTypePlaceholder": "Value type",
+            "checklistTitle": "Intervention checklist",
+            "checklistPoints": "{count} checkpoints",
+            "removeInstructionTitle": "Remove this instruction",
+            "missionConfigTitle": "Mission Configuration",
+            "usedStock": "Used Stock",
+            "returnedStock": "Returned Stock",
+            "htValuation": "Valuation excluding VAT",
+            "billingNotesPlaceholder": "Billing Notes...",
+            "financialImpactLabel": "Financial Impact",
+            "billingLabelPlaceholder": "Label for billing...",
+            "cancelButton": "Cancel",
+            "createSubActivityButton": "Create the subactivity",
+            "publishReportButton": "Publish the report",
+            "sparePartModalUsedTitle": "Add used parts",
+            "sparePartModalReturnedTitle": "Add returned parts",
+            "associatedEquipments": "Associated Equipment",
+            "selectEquipmentsPlaceholder": "Select the equipment...",
+            "referencesLabel": "Parts references",
+            "searchPartPlaceholder": "Search for a part...",
+            "unitQuantityLabel": "Quantity (per unit)",
+            "closeButton": "Close",
+            "validateButton": "Validate",
+            "transferSuccess": "{count} counter(s) transferred successfully.",
+            "transferError": "An error occurred during the transfer.",
+            "fileInvalid": "The import file is invalid."
+        }
+    },
+    "date_filters": {
+        "this_month": "This month",
+        "last_month": "Last month",
+        "last_week": "Last week",
+        "custom": "Custom"
+    },
+    "leaves": {
+        "title": "Leave Management",
+        "subtitle": "{count} Listed Requests",
+        "newRequest": "New Request",
+        "stats": {
+            "total": "Total Requests",
+            "pending": "Pending",
+            "approved": "Approved",
+            "rejected": "Rejected"
+        },
+        "table": {
+            "applicant": "Applicant",
+            "type": "Type",
+            "period": "Period",
+            "status": "State",
+            "actions": "Actions",
+            "approvalDate": "Approval date",
+            "approvedBy": "Approved by",
+            "rejectedBy": "Rejected by",
+            "report": "Displaying {first} to {last} on {totalRecords} requests"
+        },
+        "dialog": {
+            "editTitle": "Leave Update",
+            "createTitle": "New Leave Request",
+            "headerTitle": "Absence Scheduling",
+            "headerSubtitle": "Please fill in the details of your request",
+            "applicant": "Collaborator",
+            "applicantPlaceholder": "Select the applicant",
+            "startDate": "Start date",
+            "endDate": "End date",
+            "leaveType": "Leave Type",
+            "reason": "Reason for the request",
+            "reasonPlaceholder": "Briefly explain the reason...",
+            "attachment": "Proof (PDF, Image)",
+            "attachmentChoose": "Choose a file",
+            "sendRequest": "Send the request"
+        },
+        "toast": {
+            "success": "Operation successful"
+        },
+        "types": {
+            "annual": "Annual",
+            "sick": "Disease",
+            "rtt": "RTT",
+            "exceptional": "Exceptional"
+        },
+        "status": {
+            "pending": "Pending",
+            "approved": "Approved",
+            "rejected": "Rejected"
+        },
+        "confirm": {
+            "statusChange": "Change status"
+        }
+    },
+    "networks": {
+        "title": "Network Supervisor",
+        "newProject": "NEW_PROJECT",
+        "newEmptyProject": "NEW_EMPTY_PROJECT",
+        "defaultEquipment": "Standard Equipment",
+        "defaultComponent": "Component",
+        "monitoringLive": "Monitoring Live",
+        "systemUpdated": "System updated",
+        "defaultRegion": "Region not defined",
+        "networkLoaded": "Network {name} loaded",
+        "deleteConfirmMessage": "Permanently delete this network? The data cannot be recovered.",
+        "deleteConfirmHeader": "Delete confirmation",
+        "deletedSuccess": "Network successfully erased",
+        "deletedSummary": "Deleted",
+        "infrastructureDirectory": "Infrastructure Directory",
+        "newNetwork": "New Network",
+        "elements": "Elements",
+        "liveFlux": "Live Flux",
+        "save": "Save",
+        "stats": {
+            "title": "Live Stats",
+            "equipment": "Equipment",
+            "activeFlux": "Active Flows",
+            "sources": "Sources",
+            "status": {
+                "optimal": "Optimal",
+                "unstable": "Instable",
+                "critical": "Critique"
+            }
+        },
+        "status": {
+            "optimal": "Optimal",
+            "unstable": "Instable",
+            "critical": "Critique"
+        },
+        "dialog": {
+            "editTitle": "Edit the Component",
+            "tag": "Identifier Tag",
+            "designation": "Technical Designation",
+            "injectionPoint": "Injection Point",
+            "injectionPointSubtitle": "Main energy source",
+            "location": "Location",
+            "region": "Region",
+            "meter": "Counter",
+            "meter_placeholder": "Select a meter",
+            "manufacturer": "Manufacturer",
+            "model": "Model",
+            "zone": "Zone",
+            "selectRegion": "Select a region",
+            "selectZone": "Select a zone",
+            "insertButton": "Insert onto the diagram"
+        }
+    },
+    "profile": {
+        "title": "My Profile",
+        "headTitle": "User Profile",
+        "sections": {
+            "about": "About",
+            "security": "Account Security",
+            "securitySubtitle": "Update your password to secure your account.",
+            "preferences": "Preferences & Notifications",
+            "preferencesSubtitle": "Manage how you receive information."
+        },
+        "fields": {
+            "fullName": "Full name",
+            "email": "Email address",
+            "memberSince": "Member since",
+            "roles": "Roles & Permissions",
+            "currentPassword": "Current password",
+            "newPassword": "New password",
+            "confirmPassword": "Confirm the new password"
+        },
+        "actions": {
+            "updatePassword": "Update password",
+            "savePreferences": "Save preferences"
+        },
+        "preferences": {
+            "emailNotifications": "Email notifications",
+            "emailNotificationsDesc": "Receive important alerts by email.",
+            "smsNotifications": "SMS notifications",
+            "smsNotificationsDesc": "Receive urgent alerts via SMS.",
+            "darkMode": "Dark Mode",
+            "darkModeDesc": "Enable dark mode interface."
+        },
+        "messages": {
+            "noRoles": "No role assigned."
+        },
+        "toast": {
+            "passwordUpdated": "Password successfully updated."
+        }
+    },
+    "spareParts": {
+        "title": "Spare Parts Management",
+        "headTitle": "Spare Parts Management",
+        "toolbar": {
+            "searchPlaceholder": "Search for a reference or component...",
+            "add": "New Asset",
+            "export": "Export the database",
+            "filterByRegion": "Filter by region"
+        },
+        "table": {
+            "report": "Displaying {first} to {last} on {totalRecords} pieces",
+            "ref": "REF",
+            "name": "Name",
+            "component": "Component",
+            "reference": "Reference",
+            "equipment": "Equipment",
+            "location": "Location",
+            "quantity": "Quantity",
+            "stockAlert": "Stock / Alert",
+            "min_quantity": "Alert Threshold",
+            "price": "Price excluding tax",
+            "partType": "Part Type",
+            "responsible": "Responsible",
+            "characteristics": "Characteristics",
+            "actions": "Actions"
+        },
+        "form": {
+            "partType": "Component Type",
+            "partTypePlaceholder": "Select the category",
+            "reference": "Manufacturer's Reference",
+            "quantity": "Quantity in Stock",
+            "min_quantity": "Alert Threshold",
+            "price": "Unit Price (excluding VAT)",
+            "location": "Physical Location",
+            "region": "Entity / Region",
+            "regionPlaceholder": "Assign a zone",
+            "Responsible": "Supervisory Manager",
+            "responsiblePlaceholder": "Choose a manager",
+            "characteristicValues": "Technical Specifications",
+            "description": "Description",
+            "equipment": "Equipment (for this part)",
+            "equipmentPlaceholder": "Optional: Select an equipment",
+            "supplier": "Provider",
+            "supplierPlaceholder": "Select a supplier",
+            "purchaseDate": "Purchase date",
+            "warrantyEnd": "End of warranty"
+        },
+        "dialog": {
+            "createTitle": "New Stock Entry",
+            "editTitle": "Technical Configuration",
+            "createSubtitle": "Registering a new asset in the centralized inventory",
+            "editSubtitle": "Modification of parameters and logistical thresholds",
+            "partType": "Part Type",
+            "partTypePlaceholder": "Select a type",
+            "reference": "Reference",
+            "quantity": "Quantity",
+            "min_quantity": "Minimum Quantity.",
+            "price": "Unit Price",
+            "location": "Location",
+            "region": "Region",
+            "regionPlaceholder": "Select a region",
+            "responsible": "Responsible",
+            "responsiblePlaceholder": "Select a responsible person",
+            "characteristicValues": "Characteristic Values",
+            "addCharacteristic": "Add a characteristic",
+            "characteristicNamePlaceholder": "Characteristic Name",
+            "characteristicTypePlaceholder": "Type",
+            "characteristicValueText": "Value (Text)",
+            "characteristicValueNumber": "Value (Number)",
+            "characteristicValueDate": "Value (Date)",
+            "characteristicValue": "Value",
+            "existingFile": "Existing file",
+            "cancel": "Cancel",
+            "save": "Save"
+        },
+        "toast": {
+            "success": "Success",
+            "updateSuccess": "Part updated successfully.",
+            "createSuccess": "Part created successfully.",
+            "deleteSuccess": "Part successfully deleted.",
+            "bulkDeleteSuccess": "Spare parts successfully deleted.",
+            "saveError": "Save Error",
+            "error": "Error",
+            "deleteError": "An error occurred during deletion.",
+            "bulkDeleteError": "An error occurred during bulk deletion."
+        },
+        "validation": {
+            "characteristicRequired": "The \"{characteristic}\" characteristic is required."
+        },
+        "confirm": {
+            "deleteHeader": "Delete confirmation",
+            "deleteMessage": "Are you sure you want to delete the spare part \"{name}\"?",
+            "bulkDeleteMessage": "Are you sure you want to delete the selectedspare parts?",
+            "cancel": "Cancel",
+            "delete": "Delete"
         }
     }
 }

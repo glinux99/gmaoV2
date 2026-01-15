@@ -1,4 +1,10 @@
 {
+  "date_filters": {
+    "this_month": "Ce mois-ci",
+    "last_month": "Le mois dernier",
+    "last_week": "La semaine dernière",
+    "custom": "Personnalisé"
+  },
   "dashboard": {
     "title 2": "MaintenX Enterprise ERP - v2.0",
     "title": "Dashboard",
@@ -1097,9 +1103,6 @@
     "total": "Total {item}",
     "customize_columns": "Personnaliser les colonnes"
   },
-
-
-
     "technicians": {
         "title": "Gestion des Techniciens",
         "subtitle": "Base de données Master",
@@ -1833,6 +1836,12 @@
     "noActivitiesTitle": "Aucune activité trouvée",
     "noActivitiesSubtitle": "Il semble que vous n'ayez aucune tâche ou intervention planifiée pour le moment.",
     "addNew": "Nouvelle Activité",
+    "date_filters": {
+ "this_month": "Ce mois-ci",
+ "last_month": "Le mois dernier",
+ "last_week": "La semaine dernière",
+ "custom": "Personnalisé"
+ },
     "subActivityFor": "Sous-activité pour : {title}",
     "unknownReference": "Référence inconnue",
 

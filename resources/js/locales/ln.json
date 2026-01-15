@@ -1,0 +1,2179 @@
+{
+"dashboard": {
+    "title 2": "MaintenX Enterprise ERP - v2.0",
+    "title": "Dashboard (Tableau de bord)",
+    "generatedAt": "Ebimi na tango : {time}",
+    "liveData": "LIVE (O tango oyo)",
+    "manageSections": "Kobongisa bosembo ya ba sections",
+    "filters": {
+      "title": "FILTRES AVANCÉS",
+      "zonePlaceholder": "Pona zone moko",
+      "equipmentPlaceholder": "Pona équipement moko"
+    },
+    "sparklines": {
+      "workOrders": "Misala oyo ezali kosalema",
+      "backlog": "Backlog (Misala esi eleli)",
+      "laborHours": "Ba heures ya mosala",
+      "avgMttr": "MTTR ya Moyenne"
+    },
+    "stockRotation": {
+      "title": "Alerte ya ba Pièces Détachées"
+    },
+    "sections": {
+      "kpis": "Indicateurs Clés (KPIs)",
+      "sparklines": "Tendances ya noki",
+      "workOrders": "Molongo ya misala (OT)",
+      "stockAlerts": "Ba Alertes ya Stock & Pièces",
+      "preventiveCalendar": "Calendrier ya Préventif",
+      "riskMatrix": "Matrice ya ba Risques",
+      "technicianEfficiency": "Efficacité ya ba Techniciens",
+      "mainChart": "Flux ya Maintenance",
+      "statusDuration": "Temps kotala Statut",
+      "statusDoughnut": "Répartition ya mobimba",
+      "budget": "Analyse ya Budget",
+      "criticalityAnalysis": "Analyse ya Criticité",
+      "recentInterventions": "Interventions ya sika",
+      "stockFlow": "Flux ya Stock",
+      "reset": "Zongisa kotala na ebandeli"
+    },
+    "kpis": {
+      "availability": "Disponibilité",
+      "availabilityDesc": "Taux ya kosala na tina",
+      "preventiveRate": "Taux ya Préventif",
+      "preventiveRateDesc": "Ratio ya préventif na correctif",
+      "mtbf": "MTBF",
+      "mtbfDesc": "Temps ya moyenne kati na ba pannes",
+      "oee": "TRS (OEE)",
+      "oeeDesc": "Taux ya Rendement Synthétique",
+      "activeTasks": "Misala oyo ezali kosalema",
+      "backlog": "Arriéré (Misala oyo etikali)",
+      "laborHours": "Ba heures ya mosala",
+      "avgMttr": "MTTR ya Moyenne"
+    },
+    "workOrders": {
+      "title": "Ba Ordres de Travail oyo ezali kosalema",
+      "urgent": "{count} oyo ya noki-noki (Urgents)",
+      "inProgress": "{count} Ezali kosalema",
+      "columns": {
+        "id": "ID",
+        "equipment": "Équipement",
+        "priority": "Priorité",
+        "assigned": "Assigné na",
+        "progress": "Avancement",
+        "actions": "Actions"
+      }
+    },
+    "stockAlerts": {
+      "title": "Alerte ya ba Pièces Détachées",
+      "ref": "Réf:",
+      "units": "unités",
+      "order": "Kotinda commande"
+    },
+    "preventiveCalendar": {
+      "title": "Planning ya Préventif",
+      "confirmed": "Endimami (Confirmé)"
+    },
+    "riskMatrix": {
+      "title": "Analyse ya ba Risques",
+      "criticalRisk": "Risque ya mabe emonani",
+      "criticalRiskExample": "Vibration ya mabe na palier ya moteur ya monene"
+    },
+    "technicianEfficiency": {
+      "title": "Charge ya Équipe",
+      "completed": "{count} esili",
+      "pending": "{count} ezali kozela"
+    },
+    "mainChart": {
+      "title": "Analyse ya Performance",
+      "exportPdf": "Kobimisa na PDF",
+      "availabilityRatio": "Ratio ya Disponibilité",
+      "avgClosure": "Clôture ya Moyenne",
+      "teamEfficiency": "Efficacité ya Équipe"
+    },
+    "statusDoughnut": {
+      "title": "Répartition ya ba Tâches",
+      "inProgress": "Misala oyo ezali kosalema"
+    },
+    "budget": {
+      "title": "Lelo oyo budget ya Maintenance esili"
+    },
+    "criticalityAnalysis": {
+      "title": "Top 5 ya ba Équipements ya Risque makasi",
+      "failuresCount": "Motango ya ba pannes"
+    },
+    "recentInterventions": {
+      "title": "Ba Interventions ya nsuka",
+      "seeAll": "Tala nionso",
+      "inProgress": "Ezali kosalema",
+      "pending": "Ezali kozela",
+      "closed24h": "Ekangami (24h)",
+      "columns": {
+        "asset": "Actif",
+        "priority": "Priorité",
+        "tech": "Tech.",
+        "status": "Statut"
+      }
+    },
+    "stockFlow": {
+      "title": "Flux ya Stock",
+      "description": "Ndenge ba pièces ezali kobima mpe kokota na mikolo 30 oyo eleki",
+      "restock": "Kotondisa stock",
+      "consumption": "Consommation",
+      "entries": "Kokota (Entrées)",
+      "exits": "Kobima (Sorties)"
+    },
+    "createWoDialog": {
+      "title": "Ordre de Travail ya sika"
+    }
+  },
+  "meters": {
+    "title": "Gestion ya ba Compteurs",
+    "titleHtml": "Gestion ya <span class='text-primary-600'>ba Compteurs</span>",
+    "subtitle": "Ba Actifs ya Mesure & Facturation",
+    "active_tasks": "Misala oyo ezali kosalema",
+    "time_spent_h": "Temps oyo esili (h)",
+    "avg_intervention_time": "Temps ya Moyenne ya Interv.",
+    "by_status": "Na Statut",
+    "by_priority": "Na Priorité",
+    "incoming_parts": "Ba pièces oyo ekoti",
+    "outgoing_parts": "Ba pièces oyo ebimi",
+    "interventions_count": "Motango ya ba interventions",
+    "stopped": "Etelami (Stoppée)",
+    "degraded": "Ebebi moke (Dégradée)",
+    "improvement": "Bobongisi (Amélioration)",
+    "avg_resolution_time": "Temps ya moyenne ya kosilisa shida",
+    "delay_hours": "Temps ya kozela (Heures)",
+    "financial_tracking": "Suivi ya ba Mbongo",
+    "total_budget": "Budget Mobimba",
+    "service_expenses": "Dépenses ya prestataire",
+    "total_validated_expenses": "Dépense mobimba oyo endimami",
+    "key_metrics_overview": "Kotala ba Métriques ya tina",
+    "from_last_period": "tika tango oyo eleki",
+    "detailed_visualizations": "Kotala na bozindo (Détails)",
+    "monthly_intervention_volume_title": "Motango ya ba interventions ya sanza na sanza mpe temps ya kosilisa yango",
+    "monthly_intervention_volume_subtitle": "Statut mpe temps ya résolution na tango oyo",
+    "spare_parts_movement_title": "Ndenge ba Pièces Détachées ezali kobima/kokota",
+    "spare_parts_movement_subtitle": "Ba Entrées mpe Sorties na tango oyo oponi",
+    "failures_by_type_title": "Ba Pannes na ndenge ya défaut",
+    "failures_by_type_subtitle": "Ndenge nini ba défauts ekabolami",
+    "interventions_by_type_title": "Ba Interventions na ndenge na yango",
+    "interventions_by_type_subtitle": "Misala nionso oyo esalemi : {count}",
+    "tasks_distribution_title": "Kokabola ba Tâches",
+    "filter_by": "Kopona na (Filtrer)",
+    "view_by": "Komona na {type}",
+    "status_label": "statut",
+    "priority_label": "priorité",
+    "status": {
+      "in_stock": "Ezali na Stock",
+      "available": "Eza"
+    },
+    "actions": {
+      "transfer": "Kotinda (Transférer)",
+      "delete": "Kolongola (Supprimer)",
+      "import": "Kokotisa (Importer)",
+      "add": "Kobakisa Compteur",
+      "close_details": "Kanga ba détails",
+      "confirm_transfer": "Ndima transfert"
+    },
+    "stats": {
+      "total": "Motango mobimba ya ba Compteurs",
+      "active": "Oyo ezali kosala",
+      "faulty": "Oyo ebebi",
+      "in_stock": "Ezali na Stock",
+      "stock_by_region": "Stock na Région",
+      "stock_detail_for": "Détail ya Stock mpo na :",
+      "distribution_by_status": "Kokabola na Statut"
+    },
+    "table": {
+      "report": "Komona kobanda na {first} ti na {last} na kati ya ba compteurs {totalRecords}",
+      "search_placeholder": "Koluka (N° série ebele na virgule)",
+      "serial_number": "N° ya Série",
+      "type": "Type",
+      "status": "Statut",
+      "connection_full_name": "Client oyo azali na yango",
+      "installation_date": "Sanza ya botiami",
+      "region_name": "Région",
+      "zone_name": "Zone",
+      "is_additional": "Ebakisami (Supplémentaire)",
+      "notes": "Notes",
+      "unassigned": "Eza na moto te",
+      "filter": {
+        "by_serial": "Koluka na N° ya série",
+        "by_type": "Koluka na type",
+        "by_status": "Koluka na statut",
+        "by_client": "Koluka na client"
+      }
+    },
+    "dialog": {
+      "transfer_title": "Transfert ya Stock",
+      "transfer_subtitle": "Kotinda kati na ba régions",
+      "add_by_serial": "Kobakisa compteur na N° ya série",
+      "to_transfer_count": "Ba Compteurs ya kotinda ({count})",
+      "destination_region": "Région oyo ezali kokende",
+      "editTitle": "Kobongisa Compteur",
+      "createTitle": "Kobakisa Compteur",
+      "subtitle": "Koyeba makambo nionso ya compteur"
+    },
+    "messages": {
+      "no_stock": "Compteur moko te ezali na stock.",
+      "no_meter_selected": "Oponi compteur moko te mpo na transfert."
+    },
+    "form": {
+      "serial_number": "Numéro ya Série",
+      "serial_number_placeholder": "Kotisa numéro ya série",
+      "manufacturer": "Fabricant",
+      "manufacturer_placeholder": "Kotisa nkombo ya fabricant",
+      "model": "Modèle",
+      "model_placeholder": "Kotisa modèle",
+      "type": "Type",
+      "type_placeholder": "Pona type",
+      "status": "Statut",
+      "status_placeholder": "Pona statut",
+      "connection": "Raccordement",
+      "connection_placeholder": "Pona raccordement moko",
+      "installation_date": "Sanza ya botiami",
+      "region": "Région",
+      "region_placeholder": "Pona région moko",
+      "zone": "Zone",
+      "zone_placeholder": "Pona zone moko",
+      "is_additional": "Compteur ya ebakiseli",
+      "notes": "Notes",
+      "notes_placeholder": "Bakisa maloba mosusu awa"
+    },
+    "history": {
+      "title": "Historique ya ba Transferts",
+      "by_user": "Na : {user}",
+      "none": "Historique ya transfert moko te ezali mpo na compteur oyo."
+    },
+    "confirm": {
+      "bulkDeleteMessage": "Ondimi mpenza kolongola ba compteurs {count} oyo oponi?",
+      "bulkDeleteHeader": "Confirmation ya kolongola ebele",
+      "delete": "Kolongola"
+    },
+    "filter": {
+      "by_client": "Koluka na client",
+      "by_status": "Koluka na statut",
+      "by_serial": "Koluka na N° ya série",
+      "by_type": "Koluka na type",
+      "byType": "Koluka na type",
+      "brand": "Koluka na marque",
+      "byUser": "Koluka na mopesi-mosala"
+    }
+  },
+  "keypads": {
+    "title": "Gestion ya ba Claviers",
+    "titleHtml": "Gestion ya <span class='text-primary-600'>ba Claviers</span>",
+    "subtitle": "Ba Actifs ya contrôle & interface",
+    "actions": {
+      "transfer": "Kotinda (Transférer)",
+      "delete": "Kolongola (Supprimer)",
+      "add": "Kobakisa Clavier",
+      "close_details": "Kanga ba détails",
+      "confirm_transfer": "Ndima transfert"
+    },
+    "stats": {
+      "total": "Motango mobimba ya ba Claviers",
+      "installed": "Oyo itiami",
+      "available": "Ezali",
+      "faulty": "Oyo ebebi",
+      "stock_by_region": "Stock na Région",
+      "stock_detail_for": "Détail ya Stock mpo na :",
+      "distribution_by_status": "Kokabola na Statut"
+    },
+    "table": {
+      "report": "Komona kobanda na {first} ti na {last} na kati ya ba claviers {totalRecords}",
+      "search_placeholder": "Koluka na N° ya série...",
+      "serial_number": "N° ya Série",
+      "model": "Modèle",
+      "manufacturer": "Fabricant",
+      "type": "Type",
+      "status": "Statut",
+      "connection_full_name": "Client oyo azali na yango",
+      "meter_serial_number": "Compteur oyo azali na yango",
+      "installation_date": "Sanza ya botiami",
+      "region_name": "Région",
+      "zone_name": "Zone",
+      "notes": "Notes",
+      "unassigned": "Eza na moto te"
+    },
+    "filter": {
+      "by_serial": "Koluka na N° ya série",
+      "by_status": "Koluka na statut",
+      "by_client": "Koluka na client",
+      "by_meter": "Koluka na compteur",
+      "by_type": "Koluka na type"
+    },
+    "dialog": {
+      "editTitle": "Kobongisa Clavier",
+      "createTitle": "Kobakisa Clavier",
+      "subtitle": "Koyeba makambo nionso ya clavier",
+      "transfer_title": "Transfert ya Stock ya ba Claviers",
+      "add_by_serial": "Kobakisa clavier na N° ya série",
+      "to_transfer_count": "Ba Claviers ya kotinda ({count})",
+      "destination_region": "Région oyo ezali kokende"
+    },
+    "form": {
+      "serial_number": "Numéro ya Série",
+      "serial_number_placeholder": "Kotisa numéro ya série",
+      "manufacturer": "Fabricant",
+      "manufacturer_placeholder": "Kotisa nkombo ya fabricant",
+      "model": "Modèle",
+      "model_placeholder": "Kotisa modèle",
+      "type": "Type",
+      "type_placeholder": "Pona type",
+      "status": "Statut",
+      "status_placeholder": "Pona statut",
+      "connection": "Raccordement",
+      "connection_placeholder": "Pona raccordement moko",
+      "meter": "Compteur",
+      "meter_placeholder": "Pona compteur moko",
+      "installation_date": "Sanza ya botiami",
+      "region": "Région",
+      "region_placeholder": "Pona région moko",
+      "zone": "Zone",
+      "connection_has_keypad": "Raccordement oyo ezali na clavier",
+      "zone_placeholder": "Pona zone moko",
+      "has_keypad": "Ezali na clavier",
+      "notes": "Notes",
+      "notes_placeholder": "Bakisa maloba mosusu awa"
+    },
+    "status": {
+      "available": "Eza",
+      "installed": "Itiami",
+      "faulty": "Ebebi",
+      "in_stock": "Ezali na Stock"
+    },
+    "messages": {
+      "no_stock": "Clavier moko te ezali na stock.",
+      "no_keypad_selected": "Oponi clavier moko te mpo na transfert."
+    },
+    "confirm": {
+      "deleteMessage": "Ondimi mpenza kolongola clavier n°{serial_number}?",
+      "deleteHeader": "Confirmation ya kolongola",
+      "bulkDeleteMessage": "Ondimi mpenza kolongola ba claviers {count} oyo oponi?",
+      "bulkDeleteHeader": "Confirmation ya kolongola ebele"
+    },
+    "toast": {
+      "deleteSuccess": "Clavier elongolami muzuri.",
+      "bulkDeleteSuccess": "Ba claviers {count} elongolami muzuri.",
+      "bulkDeleteError": "Libunga moko esalemi tango ya kolongola nionso.",
+      "selectDestinationRegion": "Tafadhali pona région ya destination.",
+      "transferSuccess": "Clavier {count} etindami muzuri.",
+      "transferError": "Libunga moko esalemi tango ya kotinda ba claviers."
+    }
+  },
+  "topbar": {
+    "meters": {
+      "title": "Gestion ya ba Compteurs",
+      "subtitle": "Ba Actifs ya Mesure & Facturation",
+      "actions": {
+        "transfer": "Kotinda",
+        "delete": "Kolongola",
+        "import": "Kokotisa",
+        "add": "Kobakisa Compteur",
+        "close_details": "Kanga ba détails"
+      },
+      "stats": {
+        "total": "Motango ya ba Compteurs",
+        "active": "Ezali kosala",
+        "faulty": "Ebebi",
+        "in_stock": "Ezali na Stock",
+        "stock_by_region": "Stock na Région",
+        "stock_detail_for": "Détail ya Stock mpo na :",
+        "distribution_by_status": "Répartition na Statut"
+      },
+      "table": {
+        "report": "Komona kobanda na {first} ti na {last} na kati ya ba compteurs {totalRecords}",
+        "search_placeholder": "Koluka (N° série ebele na virgule)"
+      },
+      "dialog": {
+        "transfer_title": "Transfert ya Stock",
+        "transfer_subtitle": "Kotinda kati na ba régions",
+        "bulkDeleteMessage": "Ondimi mpenza kolongola ba compteurs {count} oyo oponi?",
+        "status": {
+          "active": "Ezali kosala",
+          "faulty": "Ebebi",
+          "in_stock": "Ezali na Stock"
+        },
+        "add_by_serial": "Kobakisa compteur na N° ya série",
+        "to_transfer_count": "Ba Compteurs ya kotinda ({count})",
+        "destination_region": "Région ya destination"
+      },
+      "messages": {
+        "no_stock": "Compteur moko te ezali na stock."
+      }
+    },
+    "menuModes": {
+      "static": "Statique",
+      "overlay": "Overlay"
+    },
+    "themes": {
+      "light": "Polele",
+      "dark": "Molili",
+      "accent": "Accent"
+    },
+    "languages": {
+      "french": "Français",
+      "english": "Anglais",
+      "swahili": "Swahili",
+      "german": "Allemand"
+    },
+    "toggle_sidebar": "Kufungola/Kukanga menu",
+    "search_placeholder": "Koluka dossier, agent to service...",
+    "status": {
+      "connected": "Oza na réseau"
+    },
+    "userMenu": {
+      "edit_profile": "Kobongisa Profil",
+      "security": "Sécurité",
+      "logout": "Kokanga Session"
+    }
+  },
+  "menu": {
+    "dashboard": {
+      "title": "Tableau de bord",
+      "home": "Ebandeli",
+      "analytics": "Analytiques"
+    },
+    "assetManagement": {
+      "title": "Gestion ya ba actifs",
+      "inventories": "Inventaires",
+      "spareParts": "Pièces détachées",
+      "equipments": "Équipements",
+      "networks": "Réseaux"
+    },
+    "taskManagement": {
+      "title": "Gestion ya ba tâches",
+      "agenda": "Agenda",
+      "myActivities": "Misala na ngai",
+      "workOrder": "Ordre de travail",
+      "interventionRequests": "Demandes d'intervention",
+      "maintenancePlan": "Plan ya maintenance",
+      "connections": "Connexions",
+      "expenses": "Dépenses"
+    },
+    "teamManagement": {
+      "title": "Gestion ya équipe",
+      "teams": "Ba Équipes",
+      "technicians": "Ba Techniciens"
+    },
+    "hrManagement": {
+      "title": "Gestion RH",
+      "employees": "Ba Salariés",
+      "leaves": "Ba Congés",
+      "attendances": "Présences",
+      "payroll": "Lifuta (Paie)"
+    },
+    "systemConfiguration": {
+      "title": "Configuration ya système",
+      "userManagement": "Gestion ya ba utilisateurs",
+      "users": "Utilisateurs",
+      "roles": "Ba Rôles",
+      "permissions": "Ba Permissions",
+      "reports": "Ba Rapports",
+      "maps": "Cartes",
+      "regions": "Ba Régions",
+      "zones": "Ba Zones",
+      "rollingStock": "Ba Véhicules",
+      "units": "Ba Unités",
+      "labels": "Ba Étiquettes",
+      "meters": "Ba Compteurs",
+      "keyboards": "Ba Claviers",
+      "systemPriority": "Priorité ya système"
+    },
+    "dateFilter": {
+      "thisMonth": "Sanza oyo",
+      "lastMonth": "Sanza eleki",
+      "lastWeek": "Poso eleki",
+      "custom": "Personnalisé"
+    }
+  },
+  "equipments": {
+    "title": "Gestion ya ba Équipements",
+    "headTitle": "Équipements",
+    "addNew": "Kobakisa équipement",
+    "searchPlaceholder": "Koluka...",
+    "subtitle": "Base de données Master & Cycle de vie",
+    "stats": {
+      "total": "Motango ya ba Équipements",
+      "in_service": "Ezali kosala",
+      "in_stock": "Ezali na Stock",
+      "down": "Ebebi (En Panne)"
+    },
+    "export": "Kobimisa (Exporter)",
+    "deleteSelected": "Kolongola ({count})",
+    "deleteSelectedSingle": "Kolongola",
+    "table": {
+      "report": "Komona kobanda na {first} ti na {last} na kati ya ba équipements {totalRecords}",
+      "tag": "Tag",
+      "designation": "Désignation",
+      "type": "Type",
+      "brand": "Marque",
+      "model": "Modèle",
+      "region": "Région",
+      "status": "Statut",
+      "quantity": "Motango",
+      "filter": {
+        "tag": "Koluka na tag",
+        "designation": "Koluka na désignation",
+        "type": "Koluka na type",
+        "region": "Koluka na région",
+        "status": "Koluka na statut",
+        "brand": "Koluka na marque"
+      },
+      "actions": "Actions"
+    },
+    "dialog": {
+      "editTitle": "Kobongisa Équipement",
+      "createTitle": "Kosala Équipement ya sika",
+      "parentLabel": "Équipement Parent (mpo na kosala moko kobanda na stock)",
+      "parentPlaceholder": "Soki olingi: Pona parent moko",
+      "tag": "Tag",
+      "designation": "Désignation",
+      "type": "Type ya équipement",
+      "typePlaceholder": "Pona type moko",
+      "addType": "Kobakisa type ya sika",
+      "region": "Région",
+      "regionPlaceholder": "Pona région moko",
+      "brand": "Marque",
+      "model": "Modèle",
+      "power": "Puissance (kW)",
+      "serialNumber": "Numéro de série",
+      "price": "Talo (Prix)",
+      "cadence_nominale": "Cadence Nominale (pièces/h)",
+      "risk_vibration": "Niveau ya Risque: Vibration",
+      "risk_chaleur": "Niveau ya Risque: Chaleur",
+      "risk_cycle": "Niveau ya Risque: Cycle/Usure",
+      "risk_bruit": "Niveau ya Risque: Bruit",
+      "risk_electrique": "Niveau ya Risque: Électrique",
+      "status": "Statut",
+      "statusPlaceholder": "Pona statut moko",
+      "stockQuantity": "Motango na stock",
+      "purchaseDate": "Sanza ya bosombi",
+      "warrantyEnd": "Nsuka ya garantie",
+      "location": "Emplacement",
+      "importCharacteristics": "Kokotisa ba caractéristiques oyo ezalaki",
+      "importCharacteristicsPlaceholder": "Soki olingi: Pona label mpo na kobakisa ba caractéristiques",
+      "characteristicNamePlaceholder": "Nkombo ya caractéristique",
+      "characteristicTypePlaceholder": "Type",
+      "characteristicValueText": "Valeur (Texte)",
+      "characteristicValueNumber": "Valeur (Nombre)",
+      "characteristicValueDate": "Valeur (Sanza)",
+      "characteristicValue": "Valeur",
+      "existingFile": "Fichier oyo ezali",
+      "addCharacteristic": "Kobakisa caractéristique",
+      "cancel": "Acha (Annuler)",
+      "save": "Sauvegarder"
+    },
+    "typeDialog": {
+      "title": "Type ya Équipement ya sika",
+      "name": "Nkombo ya type",
+      "description": "Description",
+      "cancel": "Acha",
+      "create": "Kosala"
+    },
+    "insufficientQuantityDialog": {
+      "title": "Motango ekoki te",
+      "subtitle": "Alerte ya Stock",
+      "message": "Motango oyo osengi eleki stock oyo ezali. Mosala oyo ekoki kosala rupture ya service.",
+      "cancel": "Acha",
+      "performMovement": "Kotinda force",
+      "statusOptions": {
+        "in_service": "Ezali kosala",
+        "down": "Ebebi",
+        "in_maintenance": "Ezali na maintenance",
+        "out_of_service": "Ezali kosala te",
+        "in_stock": "Ezali na Stock"
+      }
+    },
+    "toast": {
+      "success": "Imefaulu (Succès)",
+      "updateSuccess": "Équipement ebongisami muzuri.",
+      "createSuccess": "Équipement esalami muzuri.",
+      "deleteSuccess": "Équipement elongolami muzuri.",
+      "insufficientQuantity": "Motango ekoki te na stock.",
+      "parentQuantityUpdated": "Motango ya parent ebongisami.",
+      "bulkDeleteSuccess": "Ba équipements elongolami muzuri.",
+      "saveError": "Libunga tango ya kobomba",
+      "error": "Libunga (Erreur)",
+      "deleteError": "Libunga tango ya kolongola.",
+      "bulkDeleteError": "Libunga tango ya kolongola ebele.",
+      "typeCreateSuccess": "Type ya équipement esalami muzuri.",
+      "typeSaveError": "Libunga tango ya kosala type ya sika",
+      "parentQuantityUpdateError": "Libunga tango ya kobongisa motango ya parent."
+    },
+    "confirm": {
+      "deleteHeader": "Confirmation ya kolongola",
+      "deleteMessage": "Ondimi mpenza kolongola équipement \"{name}\"?",
+      "bulkDeleteMessage": "Ondimi mpenza kolongola ba équipements oyo oponi?",
+      "cancel": "Acha",
+      "delete": "Kolongola"
+    },
+    "validation": {
+      "quantityRequiredForChild": "Motango ezali ya tina mpo na équipement mwana.",
+      "insufficientParentQuantity": "Motango ya parent ekoki te to mpe parent azali na stock te."
+    },
+    "statusOptions": {
+      "in_service": "Ezali kosala",
+      "down": "Ebebi",
+      "in_maintenance": "Ezali na maintenance",
+      "out_of_service": "Ezali kosala te",
+      "in_stock": "Ezali na Stock"
+    },
+    "characteristicTypes": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Sanza",
+      "file": "Fichier",
+      "boolean": "Iyo/Te"
+    }
+  },
+"sparePartMovements": {
+    "title": "Ningana ya biloko ya kobongisa (Pièces de Rechange)",
+    "headTitle": "Boyangeli Stock - Mayangani",
+    "subtitle": "Bolandi ya kokota mpe kobima na stock",
+    "stockLabel": "Stock ya sikoyo",
+    "toolbar": {
+      "addMovement": "Ningana ya sika",
+      "searchPlaceholder": "Luka ningana moko...",
+      "export": "Bimisa na CSV"
+    },
+    "table": {
+      "sparePart": "Eloko ya kobongisa",
+      "user": "Dosaleli",
+      "type": "Lolenge",
+      "quantity": "Motángo",
+      "location": "Esika",
+      "notes": "Maloba",
+      "date": "Mokolo",
+      "actions": "Misala"
+    },
+    "dialog": {
+      "createTitle": "Koma ningana moko",
+      "editTitle": "Bongisa ningana",
+      "createSubtitle": "Tondisa bansango mpo na ningana ya sika.",
+      "editSubtitle": "Bongisa makambo ya ningana oyo oponi.",
+      "fluxIdentification": "Koyeba molongo ya mosala",
+      "detailsValidation": "Makambo mpe Boyokani"
+    },
+    "form": {
+      "region": "Etúká",
+      "regionPlaceholder": "Pona etúká",
+      "sparePart": "Eloko ya kobongisa",
+      "sparePartPlaceholder": "Pona eloko moko",
+      "user": "Dosaleli",
+      "userPlaceholder": "Pona dosaleli",
+      "movementType": "Lolenge ya ningana",
+      "movementTypePlaceholder": "Kokota to kobima?",
+      "quantity": "Motángo",
+      "location": "Esika moko mpenza",
+      "unity": "Lisangá / Mosala",
+      "unityPlaceholder": "Pona lisangá",
+      "notes": "Maloba mosusu"
+    },
+    "movementTypes": {
+      "entry": "Kokota",
+      "exit": "Kobima"
+    },
+    "confirm": {
+      "deleteMessage": "Olingi mpenza kolongola ningana ya eloko {reference}?"
+    },
+    "filter": {
+      "byType": "Kabola na lolenge",
+      "byUser": "Kabola na dosaleli"
+    },
+    "toast": {
+      "createSuccess": "Ningana ekomami malamu.",
+      "updateSuccess": "Ningana ebongisami malamu.",
+      "deleteSuccess": "Ningana elongolami.",
+      "saveError": "Mbeba esalemi na kokoma ningana.",
+      "error": "Mbeba",
+      "deleteError": "Ekoki kolongola ningana oyo te."
+    }
+  },
+  "stockMovements": {
+    "title": "Ningana ya Stock",
+    "headTitle": "Boyangeli ya Mayangani ya Stock",
+    "subtitle": "Bolandi mobimba ya biloko",
+    "toolbar": {
+      "addMovement": "Ningana ya sika",
+      "searchPlaceholder": "Luka eloko, dosaleli..."
+    },
+    "table": {
+      "itemType": "Lolenge ya eloko",
+      "item": "Eloko",
+      "type": "Lolenge ya Ningana",
+      "quantity": "Motángo",
+      "source": "Esika euti",
+      "destination": "Esika ekende",
+      "user": "Dosaleli",
+      "date": "Mokolo"
+    },
+    "stats": {
+      "total": "Mayangani nyonso",
+      "entries": "Kokota",
+      "exits": "Kobima",
+      "transfers": "Botindiki",
+      "uniqueParts": "Biloko moko moko"
+    },
+    "filter": {
+      "byType": "Kabola na lolenge",
+      "byUser": "Kabola na dosaleli",
+      "byRegion": "Kabola na etúká...",
+      "byItemType": "Na lolenge ya eloko",
+      "byItem": "Kabola na eloko"
+    },
+    "dialog": {
+      "createTitle": "Koma Ningana ya Stock",
+      "editTitle": "Bongisa Ningana",
+      "createSubtitle": "Tondisa bansango mpo na ningana ya sika.",
+      "editSubtitle": "Bongisa makambo ya ningana.",
+      "itemIdentification": "Koyeba Eloko",
+      "detailsValidation": "Makambo mpe Boyokani",
+      "itemsInMovement": "Biloko na kati ya ningana",
+      "noItems": "Eloko moko te eponami",
+      "itemSelection": "Maponi ya Eloko",
+      "addItem": "Bakisa eloko",
+      "deleteSelectedMessage": "Olingi kolongola biloko {count} oyo oponi?"
+    },
+    "form": {
+      "itemType": "Lolenge ya eloko",
+      "itemTypePlaceholder": "Pona lolenge ya eloko...",
+      "item": "Eloko mpenza",
+      "addItem": "Bakisa eloko",
+      "itemPlaceholder": "Luka to pona eloko moko...",
+      "movementType": "Lolenge ya Ningana",
+      "quantity": "Motángo",
+      "sourceRegion": "Etúká ya kobima",
+      "sourceRegionPlaceholder": "Pona etúká oyo euti",
+      "destinationRegion": "Etúká ya kokende",
+      "destinationRegionPlaceholder": "Pona etúká oyo ekende",
+      "user": "Esalemi na",
+      "responsibleUser": "Dosaleli oyo azali na mokumba",
+      "intendedForUser": "Mpo na dosaleli",
+      "userPlaceholder": "Pona dosaleli",
+      "notes": "Maloba mosusu"
+    },
+    "movableTypes": {
+      "spare_part": "Eloko ya kobongisa",
+      "equipment": "Bisaleli",
+      "meter": "Komptere",
+      "keypad": "Palo ya kofina",
+      "engin": "Masini / Mmotuka"
+    },
+    "movementTypes": {
+      "entry": "Kokota",
+      "exit": "Kobima",
+      "transfer": "Botindiki"
+    },
+    "confirm": {
+      "deleteMessage": "Olingi mpenza kolongola ningana N°{id}?"
+    },
+    "toast": {
+      "createSuccess": "Ningana ekomami malamu.",
+      "updateSuccess": "Ningana ebongisami malamu.",
+      "deleteSuccess": "Ningana elongolami.",
+      "noItems": "Tia ata eloko moko na ningana.",
+      "saveError": "Mbeba esalemi na kokoma ningana."
+    }
+  },
+  "characteristics": {
+    "types": {
+      "text": "Makomi",
+      "number": "Motángo",
+      "date": "Mokolo",
+      "image": "Elilingi",
+      "boolean": "Iyo to Te",
+      "select": "Lisiti ya maponi"
+    }
+  },
+  "confirm": {
+    "deleteHeader": "Ndimisa bolongoli",
+    "cancel": "Tika",
+    "bulkDeleteMessage": "Olingi mpenza kolongola bakomptere {count} oyo oponi?",
+    "bulkDeleteHeader": "Ndimisa bolongoli ya ebele",
+    "delete": "Longola",
+    "deleteConfirmation": "Olingi mpenza kolongola eloko oyo?"
+  },
+  "engins": {
+    "title": "Boyangeli ya Bamasini",
+    "headTitle": "Lisiti ya Bamasini",
+    "subtitle": "Bamasini {count} na nsinga",
+    "toolbar": {
+      "advancedFilters": "Bikabolola ya likolo",
+      "showColumns": "Lakisa makonzi",
+      "deleteSelected": "Longola oyo oponi",
+      "addEngin": "Bakisa masini",
+      "searchPlaceholder": "Luka...",
+      "export": "Bimisa",
+      "resetFilters": "Zongisa bikabolola",
+      "searchByName": "Luka na nkombo"
+    },
+    "table": {
+      "designation": "Nkombo",
+      "immatriculation": "Plake",
+      "type": "Lolenge ya Masini",
+      "region": "Etúká",
+      "dateAcquisition": "Mokolo ya kosomba",
+      "hourMeter": "Ntángo ya masini",
+      "actions": "Misala",
+      "category": "Kategori",
+      "assignment": "Esika ya mosala"
+    },
+    "form": {
+      "type": "Lolenge ya Masini",
+      "typePlaceholder": "Pona lolenge",
+      "designation": "Nkombo",
+      "immatriculation": "Plake",
+      "region": "Etúká",
+      "regionPlaceholder": "Pona etúká",
+      "dateAcquisition": "Mokolo ya kobanda mosala",
+      "datePlaceholder": "Pona mokolo",
+      "hourMeter": "Ntángo ya masini"
+    },
+    "dialog": {
+      "createTitle": "Kela masini ya sika",
+      "editTitle": "Bongisa masini",
+      "createSubtitle": "Kotisa bansango mpo na masini ya sika.",
+      "editSubtitle": "Bongisa bansango ya masini oyo oponi."
+    },
+    "confirm": {
+      "deleteMessage": "Olingi mpenza kolongola masini \"{name}\" ?",
+      "header": "Ndimisa"
+    },
+    "toast": {
+      "createSuccess": "Masini ekelami malamu.",
+      "updateSuccess": "Masini ebongisami malamu.",
+      "deleteSuccess": "Masini elongolami malamu.",
+      "saveError": "Mbeba esalemi na kokoma.",
+      "deleteError": "Mbeba esalemi na kolongola."
+    },
+    "common": {
+      "update": "Bongisa",
+      "save": "Bomba",
+      "cancel": "Tika",
+      "noPlate": "EZALI NA PLAKE TE",
+      "create": "Kela"
+    }
+  },
+  "labels": {
+    "title": "Boyangeli ya ba Label",
+    "fields": {
+      "labelParameters": "Bamezire ya Label",
+      "labelParametersSubtitle": "Bongisa nkombo, langi mpe ndimbola.",
+      "technicalAttributes": "Bizaleli ya tekniki",
+      "technicalAttributesSubtitle": "Tia makambo ya kotala mpo na lolenge oyo ya eloko.",
+      "name": "Nkombo",
+      "description": "Ndimbola",
+      "color": "Langi",
+      "style": "Lolenge / Langi",
+      "characteristics": "Bizaleli ya tekniki",
+      "charName": "Nkombo ya mizaleli",
+      "charType": "Lolenge",
+      "isRequiredShort": "Esengeli"
+    },
+    "actions": {
+      "add": "Bakisa label",
+      "addChar": "Bakisa mizaleli"
+    },
+    "toolbar": {
+      "resetFilters": "Zongisa na zero",
+      "searchPlaceholder": "Luka label moko..."
+    },
+    "types": {
+      "text": "Makomi",
+      "number": "Motángo",
+      "date": "Mokolo",
+      "file": "Fise",
+      "boolean": "Iyo/Te",
+      "select": "Lisiti"
+    },
+    "dialog": {
+      "createTitle": "Kela Label ya sika",
+      "editTitle": "Bongisa Label",
+      "labelParameters": "Bamezire ya Label",
+      "labelParametersSubtitle": "Bongisa nkombo, langi mpe ndimbola.",
+      "createSubtitle": "Kela label ya sika.",
+      "editSubtitle": "Bongisa bansango ya label."
+    },
+    "stats": {
+      "total": "Motángo ya ba Label",
+      "withChars": "Na mizaleli"
+    },
+    "validation": {
+      "nameRequired": "Nkombo esengeli epesama."
+    },
+    "messages": {
+      "createSuccess": "Label ekelami malamu",
+      "updateSuccess": "Label ebongisami malamu",
+      "deleteSuccess": "Label elongolami malamu",
+      "confirmDelete": "Olingi mpenza kolongola label \"{name}\" ?",
+      "confirmChange": "Obongisi mizaleli. Ekoki kobebisa bansango ya kala. Kokoba?",
+      "confirmCharDelete": "Longola mizaleli \"{name}\" ? Mosala oyo ekoki kozongisama sima te.",
+      "charRemovedInfo": "Mizaleli oyo ekolongolama soki obombi.",
+      "deleteError": "Mbeba na kolongola."
+    }
+  },
+  "common": {
+    "save": "Bomba",
+    "update": "Bongisa",
+    "create": "Kela",
+    "selectedCount": "Oponi biloko {count}",
+    "deleteSelection": "Longola",
+    "columns": "Makonzi",
+    "approve": "Ndimisa",
+    "confirm": "Ndimisa",
+    "reject": "Boyá",
+    "cancel": "Tika",
+    "delete": "Longola",
+    "import": "Kotisa",
+    "export": "Bimisa",
+    "exportCSV": "Bimisa na CSV",
+    "search": "Luka...",
+    "success": "Ekoti malamu",
+    "error": "Mbeba",
+    "attention": "Keba",
+    "confirmation": "Ndimisa",
+    "deleteConfirmation": "Ndimisa bolongoli",
+    "actions": "Misala",
+    "chooseFile": "Pona fise",
+    "paginationReport": "Kolakisa wuta {first} tii {last} na kati ya {total} bitúká",
+    "errorOccurred": "Mbeba moko esalemi.",
+    "selectColumns": "Pona makonzi",
+    "customize_columns": "Bongisa makonzi",
+    "columnSelector": {
+      "title": "Bongisa makonzi",
+      "placeholder": "Pona makonzi"
+    },
+    "types": {
+      "annual": "Ya mbula",
+      "columns": "Makonzi",
+      "shoeSize": "Pointure",
+      "clothingSize": "Monene ya elamba",
+      "password": "Liloba ya sekele",
+      "confirmPassword": "Ndimisa liloba ya sekele",
+      "removePhoto": "Longola foto",
+      "sick": "Bolembami / Maladi",
+      "rtt": "RTT",
+      "exceptional": "Ya likolo mpenza"
+    },
+    "status": {
+      "approved": "Endimami",
+      "pending": "Ezali kozela",
+      "rejected": "Eboyami"
+    },
+    "exportCsv": "Bimisa na CSV",
+    "notApplicable": "N/A",
+    "uploadPhotoAriaLabel": "Bakisa foto ya elongi",
+    "unspecifiedDate": "Mokolo eyebani te",
+    "resetFilters": "Zongisa bikabolola",
+    "unnamedActivity": "Mosala ezali na nkombo te",
+    "workOrderId": "#OrderMosala: {id}",
+    "problemResolution": "Mbeba/Likambo:",
+    "proposals": "Makanisi:",
+    "additionalInfo": "Bansango mosusu:",
+    "technician": "Dosaleli:",
+    "instructionAnswers": "Biyano na malako:",
+    "usedParts": "Biloko basaleli:",
+    "returnedParts": "Biloko bazongisi:",
+    "actualEndTime": "Ngonga mpenza ya kosilisa:",
+    "associatedTaskDetails": "Makambo ya mosala oyo",
+    "priority": "Ntina/Likiya:",
+    "description": "Ndimbola:",
+    "createSubActivity": "Kela mosala na nse",
+    "complete": "Tondisa",
+    "taskTitle": "Nkombo ya Mosala",
+    "status": "Ezali ndenge nini",
+    "actualStart": "Mpenza ya kobanda",
+    "usedPartsCount": "Eloko {count}",
+    "returnedPartsCount": "Eloko {count} ezongisami",
+    "answersCount": "Biyano {count}",
+    "instructionsAndActions": "Malako/Misala",
+    "completeActivityTooltip": "Tondisa/Bongisa Mosala",
+    "invalidDate": "Mokolo ya mabe",
+    "notSet": "Ekomami te",
+    "instructionNotFound": "Malako ID {id} (Emonani te)",
+    "date_format_placeholder": "MK/SN/MB"
+  },
+  "payments": {
+    "title": "Boyangeli ya Lifuta",
+    "subtitle": "Bolandi ya mbongo mpe misala",
+    "newTransaction": "Mosala ya mbongo ya sika",
+    "stats": {
+      "totalFlux": "Mbongo nyonso",
+      "transactions": "Misala ya mbongo",
+      "pending": "Ezali kozela",
+      "average": "Mwayene"
+    },
+    "table": {
+      "amount": "Motángo",
+      "beneficiary": "Moto azwi mbongo",
+      "status": "Ezali ndenge nini",
+      "date": "Mokolo ya motuya",
+      "actions": "Misala"
+    },
+    "payableTypes": {
+      "employee": "Dosaleli",
+      "supplier": "Mopesi biloko",
+      "user": "Dosaleli ya kati"
+    },
+    "statusTypes": {
+      "pending": "Ezali kozela",
+      "completed": "Esili",
+      "failed": "Ebebi"
+    },
+    "dialog": {
+      "financeSettings": "Bamezire ya mbongo",
+      "financeSubtitle": "Tondisa bansango ya ningana ya mbongo",
+      "amountLabel": "Motángo (USD)",
+      "valueDate": "Mokolo ya motuya",
+      "beneficiaryType": "Lolenge ya moto azwi mbongo",
+      "specificBeneficiary": "Moto mpenza azwi mbongo",
+      "notes": "Maloba mpe Reperanse",
+      "required": "Esengeli"
+    },
+    "toast": {
+      "saved": "Mosala ya mbongo ekomami malamu.",
+      "deleted": "Mosala ya mbongo elongolami.",
+      "deleteConfirmation": "Olingi mpenza kolongola lifuta ya {amount} mpo na {beneficiary} ?",
+      "message": "Olingi mpenza kolongola bakomptere {count} oyo oponi?",
+      "header": "Ndimisa bolongoli ya ebele"
+    }
+  },
+  "columnSelector": {
+    "title": "Pona makonzi",
+    "placeholder": "Pona makonzi",
+    "yes": "Iyo",
+    "no": "Te",
+    "info": "Sango",
+    "actions": "Misala",
+    "search": "Luka...",
+    "searchByName": "Luka na nkombo",
+    "export": "Bimisa",
+    "errorOccurred": "Mbeba moko esalemi.",
+    "paginationReport": "Kolakisa wuta {first} tii {last} na kati ya biloko {total}",
+    "save": "Bomba",
+    "cancel": "Tika",
+    "delete": "Longola",
+    "import": "Kotisa",
+    "success": "Ekoti malamu",
+    "error": "Mbeba",
+    "attention": "Keba",
+    "confirmation": "Ndimisa",
+    "deleteConfirmation": "Ndimisa bolongoli",
+    "chooseFile": "Pona fise",
+    "saveChanges": "Ndimisa mbongwana",
+    "create": "Kela profil",
+    "total": "Nyonso {item}",
+    "customize_columns": "Bongisa makonzi"
+  },
+  "technicians": {
+    "title": "Boyangeli ya ba Teknisie",
+    "subtitle": "Ebombelo ya bansango Master",
+    "createTitle": "Koma teknisie ya sika",
+    "editTitle": "Bongisa profil ya teknisie",
+    "actions": {
+      "add": "Koma Teknisie",
+      "exportExcel": "Bimisa Excel",
+      "exportPDF": "Bimisa PDF",
+      "deleteSelected": "Longola oyo oponi"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Luka na nkombo, email...",
+      "advancedFilters": "Bikabolola ya likolo",
+      "resetFilters": "Zongisa na zero",
+      "showColumns": "Lakisa makonzi"
+    },
+    "stats": {
+      "total": "Motángo ya ba Teknisie",
+      "supervisors": "Basupervizer",
+      "chiefs": "Bakambi",
+      "daily": "Ya mokolo na mokolo",
+      "weekly": "Ya poso",
+      "monthly": "Ya sanza"
+    },
+    "fields": {
+      "name": "Teknisie",
+      "fonction": "Mosala",
+      "region": "Etúká",
+      "numero": "Telefone",
+      "email": "Email",
+      "pointure": "Pointure",
+      "size": "Taille",
+      "phone": "Telefone",
+      "created_at": "Ekelami mokolo ya",
+      "updated_at": "Ebongisami mokolo ya",
+      "last_login_at": "Kokota ya suka",
+      "last_login_ip": "IP ya suka",
+      "sessions": "Basio ya mosala",
+      "current_session": "Sesio ya sikoyo",
+      "teams": "Bituluku",
+      "language": "Lokota"
+    }
+  },
+  "users": {
+    "title": "Boyangeli ya Basaleli",
+    "subtitle": "Yamba bansango ya basaleli mpe mikumba na bango.",
+    "actions": {
+      "add": "Bakisa dosaleli",
+      "deleteSelected": "Longola oyo oponi"
+    },
+    "fields": {
+      "name": "Nkombo mobimba",
+      "email": "Email",
+      "role": "Mokumba",
+      "created_at": "Ekelami mokolo ya",
+      "phone": "Telefone",
+      "last_login_at": "Kokota ya suka",
+      "last_login_ip": "IP ya suka",
+      "sessions": "Basio ya mosala",
+      "region": "Etúká",
+      "zone": "Esika (Zone)",
+      "status": "Ezali ndenge nini",
+      "current_session": "Sesio ya sikoyo",
+      "teams": "Bituluku",
+      "language": "Lokota",
+      "workEmail": "Email ya Mosala",
+      "fullName": "Nkombo Mobimba",
+      "assignmentAndRole": "Esika mpe mokumba",
+      "safetyData": "Bansango ya bokengi",
+      "accountSecurity": "Bokengi ya konte",
+      "function": "Mosala"
+    },
+    "stats": {
+      "total": "Motángo ya Basaleli",
+      "admin": "Bakambi (Admin)",
+      "technician": "Ba Teknisie",
+      "manager": "Ba Manajer",
+      "client": "Bakiliya",
+      "operator": "Baoperatere",
+      "magasinier": "Bamagasinie",
+      "engineer": "Ba Enjinier",
+      "network-engineer": "Enjinier ya Réseau",
+      "superadmin": "Super-Admin",
+      "visitor": "Bapaya"
+    },
+    "editTitle": "Bongisa dosaleli",
+    "createTitle": "Kela dosaleli",
+    "dialog": {
+      "editTitle": "Bongisa dosaleli",
+      "createTitle": "Kela dosaleli"
+    },
+    "messages": {
+      "deleteConfirmation": "Olingi kolongola libela {name} ?",
+      "bulkDeleteConfirmation": "Olingi mpenza kolongola basaleli {count} oyo oponi?",
+      "deleteSuccess": "Dosaleli elongolami",
+      "bulkDeleteSuccess": "Basaleli {count} balongolami.",
+      "operationSuccess": "Esalemi malamu",
+      "validationError": "Bongisa mbeba."
+    },
+    "confirm": {
+      "deleteMessage": "Olingi kolongola libela {name} ?",
+      "bulkDeleteMessage": "Olingi mpenza kolongola basaleli {count} oyo oponi?"
+    },
+    "searchPlaceholder": "Luka eloko, dosaleli...",
+    "placeholders": {
+      "fullName": "Nkombo Mobimba",
+      "workEmail": "Email ya Mosala",
+      "assignmentAndRole": "Esika mpe mokumba",
+      "function": "Mosala",
+      "shoeSize": "Pointure",
+      "clothingSize": "Monene ya elamba",
+      "password": "Liloba ya sekele",
+      "confirmPassword": "Ndimisa liloba ya sekele ya sika",
+      "phone": "Telefone",
+      "region": "Etúká",
+      "selectRole": "Pona mokumba"
+    },
+    "form": {
+      "generalInfo": "Bansango ya mobimba",
+      "assignmentAndRole": "Esika mpe mokumba",
+      "accountSecurity": "Bokengi ya konte",
+      "safetyData": "Bansango ya bokengi"
+    }
+  },
+  "teams": {
+    "title": "Bituluku ya Mosala",
+    "subtitle": "Boyangeli ya basaleli",
+    "actions": {
+      "add": "Etuluku ya sika"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Luka etuluku moko...",
+      "filterByRegion": "Bitúká nyonso",
+      "filterByLeader": "Bakambi nyonso",
+      "resetFilters": "Zongisa bikabolola"
+    },
+    "fields": {
+      "name": "Nkombo ya Etuluku",
+      "leader": "Mokambi",
+      "members": "Basaleli"
+    },
+    "dialog": {
+      "createTitle": "Kela Etuluku ya sika",
+      "editTitle": "Fise ya Etuluku"
+    },
+    "placeholders": {
+      "name": "Ndikisa: EQP-DELTA-01",
+      "leader": "Pona mokambi moko",
+      "members": "Pona basaleli"
+    },
+    "stats": {
+      "total_teams": "Nyonso ya Bituluku",
+      "total_members": "Nyonso ya Basaleli",
+      "avg_members": "Basaleli / Etuluku",
+      "with_leader": "Na Mokambi"
+    },
+    "messages": {
+      "createSuccess": "Etuluku ekelami malamu.",
+      "updateSuccess": "Etuluku ebongisami malamu.",
+      "deleteSuccess": "Etuluku elongolami malamu.",
+      "confirmDelete": "Olingi mpenza kolongola etuluku \"{name}\" ?"
+    }
+  },
+  "dialog": {
+    "createTitle": "Rakor ya sika / Label",
+    "editTitle": "Bongisa Rakor / Label",
+    "createSubtitle": "Kela eloko ya sika na kati ya sistem.",
+    "editSubtitle": "Bongisa bansango oyo ekomami.",
+    "cancel": "Tika",
+    "save": "Ndimisa kokota",
+    "confirmDelete": "Olingi mpenza kolongola eloko oyo?"
+  },
+  "validation": {
+    "required": "Esika ya {field} esengeli kotondisama",
+    "nameRequired": "Kombo esengeli.",
+    "invalid": "Format ya data ezali mabe mpo na {field}"
+  },
+  "connections": {
+    "title": "Boyangeli ya ba Raccordement",
+    "headTitle": "Ba Raccordement",
+    "titleHtml": "Boyangeli ya <span class='text-primary-600'>ba Raccordement</span>",
+    "subtitle": "Ba Client & Bisika ya connexion",
+    "addNew": "Raccordement ya sika",
+    "import": "Kotisa (Import)",
+    "delete": "Longola",
+    "closest": "Oyo ezali pembeni",
+    "status": {
+        "active": "Ezo sala",
+        "inactive": "Ezo sala te",
+        "pending": "Bazo zela",
+        "suspended": "E katisami",
+        "fraud": "Muyibi"
+    },
+    "toast": {
+        "saveSuccess": "Raccordement ebombami malamu."
+    },
+    "exportCSV": "Bimisa na CSV",
+    "selectColumns": "Pona ba colonne",
+    "searchPlaceholder": "Luka...",
+    "actions": "Makambo ya kosala",
+    "importDialog": {
+        "title": "Kotisa wuta Excel/CSV",
+        "chooseFile": "Pona fichier",
+        "startImport": "Banda ko kotisa"
+    },
+    "dialog": {
+        "editTitle": "Bongisa Raccordement",
+        "createTitle": "Raccordement ya sika",
+        "clientInfo": "Sango ya Client",
+        "technicalData": "Ba données ya Technique",
+        "adminInfo": "Administration",
+        "searchClient": "Luka client oyo azalaka",
+        "searchClientPlaceholder": "Komisa kombo to code ya client...",
+        "customerCodePlaceholder": "Ekomama yango moko soki otiki pamba",
+        "customerCode": "Code ya Client",
+        "firstName": "Prénom",
+        "lastName": "Kombo",
+        "phone": "Téléphone",
+        "region": "Etuka (Région)",
+        "zone": "Zone",
+        "status": "Statut",
+        "gpsLatitude": "Latitude GPS",
+        "gpsLongitude": "Longitude GPS",
+        "cancel": "Tika",
+        "save": "Bomba",
+        "selectMeter": "Pona compteur oyo ezali",
+        "selectKeypad": "Pona clavier oyo ezali"
+    },
+    "table": {
+        "customerCode": "Code ya Client",
+        "fullName": "Kombo mobimba",
+        "region": "Etuka",
+        "zone": "Zone",
+        "status": "Statut",
+        "phone": "Téléphone",
+        "latitude": "Lat.",
+        "longitude": "Long.",
+        "verified": "Elandelami",
+        "amountPaid": "Mbongo efutamaki",
+        "connectionDate": "Date ya Raccordement",
+        "meterNumber": "No. Compteur",
+        "keypadNumber": "No. Clavier"
+    },
+    "stats": {
+        "total": "Total ya ba Raccordement",
+        "active": "Oyo ezo sala",
+        "verified": "Oyo elandelami",
+        "pending": "Oyo bazo zela"
+    },
+    "confirm": {
+        "deleteHeader": "Ndimisa bolongoli",
+        "bulkDeleteMessage": "Ozali sure olingi kolongola ba raccordement {count} oyo oponi ?"
+    }
+  },
+  "expenses": {
+    "title": "Boyangeli ya ba Dépense",
+    "headTitle": "Ba Dépense",
+    "subtitle": "Kolandela ba coût na kondimisa",
+    "addNew": "Dépense ya sika",
+    "approveSelected": "Ndimisa oyo oponi",
+    "rejectSelected": "Boya oyo oponi",
+    "export": "Bimisa na CSV",
+    "searchPlaceholder": "Luka...",
+    "selectColumns": "Pona ba colonne",
+    "toolbar": {
+      "advancedFilters": "Filtres ya mozindo",
+      "resetFilters": "Zongisa na zero"
+    },
+    "table": {
+      "description": "Description",
+      "amount": "Montant",
+      "date": "Date",
+      "category": "Catégorie",
+      "status": "Statut",
+      "createdBy": "Ekelami na",
+      "linkedTo": "Ekangami na",
+      "approvedBy": "Endimisami na",
+      "notes": "Ba Note",
+      "selectedTotal": "Total oyo oponi"
+    },
+    "dialog": {
+      "createTitle": "Kela Dépense ya sika",
+      "editTitle": "Bongisa Dépense",
+      "description": "Description",
+      "amount": "Montant",
+      "date": "Date ya dépense",
+      "category": "Catégorie",
+      "linkedToType": "Lolenge ya eloko ekangami",
+      "linkedToItem": "Eloko ekangami",
+      "notes": "Ba Note / Elembeteli"
+    },
+    "confirm": {
+      "header": "Ndimisa {action}",
+      "single": "Ozali sure olingi ko {action} dépense oyo ?",
+      "bulk": "Ozali sure olingi ko {action} ba dépense {count} oyo oponi ?"
+    },
+    "toast": {
+      "success": "Esalemi",
+      "error": "Erreur",
+      "updateSuccess": "Dépense ebongisami malamu.",
+      "createSuccess": "Dépense ekelami malamu.",
+      "deleteSuccess": "Dépense elongolami malamu.",
+      "statusUpdateSuccess": "Dépense {action} malamu.",
+      "statusUpdateError": "Elongi te ko changer statut.",
+      "bulkStatusUpdateSuccess": "Ba dépense {count} {action} malamu.",
+      "bulkStatusUpdateError": "Elongi te ko changer ebele na mbala moko."
+    },
+    "filter": {
+      "status": "Filtre na statut",
+      "category": "Filtre na catégorie",
+      "dateRange": "Filtre na date",
+      "paymentMethod": "Filtre na mode ya payement",
+      "project": "Filtre na projet",
+      "vehicle": "Filtre na véhicule",
+      "provider": "Filtre na fournisseur",
+      "apply": "Salela ba filtre"
+    },
+    "stats": {
+      "totalAmount": "Montant Nyonso",
+      "pending": "Dépenses bazo zela",
+      "average": "Moyenne ya ba coût"
+    }
+  },
+  "labels": {
+    "title": "Boyangeli ya ba Label",
+    "fields": {
+      "name": "Kombo",
+      "description": "Description",
+      "color": "Couleur",
+      "style": "Style / Couleur",
+      "characteristics": "Bizaleli ya Technique",
+      "charName": "Kombo ya caractéristique",
+      "charType": "Type",
+      "isRequiredShort": "Esengeli"
+    },
+    "actions": {
+      "add": "Bakisa label",
+      "addChar": "Bakisa caractéristique"
+    },
+    "toolbar": {
+      "resetFilters": "Zongisa na zero"
+    },
+    "types": {
+      "text": "Texte",
+      "number": "Nombre",
+      "date": "Date",
+      "file": "Fichier",
+      "boolean": "Boolean",
+      "select": "Liste ya kopona"
+    },
+    "messages": {
+      "createSuccess": "Label ekelami malamu",
+      "updateSuccess": "Label ebongisami malamu",
+      "deleteSuccess": "Label elongolami malamu",
+      "confirmDelete": "Ozali sure olingi kolongola label \"{name}\" ?",
+      "confirmChange": "Obongisi ba caractéristiques. Ekoki ko toucher ba données oyo ezali déjà. Kobanda ?",
+      "confirmCharDelete": "Kolongola caractéristique \"{name}\" ? Okokoka ko zongisa yango te.",
+      "charRemovedInfo": "Caractéristique oyo ekolongwa tango oko sauvergarder.",
+      "deleteError": "Erreur tango ya kolongola."
+    }
+  },"unities": {
+    "title": "Boyangeli ya ba Unité",
+    "subtitle": "Bongisa ba unité ya komeka (kg, m, pcs, na bisi)",
+    "fields": {
+      "name": "Kombo",
+      "symbol": "Elembo / Dimbola"
+    },
+    "actions": {
+      "add": "Bakisa unité"
+    },
+    "dialog": {
+      "createTitle": "Kela unité",
+      "editTitle": "Bongisa unité",
+      "createSubtitle": "Bakisa unité ya komeka ya sika na système.",
+      "editSubtitle": "Bongisa sango ya unité oyo oponi."
+    },
+    "validation": {
+      "nameRequired": "Kombo ya unité esengeli."
+    },
+    "messages": {
+      "createSuccess": "Unité ekelami malamu.",
+      "updateSuccess": "Unité ebongisami malamu.",
+      "deleteSuccess": "Unité elongolami malamu.",
+      "confirmDelete": "Ozali sure olingi kolongola unité \"{name}\" ?"
+    }
+  },
+  "employees": {
+    "title": "Boyangeli ya Basali",
+    "count_label": "Basali baye bakomami",
+    "actions": {
+      "add": "Bakisa mosali"
+    },
+    "fields": {
+      "first_name": "Prénom",
+      "last_name": "Kombo",
+      "email": "Email",
+      "phone": "Téléphone",
+      "status": "Statut ya mosala",
+      "salary": "Lifuta / Salaire",
+      "hire_date": "Date azwaki mosala",
+      "job_title": "Poste / Mosala",
+      "notes": "Bakamata (Observations)"
+    },
+    "status": {
+      "active": "Azali kosala",
+      "on_leave": "Azali na congé",
+      "terminated": "Contrat esili"
+    },
+    "dialog": {
+      "new": "Mosali ya sika",
+      "edit": "Bongisa Mosali"
+    },
+    "messages": {
+      "saved": "Mosali akomami malamu.",
+      "confirmDelete": "Ozali sure olingi kolongola {name} ?",
+      "deleteSuccess": "Mosali alongolami."
+    }
+  },
+  "interventions": {
+    "title": "Boyangeli ya ba Intervention",
+    "headTitle": "Ba Intervention <span class='text-primary-600'>Field Service</span>",
+    "subtitle": "Misala & Kobongisa Réseau",
+    "addNew": "Intervention ya sika",
+    "searchPlaceholder": "Luka référence...",
+    "filters": "Ba Filtre",
+    "deleteSelected": "Longola",
+    "selectColumns": "Ba colonne oyo ezo monana",
+    "notAssigned": "Epesami na moto te",
+    "notApplicable": "Eza te (N/A)",
+    "dialog": {
+      "editTitle": "Détails ya Intervention",
+      "createTitle": "Kela Ticket",
+      "gmaoConsole": "Console d'administration GMAO v2025",
+      "origin": "Esika demande ewuti",
+      "externalClient": "Client ya libanda",
+      "internalAgent": "Agent ya kati",
+      "searchPlaceholder": "Luka...",
+      "subjectDescription": "Sujet / Ndimbola",
+      "autoReference": "Référence automatique",
+      "problemPlaceholder": "Limbola mbeba ya technique awa...",
+      "assignmentDeadline": "Kopesa mosala & Délai",
+      "priority": "Priorité",
+      "assignedTo": "Epesami na",
+      "deadline": "Suka ya tango (Échéance)",
+      "region": "Etuka (Région)",
+      "zone": "Zone",
+      "notApplicable": "Eza te (N/A)",
+      "cancel": "Tika",
+      "save": "Bomba Intervention",
+      "classification": "Classification",
+      "interventionReason": "Ntina ya intervention",
+      "selectReason": "Pona ntina",
+      "category": "Catégorie",
+      "technicalComplexity": "Bokasi ya Technique",
+      "planningTracking": "Planification & Kolandela",
+      "minTime": "Tango ya muke (h)",
+      "maxTime": "Tango ya mingi (h)",
+      "autoConfig": "Configuration automatique",
+      "settingsApplied": "Ba paramètres ematisi mpo na : {reason}",
+      "validateIntervention": "Ndimisa Intervention"
+    },
+    "filtersPanel": {
+      "title": "Filtres ya mozindo",
+      "status": "Statut",
+      "statusPlaceholder": "Nyonso",
+      "region": "Etuka (Région)",
+      "regionPlaceholder": "Nyonso",
+      "priority": "Priorité",
+      "priorityPlaceholder": "Nyonso",
+      "reset": "Zongisa na zero",
+      "apply": "Salela"
+    },
+    "tooltips": {
+      "manage": "Yangela"
+    },
+    "assignableTypes": {
+      "technician": "Technicien",
+      "team": "Équipe"
+    },
+    "table": {
+      "reference": "Référence",
+      "reason": "Ntina",
+      "complexity": "Bokasi",
+      "completedAt": "Esilaki le",
+      "category": "Catégorie",
+      "description": "Description",
+      "status": "Statut",
+      "customerCode": "Code Client",
+      "clientName": "Kombo ya Client",
+      "region": "Région",
+      "priority": "Priorité",
+      "deadline": "Échéance",
+      "assignedTo": "Epesami na",
+      "actions": "Makambo ya kosala",
+      "report": "Ezo lakisa {first} ti {last} kati na {totalRecords} interventions"
+    },
+    "stats": {
+      "total": "Total ya ba Intervention",
+      "pending": "Bazo zela",
+      "in_progress": "Ezo salema",
+      "completed": "Esili",
+      "notValidated": "Endimisami te",
+      "reason": "Ntina",
+      "complexity": "Bokasi",
+      "completedAt": "Esilaki le",
+      "category": "Catégorie"
+    },
+    "status": {
+      "notValidated": "Endimisami te"
+    }
+  },"regions": {
+    "title": "Boyangeli ya Bisika ya Nguya (Energie)",
+    "headTitle": "Boyangeli ya ",
+    "headTitle2": "Parc",
+    "subtitle": "Kotala ndenge ba région ya energie ezo sala",
+    "actions": {
+      "add": "Région ya sika",
+      "resetFilters": "Zongisa ba filtre na zero"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Luka na bisika nyonso...",
+      "searchByName": "Luka na kombo",
+      "allTypes": "Ba lolenge nyonso"
+    },
+    "stats": {
+      "total": "Total ya ba Région",
+      "totalMW": "Nguya mobimba (Total MW)",
+      "avgPower": "Nguya na katikati (Moyenne)",
+      "highPerf": "Misala ya makasi (Haute Perf.)"
+    },
+    "types": {
+      "thermique": "Thermique",
+      "solaire": "Solaire (Moyi)",
+      "hydraulique": "Hydraulique (Mayi)",
+      "eolienne": "Éolienne (Mupepe)",
+      "reseauElectrique": "Réseau ya Courant",
+      "autreSource": "Lolenge mosusu"
+    },
+    "fields": {
+      "designation": "Ndimbola (Désignation)",
+      "type": "Ewutelo (Source)",
+      "power": "Nguya / Capacité (MW)",
+      "notes": "Ba note ya Technique",
+      "status": "Statut",
+      "code": "Code"
+    },
+    "dialog": {
+      "createTitle": "Configuration ya Région ya sika",
+      "editTitle": "Kobongisa Technique ya Région",
+      "regionSettings": "Ba paramètres ya région",
+      "productionInfo": "Tondisa sango ya production"
+    },
+    "placeholders": {
+      "designation": "Ndenge: Centrale ya Nord-Est",
+      "notes": "Sango mosusu, malako ya sécurité...",
+      "code": "Code"
+    },
+    "status": {
+      "active": "Ezo sala",
+      "inactive": "Ezo sala te"
+    }
+  },
+  "maintenances": {
+    "title": "Boyangeli ya ba Maintenance",
+    "headTitle": "Ba Maintenance",
+    "subtitle": "Misala ya kobongisa mbeba",
+    "exportExcel": "Bimisa na Excel",
+    "new": "Maintenance ya sika",
+    "searchPlaceholder": "Luka maintenance...",
+    "resetTooltip": "Zongisa na zero",
+    "columnsTooltip": "Pona ba colonne",
+    "deleteSelected": "Longola oyo oponi",
+    "columns": {
+      "title": "Titre ya maintenance",
+      "equipments": "Ba appareil",
+      "assignable": "Epesami na",
+      "status": "Statut",
+      "priority": "Priorité",
+      "scheduled_start_date": "Ebandeli ebongisami",
+      "description": "Ndimbola",
+      "estimated_duration": "Tango ekoumela",
+      "cost": "Montant / Coût",
+      "region": "Région",
+      "recurrence_type": "Lolenge ya kozongela",
+      "recurrence_interval": "Intervalle ya kozongela",
+      "recurrence_month_interval": "Intervalle ya ba sanza",
+      "recurrence_days": "Mikolo ya kozongela",
+      "recurrence_day_of_month": "Mokolo ya sanza",
+      "recurrence_month": "Sanza ya kozongela",
+      "actions": "Makambo ya kosala"
+    },
+    "columnSelector": {
+      "title": "Pona ba colonne :",
+      "placeholder": "Pona ba colonne"
+    },
+    "activityDialog": {
+      "title": "Système ya Planification ya Misala",
+      "batchManagerTitle": "Batch Activity Manager",
+      "batchManagerSubtitle": "Version 12.0 • Enterprise Asset Management",
+      "parentMaintenance": "Maintenance ya Mobu",
+      "activityVolume": "Ebele ya misala",
+      "newActivity": "Mosala ya sika",
+      "activityNamePlaceholder": "Pesa mosala kombo...",
+      "statusLabel": "Statut:",
+      "duplicateTooltip": "Mema mibale (Dupliquer)",
+      "attribution": "Kopesa mosala",
+      "entityTypePlaceholder": "Type ya entité",
+      "responsiblePlaceholder": "Pona responsable",
+      "concernedAssets": "Ba Asset oyo etali",
+      "searchEquipmentsPlaceholder": "Luka ba appareil...",
+      "estimatedCost": "Coût oyo ekanisami",
+      "planning": "Planification",
+      "priority": "Priorité",
+      "durationInMinutes": "Tango (min)",
+      "executionPeriod": "Tango ya kosala yango",
+      "start": "Ebandeli",
+      "end": "Suka",
+      "checklist": "Checklist",
+      "addInstruction": "Bakisa malako (instruction)",
+      "instructionPlaceholder": "Malako...",
+      "selectType": "Pona lolenge (type)",
+      "zeroInstructions": "Malako moko te.",
+      "spareParts": "Ba Pièces Détachées",
+      "resetForm": "Zongisa formulaire na zero",
+      "cancel": "Tika",
+      "validateAndDeploy": "Ndimisa mpe Banda mosala"
+    }
+  },
+  "formDialog": {
+    "editTitle": "Bongisa Maintenance",
+    "createTitle": "Kela Maintenance ya sika",
+    "technicalReportTitle": "Rapport ya Technique ya Intervention",
+    "gmaoConsole": "Console d'administration GMAO v2025 • High-Performance System",
+    "missionId": "Identification ya mission",
+    "interventionTitle": "Titre ya intervention",
+    "interventionTitlePlaceholder": "Ndenge: Maintenance préventive ya Sanza 3 ya yambo",
+    "concernedEquipments": "Ba appareil oyo etali",
+    "selectAssets": "Pona ba appareil (actifs)...",
+    "detailedDescription": "Ndimbola mobimba",
+    "generalInstructions": "Malako mpo na équipe nyonso...",
+    "configPerEquipment": "Configuration na ndenge ya appareil",
+    "showControlPoints": "Bongisa ba point ya contrôle",
+    "hideControlPoints": "Bombisa",
+    "noEquipmentSelected": "Appareil moko te oponami",
+    "parentGroupLabel": "Ba appareil ya nivo ya yambo",
+    "clone": "Cloner (Mema mibale)",
+    "addInstruction": "Bakisa malako",
+    "instructionLabelPlaceholder": "Kombo (ndenge: Totala mafuta)",
+    "required": "Esengeli",
+    "noSpecificInstruction": "Malako moko te ebongisami",
+    "logisticsAndTiming": "Logistique & Tango",
+    "plannedStart": "Ebandeli ebongisami",
+    "actualStart": "Date ya ebandeli",
+    "plannedEnd": "Suka ebongisami",
+    "actualEnd": "Date ya suka",
+    "interventionResponsible": "Responsable ya intervention",
+    "assignableTypePlaceholder": "Type",
+    "assignableSelectPlaceholder": "Pona...",
+    "maintenanceType": "Lolenge ya maintenance",
+    "currentStatus": "Statut ya sikoyo",
+    "priorityLevel": "Nivo ya Priorité",
+    "interventionRegion": "Région ya intervention",
+    "recurrenceCycle": "Cycle ya kozongela",
+    "frequency": "Fréquence",
+    "dailyInterval": "Intervalle ya mikolo",
+    "daysSelection": "Pona mikolo",
+    "dayOfMonth": "Le (Mokolo)",
+    "everyNMonths": "Sanza nyonso (Mois)",
+    "startMonth": "Sanza ya ebandeli",
+    "earlyReminder": "Rappel ya liboso (Push/Email)",
+    "customRule": "Mibeko ya yo moko (Cron/Text)",
+    "customRulePlaceholder": "Ndenge: Mokolo ya mibale ya mibale na sanza",
+    "estimatedDuration": "Tango ekoumela",
+    "estimatedBudget": "Budget oyo ekanisami",
+    "cancelChanges": "Tika mbongwana",
+    "savePlan": "Bomba Plan ya Maintenance"
+  },
+  "copyDialog": {
+    "title": "Mema ba Instruction",
+    "subtitle": "Pona ba appareil oyo okozwa",
+    "apply": "Salela copie",
+    "cancel": "Tika"
+  },
+  "status": {
+    "scheduled": "Ebongisami",
+    "in_progress": "Ezo salema",
+    "completed": "Esili",
+    "completed_with_issues": "Esili kasi na mikakatano",
+    "suspended": "Ekatama",
+    "canceled": "Elongolami",
+    "awaiting_resources": "Bazo zela ba mposa",
+    "to_be_reviewed_later": "Ekotalama nsima"
+  },
+  "priority": {
+    "low": "Eza moke",
+    "medium": "Katikati",
+    "high": "Eza makasi",
+    "urgent": "Lombango"
+  },
+  "assignableTypes": {
+    "none": "Moko te",
+    "user": "Technicien",
+    "team": "Équipe"
+  },
+  "recurrence": {
+    "none": "Eza te",
+    "daily": "Mikolo nyonso",
+    "weekly": "Poso na poso",
+    "monthly": "Sanza na sanza",
+    "quarterly": "Sanza misato nyonso",
+    "biannual": "Sanza motoba nyonso",
+    "annual": "Mbula na mbula",
+    "custom": "Ndenge oponi"
+  },
+  "myActivities": {
+    "title": "Misala na ngai",
+    "subtitle": "Yangela mpe landela misala mpe ba intervention na yo.",
+    "timelineTitle": "Tango ya misala na ngai",
+    "timelineSubtitle": "Landela ndenge misala mpe ba tâche na yo ezo kende liboso.",
+    "columnsPlaceholder": "Pona ba colonne oko lakisa",
+    "noActivitiesTitle": "Mosala moko te emonani",
+    "noActivitiesSubtitle": "Emonani ete ozali na tâche moko te sikoyo.",
+    "addNew": "Mosala ya sika",
+    "subActivityFor": "Sous-activité mpo na : {title}",
+    "unknownReference": "Référence eyebani te",
+    "stats": {
+      "total": "Total ya misala",
+      "in_progress": "Ezo salema",
+      "completed": "Esili",
+      "scheduled": "Ebongisami"
+    },
+    "instructionTypes": {
+      "text": "Texte",
+      "number": "Nombre",
+      "boolean": "Iyo/Te",
+      "date": "Date",
+      "textarea": "Esika ya kokoma",
+      "image": "Fichier",
+      "signature": "Sinatire"
+    },
+    "displayOptions": {
+      "actual_end_time": "Date ya suka ya solo",
+      "proposals": "Makanisi (Propositions)",
+      "jobber": "Technicien",
+      "additional_information": "Sango mosusu",
+      "spare_parts_used": "Pièces esalelami",
+      "spare_parts_returned": "Pièces ezongisami"
+    },
+    "boolean": {
+      "yes": "Iyo",
+      "no": "Te"
+    },
+    "defaults": {
+      "sparePartPayment": "Lifuta ya ba pièces ya rechange"
+    },
+    "toast": {
+      "jsonParseError": "Erreur na boyekoli ya ba data JSON.",
+      "subActivityCreated": "Sous-activité ekelami malamu.",
+      "activityUpdated": "Mosala ebongisami malamu.",
+      "success": "Elongi",
+      "error": "Mbeba",
+      "saveError": "Mbeba ekoti tango ya kobomba.",
+      "warning": "Keba",
+      "instructionLabelRequired": "Kombo ya malako esengeli.",
+      "added": "Ebakisami",
+      "instructionAdded": "Malako ebakisami na formulaire.",
+      "instructionRemoved": "Malako elongolami",
+      "listUpdated": "Liste ebongisami malamu."
+    },
+    "common": {
+      "instructionNotFound": "Malako emonani te (ID: {id})",
+      "invalidDate": "Date eza mabe",
+      "notSet": "Ebongisami te",
+      "unspecifiedDate": "Date eyebani te",
+      "unnamedActivity": "Mosala eza na kombo te",
+      "workOrderId": "OT #{id}",
+      "problemResolution": "Ndenge nini mbeba esili :",
+      "proposals": "Makanisi / Ba recommandations :",
+      "additionalInfo": "Sango ebakisami :",
+      "technician": "Technicien / Moto asali :",
+      "instructionAnswers": "Biyano na malako",
+      "usedParts": "Ba pièces de rechange esalelami",
+      "returnedParts": "Ba pièces de rechange ezongisami",
+      "actualEndTime": "Esili le :",
+      "associatedTaskDetails": "Sango ya tâche oyo ekangami",
+      "priority": "Priorité :",
+      "description": "Ndimbola :",
+      "createSubActivity": "Kela sous-activité",
+      "complete": "Tondisa / Bongisa",
+      "taskTitle": "Tâche",
+      "status": "Statut",
+      "actualStart": "Ebandeli ya solo",
+      "notApplicable": "Eza te",
+      "usedPartsCount": "{count} pièce(s) esalelami",
+      "returnedPartsCount": "{count} pièce(s) ezongisami",
+      "instructionsAndActions": "Malako & Misala",
+      "answersCount": "{count} biyano",
+      "completeActivityTooltip": "Tondisa / Tala mosala",
+      "associatedSubActivities": "Ba sous-activité oyo ekangami",
+      "noSubActivities": "Sous-activité moko te ekangami na mosala oyo"
+    },
+    "table": {
+      "task": "Tâche",
+      "status": "Statut",
+      "start_time": "Tango ya ebandeli",
+      "end_time": "Tango ya suka",
+      "technician": "Technicien",
+      "report": "Ezo lakisa {first} ti {last} kati na {totalRecords} misala",
+      "searchPlaceholder": "Luka mosala...",
+      "filterByTeam": "Filtre na équipe",
+      "filterByRegion": "Filtre na région",
+      "filterByDate": "Filtre na date",
+      "region": "Région",
+      "zone": "Zone",
+      "filterByStatus": "Filtre na statut",
+      "filterByTask": "Filtre na tâche"
+    },
+    "dialog": {
+      "subActivityInitialization": "Kobanda sous-activité",
+      "technicalInterventionReport": "Rapport ya intervention technique",
+      "missionSettings": "Ba paramètres ya mission",
+      "assignationType": "Lolenge ya kopesa",
+      "assignationTypes": {
+        "user": "Moto moko",
+        "team": "Équipe"
+      },
+      "responsibleTechnician": "Technicien responsable",
+      "responsibleTeam": "Équipe responsable",
+      "currentStatus": "Statut ya sikoyo",
+      "region": "Région",
+      "zone": "Zone",
+      "timestamps": "Tango ya misala",
+      "start": "Ebandeli",
+      "end": "Suka",
+      "activityTitle": "Titre ya mosala",
+      "gmaoAdminConsole": "Console d'administration GMAO",
+      "resolutionTitle": "Ndenge nini intervention esalemaki",
+      "resolutionPlaceholder": "Limbola mbeba emonanaki, ndenge nini diagnosed mpe solution opesi...",
+      "recommendationsLabel": "Ba Recommandations / Makanisi",
+      "clientRecommendationsPlaceholder": "Makanisi mpo na client...",
+      "internalNotes": "Ba Notes ya kati",
+      "adminOnly": "ADMIN KAKA",
+      "internalNotesPlaceholder": "Sango oyo client akomona te...",
+      "addInstructionPlaceholder": "Kombo ya malako ya sika...",
+      "selectTypePlaceholder": "Pona lolenge ya valeur",
+      "checklistTitle": "Check-list ya intervention",
+      "checklistPoints": "{count} ba point ya contrôle",
+      "removeInstructionTitle": "Longola malako oyo",
+      "missionConfigTitle": "Configuration ya mission",
+      "usedStock": "Stock esalelami",
+      "returnedStock": "Stock ezongisami",
+      "htValuation": "Valeur HT",
+      "billingNotesPlaceholder": "Ba notes ya facturation...",
+      "financialImpactLabel": "Impact na mbongo",
+      "billingLabelPlaceholder": "Kombo mpo na facture...",
+      "cancelButton": "Tika",
+      "createSubActivityButton": "Kela sous-activité",
+      "publishReportButton": "Bimisa rapport",
+      "sparePartModalUsedTitle": "Bakisa pièces esalelami",
+      "sparePartModalReturnedTitle": "Bakisa pièces ezongisami",
+      "associatedEquipments": "Ba appareil oyo ekangami",
+      "selectEquipmentsPlaceholder": "Pona ba appareil...",
+      "referencesLabel": "Ba référence ya ba pièces",
+      "searchPartPlaceholder": "Luka pièce...",
+      "unitQuantityLabel": "Quantité (na unité)",
+      "closeButton": "Kanga",
+      "validateButton": "Ndimisa",
+      "transferSuccess": "{count} compteur(s) memami malamu.",
+      "transferError": "Mbeba ekoti tango ya komema.",
+      "fileInvalid": "Fichier ya importation eza mabe."
+    }
+  },
+  "date_filters": {
+    "this_month": "Sanza oyo",
+    "last_month": "Sanza eleki",
+    "last_week": "Poso eleki",
+    "custom": "Ndenge oponi"
+  },
+  "leaves": {
+    "title": "Boyangeli ya ba Congé",
+    "subtitle": "{count} Demande emonani",
+    "newRequest": "Demande ya sika",
+    "stats": {
+      "total": "Total ya ba Demande",
+      "pending": "Bazo zela",
+      "approved": "Endimisami",
+      "rejected": "Eboyami"
+    },
+    "table": {
+      "applicant": "Moto asengi",
+      "type": "Lolenge",
+      "period": "Tango",
+      "status": "État",
+      "actions": "Makambo ya kosala",
+      "approvalDate": "Date ya ndimisa",
+      "approvedBy": "Endimisami na",
+      "rejectedBy": "Eboyami na",
+      "report": "Ezo lakisa {first} ti {last} kati na {totalRecords} demande"
+    },
+    "dialog": {
+      "editTitle": "Bongisa Congé",
+      "createTitle": "Demande ya Congé ya sika",
+      "headerTitle": "Planification ya kozongisa nzoto",
+      "headerSubtitle": "Tondisa sango ya demande na yo",
+      "applicant": "Mosali",
+      "applicantPlaceholder": "Pona moto asengi",
+      "startDate": "Date ya ebandeli",
+      "endDate": "Date ya suka",
+      "leaveType": "Lolenge ya congé",
+      "reason": "Ntina ya demande",
+      "reasonPlaceholder": "Limbola mwa moke ntina ya demande...",
+      "attachment": "Elembeteli (PDF, Image)",
+      "attachmentChoose": "Pona fichier",
+      "sendRequest": "Tinda demande"
+    },
+    "toast": {
+      "success": "Esalemi malamu"
+    },
+    "types": {
+      "annual": "Mbula na mbula",
+      "sick": "Maladi",
+      "rtt": "RTT",
+      "exceptional": "Lolenge mosusu"
+    },
+    "status": {
+      "pending": "Bazo zela",
+      "approved": "Endimisami",
+      "rejected": "Eboyami"
+    },
+    "confirm": {
+      "statusChange": "Changer statut"
+    }
+  },
+  "networks": {
+    "title": "Superviseur Réseau",
+    "newProject": "PROJET_YA_SIKA",
+    "newEmptyProject": "PROJET_YA_SIKA_PAMBA",
+    "defaultEquipment": "Appareil Standard",
+    "defaultComponent": "Composant",
+    "monitoringLive": "Monitoring ya mbala moko (Live)",
+    "systemUpdated": "Système ebongisami",
+    "defaultRegion": "Région eyebani te",
+    "networkLoaded": "Réseau {name} efungwami",
+    "deleteConfirmMessage": "Kolongola réseau oyo mpo na libela? Data eko zongisama te.",
+    "deleteConfirmHeader": "Ndimisa bolongoli",
+    "deletedSuccess": "Réseau elongolami malamu",
+    "deletedSummary": "Elongolami",
+    "infrastructureDirectory": "Répertoire ya ba infrastructure",
+    "newNetwork": "Réseau ya sika",
+    "elements": "Ba Éléments",
+    "liveFlux": "Flux ya mbala moko",
+    "save": "Bomba",
+    "stats": {
+      "title": "Live Stats",
+      "equipments": "Ba appareil",
+      "activeFlux": "Flux oyo ezo sala",
+      "sources": "Ba Source",
+      "status": {
+        "optimal": "Eza malamu mingi",
+        "unstable": "Eza malamu te",
+        "critical": "Eza mabe mingi"
+      }
+    },
+    "status": {
+      "optimal": "Eza malamu mingi",
+      "unstable": "Eza malamu te",
+      "critical": "Eza mabe mingi"
+    },
+    "dialog": {
+      "editTitle": "Bongisa Composant",
+      "tag": "Tag / Identifiant",
+      "designation": "Désignation ya Technique",
+      "injectionPoint": "Point d'injection",
+      "injectionPointSubtitle": "Esika nguya ewutaka",
+      "location": "Esika ezali",
+      "region": "Région",
+      "meter": "Compteur",
+      "meter_placeholder": "Pona compteur",
+      "manufacturer": "Moto asali yango",
+      "model": "Modèle",
+      "zone": "Zone",
+      "selectRegion": "Pona région",
+      "selectZone": "Pona zone",
+      "insertButton": "Bakisa na schéma"
+    }
+  },
+  "profile": {
+    "title": "Profil na ngai",
+    "headTitle": "Profil ya Mosali",
+    "sections": {
+      "about": "Sango na ngai",
+      "security": "Bokebisi ya compte",
+      "securitySubtitle": "Bongisa mot de passe mpo compte na yo ezala na sécurité.",
+      "preferences": "Ba Préférences & Biyebisi",
+      "preferencesSubtitle": "Yangela ndenge nini olingi kozwa ba sango."
+    },
+    "fields": {
+      "fullName": "Kombo mobimba",
+      "email": "Adresse e-mail",
+      "memberSince": "Mosali wuta mokolo ya",
+      "roles": "Ba Rôles & Permissions",
+      "currentPassword": "Mot de passe ya sikoyo",
+      "newPassword": "Mot de passe ya sika",
+      "confirmPassword": "Ndimisa mot de passe ya sika"
+    },
+    "actions": {
+      "updatePassword": "Bongisa mot de passe",
+      "savePreferences": "Bomba ba préférences"
+    },
+    "preferences": {
+      "emailNotifications": "Biyebisi na e-mail",
+      "emailNotificationsDesc": "Zwa ba alertes na e-mail.",
+      "smsNotifications": "Biyebisi na SMS",
+      "smsNotificationsDesc": "Zwa ba alertes na SMS.",
+      "darkMode": "Mode Sombre",
+      "darkModeDesc": "Lakisaka interface na moindo."
+    },
+    "messages": {
+      "noRoles": "Rôle moko te epesami."
+    },
+    "toast": {
+      "passwordUpdated": "Mot de passe ebongisami malamu."
+    }
+  },
+  "spareParts": {
+    "title": "Boyangeli ya ba Pièce Détachée",
+    "headTitle": "Boyangeli ya ba Pièce ya Rechange",
+    "toolbar": {
+      "searchPlaceholder": "Luka référence to composant...",
+      "add": "Eloko ya sika (Actif)",
+      "export": "Bimisa base mobimba",
+      "filterByRegion": "Filtre na région"
+    },
+    "table": {
+      "report": "Ezo lakisa {first} ti {last} kati na {totalRecords} pièces",
+      "ref": "REF",
+      "name": "Kombo",
+      "component": "Composant",
+      "reference": "Référence",
+      "equipment": "Appareil",
+      "location": "Esika ezali",
+      "quantity": "Quantité",
+      "stockAlerte": "Stock / Alerte",
+      "min_quantity": "Nivo ya kakebisa",
+      "price": "Prix HT",
+      "partType": "Lolenge ya pièce",
+      "responsible": "Responsable",
+      "characteristics": "Bizaleli",
+      "actions": "Makambo ya kosala"
+    },
+    "form": {
+      "partType": "Lolenge ya Composant",
+      "partTypePlaceholder": "Pona catégorie",
+      "reference": "Référence ya Moto asali",
+      "quantity": "Quantité na Stock",
+      "min_quantity": "Nivo ya kakebisa",
+      "price": "Prix Unitaire HT",
+      "location": "Esika ezali solo",
+      "region": "Entité / Région",
+      "regionPlaceholder": "Pesa zone",
+      "responsible": "Superviseur Responsable",
+      "responsiblePlaceholder": "Pona moto akoyangela",
+      "characteristicValues": "Spécifications ya Technique",
+      "description": "Ndimbola",
+      "equipment": "Appareil (mpo na pièce oyo)",
+      "equipmentPlaceholder": "Soki olingi: Pona appareil",
+      "supplier": "Fournisseur",
+      "supplierPlaceholder": "Pona fournisseur",
+      "purchaseDate": "Date ya somba",
+      "warrantyEnd": "Suka ya garantie"
+    },
+    "dialog": {
+      "createTitle": "Kotisa na Stock ya sika",
+      "editTitle": "Configuration ya Technique",
+      "createSubtitle": "Koyebisa actif ya sika na inventaire",
+      "editSubtitle": "Kobongisa ba paramètres mpe ba nivo ya logistique",
+      "partType": "Lolenge ya pièce",
+      "partTypePlaceholder": "Pona lolenge",
+      "addCharacteristic": "Bakisa caractéristique",
+      "characteristicNamePlaceholder": "Kombo ya caractéristique",
+      "characteristicTypePlaceholder": "Type",
+      "characteristicValue": "Valeur",
+      "existingFile": "Fichier ezali deja",
+      "cancel": "Tika",
+      "save": "Bomba"
+    },
+    "toast": {
+      "success": "Elongi",
+      "updateSuccess": "Pièce détachée ebongisami malamu.",
+      "createSuccess": "Pièce détachée ekelami malamu.",
+      "deleteSuccess": "Pièce détachée elongolami malamu.",
+      "bulkDeleteSuccess": "Ba pièces détachées elongolami malamu.",
+      "saveError": "Erreur ya kobomba",
+      "error": "Mbeba",
+      "deleteError": "Mbeba ekoti tango ya kolongola.",
+      "bulkDeleteError": "Mbeba ekoti tango ya kolongola ebele."
+    },
+    "validation": {
+      "characteristicRequired": "Caractéristique \"{characteristic}\" esengeli kaka."
+    },
+    "confirm": {
+      "deleteHeader": "Ndimisa bolongoli",
+      "deleteMessage": "Ozali sure olingi kolongola pièce \"{name}\" ?",
+      "bulkDeleteMessage": "Ozali sure olingi kolongola ba pièces oyo oponi ?",
+      "cancel": "Tika",
+      "delete": "Longola"
+    }
+  }
+}

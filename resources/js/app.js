@@ -20,7 +20,7 @@ import { definePreset } from '@primevue/themes';
 import fr from './locales/fr.json';
 import en from './locales/en.json';
 import sw from './locales/sw.json';
-import de from './locales/de.json';
+import ln from './locales/ln.json';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Sakai';
 const MyCustomPreset = definePreset (Aura, {
@@ -49,7 +49,7 @@ const i18n = createI18n({
         fr, // Raccourci pour fr: fr
         en, // Raccourci pour en: en
         sw,
-        de,
+        ln,
     },
 });
 

@@ -12,13 +12,13 @@ class DatabaseSeeder extends Seeder
                 // 2. Ensuite les types d'équipements (Nécessaire pour le catalogue)
             RegionSeeder::class,
             ZoneSeeder::class,
-            EquipmentTypeSeeder::class,
+            // EquipmentTypeSeeder::class,
             // 1. D'abord les dépendances (Permission, Role, User, Region)
             PermissionSeeder::class,
             RoleSeeder::class,
             UserSeeder::class,
             // 3. Enfin les équipements (qui utilisent tout ce qui est au-dessus)
-            EquipmentSeed::class,
+            // EquipmentSeed::class,
         ]);
     }
 }
