@@ -277,12 +277,15 @@ const editTask = (maintenance) => { // Changed from maintenance to task
     // Transformer les instructions plates en objet groupé par equipment_id
     const groupedInstructions = {};
     if (maintenance.instructions && Array.isArray(maintenance.instructions)) {
-        maintenance.instructions.forEach(inst => {
-            const key = String(inst.equipment_id);
-            if (!groupedInstructions[key]) groupedInstructions[key] = [];
-            groupedInstructions[key].push({ ...inst });
-        });
+        if (maintenance.instructions.length > 0) {
+            maintenance.instructions.forEach(inst => {
+                const key = String(inst.equipment_id);
+                if (!groupedInstructions[key]) groupedInstructions[key] = [];
+                groupedInstructions[key].push({ ...inst });
+            });
+        }
     }
+    // S'assurer que form.instructions est toujours un objet
     form.instructions = groupedInstructions;
     form.images = maintenance.images || [];
     // Transformer les équipements pour le TreeSelect
@@ -319,14 +322,11 @@ const saveMaintenance = () => { // Changed from maintenance to task
     }
 
     // Préparer les données pour la soumission
-   // const equipmentIds = form.related_equipments ? Object.keys(form.related_equipments).filter(key => form.related_equipments[key].checked) : [];
-// Corrigé (pour garantir des nombres si les clés sont des chaînes) :
-const equipmentIds = form.related_equipments
-
-    ? Object.keys(form.related_equipments)
-        .filter(key => form.related_equipments[key].checked)
-        .map(key => parseInt(key, 10)) // Convertir les clés en entiers
-    : [];
+    // La clé 'related_equipments' contient déjà les IDs cochés, pas besoin de re-calculer.
+    // Le backend s'attend à un objet { '123': { checked: true }, ... }
+    // et non à un tableau [123, ...].
+    // Nous allons donc envoyer `form.related_equipments` directement.
+    const equipmentIds = form.related_equipments;
 
     // Convertir instructions en un tableau d'objets pour la soumission
     const instructionsData = Object.keys(form.instructions).flatMap(nodeKey =>
@@ -341,7 +341,7 @@ const data = {
         id: sp.id,
         quantity_used: sp.quantity_used
     })),
-    equipment_ids: equipmentIds,
+    related_equipments: equipmentIds, // Envoyer l'objet tel quel
     instructions: instructionsData,
     planned_start_date: form.planned_start_date ? new Date(form.planned_start_date).toISOString().slice(0, 19).replace('T', ' ') : null,
     planned_end_date: form.planned_end_date ? new Date(form.planned_end_date).toISOString().slice(0, 19).replace('T', ' ') : null, // Utiliser le nouveau tableau d'instructions
