@@ -16,6 +16,7 @@ use App\Models\ServiceOrder;
 use App\Models\SparePartActivity;
 use App\Models\Maintenance;
 use App\Models\Expenses;
+use App\Models\StockMovement;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -703,6 +704,7 @@ public function bulkStore(Request $request)
                 $partInRegion->increment('quantity', $spa->quantity_used);
             } elseif ($spa->type === 'returned') {
                 // Reprendre la pièce du stock
+                $this->createStockMovement($activity, $spa->sparePart, 'exit', $spa->quantity_used, $regionId, $regionId);
                 $partInRegion->decrement('quantity', $spa->quantity_used);
             }
         }
@@ -726,6 +728,7 @@ public function bulkStore(Request $request)
                 throw new \Exception("Stock insuffisant pour la pièce {$sparePart->reference} dans la région. Requis: {$qty}, Disponible: " . ($partInRegion->quantity ?? 0));
             }
 
+            $this->createStockMovement($activity, $sparePart, 'exit', $qty, $regionId, $regionId);
             $activity->sparePartActivities()->create([
                 'spare_part_id' => $sparePart->id,
                 'type' => 'used',
@@ -770,6 +773,7 @@ public function bulkStore(Request $request)
                     'user_id' => Auth::id()
                 ]
             );
+            $this->createStockMovement($activity, $sparePart, 'entry', $qty, null, $regionId);
             $partInRegion->increment('quantity', $qty);
 
             $activity->sparePartActivities()->create([
@@ -782,21 +786,27 @@ public function bulkStore(Request $request)
 
 }
 
-    private function createStockMovement(Activity $activity, SparePart $sparePart, string $type, int $quantity, ?int $sourceRegionId, ?int $destinationRegionId)
-    {
-        \App\Models\StockMovement::create([
-            'movable_type' => get_class($sparePart),
-            'movable_id' => $sparePart->id,
-            'type' => $type,
-            'quantity' => $quantity,
-            'source_region_id' => $sourceRegionId,
-            'destination_region_id' => $destinationRegionId,
-            'date' => now(),
-            'notes' => "Mouvement généré par l'activité #{$activity->id}: " . ($activity->title ?? 'Sans titre'),
-            'user_id' => Auth::id(),
-            'responsible_user_id' => $activity->assignable_type === 'App\Models\User' ? $activity->assignable_id : null,
-        ]);
-    }
+private function createStockMovement(Activity $activity, SparePart $sparePart, string $type, int $quantity, ?int $sourceRegionId, ?int $destinationRegionId)
+{
+    return StockMovement::updateOrCreate(
+        [
+            // Si ces 5 valeurs correspondent, on considère que c'est le même mouvement
+            'movable_type'           => $sparePart->getMorphClass(),
+            'movable_id'             => $sparePart->id,
+            'type'                   => $type,
+            'source_region_id'       => $sourceRegionId,
+            'destination_region_id'  => $destinationRegionId,
+        ],
+        [
+            // On met à jour (ou on définit) ces valeurs
+            'quantity'               => $quantity,
+            'date'                   => now(),
+            'notes'                  => "Mouvement mis à jour par l'activité #{$activity->id}: " . ($activity->title ?? 'Sans titre'),
+            'user_id'                => Auth::id(),
+            'responsible_user_id'    => $activity->assignable_type === \App\Models\User::class ? $activity->assignable_id : Auth::id(),
+        ]
+    );
+}
 
 
     /**

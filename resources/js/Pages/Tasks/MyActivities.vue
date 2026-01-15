@@ -875,7 +875,7 @@ const exportCSV = () => {
     <template #header>
         <div class="w-full flex justify-between items-center bg-slate-900 px-6 py-4 rounded-xl">
             <div class="flex items-center gap-4">
-                <div class="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div class="h-10 w-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg">
                     <i :class="[isCreatingSubActivity ? 'pi pi-plus' : 'pi pi-shield', 'text-white text-lg']"></i>
                 </div>
                 <div>
@@ -945,7 +945,7 @@ const exportCSV = () => {
                 <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('myActivities.dialog.timestamps') }}</h3>
                 <div class="grid gap-3">
                     <div class="flex flex-col gap-1">
-                        <span class="text-[9px] font-bold text-blue-600 uppercase">{{ t('myActivities.dialog.start') }}</span>
+                        <span class="text-[9px] font-bold text-primary-600 uppercase">{{ t('myActivities.dialog.start') }}</span>
                         <Calendar v-model="form.actual_start_time" showTime hourFormat="24" class="quantum-calendar-simple" />
                     </div>
                     <div class="flex flex-col gap-1">
@@ -959,17 +959,17 @@ const exportCSV = () => {
         <div class="col-span-12 lg:col-span-5 p-6 space-y-6 max-h-[72vh] overflow-y-auto custom-scrollbar bg-white">
             <div class="space-y-2">
                 <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <i class="pi pi-tag text-blue-500"></i> {{ t('myActivities.dialog.activityTitle') }}
+                    <i class="pi pi-tag text-primary-500"></i> {{ t('myActivities.dialog.activityTitle') }}
                 </h3>
-                <InputText v-model="form.title" class="w-full !p-3 !rounded-xl !bg-slate-50 !border-slate-200 !text-sm focus:!bg-white focus:!ring-1 focus:!ring-blue-200 shadow-inner" :placeholder="t('myActivities.dialog.activityTitle')" />
+                <InputText v-model="form.title" class="w-full !p-3 !rounded-xl !bg-slate-50 !border-slate-200 !text-sm focus:!bg-white focus:!ring-1 focus:!ring-primary-200 shadow-inner" :placeholder="t('myActivities.dialog.activityTitle')" />
             </div>
 
             <div class="space-y-2">
                 <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <i class="pi pi-align-left text-blue-500"></i> {{ t('myActivities.dialog.resolutionTitle') }}
+                    <i class="pi pi-align-left text-primary-500"></i> {{ t('myActivities.dialog.resolutionTitle') }}
                 </h3>
                 <Textarea v-model="form.problem_resolution_description" rows="3"
-                    class="w-full !p-3 !rounded-xl !bg-slate-50 !border-slate-200 !text-sm focus:!bg-white focus:!ring-1 focus:!ring-blue-200 shadow-inner"
+                    class="w-full !p-3 !rounded-xl !bg-slate-50 !border-slate-200 !text-sm focus:!bg-white focus:!ring-1 focus:!ring-primary-200 shadow-inner"
                     :placeholder="t('myActivities.dialog.resolutionPlaceholder')" autoResize />
             </div>
 
@@ -978,7 +978,7 @@ const exportCSV = () => {
                     <i class="pi pi-lightbulb text-amber-500"></i> {{ t('myActivities.dialog.recommendationsLabel') }}
                 </label>
                 <Textarea v-model="form.proposals" rows="2"
-                    class="w-full !p-3 !text-xs !rounded-xl !bg-white !border-slate-200 focus:!border-blue-400 shadow-sm"
+                    class="w-full !p-3 !text-xs !rounded-xl !bg-white !border-slate-200 focus:!border-primary-400 shadow-sm"
                     :placeholder="t('myActivities.dialog.clientRecommendationsPlaceholder')" />
             </div>
 
@@ -1004,7 +1004,7 @@ const exportCSV = () => {
 
                 <div class="grid grid-cols-1 gap-2">
                     <div v-for="(instruction, index) in getAvailableInstructions" :key="instruction.id"
-                         class="flex items-center gap-4 p-3 bg-white border border-slate-100 rounded-xl group transition-all hover:border-blue-200">
+                         class="flex items-center gap-4 p-3 bg-white border border-slate-100 rounded-xl group transition-all hover:border-primary-200">
                         <div class="flex-grow flex items-center justify-between gap-4">
                             <span class="text-[10px] font-bold text-slate-600 truncate">{{ instruction.label }}</span>
                             <div class="flex justify-end min-w-[120px]">
@@ -1052,13 +1052,13 @@ const exportCSV = () => {
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <i class="pi pi-box text-blue-500"></i> {{ t('myActivities.dialog.usedStock') }}
+                        <i class="pi pi-box text-primary-500"></i> {{ t('myActivities.dialog.usedStock') }}
                     </span>
                     <Button icon="pi pi-plus" rounded severity="secondary" size="small" @click="openSparePartDialog('used')" class="!h-7 !w-7" />
                 </div>
                 <div class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                    <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-2 p-2 bg-blue-50/50 rounded-lg text-[10px] border border-blue-100 group">
-                        <b class="text-blue-700">x{{ part.quantity }}</b>
+                    <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-2 p-2 bg-primary-50/50 rounded-lg text-[10px] border border-primary-100 group">
+                        <b class="text-primary-700">x{{ part.quantity }}</b>
                         <span class="flex-grow truncate text-slate-600 font-medium">{{ getSparePartReference(part.id) }}</span>
                         <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePart('used', idx)"></i>
                     </div>
@@ -1096,14 +1096,14 @@ const exportCSV = () => {
             </div>
 
             <div class="p-5 bg-slate-900 rounded-xl text-white shadow-lg border border-white/5 relative overflow-hidden">
-                <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl"></div>
+                <div class="absolute -right-4 -top-4 w-16 h-16 bg-primary-500/10 rounded-full blur-xl"></div>
                 <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2 italic">{{ t('myActivities.dialog.htValuation') }}</span>
                 <div class="flex items-baseline gap-2">
-                    <span class="text-3xl font-black text-blue-400 tabular-nums">{{ serviceOrderCost.toLocaleString() }}</span>
+                    <span class="text-3xl font-black text-primary-400 tabular-nums">{{ serviceOrderCost.toLocaleString() }}</span>
                     <span class="text-[10px] font-bold opacity-40 uppercase ml-1">USD</span>
                 </div>
                 <InputText v-model="form.service_order_description" :placeholder="t('myActivities.dialog.billingNotesPlaceholder')"
-                    class="w-full !mt-4 !bg-white/10 !border-none !text-[11px] !text-white !rounded-lg focus:!ring-1 focus:!ring-blue-500/50" />
+                    class="w-full !mt-4 !bg-white/10 !border-none !text-[11px] !text-white !rounded-lg focus:!ring-1 focus:!ring-primary-500/50" />
             </div>
         </div>
     </div>
@@ -1112,8 +1112,8 @@ const exportCSV = () => {
         <div class="flex justify-between items-center w-full px-6 py-4 bg-white border-t border-slate-50">
             <Button :label="t('myActivities.dialog.cancelButton')" text severity="secondary" @click="hideDialog" class="!text-[10px] !font-black !uppercase !tracking-widest" />
             <Button :label="isCreatingSubActivity ? t('myActivities.dialog.createSubActivityButton') : t('myActivities.dialog.publishReportButton')"
-                    icon="pi pi-check-circle" severity="info" @click="saveActivity" :loading="form.processing"
-                    class="!px-10 !h-12 !rounded-xl !font-black !uppercase !text-xs shadow-md transition-all active:scale-95 shadow-blue-500/20" />
+                    icon="pi pi-check-circle"  @click="saveActivity" :loading="form.processing"
+                    class="!px-10 !h-12 !rounded-xl !font-black !uppercase !text-xs shadow-md transition-all active:scale-95 shadow-primary-500/20" />
         </div>
     </template>
 </Dialog>
@@ -1124,7 +1124,7 @@ const exportCSV = () => {
     <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
-                <i class="pi pi-box text-blue-400 text-lg"></i>
+                <i class="pi pi-box text-primary-400 text-lg"></i>
             </div>
             <div>
                 <h2 class="text-sm font-bold text-slate-800">
@@ -1153,7 +1153,7 @@ const exportCSV = () => {
 
     <div class="p-4 bg-slate-100/60 flex justify-end gap-3 border-t border-slate-200">
         <Button :label="t('myActivities.dialog.closeButton')" severity="secondary" @click="sparePartDialogVisible = false" class="font-bold text-xs" />
-        <Button :label="t('myActivities.dialog.validateButton')" severity="info" @click="saveSparePart" class="font-bold text-xs rounded-lg shadow-lg shadow-blue-100" />
+        <Button :label="t('myActivities.dialog.validateButton')"  @click="saveSparePart" class="font-bold text-xs rounded-lg shadow-lg shadow-primary-100" />
     </div>
 </Dialog>
         </div>
