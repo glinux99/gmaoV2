@@ -2,7 +2,6 @@
 import { ref, onMounted, computed } from 'vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
