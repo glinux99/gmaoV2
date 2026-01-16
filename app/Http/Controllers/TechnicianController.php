@@ -89,7 +89,7 @@ class TechnicianController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'fonction' => 'nullable|string|max:255',
             'numero' => 'nullable|string|max:255',
-            'region' => 'nullable|string|max:255',
+            // 'region' => 'nullable|string|max:255',
             'pointure' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
             'profile_photo' => 'nullable|image|max:2048', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
@@ -104,7 +104,7 @@ class TechnicianController extends Controller
                 'password' => Hash::make($request->password),
                 'fonction' => $request->fonction,
                 'numero' => $request->numero,
-                'region' => $request->region,
+                // 'region' => $request->region,
                 'pointure' => $request->pointure,
                 'size' => $request->size,
                 'region_id' => $request->region_id,

@@ -637,12 +637,12 @@ watch(() => filters.value.global.value, (newValue) => {
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div class="flex flex-col gap-2">
                                     <label for="name" class="v11-label">Nom complet</label>
-                                    <InputText id="name" v-model="form.name" class="v11-input-ultimate" placeholder="ex: Jean Dupont" required />
+                                    <InputText id="name" v-model="form.name" class="" placeholder="ex: Jean Dupont" required />
                                     <small class="p-error" v-if="form.errors.name">{{ form.errors.name }}</small>
                                 </div>
                                 <div class="flex flex-col gap-2">
                                     <label for="email" class="v11-label">Email Professionnel</label>
-                                    <InputText id="email" v-model="form.email" type="email" class="v11-input-ultimate" placeholder="tech@entreprise.com" required />
+                                    <InputText id="email" v-model="form.email" type="email" class="" placeholder="tech@entreprise.com" required />
                                     <small class="p-error" v-if="form.errors.email">{{ form.errors.email }}</small>
                                 </div>
                             </div>
@@ -671,17 +671,17 @@ watch(() => filters.value.global.value, (newValue) => {
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
                                 <div class="flex flex-col gap-2">
                                     <label for="numero" class="v11-label">Téléphone</label>
-                                    <InputText id="numero" v-model="form.numero" class="v11-input-ultimate !bg-white" />
+                                    <InputText id="numero" v-model="form.numero" class=" !bg-white" />
                                     <small class="p-error" v-if="form.errors.numero">{{ form.errors.numero }}</small>
                                 </div>
                                 <div class="flex flex-col gap-2">
                                     <label for="pointure" class="v11-label">Pointure</label>
-                                    <InputText id="pointure" v-model="form.pointure" class="v11-input-ultimate !bg-white" />
+                                    <InputText id="pointure" v-model="form.pointure" class=" !bg-white" />
                                     <small class="p-error" v-if="form.errors.pointure">{{ form.errors.pointure }}</small>
                                 </div>
                                 <div class="flex flex-col gap-2">
                                     <label for="size" class="v11-label">Taille (Vêtement)</label>
-                                    <InputText id="size" v-model="form.size" class="v11-input-ultimate !bg-white" />
+                                    <InputText id="size" v-model="form.size" class=" !bg-white" />
                                     <small class="p-error" v-if="form.errors.size">{{ form.errors.size }}</small>
                                 </div>
                             </div>
@@ -690,9 +690,9 @@ watch(() => filters.value.global.value, (newValue) => {
                         <div v-if="!form.id" class="p-6 bg-blue-50/30 rounded-3xl border border-blue-100">
                             <span class="v11-header-label !text-blue-700">Sécurité du compte</span>
                             <div class="grid grid-cols-2 gap-6 mt-4">
-                                <InputText v-model="form.password" type="password" placeholder="Mot de passe" class="v11-input-ultimate !bg-white" />
+                                <InputText v-model="form.password" type="password" placeholder="Mot de passe" class=" !bg-white" />
                                 <small class="p-error" v-if="form.errors.password">{{ form.errors.password }}</small>
-                                <InputText v-model="form.password_confirmation" type="password" placeholder="Confirmer" class="v11-input-ultimate !bg-white" />
+                                <InputText v-model="form.password_confirmation" type="password" placeholder="Confirmer" class=" !bg-white" />
                                 <small class="p-error" v-if="form.errors.password_confirmation">{{ form.errors.password_confirmation }}</small>
                             </div>
                         </div>
