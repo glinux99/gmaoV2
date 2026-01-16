@@ -484,7 +484,7 @@ const showWODialog = ref(false);
                                     </p>
                                     <Button v-if="part.quantity < part.min_quantity" :label="t('dashboard.stockAlerts.order')" class="p-button-text p-button-xs !p-0 font-bold text-primary-600" />
                                 </div>
-                            </div>
+                            </div>d
                         </div> -->
 
                         <div class="mt-8 p-4 bg-primary-50/50 rounded-xl">
