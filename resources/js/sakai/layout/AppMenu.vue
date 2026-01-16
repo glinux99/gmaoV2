@@ -1,7 +1,8 @@
 <script setup>
 import { ref } from 'vue';
-
+import { useLayout } from '@/sakai/layout/composables/layout';
 import AppMenuItem from './AppMenuItem.vue';
+const { resetMenu } = useLayout();
 
 const model = ref([
     { label: 'menu.dashboard.title',
@@ -156,6 +157,12 @@ const model = ref([
 
 <template>
     <ul class="layout-menu">
+        <!-- Bouton de fermeture pour mobile, placé en haut -->
+        <li class="flex justify-end p-3 lg:hidden">
+            <button @click="resetMenu" class="flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200" aria-label="Fermer le menu">
+                <i class="pi pi-times text-xl"></i>
+            </button>
+        </li>
         <template v-for="(item, i) in model" :key="item">
             <app-menu-item v-if="!item.separator" :item="item" :root="true" :index="i"></app-menu-item>
             <li v-if="item.separator" class="menu-separator"></li>
