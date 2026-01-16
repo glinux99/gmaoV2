@@ -94,7 +94,7 @@ class TechnicianController extends Controller
             'size' => 'nullable|string|max:255',
             'profile_photo' => 'nullable|image|max:2048', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
             'region_id' => 'nullable|exists:regions,id',
-            'zone_id' => 'nullable|exists:zones,id',
+            // 'zone_id' => 'nullable|exists:zones,id',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -108,7 +108,7 @@ class TechnicianController extends Controller
                 'pointure' => $request->pointure,
                 'size' => $request->size,
                 'region_id' => $request->region_id,
-                'zone_id' => $request->zone_id,
+                // 'zone_id' => $request->zone_id,
             ]);
 
             $user->assignRole('technician');
@@ -135,7 +135,7 @@ class TechnicianController extends Controller
             'size' => 'nullable|string|max:255',
             'profile_photo' => 'nullable|image|max:2048', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
             'region_id' => 'nullable|exists:regions,id',
-            'zone_id' => 'nullable|exists:zones,id',
+            // 'zone_id' => 'nullable|exists:zones,id',
         ]);
 
         DB::transaction(function () use ($request, $technician) {
