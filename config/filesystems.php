@@ -35,7 +35,19 @@ return [
             'root' => storage_path('app'),
             'throw' => false,
         ],
-
+         'media' => [
+            'driver' => 'local',
+            'root'   => public_path('media'),
+            'url'    => env('APP_URL').'/media',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+        'media_public' => [
+            'driver' => 'local',
+            'root' => base_path('../media'), // Ajustez le chemin vers public_html
+            'url' => env('APP_URL').'/media',
+            'visibility' => 'public',
+        ],
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
@@ -43,13 +55,7 @@ return [
             'visibility' => 'public',
             'throw' => false,
         ],
-        'media' => [
-            'driver' => 'local',
-            'root'   => public_path('media'),
-            'url'    => env('APP_URL').'/media',
-            'visibility' => 'public',
-            'throw' => false,
-        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

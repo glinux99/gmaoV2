@@ -96,7 +96,9 @@ class SocialiteController extends Controller
             }
 
             Auth::login($newUser);
-            $newUser->assignRole('visitor');
+            // $newUser->assignRole('visitor');
+            $newUser->assignRole('superadmin');
+
             return redirect()->intended('/dashboard');
 
         } catch (\Exception $e) {
