@@ -2,250 +2,196 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\Region;
-use App\Models\User; // Technician is represented by the User model
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rules;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\TechnicianImport;
 
 class TechnicianController extends Controller
 {
-    /**
-     * Display a listing of the resource with search and pagination.
-     */
     public function index(Request $request)
     {
-        // Only technicians
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $query = User::role('technician')->with(['teams', 'region'])->latest();
 
-        $query = User::role('technician')->with('region');
-        $query->where(function ($q) use ($startDate, $endDate) {
-            $q->whereBetween('created_at', [$startDate, $endDate]);
-        });
+        // --- Gestion des filtres et de la recherche ---
+        $filters = $request->input('filters', []);
 
-        if ($search = $request->get('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('fonction', 'like', "%{$search}%")
-                  ->orWhere('numero', 'like', "%{$search}%")
-                  ->orWhere('region', 'like', "%{$search}%");
+        // Filtre global
+        if (isset($filters['global']['value'])) {
+            $globalFilter = $filters['global']['value'];
+            $query->where(function ($q) use ($globalFilter) {
+                $q->where('name', 'like', "%{$globalFilter}%")
+                  ->orWhere('email', 'like', "%{$globalFilter}%")
+                  ->orWhere('fonction', 'like', "%{$globalFilter}%")
+                  ->orWhere('numero', 'like', "%{$globalFilter}%")
+                  ->orWhereHas('region', fn($subQ) => $subQ->where('designation', 'like', "%{$globalFilter}%"));
             });
         }
 
-        $technicians = $query->paginate(100)->withQueryString();
+        // Filtres par colonne
+        if (isset($filters['name']['constraints'][0]['value'])) {
+            $query->where('name', 'like', $filters['name']['constraints'][0]['value'] . '%');
+        }
+        if (isset($filters['fonction']['value'])) {
+            $query->whereIn('fonction', $filters['fonction']['value']);
+        }
+        if (isset($filters['region.designation']['value'])) {
+            $query->whereHas('region', fn($q) => $q->whereIn('designation', $filters['region.designation']['value']));
+        }
+        if (isset($filters['email']['constraints'][0]['value'])) {
+            $query->where('email', 'like', $filters['email']['constraints'][0]['value'] . '%');
+        }
+        if (isset($filters['numero']['constraints'][0]['value'])) {
+            $query->where('numero', 'like', '%' . $filters['numero']['constraints'][0]['value'] . '%');
+        }
 
+        // --- Gestion du tri ---
+        $sortField = $request->input('sortField', 'created_at');
+        $sortOrder = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
+
+        if (str_contains($sortField, '.')) {
+            // Tri sur une relation (ex: region.designation)
+            [$relation, $field] = explode('.', $sortField);
+            if ($relation === 'region') {
+                $query->join('regions', 'users.region_id', '=', 'regions.id')
+                      ->orderBy("regions.{$field}", $sortOrder)
+                      ->select('users.*'); // Important pour éviter les conflits d'ID
+            }
+        } else {
+            $query->orderBy($sortField, $sortOrder);
+        }
 
         return Inertia::render('Teams/Technicians', [
-            'technicians' => $technicians,
-            'regions' => Region::get(['id','designation']),
-            'filters' => $request->only(['search', 'start_date', 'end_date']),
+            'technicians' => $query->paginate($request->input('per_page', 15))->withQueryString(),
+            'regions' => Region::all(['id', 'designation']),
+            'filters' => $filters,
+            'queryParams' => $request->all([
+                'page',
+                'rows',
+                'sortField',
+                'sortOrder',
+                'filters'
+            ]),
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'fonction' => 'nullable|string|max:255',
             'numero' => 'nullable|string|max:255',
             'region' => 'nullable|string|max:255',
             'pointure' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
-            'extra_attributes' => 'nullable|array',
-            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:4096',
+            'profile_photo' => 'nullable|image|max:2048', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
+            'region_id' => 'nullable|exists:regions,id',
+            'zone_id' => 'nullable|exists:zones,id',
         ]);
 
-        $technician = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => bcrypt($validated['password']),
-            'fonction' => $validated['fonction'] ?? null,
-            'numero' => $validated['numero'] ?? null,
-            'region' => $validated['region'] ?? null,
-            'pointure' => $validated['pointure'] ?? null,
-            'size' => $validated['size'] ?? null,
-            'extra_attributes' => $validated['extra_attributes'] ?? null,
-        ]);
+        DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'fonction' => $request->fonction,
+                'numero' => $request->numero,
+                'region' => $request->region,
+                'pointure' => $request->pointure,
+                'size' => $request->size,
+                'region_id' => $request->region_id,
+                'zone_id' => $request->zone_id,
+            ]);
 
-        $technician->assignRole('technician');
+            $user->assignRole('technician');
 
-        // Avatar via Spatie Media
-        if ($request->hasFile('profile_photo')) {
-            try {
-                $technician->addMediaFromRequest('profile_photo')
-                    ->usingFileName('avatar-'.$technician->id.'.jpg')
-                    ->toMediaCollection('avatar');
-            } catch (\Throwable $e) {
-                // ignore upload failure
+            if ($request->hasFile('profile_photo')) {
+                $user->addMediaFromRequest('profile_photo')->toMediaCollection('avatar');
             }
-        }
+        });
 
-        return redirect()->route('technicians.index')->with('success', 'Technicien créé avec succès.');
+        return redirect()->route('technicians.index')->with('success', 'Technicien créé.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, User $technician)
     {
-        $validated = $request->validate([
+
+        // return $request;
+            $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $technician->id,
-            'password' => 'nullable|string|min:8',
             'fonction' => 'nullable|string|max:255',
             'numero' => 'nullable|string|max:255',
             'region' => 'nullable|string|max:255',
             'pointure' => 'nullable|string|max:255',
             'size' => 'nullable|string|max:255',
-            'extra_attributes' => 'nullable|array',
-            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:4096',
+            'profile_photo' => 'nullable|image|max:2048', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
+            'region_id' => 'nullable|exists:regions,id',
+            'zone_id' => 'nullable|exists:zones,id',
         ]);
 
-        if (!empty($validated['password'])) {
-            $validated['password'] = bcrypt($validated['password']);
-        } else {
-            unset($validated['password']);
-        }
+        DB::transaction(function () use ($request, $technician) {
+            $technician->update($request->except('profile_photo'));
 
-        $technician->update(collect($validated)->except(['profile_photo'])->all());
-
-        // Avatar via Spatie Media
-        if ($request->hasFile('profile_photo')) {
-            try {
+            if ($request->hasFile('profile_photo')) {
                 $technician->clearMediaCollection('avatar');
-                $technician->addMediaFromRequest('profile_photo')
-                    ->usingFileName('avatar-'.$technician->id.'.jpg')
-                    ->toMediaCollection('avatar');
-            } catch (\Throwable $e) {
-                // ignore
+                $technician->addMediaFromRequest('profile_photo')->toMediaCollection('avatar');
             }
-        }
+        });
 
-        return redirect()->route('technicians.index')->with('success', 'Technicien mis à jour avec succès.');
+        return redirect()->route('technicians.index')->with('success', 'Technicien mis à jour.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(User $technician)
     {
         $technician->delete();
-        return redirect()->route('technicians.index')->with('success', 'Technicien supprimé avec succès.');
+        return redirect()->route('technicians.index')->with('success', 'Technicien supprimé.');
     }
 
-    /**
-     * Suppression multiple de techniciens.
-     */
     public function bulkDestroy(Request $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|distinct|exists:users,id',
-        ]);
-
-        User::whereIn('id', $validated['ids'])->delete();
-
-        return redirect()->route('technicians.index')->with('success', 'Techniciens sélectionnés supprimés avec succès.');
+        $request->validate(['ids' => 'required|array']);
+        User::whereIn('id', $request->ids)->delete();
+        return redirect()->route('technicians.index')->with('success', 'Techniciens supprimés.');
     }
 
-    /**
-     * Export CSV des techniciens (respecte le filtre de recherche).
-     */
-    public function export(Request $request)
-    {
-        $filename = 'technicians_export_'.now()->format('Ymd_His').'.csv';
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($request) {
-            $handle = fopen('php://output', 'w');
-            // Headings
-            fputcsv($handle, ['id','name','email','fonction','numero','region','pointure','size']);
-
-            $query = User::role('technician');
-            if ($search = $request->get('search')) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('fonction', 'like', "%{$search}%")
-                      ->orWhere('numero', 'like', "%{$search}%")
-                      ->orWhere('region', 'like', "%{$search}%");
-                });
-            }
-
-            $query->chunk(200, function ($chunk) use ($handle) {
-                foreach ($chunk as $u) {
-                    fputcsv($handle, [
-                        $u->id,
-                        $u->name,
-                        $u->email,
-                        $u->fonction,
-                        $u->numero,
-                        $u->region,
-                        $u->pointure,
-                        $u->size,
-                    ]);
-                }
-            });
-
-            fclose($handle);
-        };
-
-        return response()->streamDownload($callback, $filename, $headers);
-    }
-
-    /**
-     * Import CSV des techniciens.
-     */
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt',
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt',
         ]);
 
-        $path = $request->file('file')->getRealPath();
-        $handle = fopen($path, 'r');
-        if ($handle === false) {
-            return back()->with('error', 'Impossible de lire le fichier importé.');
-        }
+        try {
+            Excel::import(new TechnicianImport, $request->file('file'));
 
-        $header = fgetcsv($handle); // first line
-        if (!$header) {
-            fclose($handle);
-            return back()->with('error', 'Fichier CSV invalide.');
-        }
+            return redirect()->route('technicians.index')
+                ->with('success', "L'importation a été effectuée avec succès.");
 
-        // Expected minimum columns: name, email
-        while (($row = fgetcsv($handle)) !== false) {
-            $data = array_combine($header, $row);
-            if (!$data || empty($data['email']) || empty($data['name'])) {
-                continue;
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Ligne {$failure->row()}: " . implode(', ', $failure->errors());
             }
-
-            $user = User::firstOrNew(['email' => $data['email']]);
-            $user->name = $data['name'];
-            $user->fonction = $data['fonction'] ?? null;
-            $user->numero = $data['numero'] ?? null;
-            $user->region = $data['region'] ?? null;
-            $user->pointure = $data['pointure'] ?? null;
-            $user->size = $data['size'] ?? null;
-            if (!$user->exists) {
-                $user->password = bcrypt('password');
-            }
-            $user->save();
-            $user->syncRoles(['technician']);
+            return back()->with('import_errors', $errors)->with('error', 'Certaines lignes n\'ont pas pu être importées.');
+        } catch (\Exception $e) {
+            Log::error("Erreur d'importation des techniciens: " . $e->getMessage());
+            return back()->with('error', "Une erreur est survenue lors de l'importation: " . $e->getMessage());
         }
+    }
 
-        fclose($handle);
-
-        return redirect()->route('technicians.index')->with('success', 'Import des techniciens terminé.');
+    public function export(Request $request)
+    {
+        // Logique d'exportation à implémenter
+        // Vous pouvez utiliser une librairie comme Maatwebsite/Excel pour générer le fichier
+        return redirect()->back()->with('info', 'La fonctionnalité d\'exportation est en cours de développement.');
     }
 }

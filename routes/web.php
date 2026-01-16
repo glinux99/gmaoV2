@@ -146,6 +146,8 @@ Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::post('quantum/query', [ReportController::class, 'fetchData'])->name('quantum.query');
 Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
 Route::post('/spare-parts/import', [SparePartController::class, 'import'])->name('spare-parts.import');
+Route::post('/technicians/import', [TechnicianController::class, 'import'])->name('technicians.import');
+Route::post('/regions/bulk-destroy', [RegionController::class, 'bulkDestroy'])->name('regions.bulkDestroy');
 Route::post('/interventions/import', [InterventionRequestController::class, 'import'])->name('interventions.import');
 
 

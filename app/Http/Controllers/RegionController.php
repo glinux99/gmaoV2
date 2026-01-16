@@ -136,4 +136,22 @@ class RegionController extends Controller
             $query->where($field, 'like', $filterValue . '%');
         }
     }
+
+    /**
+     * Supprime plusieurs régions en une seule fois.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:regions,id',
+        ]);
+
+        Region::whereIn('id', $request->ids)->delete();
+
+        return redirect()->route('regions.index')->with('success', 'Les régions sélectionnées ont été supprimées.');
+    }
 }

@@ -11,6 +11,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Models\Region;
+use App\Models\Zone;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 class User extends Authenticatable implements HasMedia
@@ -35,7 +37,7 @@ class User extends Authenticatable implements HasMedia
         'size',
         'profile_photo', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
         'hourly_rate', // Added for DashboardController's labor cost calculation
-        'region_id'
+        'zone_id'
 
     ];
 

@@ -14,21 +14,23 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('fonction')->nullable();
             $table->string('numero')->nullable();
-            $table->string('region')->nullable();
+            // $table->foreignId('region_id')->nullable()->constrained('regions')->onDelete('set null');
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null');
             $table->string('pointure')->nullable(); // Shoe size
             $table->string('size')->nullable();
             $table->string('profile_photo')->nullable();
                // Clothing size
         });
     }
-
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['fonction', 'numero', 'region', 'pointure', 'size','profile_photo']);
+            $table->dropForeign(['region_id']);
+            $table->dropForeign(['zone_id']);
+            $table->dropColumn(['fonction', 'numero', 'region_id', 'zone_id', 'pointure', 'size','profile_photo']);
         });
     }
 };

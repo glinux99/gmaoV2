@@ -184,19 +184,21 @@ const deleteRegion = (region) => {
     });
 };
 
-const deleteSelectedRegions = () => {
+const confirmDeleteSelected = () => {
     confirm.require({
         message: `Voulez-vous vraiment supprimer les ${selectedRegions.value.length} régions sélectionnées ?`,
         header: 'Confirmation de suppression multiple',
         icon: 'pi pi-exclamation-triangle',
         acceptClass: 'p-button-danger',
-        accept: () => {
-            const ids = selectedRegions.value.map(r => r.id);
-            router.post(route('regions.bulkDestroy'), { ids: ids }, {
-                onSuccess: () => { toast.add({ severity: 'info', summary: 'Info', detail: 'Régions supprimées', life: 3000 }); selectedRegions.value = null; },
-                onError: () => toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la suppression', life: 3000 })
-            });
-        }
+        accept: deleteSelectedRegions,
+    });
+};
+
+const deleteSelectedRegions = () => {
+    const ids = selectedRegions.value.map(r => r.id);
+    router.post(route('regions.bulkDestroy'), { ids: ids }, {
+        onSuccess: () => { toast.add({ severity: 'info', summary: 'Info', detail: 'Régions supprimées', life: 3000 }); selectedRegions.value = null; },
+        onError: () => toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la suppression', life: 3000 })
     });
 };
 
@@ -303,8 +305,8 @@ const onFilter = (event) => {
                                 <Button icon="pi pi-cog" text rounded severity="secondary" @click="toggleColumnSelection" />
                                 <Button v-if="selectedRegions && selectedRegions.length > 0"
                                         :label="t('common.deleteSelection', { count: selectedRegions.length })"
-                                        icon="pi pi-trash" severity="danger" raised
-                                        @click="deleteSelectedRegions" />
+                                        icon="pi pi-trash" severity="danger"
+                                        @click="confirmDeleteSelected" />
                             </div>
                         </div>
                     </template>

@@ -1082,7 +1082,7 @@ const exportProject = () => {
     const projectData = {
         name: networkName.value,
         region_id: form.region_id, // Assurez-vous que form.region_id est défini
-        version: (parseFloat(network.version || "1.9") + 0.1).toFixed(1),
+        version: (parseFloat(networkName.version || "1.9") + 0.1).toFixed(1),
         date: new Date().toISOString(),
         equipments: equipments.value,
         connections: connections.value,

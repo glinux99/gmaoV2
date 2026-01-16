@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Region;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
@@ -28,40 +29,108 @@ class UserSeeder extends Seeder
         // 2. Configuration des comptes administratifs et pilotes
         $pilotUsers = [
             [
-                'name' => 'Superadmin',
-                'email' => 'genesiskikimba@gmail.com',
-                'password' => 'genesiskikimba@gmail.com', // Sera haché plus bas
-                'role' => 'superadmin',
+                'name' => 'Daniel UMIRAMBE',
+                'email' => 'dumirambe@virunga.org',
+                'password' => 'dumirambe@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau',
+                'region' => 'Goma',
+                'role' => ['superadmin', 'technician'],
             ],
             [
-                'name' => 'Admin',
-                'email' => 'admin@admin.com',
-                'password' => 'admin',
-                'role' => 'admin',
+                'name' => 'BAHATI MANGALA Guillaume',
+                'email' => 'gmangala@virunga.org',
+                'password' => 'gmangala@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau Adj.',
+                'region' => 'Goma',
+                'role' => ['superadmin', 'technician'],
             ],
             [
-                'name' => 'Operator',
-                'email' => 'operator@operator.com',
-                'password' => 'operator',
-                'role' => 'operator',
-            ],
-            [
-                'name' => 'Technician',
-                'email' => 'technician@technician.com',
-                'password' => 'technician',
+                'name' => 'SUKAKA NEMOTI Espérance',
+                'email' => 'enemoti@virunga.org',
+                'password' => 'enemoti@virunga.org',
+                'fonction' => 'Superviseur sous-station',
+                'region' => 'Goma',
                 'role' => 'technician',
             ],
             [
-                'name' => 'Magasinier',
-                'email' => 'magasinier@magasinier.com',
-                'password' => 'magasinier',
-                'role' => 'magasinier',
+                'name' => 'BWIRUKE HABIMANA Georges',
+                'email' => 'ghabimana@virunga.org',
+                'password' => 'ghabimana@virunga.org',
+                'fonction' => 'Superviseur Maintenance',
+                'region' => 'Goma',
+                'role' => 'technician',
             ],
             [
-                'name' => 'Visitor',
-                'email' => 'visitor@visitor.com',
-                'password' => 'visitor',
-                'role' => 'visitor',
+                'name' => 'TCHANGWI LYADUNDA Jonathan',
+                'email' => 'jlyadunda@virunga.org',
+                'password' => 'jlyadunda@virunga.org',
+                'fonction' => 'Superviseur Intervention',
+                'region' => 'Goma',
+                'role' => 'technician',
+            ],
+            [
+                'name' => 'TUMUSIFI SINZABAKWIRA T.',
+                'email' => 'tsinzabakwira@virunga.org',
+                'password' => 'tsinzabakwira@virunga.org',
+                'fonction' => 'Superviseur raccordement',
+                'region' => 'Goma',
+                'role' => 'technician',
+            ],
+            [
+                'name' => 'MAGENDA BAGABO DAVY',
+                'email' => 'davybagabo@virunga.org',
+                'password' => 'davybagabo@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau',
+                'region' => 'Matebe',
+                   'role' => ['superadmin', 'technician'],
+            ],
+            [
+                'name' => 'MAHONGO PATRICK',
+                'email' => 'patrickmahongo@virunga.org',
+                'password' => 'patrickmahongo@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau Adj.',
+                'region' => 'Matebe',
+                   'role' => ['superadmin', 'technician'],
+            ],
+            [
+                'name' => 'DAVID BIN ABEDI',
+                'email' => 'abedibin@virunga.org',
+                'password' => 'abedibin@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau',
+                'region' => 'Lubero',
+                   'role' => ['superadmin', 'technician'],
+            ],
+            [
+                'name' => 'Jonathan TCHANGWI',
+                'email' => 'tchangwij@virunga.org',
+                'password' => 'tchangwij@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau Adj.',
+                'region' => 'Lubero',
+                   'role' => ['superadmin', 'technician'],
+            ],
+            [
+                'name' => 'ERIC MUBANGO',
+                'email' => 'mubangoeric@virunga.org',
+                'password' => 'mubangoeric@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau',
+                'region' => 'Mutwanga',
+                   'role' => ['superadmin', 'technician'],
+            ],
+            [
+                'name' => 'JANVIER KAHULA',
+                'email' => 'kahulajanvier@virunga.org',
+                'password' => 'kahulajanvier@virunga.org',
+                'fonction' => 'Resp. Exploitation Réseau Adj.',
+                'region' => 'Mutwanga',
+                   'role' => ['superadmin', 'technician'],
+            ],
+              [
+                'name' => 'Administrator',
+                'email' => 'admin@virunga.org',
+                'password' => 'admin@virunga.org',
+                'fonction' => 'Administrateur',
+                'region' => 'Goma',
+                   'role' => ['superadmin'],
             ],
         ];
 
@@ -72,13 +141,20 @@ class UserSeeder extends Seeder
                 [
                     'name' => $data['name'],
                     'password' => Hash::make($data['password']),
+                    'fonction' => $data['fonction'],
+                    'region_id' => Region::where('designation', 'like', '%' . $data['region'] . '%')->first()->id ?? null,
                     'email_verified_at' => now(),
                 ]
             );
 
             // Assigner le rôle
-            if (in_array($data['role'], $roles)) {
+            if (is_array($data['role'])) {
+                $user->syncRoles($data['role']);
+            } elseif (in_array($data['role'], $roles)) {
                 $user->syncRoles([$data['role']]);
+            } else {
+                // Gérer le cas où le rôle n'est pas un tableau et n'est pas dans la liste des rôles connus
+                // Par exemple, logguer une erreur ou assigner un rôle par défaut
             }
 
             // Gestion de l'avatar (Spatie MediaLibrary)

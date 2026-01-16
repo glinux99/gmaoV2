@@ -24,6 +24,8 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 
+import FileUpload from 'primevue/fileupload'; // NOUVELLE IMPORTATION
+
 const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
@@ -32,6 +34,9 @@ const props = defineProps({
     technicians: Object,
     regions: Array,
     filters: Object,
+    queryParams: Object,
+    // --- NOUVEAU: Propriété pour les erreurs d'importation ---
+    import_errors: Array,
 });
 
 // --- ÉTAT DU COMPOSANT ---
@@ -39,46 +44,122 @@ const selectedTechs = ref([]);
 const fileInput = ref(null);
 const loading = ref(false);
 const isModalOpen = ref(false);
+const importDialog = ref(false);
 const opColumns = ref();
 const visibleColumns = ref(['name', 'fonction', 'region', 'numero']);
 // --- FILTRES (Structure robuste du premier code) ---
+
+
 const filters = ref({
-    global: { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
+    global: { value: props.filters?.global?.value || null, matchMode: FilterMatchMode.CONTAINS },
     name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    fonction: { value: null, matchMode: FilterMatchMode.EQUALS },
-    region: { value: null, matchMode: FilterMatchMode.EQUALS },
+    fonction: { value: null, matchMode: FilterMatchMode.IN },
+    'region.designation': { value: null, matchMode: FilterMatchMode.IN },
     email: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     numero: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
 });
 
-// --- GESTION DU RECHARGEMENT CÔTÉ SERVEUR ---
-let timeoutId = null;
-watch(() => filters.value.global.value, (newValue) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-        router.get(
-            route('technicians.index'),
-            { search: newValue },
-            { preserveState: true, replace: true, only: ['technicians'] }
-        );
-    }, 400);
+// 2. Lazy Params
+const lazyParams = ref({
+    first: props.technicians.current_page ? (props.technicians.current_page - 1) * props.technicians.per_page : 0,
+    rows: props.technicians.per_page || 10,
+    sortField: props.queryParams?.sortField || 'created_at',
+    sortOrder: props.queryParams?.sortOrder === 'desc' ? -1 : 1,
+    filters: filters.value
 });
 
-// --- OPTIONS ---
 const fonctionOptions = [
-    { label: 'Superviseur', value: 'Superviseur' },
-    { label: 'Technicien Chef', value: 'Technicien Chef' },
-    { label: 'Technicien Journalier', value: 'Technicien Journalier' }
+    // --- DIRECTION ET ENCADREMENT (1-7) ---
+    { label: 'Directeur d’Exploitation', value: 'Directeur d’Exploitation' },
+    { label: 'Directeur Technique', value: 'Directeur Technique' },
+    { label: 'Responsable HSE (Hygiène Sécurité Environnement)', value: 'Responsable HSE' },
+    { label: 'Superviseur de District / Zone', value: 'Superviseur de District' },
+    { label: 'Coordonnateur de Projets Électrification', value: 'Coordonnateur Projets' },
+    { label: 'Chef de Département Réseau', value: 'Chef Réseau' },
+    { label: 'Responsable Administratif et Financier', value: 'RAF' },
+
+    // --- PRODUCTION HYDROÉLECTRIQUE (8-16) ---
+    { label: 'Chef de Centrale Hydroélectrique', value: 'Chef de Centrale' },
+    { label: 'Opérateur de Salle de Commande', value: 'Opérateur Salle Commande' },
+    { label: 'Technicien de Maintenance Turbine', value: 'Technicien Turbine' },
+    { label: 'Électricien de Centrale', value: 'Électricien Centrale' },
+    { label: 'Mécanicien de Maintenance Hydraulique', value: 'Mécanicien Hydraulique' },
+    { label: 'Barragiste / Gardien de Prise d’Eau', value: 'Barragiste' },
+    { label: 'Technicien Hydrologue', value: 'Hydrologue' },
+    { label: 'Agent de Maintenance Vannes et Grilles', value: 'Agent Vannes' },
+    { label: 'Opérateur de Dégrilleur', value: 'Opérateur Dégrilleur' },
+
+    // --- TRANSPORT ET HAUTE TENSION (17-24) ---
+    { label: 'Resp. Exploitation Réseau', value: 'Resp. Exploitation Réseau' },
+    { label: 'Resp. Exploitation Réseau Adj.', value: 'Resp. Exploitation Réseau Adj.' },
+    { label: 'Superviseur sous-station', value: 'Superviseur sous-station' },
+    { label: 'Superviseur Maintenance', value: 'Superviseur Maintenance' },
+    { label: 'Superviseur Intervention', value: 'Superviseur Intervention' },
+    { label: 'Superviseur raccordement', value: 'Superviseur raccordement' },
+    { label: 'Administrateur', value: 'Administrateur' },
+
+
+
+    { label: 'Ingénieur Poste de Transformation', value: 'Ingénieur Poste' },
+    { label: 'Technicien de Maintenance Haute Tension (HT)', value: 'Technicien HT' },
+    { label: 'Monteur de Lignes Haute Tension', value: 'Monteur Lignes HT' },
+    { label: 'Technicien Protection et Contrôle-Commande', value: 'Technicien Protection' },
+    { label: 'Topographe de Lignes', value: 'Topographe' },
+    { label: 'Chef de Chantier HT', value: 'Chef Chantier HT' },
+    { label: 'Monteur de Pylônes', value: 'Monteur Pylônes' },
+    { label: 'Technicien Postes et Télécoms (SCADA)', value: 'Technicien SCADA' },
+
+    // --- DISTRIBUTION ET BASSE TENSION (25-33) ---
+    { label: 'Superviseur de Distribution BT', value: 'Superviseur BT' },
+    { label: 'Technicien Chef d’Équipe Réseau', value: 'Chef Équipe Réseau' },
+    { label: 'Électricien de Réseau Basse Tension', value: 'Électricien BT' },
+    { label: 'Technicien de Maintenance Transformateurs', value: 'Technicien Transfo' },
+    { label: 'Technicien de Dépannage Urgence 24/7', value: 'Technicien Dépannage' },
+    { label: 'Installateur de Kits Domestiques', value: 'Installateur Kits' },
+    { label: 'Vérificateur de Conformité Électrique', value: 'Vérificateur Conformité' },
+    { label: 'Chef d’Équipe Éclairage Public', value: 'Chef Éclairage Public' },
+    { label: 'Technicien de Relève (Compteurs)', value: 'Technicien de Relève' },
+
+    // --- SERVICE COMMERCIAL ET METERING (34-40) ---
+    { label: 'Contrôleur de Raccordement Client', value: 'Contrôleur Raccordement' },
+    { label: 'Technicien Poseur de Compteurs Cashpower', value: 'Poseur Compteur' },
+    { label: 'Agent de Lutte contre la Fraude Électrique', value: 'Agent Fraude' },
+    { label: 'Responsable d’Agence Commerciale', value: 'Chef Agence' },
+    { label: 'Agent de Guichet / Facturation', value: 'Agent Guichet' },
+    { label: 'Technicien Laboratoire de Compteurs', value: 'Technicien Labo' },
+    { label: 'Commercial de Terrain (Prospection)', value: 'Commercial Terrain' },
+
+    // --- TACHERONS ET GÉNIE CIVIL (41-50) ---
+    { label: 'Tâcheron - Creuseur de Tranchées', value: 'Tâcheron Creuseur' },
+    { label: 'Tâcheron - Poseur de Poteaux', value: 'Tâcheron Poteaux' },
+    { label: 'Tâcheron - Éclateur de Roches', value: 'Tâcheron Roches' },
+    { label: 'Tâcheron - Maçon de Socles et Caniveaux', value: 'Tâcheron Maçon' },
+    { label: 'Tâcheron - Élagueur (Entretien Sous Lignes)', value: 'Tâcheron Élagueur' },
+    { label: 'Tâcheron - Transporteur de Matériel (Portage)', value: 'Tâcheron Portage' },
+    { label: 'Tâcheron - Aide Électricien (Tirage Câbles)', value: 'Tâcheron Tirage' },
+    { label: 'Technicien Journalier (Main d’œuvre)', value: 'Journalier' },
+    { label: 'Chef de Brigade Tâcherons', value: 'Chef Brigade' },
+    { label: 'Ferrailleur de Génie Civil', value: 'Ferrailleur' },
+
+    // --- LOGISTIQUE, MÉCANIQUE ET SUPPORT (51-60) ---
+    { label: 'Mécanicien Engins Lourds', value: 'Mécanicien Engins' },
+    { label: 'Chauffeur Poids Lourd / Grue', value: 'Chauffeur Grue' },
+    { label: 'Chauffeur de Liaison 4x4', value: 'Chauffeur Liaison' },
+    { label: 'Magasinier Matériel Électrique', value: 'Magasinier' },
+    { label: 'Soudeur - Chaudronnier', value: 'Soudeur' },
+    { label: 'Responsable de Flotte Automobile', value: 'Chef Garage' },
+    { label: 'Agent de Sécurité de Site (Sentinelle)', value: 'Agent Sécurité' },
+    { label: 'Commis d’Entrepôt', value: 'Commis Entrepôt' },
+    { label: 'Informaticien Système & Réseau', value: 'IT' },
+    { label: 'Agent de Liaison Administrative', value: 'Liaison Admin' }
 ];
 
-const regionOptions = computed(() =>
-    (props.regions || []).map(r => ({ label: r.designation, value: r.designation }))
-);
+
 
 const allColumns = computed(() => [
     { field: 'name', header: t('technicians.fields.name'), default: true },
     { field: 'fonction', header: t('technicians.fields.fonction'), default: true },
-    { field: 'region', header: t('technicians.fields.region'), default: true },
+    { field: 'region.designation', header: t('technicians.fields.region'), default: true },
     { field: 'numero', header: t('technicians.fields.numero'), default: true },
     { field: 'email', header: t('technicians.fields.email'), default: false },
     { field: 'pointure', header: t('technicians.fields.pointure'), default: false },
@@ -109,12 +190,17 @@ const form = useForm({
     password_confirmation: '',
     fonction: null,
     numero: '',
-    region: '',
+   region_id: null,
     pointure: '',
     size: '',
     profile_photo: null,
     profile_photo_preview: null,
     status: 'active'
+});
+
+// --- NOUVEAU: Formulaire pour l'importation ---
+const importForm = useForm({
+    file: null,
 });
 
 // --- LOGIQUE PHOTO ---
@@ -158,7 +244,7 @@ const openEdit = (tech) => {
     form.email = tech.email;
     form.fonction = tech.fonction;
     form.numero = tech.numero;
-    form.region = tech.region;
+    form.region_id = tech.region_id;
     form.pointure = tech.pointure;
     form.size = tech.size;
     form.profile_photo_preview = tech.profile_photo_url;
@@ -166,15 +252,49 @@ const openEdit = (tech) => {
 };
 
 const submit = () => {
-    const url = form.id ? route('technicians.update', form.id) : route('technicians.store');
-    form.post(url, {
-        forceFormData: true,
+    const isEditing = !!form.id;
+
+    // Pour les mises à jour (édition), Inertia.js a une particularité avec les fichiers.
+    // Si un fichier est présent, il faut utiliser une requête POST avec un champ `_method: 'PUT'`.
+    // La méthode `form.submit('put', ...)` peut mal gérer le cas où le fichier est `null` en édition.
+    // Nous utilisons donc `router.post` pour plus de contrôle.
+    if (isEditing) {
+        // On utilise router.post pour les mises à jour afin de gérer correctement le FormData
+        router.post(route('technicians.update', form.id), {
+            _method: 'put', // Indique à Laravel que c'est une requête PUT
+            ...form.data(), // Inclut toutes les données du formulaire
+        }, {
+            onSuccess: () => {
+                isModalOpen.value = false;
+                toast.add({ severity: 'success', summary: t('common.success'), detail: t('technicians.toast.updateSuccess'), life: 3000 });
+            },
+            onError: (errors) => {
+                form.errors = errors;
+                toast.add({ severity: 'error', summary: t('toast.error'), detail: t('toast.genericError'), life: 3000 });
+            }
+        });
+    } else {
+        // Pour la création, la méthode standard fonctionne parfaitement.
+        form.post(route('technicians.store'), {
         onSuccess: () => {
             isModalOpen.value = false;
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Opération réussie', life: 3000 });
+            toast.add({ severity: 'success', summary: t('common.success'), detail: t(isEditing ? 'technicians.toast.updateSuccess' : 'technicians.toast.createSuccess'), life: 3000 });
+            form.reset();
         },
-    });
+        onError: (errors) => {
+            form.errors = errors;
+            toast.add({ severity: 'error', summary: t('toast.error'), detail: t('toast.genericError'), life: 3000 });
+        }
+        });
+    }
 };
+
+// --- NOUVEAU: Watcher pour les filtres ---
+watch(filters, () => {
+    lazyParams.value.first = 0; // Reset to first page on filter
+    lazyParams.value.filters = filters.value;
+    loadLazyData();
+}, { deep: true });
 
 // --- SUPPRESSION ---
 const deleteTech = (tech) => {
@@ -213,6 +333,68 @@ const exportData = (type) => {
     window.location.href = route('technicians.export', { type, search: filters.value.global.value });
 };
 const selectedColumns = ref(allColumns.value.filter(col => col.default));
+
+// --- NOUVEAU: Logique pour l'importation ---
+const importTechnicians = (event) => {
+    const file = event.files[0];
+    if (!file) return;
+
+    // On utilise le router d'Inertia pour envoyer le fichier
+    router.post(route('technicians.import'), {
+        file: file,
+    }, {
+        onSuccess: () => {
+            importDialog.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Importation des techniciens réussie.', life: 3000 });
+        },
+        onError: (errors) => {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: errors.file || 'Une erreur est survenue lors de l\'envoi du fichier.', life: 5000 });
+        }
+    });
+};
+
+
+// 3. La fonction de chargement UNIQUE
+const loadLazyData = (event = null) => {
+    loading.value = true;
+
+    // Si l'event vient de la DataTable (onPage), on met à jour lazyParams
+    if (event) {
+        lazyParams.value = event;
+    }
+
+    const queryParams = {
+        page: Math.floor(lazyParams.value.first / lazyParams.value.rows) + 1,
+        per_page: lazyParams.value.rows,
+        sortField: lazyParams.value.sortField,
+        sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc',
+        // On envoie les filtres simplifiés pour ne pas surcharger l'URL
+        search: filters.value.global.value
+    };
+
+    router.get(route('technicians.index'), queryParams, {
+        preserveState: true,
+        preserveScroll: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
+
+// 4. Les déclencheurs d'événements
+const onPage = (event) => {
+    loadLazyData(event);
+};
+
+const onSort = (event) => {
+    loadLazyData(event);
+};
+
+// 5. REMPLACEZ VOTRE WATCH PAR UN DEBOUCE (pour éviter la boucle infinie)
+// On surveille uniquement le filtre global (champ recherche)
+watch(() => filters.value.global.value, (newValue) => {
+    // Reset à la première page lors d'une recherche
+    lazyParams.value.first = 0;
+    loadLazyData();
+});
 </script>
 
 
@@ -238,6 +420,7 @@ const selectedColumns = ref(allColumns.value.filter(col => col.default));
                 <div class="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
                     <Button icon="pi pi-file-excel" severity="secondary" text class="rounded-full" @click="exportData('excel')" v-tooltip.bottom="'Export Excel'" />
                     <Button icon="pi pi-file-pdf" severity="secondary" text class="rounded-full" @click="exportData('pdf')" v-tooltip.bottom="'Export PDF'" />
+                    <Button icon="pi pi-upload" severity="secondary" text class="rounded-full" @click="importDialog = true" v-tooltip.bottom="'Importer'" />
                     <div class="h-8 w-[1px] bg-slate-100 mx-2"></div>
                     <Button :label="t('technicians.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openCreate" class="rounded-lg font-bold" />
                 </div>
@@ -259,12 +442,42 @@ const selectedColumns = ref(allColumns.value.filter(col => col.default));
                 </div>
             </div>
 
+            <!-- NOUVEAU: Affichage des erreurs d'importation -->
+            <div v-if="import_errors && import_errors.length > 0" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <h3 class="font-bold">Erreurs lors de la dernière importation :</h3>
+                <ul class="list-disc list-inside mt-2 text-sm">
+                    <li v-for="(error, index) in import_errors" :key="index">{{ error }}</li>
+                </ul>
+            </div>
+
             <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
 
-                <DataTable :value="technicians.data" v-model:selection="selectedTechs" dataKey="id" :loading="loading"
-                    v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['name', 'email', 'fonction', 'region', 'numero']"
-                    paginator :rows="10" :rowsPerPageOptions="[10, 25, 50]" removableSort stripedRows
-                    class="p-datatable-custom">
+                <DataTable
+                  ref="dt"
+    :value="technicians.data"
+    v-model:selection="selectedTechs"
+    v-model:filters="filters"
+    dataKey="id"
+    :loading="loading"
+    :paginator="true"
+    :rows="lazyParams.rows"
+    :totalRecords="technicians.total"
+    :lazy="true"
+    @page="onPage($event)"
+    @sort="onSort($event)"
+    :first="lazyParams.first"
+    :sortField="lazyParams.sortField"
+    :sortOrder="lazyParams.sortOrder"
+
+    paginatorPosition="bottom"
+    paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+    :rowsPerPageOptions="[5,10, 20, 50, 100, 500]"
+    currentPageReportTemplate="({first} à {last} sur {totalRecords})"
+
+    class="p-datatable-custom shadow-md rounded-2xl overflow-hidden border border-slate-200"
+    filterDisplay="menu"
+    :globalFilterFields="['name', 'email', 'fonction', 'numero']"
+                >
                     <template #header>
                         <div class="flex flex-wrap justify-between items-center gap-4 p-2 w-full">
                             <IconField iconPosition="left">
@@ -302,7 +515,7 @@ const selectedColumns = ref(allColumns.value.filter(col => col.default));
                             <template v-else-if="field === 'region'">
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-map-marker text-gray-400"></i>
-                                    <span class="font-semibold text-slate-600">{{ data.region }}</span>
+                                    <span class="font-semibold text-slate-600">{{  data.region.designation }}</span>
                                 </div>
                             </template>
                             <template v-else-if="field === 'numero'">
@@ -327,6 +540,7 @@ const selectedColumns = ref(allColumns.value.filter(col => col.default));
                             </div>
                         </template>
                     </Column>
+
                 </DataTable>
             </div>
         </div>
@@ -437,15 +651,15 @@ const selectedColumns = ref(allColumns.value.filter(col => col.default));
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div class="flex flex-col gap-2">
                                     <label for="fonction" class="v11-label">Fonction</label>
-                                    <Dropdown v-model="form.fonction" :options="fonctionOptions" optionLabel="label" optionValue="value"
+                                    <Dropdown v-model="form.fonction" :options="fonctionOptions" optionLabel="label" optionValue="value" filter showClear
                                         placeholder="Sélectionner un rôle" class="v11-dropdown-ultimate" id="fonction" />
                                     <small class="p-error" v-if="form.errors.fonction">{{ form.errors.fonction }}</small>
                                 </div>
                                 <div class="flex flex-col gap-2">
                                     <label for="region" class="v11-label">Région</label>
-                                    <Dropdown v-model="form.region" :options="regionOptions" optionLabel="label" optionValue="value"
+                                    <Dropdown v-model="form.region_id" :options="regions" optionLabel="designation" optionValue="id"
                                         placeholder="Zone d'intervention" class="v11-dropdown-ultimate" id="region" />
-                                    <small class="p-error" v-if="form.errors.region">{{ form.errors.region }}</small>
+                                    <small class="p-error" v-if="form.errors.region_id">{{ form.errors.region_id }}</small>
                                 </div>
                             </div>
                         </div>
@@ -493,6 +707,31 @@ const selectedColumns = ref(allColumns.value.filter(col => col.default));
             </form>
         </Dialog>
 
+        <Dialog v-model:visible="importDialog" modal header="Importer des Techniciens" :style="{ width: '450px' }">
+            <div class="flex flex-col gap-4">
+                <p class="text-slate-600">
+                    Sélectionnez un fichier CSV ou Excel. Assurez-vous que le fichier contient les colonnes :
+                    <code class="bg-slate-100 text-slate-800 p-1 rounded">name</code>,
+                    <code class="bg-slate-100 text-slate-800 p-1 rounded">email</code>,
+                    <code class="bg-slate-100 text-slate-800 p-1 rounded">fonction</code>,
+                    <code class="bg-slate-100 text-slate-800 p-1 rounded">region</code>.
+                </p>
+                <FileUpload
+                    name="file"
+                    :multiple="false"
+                    accept=".xlsx,.xls,.csv,.txt"
+                    :maxFileSize="1000000"
+                    chooseLabel="Choisir un fichier"
+                    :auto="true"
+                    customUpload
+                    @uploader="importTechnicians"
+                >
+                    <template #empty>
+                        <p>Glissez-déposez un fichier ici pour le téléverser.</p>
+                    </template>
+                </FileUpload>
+            </div>
+        </Dialog>
     </AppLayout>
 </template>
 
