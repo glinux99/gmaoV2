@@ -13,6 +13,7 @@
     "liveData": "LIVE",
     "manageSections": "Gérer l'affichage des sections",
     "mainChart":{
+        "title":"Gestion des Ressources",
 "avgClosure":"Clôture Moyenne",
 "availabilityRatio":"Ratio Disponibilité",
 "teamEfficiency":"Efficacité Équipe"
