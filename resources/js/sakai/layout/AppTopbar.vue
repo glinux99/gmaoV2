@@ -196,13 +196,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
                 <div class="hidden absolute right-0 mt-4 w-64 bg-white shadow-2xl rounded-2xl border border-gray-100 z-[130] overflow-hidden text-left">
                     <div class="p-6 bg-gradient-to-br from-gray-50 to-white text-center border-b border-gray-100">
                         <div class="relative inline-block mb-3">
-                            <img :src="user?.avatar || user?.profile_photo_url || '/assets/media/avatars/blank.png'"  class="w-16 h-16 rounded-2xl mx-auto shadow-xl border-2 border-white" />
+                            <img :src="user?.avatar || user?.profile_photo_url || '/assets/media/avatars/blank.png'" :alt="user?.profile_photo_url"  class="w-16 h-16 rounded-2xl mx-auto shadow-xl border-2 border-white" />
                         </div>
                         <h3 class="text-sm font-black text-gray-900 uppercase tracking-tight">{{ user.name }}</h3>
                         <p class="text-[10px] text-gray-500 font-bold mt-1 lowercase">{{ user.email }}</p>
                     </div>
 
                     <div class="p-2.5 space-y-1">
+
                         <NavLink href="/settings" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 no-underline border-none text-gray-600 font-bold text-xs transition-colors group">
                             <i class="pi pi-user-edit text-indigo-400 group-hover:text-indigo-600"></i> {{ t('topbar.userMenu.edit_profile') }}
                         </NavLink>
