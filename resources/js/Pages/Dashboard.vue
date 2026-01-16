@@ -467,7 +467,7 @@ const showWODialog = ref(false);
                         <div @dblclick="toggleSection('stockAlerts')" class="px-4 pt-2 font-black text-slate-800 section-title">{{ t('dashboard.stockAlerts.title') }}</div>
                     </template>
                     <template #content>
-                        <div class="space-y-4 px-2">
+                        <!-- <div class="space-y-4 px-2">
                             <div v-for="part in props.alertSpareParts" :key="part.reference" class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 group hover:border-primary-200 transition-colors ">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">
@@ -485,7 +485,7 @@ const showWODialog = ref(false);
                                     <Button v-if="part.quantity < part.min_quantity" :label="t('dashboard.stockAlerts.order')" class="p-button-text p-button-xs !p-0 font-bold text-primary-600" />
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
                         <div class="mt-8 p-4 bg-primary-50/50 rounded-xl">
                             <h4 class="text-[10px] font-black text-primary-400 uppercase mb-4 text-center">{{ t('dashboard.stockRotation.title') }}</h4>
