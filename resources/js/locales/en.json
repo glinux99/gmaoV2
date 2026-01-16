@@ -16,6 +16,7 @@
             "laborHours": "Work Hours",
             "avgMttr": "MTTR Average"
         },
+
         "stockRotation": {
             "title": "Spare Parts Alert"
         },

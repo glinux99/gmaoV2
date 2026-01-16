@@ -680,22 +680,23 @@ public function bulkStore(Request $request)
             $this->updateMaintenanceCost($activity);
 
             // --- 5. MISE À JOUR DU STATUT PARENT ---
-            // Si l'activité mise à jour est une sous-activité (a un parent)
+            // Si l'activité mise à jour est une sous-activité (elle a un parent)
             if ($activity->parent_id) {
                 $parent = $activity->parent()->with('children')->first();
 
                 if ($parent && $parent->children->isNotEmpty()) {
-                    // On récupère le statut de la première sous-activité
-                    $firstStatus = $parent->children->first()->status;
+                    // On récupère le statut de l'activité qui vient d'être mise à jour
+                    $currentStatus = $activity->status;
 
                     // On vérifie si TOUTES les sous-activités ont ce même statut
-                    $allSameStatus = $parent->children->every(function ($child) use ($firstStatus) {
-                        return $child->status === $firstStatus;
+                    $allSameStatus = $parent->children->every(function ($child) use ($currentStatus) {
+                        return $child->status === $currentStatus;
                     });
 
-                    // Si oui, on met à jour le parent. La propagation à la maintenance se fait via l'événement 'updated' du modèle Activity.
-                    if ($allSameStatus && $parent->status !== $firstStatus) {
-                        $parent->update(['status' => $firstStatus]);
+                    // Si oui, et que le parent n'a pas déjà ce statut, on le met à jour.
+                    // La propagation vers la Tâche se fera automatiquement via l'événement 'updated' du modèle Activity.
+                    if ($allSameStatus && $parent->status !== $currentStatus) {
+                        $parent->update(['status' => $currentStatus]);
                     }
                 }
             }

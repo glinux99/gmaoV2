@@ -19,8 +19,9 @@ class TechnicianImport implements ToModel, WithHeadingRow, WithValidation
     public function model(array $row)
     {
         $regionName = $row['region'] ?? null;
-        $region = Region::where('designation', $regionName)->orWhere('code', $regionName)->first();
-
+        $region = $region = Region::where('designation', 'LIKE', '%' . $regionName . '%')
+                ->orWhere('code', 'LIKE', '%' . $regionName . '%')
+                ->first();
         $user = User::updateOrCreate(
             ['email' => $row['email']],
             [

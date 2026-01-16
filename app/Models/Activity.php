@@ -36,7 +36,7 @@ class Activity extends Model implements HasMedia
         'problem_resolution_description',
         'proposals',
            'additional_information',
-        'equipment_id',
+        // 'equipment_id',
         'title',
         'region_id', // Ajout de la région
         'zone_id', // Ajout de la zone
@@ -51,17 +51,16 @@ class Activity extends Model implements HasMedia
     {
         // Événement 'updating' pour capturer les changements avant la sauvegarde
         static::updating(function (Activity $activity) {
-            // Si l'assignation a changé, on met à jour le parent
+            // Si l'assignation de l'activité a changé
             if ($activity->isDirty('assignable_id') || $activity->isDirty('assignable_type')) {
-                $updateData = [
-                    'assignable_id' => $activity->assignable_id,
-                    'assignable_type' => $activity->assignable_type,
-                ];
-
-                if ($activity->task_id) $activity->task()->update($updateData);
-                // On désactive la propagation de l'assignation de l'activité vers la maintenance.
-                // if ($activity->maintenance_id) $activity->maintenance()->update($updateData);
-                if ($activity->intervention_request_id) $activity->interventionRequest()->update($updateData);
+                // Et si l'activité est liée à une tâche qui n'a PAS d'assignation
+                if ($activity->task_id && is_null($activity->task->assignable_id)) {
+                    // On propage l'assignation de l'activité vers la tâche.
+                    $activity->task->update([
+                        'assignable_id' => $activity->assignable_id,
+                        'assignable_type' => $activity->assignable_type,
+                    ]);
+                }
             }
         });
 
@@ -70,7 +69,8 @@ class Activity extends Model implements HasMedia
                 $newStatus = $activity->status;
 
                 if ($activity->task_id) {
-                    $activity->task->update(['status' => $newStatus]);
+                    // On ne propage le statut que si l'activité n'a pas d'enfants.
+                    if ($activity->children()->count() === 0) $activity->task->update(['status' => $newStatus]);
                     Log::info("Task {$activity->task_id} status updated to {$newStatus} due to activity {$activity->id} status change.");
                 }
 

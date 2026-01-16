@@ -12,6 +12,11 @@
     "generatedAt": "Généré à : {time}",
     "liveData": "LIVE",
     "manageSections": "Gérer l'affichage des sections",
+    "mainChart":{
+"avgClosure":"Clôture Moyenne",
+"availabilityRatio":"Ratio Disponibilité",
+"teamEfficiency":"Efficacité Équipe"
+    },
     "filters": {
       "title": "FILTRES AVANCÉS",
       "zonePlaceholder": "Sélectionner une zone",
@@ -24,7 +29,9 @@
       "avgMttr": "MTTR Moyen"
     },
     "stockRotation":{
-        "title":"Alerte Pièces Détachées"
+        "title":"Alerte Pièces Détachées",
+        "entries":"Entrées",
+        "exits":"Sorties"
     },
     "sections": {
       "kpis": "Indicateurs Clés (KPIs)",
@@ -91,7 +98,7 @@
       "completed": "{count} terminés",
       "pending": "{count} en attente"
     },
-    "mainChart": {
+    "fl": {
       "title": "Analyse de Performance",
       "exportPdf": "Exporter en PDF",
       "availabilityRatio": "Ratio Disponibilité",

@@ -131,6 +131,7 @@ private function transformForTreeSelect($equipments)
     public function store(Request $request)
     {
 
+
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -145,6 +146,7 @@ private function transformForTreeSelect($equipments)
             'estimated_cost' => 'nullable|numeric',
             'region_id' => 'nullable|exists:regions,id',
             'jobber'=> 'nullable|integer',
+            'related_equipments'=>'nullable',
                 // Validation corrigée: permet des entiers ou des chaînes pour les IDs
             'equipment_ids' => 'nullable|array',
             'equipment_ids.*' => 'nullable|numeric|exists:equipment,id', // Assure que c'est un nombre ET qu'il existe
@@ -171,8 +173,10 @@ private function transformForTreeSelect($equipments)
 
             try {
                  $task = Task::create(\Illuminate\Support\Arr::except($validatedData, ['equipment_ids']));
-                $equipmentIds = collect($validatedData['equipment_ids'])->map(fn($id) => (int) $id)->toArray();
-            $task->equipments()->attach($equipmentIds);
+                if (isset($validatedData['equipment_ids'])) {
+                    $equipmentIds = collect($validatedData['equipment_ids'])->map(fn($id) => (int) $id)->toArray();
+                    $task->equipments()->attach($equipmentIds);
+                }
             } catch (\Throwable $th) {
                 //throw $th;
                 DB::rollBack();
@@ -180,18 +184,31 @@ private function transformForTreeSelect($equipments)
             }
 
            try {
-
-             Activity::create([
-                'task_id' => $task['id'],
-                'problem_resolution_description' => $validatedData['description'] ?? null,
-                'actual_start_time' => $validatedData['planned_start_date'] ?? null,
-                'actual_end_time' => $validatedData['planned_end_date'] ?? null,
-                'assignable_type' => $validatedData['assignable_type'] ?? null,
-                'assignable_id' => $validatedData['assignable_id'] ?? null,
-                'jobber' => $validatedData['jobber'], // Assuming jobber is not directly from task creation, or needs to be set later
-                'status' => $validatedData['status'] ?? 'pending', // Default status or from validated data
-            ]);
-
+                $activityData = [
+ 'task_id' => $task->id,
+ 'maintenance_id' => null, // Not applicable for tasks
+ 'intervention_request_id' => null, // Not applicable for tasks
+ 'user_id' => Auth::id(), // The user who created the activity record
+ 'actual_start_time' => $validatedData['planned_start_date'] ?? null,
+ 'parent_id' => null, // Not a sub-activity
+ 'actual_end_time' => $validatedData['planned_end_date'] ?? null,
+ 'assignable_type' => $validatedData['assignable_type'] ?? null,
+ 'assignable_id' => $validatedData['assignable_id'] ?? null,
+ 'jobber' => $validatedData['jobber'] ?? null,
+ 'spare_parts_used' => null, // To be updated later
+ 'spare_parts_returned' => null, // To be updated later
+ 'status' => $validatedData['status'] ?? 'pending',
+ 'problem_resolution_description' => $validatedData['description'] ?? null,
+ 'proposals' => null, // To be updated later
+ 'additional_information' => null, // To be updated later
+ 'equipment_id' => $task->equipments->first()->id ?? null, // First equipment if exists
+ 'title' => "Activité sur l'Equipement Tag - ".$task->equipments->first()->tag." - ".$task->equipments->first()->designation ?? $task->title, // Equipment name or task title
+ 'region_id' => $validatedData['region_id'] ?? null,
+ 'zone_id' => null, // To be updated later
+                ];
+                // dd($activityData);
+ Activity::create($activityData);
+    // dd(123);
            } catch (\Throwable $th) {
             //throw $th;
             return $th;
@@ -256,6 +273,7 @@ private function transformForTreeSelect($equipments)
             'time_spent' => 'nullable|integer',
             'estimated_cost' => 'nullable|numeric',
             'region_id' => 'nullable|exists:regions,id',
+            "related_equipments"=> "nullable",
                 // Validation corrigée: permet des entiers ou des chaînes pour les IDs
             'equipment_ids' => 'nullable|array',
             'equipment_ids.*' => 'nullable|numeric|exists:equipment,id', // Assure que c'est un nombre ET qu'il existe
@@ -270,26 +288,79 @@ private function transformForTreeSelect($equipments)
             'service_order_cost' => 'nullable|numeric|min:0',
             'service_order_description' => 'nullable|string|required_with:service_order_cost',
         ]);
-
+            // return $request;
         if ($validator->fails()) {
 
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
-        try {
+          try {
 
             // Update the associated activity if it exists
 
 
             $validatedData = $validator->validated();
 
-        $task->update(\Illuminate\Support\Arr::except($validatedData, ['equipment_ids']));
-               if ($task->activity) {
-                $task->activity->update(\Illuminate\Support\Arr::except($validatedData, ['equipment_ids', 'instructions']));
-            }
+        $task->update(\Illuminate\Support\Arr::except($validatedData, ['equipment_ids', 'related_equipments', 'instructions']));
+       if ($task->activity && $task->activity->isNotEmpty()) {
+       // On recharge la relation pour être sûr d'avoir les données à jour
+       $task->load('activity');
+       $activity = $task->activity;
+
+    // On boucle sur chaque activité liée à cette tâche
+    foreach ($task->activity as $activity) {
+       if ($activity) {
+           // 1. Propagation de l'assignation (si l'activité n'en a pas déjà une)
+           if (($task->wasChanged('assignable_id') || $task->wasChanged('assignable_type')) && is_null($activity->assignable_id)) {
+               $activity->assignable_type = $task->assignable_type;
+               $activity->assignable_id = $task->assignable_id;
+           }
+
+        // 1. Propagation de l'assignation
+        // Si l'assignation de la tâche a changé ET que l'activité n'est pas encore assignée
+        if (($task->wasChanged('assignable_id') || $task->wasChanged('assignable_type'))
+            && is_null($activity->assignable_id)) {
+           // 2. Synchronisation des champs opérationnels
+           $activity->actual_start_time = $validatedData['planned_start_date'] ?? $task->planned_start_date;
+           $activity->actual_end_time = $validatedData['planned_end_date'] ?? $task->planned_end_date;
+           $activity->status = $validatedData['status'] ?? $task->status;
+
+            $activity->assignable_type = $task->assignable_type;
+            $activity->assignable_id = $task->assignable_id;
+        }
+
+        // 2. Synchronisation des champs opérationnels
+        // On met à jour les temps réels, le statut et la priorité
+        $activity->actual_start_time = $validatedData['planned_start_date'] ?? $task->planned_start_date;
+        $activity->actual_end_time = $validatedData['planned_end_date'] ?? $task->planned_end_date;
+
+        // Note : On ne synchronise le statut de l'activité que si nécessaire
+        $activity->status = $validatedData['status'] ?? $task->status;
+        // $activity->priority = $validatedData['priority'] ?? $task->priority;
+
+        // 3. Sauvegarde de l'instance individuelle
+        $activity->save();
+    }
+}
+           // 3. Sauvegarde de l'activité mise à jour
+           $activity->save();
+       }
     // 2. Maintenant que $task a un ID, synchronisez les équipements.
     // La méthode sync s'occupera d'ajouter/supprimer les entrées dans la table pivot.
+     $equipmentIds = [];
+    if (isset($validatedData['related_equipments']) && is_array($validatedData['related_equipments'])) {
+        foreach ($validatedData['related_equipments'] as $equipmentId => $state) {
+            if ($state['checked']) {
+                $equipmentIds[] = $equipmentId;
+            }
+        }
+    }
+
+    // Utiliser la liste d'equipmentIds pour synchroniser la relation
+    $task->equipments()->sync($equipmentIds);
+
+
     if (isset($validatedData['equipment_ids'])) {
         $task->equipments()->sync($validatedData['equipment_ids']);
     }

@@ -112,7 +112,7 @@ const form = useForm({ // Changed from maintenance to task
     department: '', // Service destinateur
     requires_shutdown: true, // Équipement hors tension (Oui/Non, par défaut Oui)
     instructions: {}, // Pour les instructions spécifiques aux noeuds,
-    images: [], // Pour les images liées à la tâche
+    equipment_ids: [], // Array of equipment IDs for backend
     related_equipments: {}, // Pour les équipements liés (TreeSelect model),
     jobber: 0,
     service_order_description: 'x', // Description du bon de commande
@@ -220,6 +220,16 @@ watch(() => form.related_equipments, (newSelection) => {
         });
     }
     selectedChildrenForInstructions.value = newSelectedChildren;
+
+    // Update equipment_ids based on related_equipments for backend submission
+    const newEquipmentIds = [];
+    if (newSelection) {
+        Object.keys(newSelection).forEach(key => {
+            if (newSelection[key].checked) {
+                newEquipmentIds.push(parseInt(key));
+            }
+        });
+    }
 
     const relevantKeys = Object.keys(newSelectedChildren); // These are the keys of currently selected equipments
 
@@ -342,6 +352,7 @@ const data = {
         quantity_used: sp.quantity_used
     })),
     related_equipments: equipmentIds, // Envoyer l'objet tel quel
+    equipment_ids: Object.keys(equipmentIds).filter(key => equipmentIds[key].checked).map(key => parseInt(key)), // Ensure equipment_ids is populated
     instructions: instructionsData,
     planned_start_date: form.planned_start_date ? new Date(form.planned_start_date).toISOString().slice(0, 19).replace('T', ' ') : null,
     planned_end_date: form.planned_end_date ? new Date(form.planned_end_date).toISOString().slice(0, 19).replace('T', ' ') : null, // Utiliser le nouveau tableau d'instructions

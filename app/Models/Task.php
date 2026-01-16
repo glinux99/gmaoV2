@@ -120,6 +120,11 @@ class Task extends Model
     {
         return $this->hasMany(Activity::class);
     }
+     public function activity(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+
 
     /**
      * Récupère les instructions associées à la tâche.

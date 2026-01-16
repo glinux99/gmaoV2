@@ -71,6 +71,7 @@ const props = defineProps({
     totalStockOut: Number, // NOUVEAU
     averageClosureTime: Number,
     teamEfficiencyChange: Number,
+    mainChartData: Object, // NOUVEAU
 });
 
 const formatCurrency = (val) => {
@@ -162,16 +163,21 @@ const globalChartOptions = computed(() => ({
 const sparklineItems = computed(() => {
     const data = props.sparklineData;
     return [
-        { key: 'activeTasks', label: t('dashboard.sparklines.workOrders'), value: props.activeTasksCount || 0, icon: 'pi pi-briefcase', color: '#6366F1' },
-        { key: 'backlog', label: t('dashboard.sparklines.backlog'), value: props.backlogTasksCount || 0, icon: 'pi pi-clock', color: '#F59E0B' },
-        { key: 'timeSpent', label: t('dashboard.sparklines.laborHours'), value: props.timeSpent || '0h', icon: 'pi pi-users', color: '#10B981' },
-        { key: 'mttr', label: t('dashboard.sparklines.avgMttr'), value: (props.mttr || 0) + 'h', icon: 'pi pi-wrench', color: '#EF4444' }
+        { key: 'activeTasks', label: t('dashboard.sparklines.workOrders'), value: data?.activeTasks?.value || 0, icon: 'pi pi-briefcase', color: '#6366F1' },
+        { key: 'backlog', label: t('dashboard.sparklines.backlog'), value: data?.backlog?.value || 0, icon: 'pi pi-clock', color: '#F59E0B' },
+        { key: 'timeSpent', label: t('dashboard.sparklines.laborHours'), value: data?.timeSpent?.value || '0h', icon: 'pi pi-users', color: '#10B981' },
+        { key: 'averageInterventionTime', label: t('dashboard.sparklines.avgMttr'), value: data?.averageInterventionTime?.value || '0m', icon: 'pi pi-wrench', color: '#EF4444' }
     ].map(item => ({
         ...item,
         chartData: {
-            labels: data?.[item.key]?.chartData?.labels || ['', '', '', '', '', ''],
+            // Assurer un minimum de 6 labels pour un affichage correct, même avec peu de données
+            labels: (data?.[item.key]?.chartData?.labels || []).concat(Array(Math.max(0, 6 - (data?.[item.key]?.chartData?.labels?.length || 0))).fill('')),
             datasets: [{
-                data: data?.[item.key]?.chartData?.datasets?.[0]?.data || [2, 5, 3, 8, 5, 9],
+                // Assurer un minimum de 6 points de données, en complétant avec la dernière valeur ou 0
+                data: (data?.[item.key]?.chartData?.datasets?.[0]?.data || []).concat(
+                    Array(Math.max(0, 6 - (data?.[item.key]?.chartData?.datasets?.[0]?.data?.length || 0)))
+                    .fill(data?.[item.key]?.chartData?.datasets?.[0]?.data?.slice(-1)[0] ?? 0)
+                ),
                 borderColor: item.color,
                 backgroundColor: item.color + '10',
                 fill: true,
@@ -212,28 +218,6 @@ const sparklineOptions = {
 };
 
 // --- CHART CONFIGS ---
-const performanceChartData = {
-    labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-    datasets: [
-        {
-            label: t('dashboard.performanceChart.availability'),
-            borderColor: '#6366F1',
-            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-            borderWidth: 4,
-            fill: true,
-            tension: 0.4,
-            data: [98, 97, 99, 95, 98, 99, 98]
-        },
-        {
-            label: t('dashboard.performanceChart.productivity'),
-            borderColor: '#10B981',
-            borderWidth: 3,
-            borderDash: [5, 5],
-            data: [82, 80, 85, 84, 88, 81, 83]
-        }
-    ]
-};
-
 const performanceChartOptions = {
     maintainAspectRatio: false,
     plugins: {
@@ -513,183 +497,9 @@ const showWODialog = ref(false);
                 </Card>
             </div>
 
-            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 section-container">
-                <div v-show="sections.preventiveCalendar.visible" data-section-id="preventiveCalendar" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <div @dblclick="toggleSection('preventiveCalendar')" class="flex justify-between items-center mb-6 section-title">
-                        <h3 class="font-black text-slate-800 tracking-tight">{{ t('dashboard.preventiveCalendar.title') }}</h3>
-                        <i class="pi pi-calendar-plus text-primary-500 text-xl cursor-pointer"></i>
-                    </div>
-                    <div class="space-y-4">
-                        <div v-for="event in props.calendarEvents" :key="event.title" class="flex gap-4 items-start p-3 hover:bg-slate-50 rounded-xl transition-colors">
-                            <div class="flex flex-col items-center justify-center min-w-[50px] py-2 bg-primary-50 rounded-xl text-primary-600">
-                                <span class="text-xs font-black uppercase">{{ event.month }}</span>
-                                <span class="text-xl font-[1000]">{{ event.day }}</span>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">{{ event.title }}</h4>
-                                <p class="text-xs text-slate-400">{{ event.duration }} • {{ event.team }}</p>
-                                <div class="flex gap-1 mt-2">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    <span class="text-[9px] font-black text-slate-400 uppercase">{{ t('dashboard.preventiveCalendar.confirmed') }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <div v-show="sections.riskMatrix.visible" data-section-id="riskMatrix" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <h3 @dblclick="toggleSection('riskMatrix')" class="font-black text-slate-800 mb-6 section-title">{{ t('dashboard.riskMatrix.title') }}</h3>
-                    <div class="h-[300px]">
-                        <Chart type="radar" :data="props.riskMatrixData" :options="radarOptions" />
-                    </div>
-                    <div class="mt-4 p-4 bg-rose-50 rounded-xl">
-                        <p class="text-[10px] text-rose-600 font-black uppercase mb-1"><i class="pi pi-exclamation-circle"></i> {{ t('dashboard.riskMatrix.criticalRisk') }}</p>
-                        <p class="text-xs font-bold text-rose-900">{{ t('dashboard.riskMatrix.criticalRiskExample') }}</p>
-                    </div>
-                </div>
 
-                <div v-show="sections.technicianEfficiency.visible" data-section-id="technicianEfficiency" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
-                    <h3 @dblclick="toggleSection('technicianEfficiency')" class="font-black text-slate-800 mb-6 section-title">{{ t('dashboard.technicianEfficiency.title') }}</h3>
-                    <div class="space-y-6">
-                        <div v-for="user in props.technicianEfficiency" :key="user.name">
-                            <div class="flex justify-between items-center mb-2">
-                                <div class="flex items-center gap-2">
-                                    <Avatar :image="user.img" shape="circle" />
-                                    <span class="text-sm font-bold text-slate-700">{{ user.name }}</span>
-                                </div>
-                                <span class="text-xs font-black text-primary-600">{{ user.load }}% Load</span>
-                            </div>
-                            <ProgressBar :value="user.load" :showValue="false" class="!h-2 !bg-slate-100">
-                                <template #default>
-                                    <div class="h-full bg-primary-500 rounded-full" :style="{width: user.load + '%'}"></div>
-                                </template>
-                            </ProgressBar>
-                            <div class="flex justify-between mt-2 text-[9px] font-bold text-slate-400 uppercase">
-                                <span>{{ t('dashboard.technicianEfficiency.completed', { count: user.completed }) }}</span>
-                                <span>{{ t('dashboard.technicianEfficiency.pending', { count: user.backlog }) }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            <div class="grid grid-cols-12 gap-6 mb-10 items-stretch mt-8">
-                <div class="col-span-12 lg:col-span-8 space-y-6">
-                    <Card v-show="sections.mainChart.visible"
-                        data-section-id="mainChart"
-                        class="!rounded-xl border-none shadow-lg shadow-slate-200/50 bg-white overflow-hidden transition-all duration-300">
-                        <template #title>
-                            <div @dblclick="toggleSection('mainChart')" class="flex justify-between items-center p-5 cursor-pointer hover:bg-slate-50 transition-colors">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-1.5 h-8 bg-primary-600 rounded-full"></div>
-                                    <span class="text-xl font-black text-slate-800 tracking-tight">{{ t('dashboard.mainChart.title') }}</span>
-                                </div>
-                                <div class="flex gap-2">
-                                    <Button icon="pi pi-download" class="p-button-rounded p-button-text p-button-secondary hover:bg-primary-50" v-tooltip.top="t('dashboard.mainChart.exportPdf')" />
-                                    <Button icon="pi pi-ellipsis-h" class="p-button-rounded p-button-text p-button-secondary" />
-                                </div>
-                            </div>
-                        </template>
-                        <template #content>
-                            <div class="h-[400px] px-4 pb-2">
-                                <Chart type="bar" :data="mainChartData" :options="mainChartOptions" class="h-full" />
-                            </div>
-
-                            <div class="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/80 border-t border-slate-100 mt-4">
-                                <div class="p-5 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.availabilityRatio') }}</p>
-                                    <p class="text-2xl font-black text-primary-600">{{ props.availabilityRate || 0 }}%</p>
-                                </div>
-                                <div class="p-5 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.avgClosure') }}</p>
-                                    <p class="text-2xl font-black text-slate-800">{{ props.averageClosureTime || 0 }} <span class="text-xs font-medium text-slate-500">hrs</span></p>
-                                </div>
-                                <div class="p-5 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.teamEfficiency') }}</p>
-                                    <p class="text-2xl font-black" :class="props.teamEfficiencyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'">
-                                        {{ props.teamEfficiencyChange >= 0 ? '+' : '' }}{{ props.teamEfficiencyChange || 0 }}%
-                                    </p>
-                                </div>
-                            </div>
-                        </template>
-                    </Card>
-
-                    <div v-show="sections.statusDuration.visible"
-                        data-section-id="statusDuration"
-                        class="bg-white p-4 rounded-xl shadow-lg shadow-slate-200/50 cursor-pointer hover:ring-1 ring-primary-200 transition-all"
-                        @dblclick="toggleSection('statusDuration')">
-                        <StatusDurationChart
-                            :chart-data="maintenanceStatusDurationChart"
-                            :equipments="equipments"
-                            :zones="zones"
-                        />
-                    </div>
-                </div>
-
-                <div class="col-span-12 lg:col-span-4 space-y-6">
-                    <Card v-show="sections.statusDoughnut.visible"
-                        data-section-id="statusDoughnut"
-                        class="!rounded-xl border-none shadow-lg shadow-slate-200/50 bg-white overflow-hidden h-fit">
-                        <template #title>
-                            <div @dblclick="toggleSection('statusDoughnut')" class="flex justify-between items-center p-5 cursor-pointer border-b border-slate-50">
-                                <span class="text-lg font-bold text-slate-800">{{ t('dashboard.statusDoughnut.title') }}</span>
-                                <i class="pi pi-info-circle text-slate-300"></i>
-                            </div>
-                        </template>
-                        <template #content>
-                            <div class="relative flex flex-col items-center py-8">
-                                <div class="h-[280px] w-full">
-                                    <Chart type="doughnut" :data="doughnutData" :options="{
-                                        cutout: '78%',
-                                        maintainAspectRatio: false,
-                                        plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 11, weight: '600' } } } }
-                                    }" />
-                                </div>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center pt-[-40px] pointer-events-none">
-                                    <span class="text-5xl font-[1000] text-slate-800 tracking-tighter">{{ activeTasksCount }}</span>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">{{ t('dashboard.statusDoughnut.inProgress') }}</span>
-                                </div>
-                            </div>
-                        </template>
-                    </Card>
-
-                    <div v-show="sections.budget.visible"
-                        data-section-id="budget"
-                        class="bg-[#0F172A] p-7 rounded-xl text-white shadow-2xl relative overflow-hidden group">
-                        <div class="absolute -top-4 -right-4 p-8 opacity-10 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500">
-                            <i class="pi pi-wallet text-[7rem]"></i>
-                        </div>
-
-                        <h3 @dblclick="toggleSection('budget')" class="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mb-8 cursor-pointer flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
-                            {{ t('dashboard.budget.title') }}
-                        </h3>
-
-                        <div class="mb-8 relative z-10">
-                            <div class="flex justify-between items-end mb-3">
-                                <span class="text-4xl font-black tracking-tighter">{{ formatCurrency(props.expensesTotal) }}</span>
-                                <span class="text-slate-400 text-xs font-medium mb-1">/ {{ formatCurrency(props.budgetTotal) }}</span>
-                            </div>
-                            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-primary-500 via-indigo-500 to-purple-500 transition-all duration-1000"
-                                    :style="{ width: (props.expensesTotal / props.budgetTotal) * 100 + '%' }"></div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3 relative z-10" v-if="props.maintenanceCostDistribution?.items">
-                            <div v-for="item in props.maintenanceCostDistribution.items" :key="item.label"
-                                class="flex justify-between items-center bg-white/5 backdrop-blur-sm p-3.5 rounded-xl border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.2)]" :class="item.color"></div>
-                                    <span class="text-xs font-semibold text-slate-300">{{ item.label }}</span>
-                                </div>
-                                <span class="text-sm font-black text-white">{{ item.value }}%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-12 gap-8">
+            <div class="grid grid-cols-12 gap-8 mb-8">
                 <Card v-show="sections.criticalityAnalysis.visible" data-section-id="criticalityAnalysis" class="col-span-12 xl:col-span-7 !rounded-xl border-none shadow-xl shadow-slate-200/50 bg-white section-container">
                     <template #title>
                         <div @dblclick="toggleSection('criticalityAnalysis')" class="flex items-center gap-3 px-2 pt-2 section-title">
@@ -775,7 +585,184 @@ const showWODialog = ref(false);
                     </template>
                 </Card>
             </div>
+            <div>
+                 <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 section-container">
+                <div v-show="sections.preventiveCalendar.visible" data-section-id="preventiveCalendar" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
+                    <div @dblclick="toggleSection('preventiveCalendar')" class="flex justify-between items-center mb-6 section-title">
+                        <h3 class="font-black text-slate-800 tracking-tight">{{ t('dashboard.preventiveCalendar.title') }}</h3>
+                        <i class="pi pi-calendar-plus text-primary-500 text-xl cursor-pointer"></i>
+                    </div>
+                    <div class="space-y-4">
+                        <div v-for="event in props.calendarEvents" :key="event.title" class="flex gap-4 items-start p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                            <div class="flex flex-col items-center justify-center min-w-[50px] py-2 bg-primary-50 rounded-xl text-primary-600">
+                                <span class="text-xs font-black uppercase">{{ event.month }}</span>
+                                <span class="text-xl font-[1000]">{{ event.day }}</span>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-800">{{ event.title }}</h4>
+                                <p class="text-xs text-slate-400">{{ event.duration }} • {{ event.team }}</p>
+                                <div class="flex gap-1 mt-2">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span class="text-[9px] font-black text-slate-400 uppercase">{{ t('dashboard.preventiveCalendar.confirmed') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                <div v-show="sections.riskMatrix.visible" data-section-id="riskMatrix" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
+                    <h3 @dblclick="toggleSection('riskMatrix')" class="font-black text-slate-800 mb-6 section-title">{{ t('dashboard.riskMatrix.title') }}</h3>
+                    <div class="h-[300px]">
+                        <Chart type="radar" :data="props.riskMatrixData" :options="radarOptions" />
+                    </div>
+                    <div class="mt-4 p-4 bg-rose-50 rounded-xl">
+                        <p class="text-[10px] text-rose-600 font-black uppercase mb-1"><i class="pi pi-exclamation-circle"></i> {{ t('dashboard.riskMatrix.criticalRisk') }}</p>
+                        <p class="text-xs font-bold text-rose-900">{{ t('dashboard.riskMatrix.criticalRiskExample') }}</p>
+                    </div>
+                </div>
+
+                <div v-show="sections.technicianEfficiency.visible" data-section-id="technicianEfficiency" class="bg-white p-8 rounded-xl shadow-xl border border-slate-100 ">
+                    <h3 @dblclick="toggleSection('technicianEfficiency')" class="font-black text-slate-800 mb-6 section-title">{{ t('dashboard.technicianEfficiency.title') }}</h3>
+                    <div class="space-y-6">
+                        <div v-for="user in props.technicianEfficiency" :key="user.name">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="flex items-center gap-2">
+                                    <Avatar :image="user.img" shape="circle" />
+                                    <span class="text-sm font-bold text-slate-700">{{ user.name }}</span>
+                                </div>
+                                <span class="text-xs font-black text-primary-600">{{ user.load }}% Load</span>
+                            </div>
+                            <ProgressBar :value="user.load" :showValue="false" class="!h-2 !bg-slate-100">
+                                <template #default>
+                                    <div class="h-full bg-primary-500 rounded-full" :style="{width: user.load + '%'}"></div>
+                                </template>
+                            </ProgressBar>
+                            <div class="flex justify-between mt-2 text-[9px] font-bold text-slate-400 uppercase">
+                                <span>{{ t('dashboard.technicianEfficiency.completed', { count: user.completed }) }}</span>
+                                <span>{{ t('dashboard.technicianEfficiency.pending', { count: user.backlog }) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <div class="grid grid-cols-12 gap-6 mb-10 items-stretch mt-8">
+                <div class="col-span-12 lg:col-span-8 space-y-6">
+                    <Card v-show="sections.mainChart.visible"
+                        data-section-id="mainChart"
+                        class="!rounded-xl border-none shadow-lg shadow-slate-200/50 bg-white overflow-hidden transition-all duration-300">
+                        <template #title>
+                            <div @dblclick="toggleSection('mainChart')" class="flex justify-between items-center p-5 cursor-pointer hover:bg-slate-50 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-1.5 h-8 bg-primary-600 rounded-full"></div>
+                                    <span class="text-xl font-black text-slate-800 tracking-tight">{{ t('dashboard.mainChart.title') }}</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <Button icon="pi pi-download" class="p-button-rounded p-button-text p-button-secondary hover:bg-primary-50" v-tooltip.top="t('dashboard.mainChart.exportPdf')" />
+                                    <Button icon="pi pi-ellipsis-h" class="p-button-rounded p-button-text p-button-secondary" />
+                                </div>
+                            </div>
+                        </template>
+                        <template #content>
+                            <div class="h-[400px] px-4 pb-2">
+                                <Chart type="bar" :data="props.mainChartData" :options="performanceChartOptions" class="h-full" />
+                            </div>
+
+                            <div class="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/80 border-t border-slate-100 mt-4">
+                                <div class="p-5 text-center">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.availabilityRatio') }}</p>
+                                    <p class="text-2xl font-black text-primary-600">{{ props.availabilityRate || 0 }}%</p>
+                                </div>
+                                <div class="p-5 text-center">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.avgClosure') }}</p>
+                                    <p class="text-2xl font-black text-slate-800">{{ props.averageClosureTime || 0 }} <span class="text-xs font-medium text-slate-500">hrs</span></p>
+                                </div>
+                                <div class="p-5 text-center">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ t('dashboard.mainChart.teamEfficiency') }}</p>
+                                    <p class="text-2xl font-black" :class="props.teamEfficiencyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'">
+                                        {{ props.teamEfficiencyChange >= 0 ? '+' : '' }}{{ props.teamEfficiencyChange || 0 }}%
+                                    </p>
+                                </div>
+                            </div>
+                        </template>
+                    </Card>
+
+                    <!-- <div v-show="sections.statusDuration.visible"
+                        data-section-id="statusDuration"
+                        class="bg-white p-4 rounded-xl shadow-lg shadow-slate-200/50 cursor-pointer hover:ring-1 ring-primary-200 transition-all"
+                        @dblclick="toggleSection('statusDuration')">
+                        <StatusDurationChart
+                            :chart-data="maintenanceStatusDurationChart"
+                            :equipments="equipments"
+                            :zones="zones"
+                        />
+                    </div> -->
+                </div>
+
+                <div class="col-span-12 lg:col-span-4 space-y-6">
+                    <!-- <Card v-show="sections.statusDoughnut.visible"
+                        data-section-id="statusDoughnut"
+                        class="!rounded-xl border-none shadow-lg shadow-slate-200/50 bg-white overflow-hidden h-fit">
+                        <template #title>
+                            <div @dblclick="toggleSection('statusDoughnut')" class="flex justify-between items-center p-5 cursor-pointer border-b border-slate-50">
+                                <span class="text-lg font-bold text-slate-800">{{ t('dashboard.statusDoughnut.title') }}</span>
+                                <i class="pi pi-info-circle text-slate-300"></i>
+                            </div>
+                        </template>
+                        <template #content>
+                            <div class="relative flex flex-col items-center py-8">
+                                <div class="h-[280px] w-full">
+                                    <Chart type="doughnut" :data="doughnutData" :options="{
+                                        cutout: '78%',
+                                        maintainAspectRatio: false,
+                                        plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 11, weight: '600' } } } }
+                                    }" />
+                                </div>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center pt-[-40px] pointer-events-none">
+                                    <span class="text-5xl font-[1000] text-slate-800 tracking-tighter">{{ activeTasksCount }}</span>
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">{{ t('dashboard.statusDoughnut.inProgress') }}</span>
+                                </div>
+                            </div>
+                        </template>
+                    </Card> -->
+
+                    <div v-show="sections.budget.visible"
+                        data-section-id="budget"
+                        class="bg-[#0F172A] p-7 rounded-xl text-white shadow-2xl relative overflow-hidden group">
+                        <div class="absolute -top-4 -right-4 p-8 opacity-10 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500">
+                            <i class="pi pi-wallet text-[7rem]"></i>
+                        </div>
+
+                        <h3 @dblclick="toggleSection('budget')" class="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mb-8 cursor-pointer flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
+                            {{ t('dashboard.budget.title') }}
+                        </h3>
+
+                        <div class="mb-8 relative z-10">
+                            <div class="flex justify-between items-end mb-3">
+
+                                <span class="text-4xl font-black tracking-tighter">{{ formatCurrency(props.expensesTotal) }}</span>
+                                <span class="text-slate-400 text-xs font-medium mb-1">/ {{ formatCurrency(props.budgetTotal) }}</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-primary-500 via-indigo-500 to-purple-500 transition-all duration-1000"
+                                    :style="{ width: (props.expensesTotal / props.budgetTotal) * 100 + '%' }"></div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 relative z-10" v-if="props.maintenanceCostDistribution?.items">
+                            <div v-for="item in props.maintenanceCostDistribution.items" :key="item.label"
+                                class="flex justify-between items-center bg-white/5 backdrop-blur-sm p-3.5 rounded-xl border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.2)]" :class="item.color"></div>
+                                    <span class="text-xs font-semibold text-slate-300">{{ item.label }}</span>
+                                </div>
+                                <span class="text-sm font-black text-white">{{ item.value }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
             <section v-show="sections.stockFlow.visible" data-section-id="stockFlow" class="mt-10 section-container">
                 <Card class="!rounded-xl border-none shadow-xl shadow-slate-200/50 bg-white overflow-hidden">
                     <template #content>
@@ -802,6 +789,7 @@ const showWODialog = ref(false);
                                         { label: t('dashboard.stockFlow.exits'), borderColor: '#EF4444', data: props.sparePartsMovement?.exits || [15, 30, 45, 25], tension: 0.4 }
                                     ]
                                 }" :options="{ ...mainChartOptions, plugins: { legend: { position: 'bottom' } } }" class="h-full" />
+                                <Chart type="line" :data="stockFlowChartData" :options="{ ...globalChartOptions, plugins: { legend: { position: 'bottom' } } }" class="h-full" />
                             </div>
                         </div>
                     </template>

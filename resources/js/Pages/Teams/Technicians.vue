@@ -510,12 +510,14 @@ watch(() => filters.value.global.value, (newValue) => {
                                 </div>
                             </template>
                             <template v-else-if="field === 'fonction'">
-                                <Tag :value="data.fonction" severity="secondary" />
+                                <Tag :value="data.fonction" severity="secondary" >
+                                  <template #default></template>
+                                </Tag>
                             </template>
-                            <template v-else-if="field === 'region'">
+                            <template v-else-if="field === 'region.designation'">
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-map-marker text-gray-400"></i>
-                                    <span class="font-semibold text-slate-600">{{  data.region.designation }}</span>
+                                    <span class="font-semibold text-slate-600">{{ data.region?.designation ?? "" }}</span>
                                 </div>
                             </template>
                             <template v-else-if="field === 'numero'">
