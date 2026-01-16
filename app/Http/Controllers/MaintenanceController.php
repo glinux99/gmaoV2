@@ -29,14 +29,13 @@ class MaintenanceController extends Controller
      */
     public function index(Request $request)
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region', 'statusHistories.user', 'labor_cost', 'material_cost'])
-            ->whereBetween('scheduled_start_date', [
-                Carbon::parse($startDate)->startOfDay(),
-                Carbon::parse($endDate)->endOfDay()
-            ])
+            ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('scheduled_start_date', [Carbon::parse($startDate)->startOfDay(), Carbon::parse($endDate)->endOfDay()]);
+            })
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
             })

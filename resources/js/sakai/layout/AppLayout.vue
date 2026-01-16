@@ -110,7 +110,7 @@ const updateDateRange = () => {
 // 5. Cycle de vie et écouteurs
 onMounted(() => {
     if (!filters.value.startDate && !filters.value.endDate) {
-        updateDateRange();
+       //  updateDateRange();
     }
 });
 

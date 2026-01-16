@@ -11,18 +11,54 @@ class RegionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = $request->input('rows', 10); // 'rows' est utilisé par PrimeVue
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $filters = $request->input('filters', []);
+        $search = $filters['global']['value'] ?? null;
+
         $query = Region::query();
 
-        if (request()->has('search')) {
-            $query->where('designation', 'like', '%' . request('search') . '%')
-                ->orWhere('type_centrale', 'like', '%' . request('search') . '%');
+        // Filtre de date global
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
+        // Filtre de recherche global
+        if (!empty($filters)) {
+            if (isset($filters['global']['value'])) {
+                $globalFilter = $filters['global']['value'];
+                $query->where(function ($q) use ($globalFilter) {
+                    $q->where('designation', 'like', "%{$globalFilter}%")
+                      ->orWhere('type_centrale', 'like', "%{$globalFilter}%")
+                      ->orWhere('code', 'like', "%{$globalFilter}%")
+                      ->orWhere('status', 'like', "%{$globalFilter}%");
+                });
+            }
+
+            // Filtres par colonne (exemple)
+            $this->applyColumnFilter($query, $filters, 'designation');
+            $this->applyColumnFilter($query, $filters, 'code');
+            $this->applyColumnFilter($query, $filters, 'type_centrale');
+        }
+
+
+        // Gestion du tri
+        if ($request->has('sortField') && $request->input('sortField')) {
+            $sortOrder = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
+            $query->orderBy($request->input('sortField'), $sortOrder);
+        } else {
+            $query->latest(); // Tri par défaut
+        }
+
+        // Pagination
+        $regions = $query->paginate($perPage)->withQueryString();
+
         return Inertia::render('Configurations/Regions', [
-            'regions' => $query->get(),
-            'filters' => request()->only(['search']),
+            'regions' => $regions,
+            'filters' => $request->input('filters'),
         ]);
     }
 
@@ -91,5 +127,13 @@ class RegionController extends Controller
     {
         $region->delete();
         return redirect()->route('regions.index')->with('success', 'Région supprimée avec succès.');
+    }
+
+    private function applyColumnFilter(&$query, $filters, $field)
+    {
+        $filterValue = $filters[$field]['constraints'][0]['value'] ?? null;
+        if ($filterValue) {
+            $query->where($field, 'like', $filterValue . '%');
+        }
     }
 }

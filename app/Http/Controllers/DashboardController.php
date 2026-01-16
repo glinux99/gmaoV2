@@ -48,20 +48,20 @@ class DashboardController extends Controller
         ]);
 
         // Définition des périodes
-        $startDate = $request->input('start_date')
-            ? Carbon::parse($request->input('start_date'))->startOfDay()
-            : now()->startOfMonth();
-        $endDate = $request->input('end_date')
-            ? Carbon::parse($request->input('end_date'))->endOfDay()
-            : now()->endOfMonth();
+        $startDate = $request->filled('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : null;
+        $endDate = $request->filled('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : null;
 
         // Récupération des filtres optionnels
         $equipmentId = $request->input('equipment_id');
         $zoneId = $request->input('zone_id');
 
         // Période précédente (pour comparaison des métriques)
-        $previousStartDate = $startDate->copy()->subMonth();
-        $previousEndDate = $endDate->copy()->subMonth();
+        $previousStartDate = null;
+        $previousEndDate = null;
+        if ($startDate && $endDate) {
+            $previousStartDate = $startDate->copy()->subMonth();
+            $previousEndDate = $endDate->copy()->subMonth();
+        }
 
         // Fonction helper pour déterminer la colonne de formatage de date selon le SGBD
         $getDateFormat = function ($column, $format = '%Y-%m-%d') {
@@ -94,12 +94,18 @@ class DashboardController extends Controller
         $rolesCount = Role::count();
         $permissionsCount = Permission::count();
 
-        // Tâches actives (planifiées dans la période, ou basées sur la date de création selon votre besoin)
-        $activeTasks = Task::whereBetween('planned_start_date', [$startDate, $endDate])->count();
+        $activeTasksQuery = Task::query();
+        if ($startDate && $endDate) {
+            $activeTasksQuery->whereBetween('planned_start_date', [$startDate, $endDate]);
+        }
+        $activeTasks = $activeTasksQuery->count();
 
         // Temps moyen d'intervention (calculé directement)
-        $averageInterventionTimeInMinutes = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
-            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
+        $avgInterventionQuery = Activity::query();
+        if ($startDate && $endDate) {
+            $avgInterventionQuery->whereBetween('actual_end_time', [$startDate, $endDate]);
+        }
+        $averageInterventionTimeInMinutes = $avgInterventionQuery->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
 
         $averageInterventionTime = $averageInterventionTimeInMinutes ?
             round($averageInterventionTimeInMinutes) . 'm' : '0m';
@@ -115,11 +121,15 @@ class DashboardController extends Controller
 
         // --- Helper function pour générer les données de graphique (Sparklines) ---
         $generateChartData = function ($model, $dateColumn, $period) use ($getDateFormat) {
+            $query = $model::query();
             $dateFormat = $getDateFormat($dateColumn, '%Y-%m-%d');
 
-            $data = $model::select(DB::raw("$dateFormat as date"), DB::raw('count(*) as count'))
-                ->whereBetween($dateColumn, [$period['start'], $period['end']])
-                ->groupBy('date')
+            if ($period['start'] && $period['end']) {
+                $query->whereBetween($dateColumn, [$period['start'], $period['end']]);
+            }
+
+            $data = $query->select(DB::raw("$dateFormat as date"), DB::raw('count(*) as count'))
+                 ->groupBy('date')
                 ->orderBy('date')
                 ->get();
 
@@ -132,24 +142,43 @@ class DashboardController extends Controller
         // --- Calculs pour les Sparklines ---
 
         // Users
-        $usersCurrentCount = User::whereBetween('created_at', [$startDate, $endDate])->count();
-        $usersPreviousCount = User::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
+        $usersCurrentQuery = User::query();
+        if ($startDate && $endDate) {
+            $usersCurrentQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $usersCurrentCount = $usersCurrentQuery->count();
+
+        $usersPreviousQuery = User::query();
+        if ($previousStartDate && $previousEndDate) {
+            $usersPreviousQuery->whereBetween('created_at', [$previousStartDate, $previousEndDate]);
+        }
+        $usersPreviousCount = $usersPreviousQuery->count();
 
         // Tâches créées
-        $activeTasksCurrentCount = Task::whereBetween('created_at', [$startDate, $endDate])->count();
-        $activeTasksPreviousCount = Task::whereBetween('created_at', [$previousStartDate, $previousEndDate])->count();
+        $activeTasksCurrentQuery = Task::query();
+        if ($startDate && $endDate) {
+            $activeTasksCurrentQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $activeTasksCurrentCount = $activeTasksCurrentQuery->count();
+
+        $activeTasksPreviousQuery = Task::query();
+        if ($previousStartDate && $previousEndDate) {
+            $activeTasksPreviousQuery->whereBetween('created_at', [$previousStartDate, $previousEndDate]);
+        }
+        $activeTasksPreviousCount = $activeTasksPreviousQuery->count();
 
         // Temps Total Passé (en heures)
-        $timeSpentCurrent = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
-            ->sum(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
-        $timeSpentPrevious = Activity::whereBetween('actual_end_time', [$previousStartDate, $previousEndDate])
-            ->sum(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
+        $timeSpentCurrentQuery = Activity::query();
+        if ($startDate && $endDate) $timeSpentCurrentQuery->whereBetween('actual_end_time', [$startDate, $endDate]);
+        $timeSpentCurrent = $timeSpentCurrentQuery->sum(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
+
+        $timeSpentPreviousQuery = Activity::query();
+        if ($previousStartDate && $previousEndDate) $timeSpentPreviousQuery->whereBetween('actual_end_time', [$previousStartDate, $previousEndDate]);
+        $timeSpentPrevious = $timeSpentPreviousQuery->sum(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
 
         // Temps Moyen d'Intervention (en minutes)
-        $avgTimeCurrent = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
-            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
-        $avgTimePrevious = Activity::whereBetween('actual_end_time', [$previousStartDate, $previousEndDate])
-            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
+        $avgTimeCurrent = $timeSpentCurrentQuery->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
+        $avgTimePrevious = $timeSpentPreviousQuery->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'minute')));
 
         $sparklineData = [
             // 'users' => [
@@ -177,10 +206,11 @@ class DashboardController extends Controller
         // --- Données Financières (Dépenses de Consommation) ---
 
         // Dépenses Pièces Détachées (coût estimé des pièces UTILISÉES dans les activités)
-        $depensesPiecesDetachees = Activity::whereBetween('created_at', [$startDate, $endDate])
-            // ->with('sparePartsUsed.sparePart')
-            ->get()
-            ->sum(function ($activity) {
+        $depensesPiecesDetacheesQuery = Activity::query();
+        if ($startDate && $endDate) {
+            $depensesPiecesDetacheesQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $depensesPiecesDetachees = $depensesPiecesDetacheesQuery->get()->sum(function ($activity) {
                 // Utilise unit_estimated_cost
                 return $activity->sparePartsUsed->sum(function ($pivot) {
                     return $pivot->quantity_used * ($pivot->sparePart->unit_estimated_cost ?? 0);
@@ -188,37 +218,53 @@ class DashboardController extends Controller
             });
 
         // Dépenses Prestation (Coût des ServiceOrder)
-        $depensesPrestation = ServiceOrder::whereBetween('created_at', [$startDate, $endDate])->sum('cost');
+        $depensesPrestationQuery = ServiceOrder::query();
+        if ($startDate && $endDate) {
+            $depensesPrestationQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $depensesPrestation = $depensesPrestationQuery->sum('cost');
 // ['pending', 'approved', 'rejected', 'paid'])
         // Dépenses validées (Perte Estimée)
-        $expensesTotal = Expenses::where('status', 'approved')->orWhere('status', 'paid')
-            ->whereBetween('created_at', [$startDate, $endDate])->sum('amount');
+        $expensesTotalQuery = Expenses::where('status', 'approved')->orWhere('status', 'paid');
+        if ($startDate && $endDate) {
+            $expensesTotalQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $expensesTotal = $expensesTotalQuery->sum('amount');
 
         // --- Calcul du Budget Total (Dépenses d'investissement/achat) ---
 
         // Coût des équipements achetés sur la période
-        $equipmentPurchaseCost = Equipment::whereBetween('purchase_date', [$startDate, $endDate])->sum('purchase_price');
+        $equipmentPurchaseCostQuery = Equipment::query();
+        if ($startDate && $endDate) {
+            $equipmentPurchaseCostQuery->whereBetween('purchase_date', [$startDate, $endDate]);
+        }
+        $equipmentPurchaseCost = $equipmentPurchaseCostQuery->sum('purchase_price');
 
         // Coût des pièces détachées entrées en stock sur la période
-        $sparePartsInflowCost = SparePartMovement::whereBetween('spare_part_movements.created_at', [$startDate, $endDate])
-            ->where('spare_part_movements.type', 'in')
-            ->join('spare_parts', 'spare_part_movements.spare_part_id', '=', 'spare_parts.id')
-            ->sum(DB::raw('spare_part_movements.quantity * spare_parts.price'));
+        $sparePartsInflowCostQuery = SparePartMovement::where('spare_part_movements.type', 'in')
+            ->join('spare_parts', 'spare_part_movements.spare_part_id', '=', 'spare_parts.id');
+        if ($startDate && $endDate) {
+            $sparePartsInflowCostQuery->whereBetween('spare_part_movements.created_at', [$startDate, $endDate]);
+        }
+        $sparePartsInflowCost = $sparePartsInflowCostQuery->sum(DB::raw('spare_part_movements.quantity * spare_parts.price'));
 
         $budgetTotalCalculated = $equipmentPurchaseCost + $sparePartsInflowCost + $depensesPrestation;
 
         // --- Coûts de Maintenance ---
-        $laborCost = Activity::whereBetween('actual_end_time', [$startDate, $endDate])
-            ->join('users', 'activities.user_id', '=', 'users.id')
-            ->sum(DB::raw($getTimeDiffExpression('activities.actual_end_time', 'activities.actual_start_time', 'hour') . ' * COALESCE(users.hourly_rate, 0)'));
+        $laborCostQuery = Activity::join('users', 'activities.user_id', '=', 'users.id');
+        if ($startDate && $endDate) $laborCostQuery->whereBetween('actual_end_time', [$startDate, $endDate]);
+        $laborCost = $laborCostQuery->sum(DB::raw($getTimeDiffExpression('activities.actual_end_time', 'activities.actual_start_time', 'hour') . ' * COALESCE(users.hourly_rate, 0)'));
 
         $totalMaintenanceCost = $depensesPiecesDetachees + $depensesPrestation + $expensesTotal + $laborCost;
 
 
 
         // --- Mouvements de Pièces Détachées ---
-        $movements = SparePartMovement::whereBetween('created_at', [$startDate, $endDate])
-            ->select(
+        $movementsQuery = SparePartMovement::query();
+        if ($startDate && $endDate) {
+            $movementsQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $movements = $movementsQuery->select(
                 DB::raw("DATE(created_at) as date"),
                 DB::raw("SUM(CASE WHEN type = 'entree' THEN quantity ELSE 0 END) as entries"),
                 DB::raw("SUM(CASE WHEN type = 'sortie' THEN quantity ELSE 0 END) as exits")
@@ -234,9 +280,11 @@ class DashboardController extends Controller
         ];
 
         // --- NOUVEAU : Données pour la rotation de stock par article ---
-        $itemMovements = StockMovement::with('movable')
-            ->whereBetween('date', [$startDate, $endDate])
-            ->select(
+        $itemMovementsQuery = StockMovement::with('movable');
+        if ($startDate && $endDate) {
+            $itemMovementsQuery->whereBetween('date', [$startDate, $endDate]);
+        }
+        $itemMovements = $itemMovementsQuery->select(
                 'movable_id',
                 'movable_type',
                 DB::raw("SUM(CASE WHEN type = 'entry' THEN quantity ELSE 0 END) as total_entries"),
@@ -264,26 +312,31 @@ class DashboardController extends Controller
         ];
 
         // --- NOUVEAU : Totaux pour les cartes de flux de stock ---
-        $totalStockIn = StockMovement::whereBetween('date', [$startDate, $endDate])
-            ->where('type', 'entry')
-            ->sum('quantity');
-        $totalStockOut = StockMovement::whereBetween('date', [$startDate, $endDate])
-            ->where('type', 'exit')
-            ->sum('quantity');
+        $totalStockInQuery = StockMovement::where('type', 'entry');
+        if ($startDate && $endDate) {
+            $totalStockInQuery->whereBetween('date', [$startDate, $endDate]);
+        }
+        $totalStockIn = $totalStockInQuery->sum('quantity');
+
+        $totalStockOutQuery = StockMovement::where('type', 'exit');
+        if ($startDate && $endDate) {
+            $totalStockOutQuery->whereBetween('date', [$startDate, $endDate]);
+        }
+        $totalStockOut = $totalStockOutQuery->sum('quantity');
 
         // --- Tâches par Statut et Priorité (Graphiques en secteurs/barres) ---
 
-        $tasksByStatus = Task::select('status', DB::raw('count(*) as total'))
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->groupBy('status')->get()->pluck('total', 'status')->toArray();
+        $tasksByStatusQuery = Task::select('status', DB::raw('count(*) as total'));
+        if ($startDate && $endDate) $tasksByStatusQuery->whereBetween('created_at', [$startDate, $endDate]);
+        $tasksByStatus = $tasksByStatusQuery->groupBy('status')->get()->pluck('total', 'status')->toArray();
         $tasksByStatusChart = [
             'labels' => array_keys($tasksByStatus),
             'data' => array_values($tasksByStatus),
         ];
 
-        $tasksByPriority = Task::select('priority', DB::raw('count(*) as total'))
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->groupBy('priority')->get()->pluck('total', 'priority')->toArray();
+        $tasksByPriorityQuery = Task::select('priority', DB::raw('count(*) as total'));
+        if ($startDate && $endDate) $tasksByPriorityQuery->whereBetween('created_at', [$startDate, $endDate]);
+        $tasksByPriority = $tasksByPriorityQuery->groupBy('priority')->get()->pluck('total', 'priority')->toArray();
         $tasksByPriorityChart = [
             'labels' => array_keys($tasksByPriority),
             'data' => array_values($tasksByPriority),
@@ -294,8 +347,10 @@ class DashboardController extends Controller
         // **CORRECTION de l'ambiguïté :** On spécifie la table 'tasks' pour la première requête (volume)
         $monthlyTaskFormat = $getDateFormat('tasks.created_at', '%Y-%m');
 
-        $monthlyData = Task::whereBetween('created_at', [$startDate, $endDate])
-            ->select(
+        $monthlyDataQuery = Task::query();
+        if ($startDate && $endDate) $monthlyDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+
+        $monthlyData = $monthlyDataQuery->select(
                 DB::raw("$monthlyTaskFormat as month"),
                 DB::raw("SUM(CASE WHEN maintenance_type = 'Corrective' THEN 1 ELSE 0 END) as stopped"),
                 DB::raw("SUM(CASE WHEN maintenance_type = 'Préventive' THEN 1 ELSE 0 END) as degraded"),
@@ -310,9 +365,10 @@ class DashboardController extends Controller
         // **CORRECTION de l'ambiguïté :** On spécifie la table 'activities' pour la seconde requête (résolution)
         $monthlyActivityFormat = $getDateFormat('activities.created_at', '%Y-%m');
 
-        $resolutionData = Activity::join('tasks', 'activities.task_id', '=', 'tasks.id')
-            ->whereBetween('activities.created_at', [$startDate, $endDate])
-            ->select(
+        $resolutionDataQuery = Activity::join('tasks', 'activities.task_id', '=', 'tasks.id');
+        if ($startDate && $endDate) $resolutionDataQuery->whereBetween('activities.created_at', [$startDate, $endDate]);
+
+        $resolutionData = $resolutionDataQuery->select(
                 DB::raw("$monthlyActivityFormat as month"),
                 DB::raw("AVG($resolutionExpression) as avg_resolution_hours")
             )
@@ -335,18 +391,19 @@ class DashboardController extends Controller
         ];
 
         // --- Pannes par Type (Priorité des Correctives) & Interventions par Type de Maintenance ---
-        $failuresData = Task::where('maintenance_type', 'Corrective')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->select('priority', DB::raw('count(*) as total'))
-            ->groupBy('priority')->get();
+        $failuresDataQuery = Task::where('maintenance_type', 'Corrective')->select('priority', DB::raw('count(*) as total'));
+        if ($startDate && $endDate) {
+            $failuresDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $failuresData = $failuresDataQuery->groupBy('priority')->get();
         $failuresByType = [
             'labels' => $failuresData->pluck('priority'),
             'data' => $failuresData->pluck('total'),
         ];
 
-        $interventionsData = Task::whereBetween('created_at', [$startDate, $endDate])
-            ->select('maintenance_type', DB::raw('count(*) as total'))
-            ->groupBy('maintenance_type')->get();
+        $interventionsDataQuery = Task::select('maintenance_type', DB::raw('count(*) as total'));
+        if ($startDate && $endDate) $interventionsDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+        $interventionsData = $interventionsDataQuery->groupBy('maintenance_type')->get();
         $interventionsByType = [
             'labels' => $interventionsData->pluck('maintenance_type'),
             'data' => $interventionsData->pluck('total'),
@@ -359,22 +416,26 @@ class DashboardController extends Controller
 
         // --- NOUVEAU : MTBF & MTTR (Exemples de calculs) ---
         // MTTR (Mean Time To Repair) en heures
-        $mttr = Activity::where('status', 'completed')
-            ->whereBetween('actual_end_time', [$startDate, $endDate])
-            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
+        $mttrQuery = Activity::where('status', 'completed');
+        if ($startDate && $endDate) $mttrQuery->whereBetween('actual_end_time', [$startDate, $endDate]);
+        $mttr = $mttrQuery->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
 
         // MTBF (Mean Time Between Failures) en jours
         // Calcul simplifié : (Période en jours) / (Nombre de pannes correctives + 1)
-        $correctiveFailuresCount = Task::where('maintenance_type', 'Corrective')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->count();
-        $periodInDays = $startDate->diffInDays($endDate) + 1;
+        $correctiveFailuresQuery = Task::where('maintenance_type', 'Corrective');
+        if ($startDate && $endDate) $correctiveFailuresQuery->whereBetween('created_at', [$startDate, $endDate]);
+        $correctiveFailuresCount = $correctiveFailuresQuery->count();
+
+        $periodInDays = ($startDate && $endDate) ? $startDate->diffInDays($endDate) + 1 : 30; // fallback to 30 days
         $mtbf = ($correctiveFailuresCount > 0)
             ? $periodInDays / $correctiveFailuresCount
             : $periodInDays; // Si 0 panne, le MTBF est la période entière
 
         // --- NOUVEAU : Analyse du temps passé par statut de maintenance ---
-        $statusDurationsQuery = MaintenanceStatusHistory::select(
+        $statusDurationsQueryBase = MaintenanceStatusHistory::query();
+        if ($startDate && $endDate) $statusDurationsQueryBase->whereBetween('maintenance_status_histories.created_at', [$startDate, $endDate]);
+
+        $statusDurationsQuery = $statusDurationsQueryBase->select(
             'old_status as status',
             // Calcule la différence de temps en heures entre la création de l'historique et la création de l'historique suivant pour la même maintenance
             DB::raw("SUM(
@@ -385,7 +446,6 @@ class DashboardController extends Controller
                 ) . "
             ) as total_hours")
         )
-        ->whereBetween('maintenance_status_histories.created_at', [$startDate, $endDate])
         ->whereNotNull('old_status')
         ->groupBy('old_status');
 
@@ -420,20 +480,22 @@ class DashboardController extends Controller
         ];
 
         // --- NOUVEAU : Taux de conformité du préventif ---
-        $preventiveTasksScheduled = Task::where('maintenance_type', 'Préventive')
-            ->whereBetween('planned_start_date', [$startDate, $endDate])
-            ->count();
-        $preventiveTasksCompletedOnTime = Task::where('maintenance_type', 'Préventive')
-            ->where('status', 'completed')
-            ->whereBetween('planned_start_date', [$startDate, $endDate])
+        $preventiveTasksScheduledQuery = Task::where('maintenance_type', 'Préventive');
+        if ($startDate && $endDate) $preventiveTasksScheduledQuery->whereBetween('planned_start_date', [$startDate, $endDate]);
+        $preventiveTasksScheduled = $preventiveTasksScheduledQuery->count();
+
+        $preventiveTasksCompletedOnTimeQuery = Task::where('maintenance_type', 'Préventive')->where('status', 'completed');
+        if ($startDate && $endDate) {
+            $preventiveTasksCompletedOnTimeQuery->whereBetween('planned_start_date', [$startDate, $endDate]);
             // ->whereNotNull('actual_end_time')
             // ->whereRaw('actual_end_time <= planned_end_date')
-            ->count();
+        }
+        $preventiveTasksCompletedOnTime = $preventiveTasksCompletedOnTimeQuery->count();
         $preventiveComplianceRate = ($preventiveTasksScheduled > 0) ? ($preventiveTasksCompletedOnTime / $preventiveTasksScheduled) * 100 : 100;
 
         // --- NOUVEAU : Backlog de maintenance ---
-        $backlogTasks = Task::whereIn('status', ['scheduled', 'in_progress', 'awaiting_resources'])
-            ->where('planned_start_date', '<=', $endDate);
+        $backlogTasks = Task::whereIn('status', ['scheduled', 'in_progress', 'awaiting_resources']);
+        if ($endDate) $backlogTasks->where('planned_start_date', '<=', $endDate);
         $backlogTasksCount = $backlogTasks->count();
         $backlogHours = $backlogTasks->sum('estimated_duration');
 
@@ -455,13 +517,14 @@ class DashboardController extends Controller
         ];
 
         // --- NOUVEAU : Top 5 des équipements avec le plus de pannes ---
-        $topFailingEquipmentsData = Equipment::select('equipment.designation', DB::raw('COUNT(tasks.id) as failure_count'))
+        $topFailingEquipmentsQuery = Equipment::select('equipment.designation', DB::raw('COUNT(tasks.id) as failure_count'))
             ->join('activity_equipment', 'equipment.id', '=', 'activity_equipment.equipment_id')
             ->join('activities', 'activity_equipment.activity_id', '=', 'activities.id')
             ->join('tasks', 'activities.task_id', '=', 'tasks.id')
-            ->where('tasks.maintenance_type', 'Corrective')
-            ->whereBetween('tasks.created_at', [$startDate, $endDate])
-            ->groupBy('equipment.id', 'equipment.designation')
+            ->where('tasks.maintenance_type', 'Corrective');
+        if ($startDate && $endDate) $topFailingEquipmentsQuery->whereBetween('tasks.created_at', [$startDate, $endDate]);
+
+        $topFailingEquipmentsData = $topFailingEquipmentsQuery->groupBy('equipment.id', 'equipment.designation')
             ->orderByDesc('failure_count')
             ->limit(5)
             ->get();
@@ -476,23 +539,23 @@ class DashboardController extends Controller
         // --- NOUVEAU : Calcul détaillé du TRS (OEE) ---
 
         // --- A. Calcul de la DISPONIBILITÉ (Availability) ---
-        $periodInHours = $startDate->diffInHours($endDate);
+        $periodInHours = ($startDate && $endDate) ? $startDate->diffInHours($endDate) : (30 * 24); // fallback 30 days
         $equipmentCountForAvailability = $equipmentId ? 1 : Equipment::count();
         $plannedProductionTime = $periodInHours * $equipmentCountForAvailability;
 
         // Temps d'arrêt non planifié (Correctif)
         $unplannedDowntimeQuery = Activity::join('tasks', 'activities.task_id', '=', 'tasks.id')
             ->where('tasks.maintenance_type', 'Corrective')
-            ->whereNotNull('activities.actual_start_time')->whereNotNull('activities.actual_end_time')
-            ->whereBetween('activities.actual_end_time', [$startDate, $endDate]);
+            ->whereNotNull('activities.actual_start_time')->whereNotNull('activities.actual_end_time');
+        if ($startDate && $endDate) $unplannedDowntimeQuery->whereBetween('activities.actual_end_time', [$startDate, $endDate]);
         if ($equipmentId) {
             $unplannedDowntimeQuery->join('activity_equipment', 'activities.id', '=', 'activity_equipment.activity_id')->where('activity_equipment.equipment_id', $equipmentId);
         }
         $unplannedDowntime = $unplannedDowntimeQuery->sum(DB::raw($getTimeDiffExpression('activities.actual_end_time', 'activities.actual_start_time', 'hour')));
 
         // Temps d'arrêt total (planifié et non planifié)
-        $totalDowntimeQuery = Activity::whereNotNull('actual_start_time')->whereNotNull('actual_end_time')
-            ->whereBetween('actual_end_time', [$startDate, $endDate]);
+        $totalDowntimeQuery = Activity::whereNotNull('actual_start_time')->whereNotNull('actual_end_time');
+        if ($startDate && $endDate) $totalDowntimeQuery->whereBetween('actual_end_time', [$startDate, $endDate]);
         if ($equipmentId) {
             $totalDowntimeQuery->join('activity_equipment', 'activities.id', '=', 'activity_equipment.activity_id')->where('activity_equipment.equipment_id', $equipmentId);
         }
@@ -508,9 +571,9 @@ class DashboardController extends Controller
         }
 
         // On suppose que le nombre de pièces est enregistré dans une réponse d'instruction
-        $totalPartsProducedQuery = InstructionAnswer::join('activity_instructions', 'instruction_answers.activity_instruction_id', '=', 'activity_instructions.id')
-            ->where('activity_instructions.label', 'Pièces produites')
-            ->whereBetween('instruction_answers.created_at', [$startDate, $endDate]);
+        $totalPartsProducedQuery = InstructionAnswer::join('activity_instructions', 'instruction_answers.activity_instruction_id', '=', 'activity_instructions.id');
+        if ($startDate && $endDate) $totalPartsProducedQuery->whereBetween('instruction_answers.created_at', [$startDate, $endDate]);
+        $totalPartsProducedQuery->where('activity_instructions.label', 'Pièces produites');
         if ($equipmentId) {
             $totalPartsProducedQuery->whereHas('activity.equipment', fn($q) => $q->where('equipment.id', $equipmentId));
         }
@@ -522,9 +585,9 @@ class DashboardController extends Controller
         }
 
         // --- C. Calcul de la QUALITÉ (Quality) ---
-        $rejectedPartsQuery = InstructionAnswer::join('activity_instructions', 'instruction_answers.activity_instruction_id', '=', 'activity_instructions.id')
-            ->where('activity_instructions.label', 'Pièces rejetées')
-            ->whereBetween('instruction_answers.created_at', [$startDate, $endDate]);
+        $rejectedPartsQuery = InstructionAnswer::join('activity_instructions', 'instruction_answers.activity_instruction_id', '=', 'activity_instructions.id');
+        if ($startDate && $endDate) $rejectedPartsQuery->whereBetween('instruction_answers.created_at', [$startDate, $endDate]);
+        $rejectedPartsQuery->where('activity_instructions.label', 'Pièces rejetées');
         if ($equipmentId) {
             $rejectedPartsQuery->whereHas('activity.equipment', fn($q) => $q->where('equipment.id', $equipmentId));
         }
@@ -565,9 +628,9 @@ class DashboardController extends Controller
         $inProgressWorkOrdersCount = Activity::whereIn('status', ['in_progress', 'en cours'])->count();
 
         // --- NOUVEAU : Statistiques pour le flux d'interventions ---
-        $awaitingWorkOrdersCount = Activity::whereIn('status', ['awaiting_resources', 'En attente'])
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->count();
+        $awaitingWorkOrdersQuery = Activity::whereIn('status', ['awaiting_resources', 'En attente']);
+        if ($startDate && $endDate) $awaitingWorkOrdersQuery->whereBetween('created_at', [$startDate, $endDate]);
+        $awaitingWorkOrdersCount = $awaitingWorkOrdersQuery->count();
 
         $completedLast24hCount = Activity::where('status', 'completed')
             ->where('actual_end_time', '>=', now()->subHours(24))
@@ -625,9 +688,9 @@ class DashboardController extends Controller
 
         // --- NOUVEAU : Interventions Récentes ---
         $recentInterventions = Activity::with(['task', 'assignable', 'equipments'])
-            ->where('status', 'completed')
-            ->whereBetween('actual_end_time', [$startDate, $endDate])
-            ->latest('actual_end_time')
+            ->where('status', 'completed');
+        if ($startDate && $endDate) $recentInterventions->whereBetween('actual_end_time', [$startDate, $endDate]);
+        $recentInterventions = $recentInterventions->latest('actual_end_time')
             ->limit(5)
             ->get()
             ->map(function ($activity) {
@@ -678,13 +741,17 @@ class DashboardController extends Controller
 
         // --- NOUVEAU : Calculs pour les cartes d'information sous le graphique principal ---
         // Temps moyen de clôture des activités (en heures)
-        $averageClosureTime = Activity::where('status', 'completed')
-            ->whereBetween('actual_end_time', [$startDate, $endDate])
-            ->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
+        $averageClosureTimeQuery = Activity::where('status', 'completed');
+        if ($startDate && $endDate) $averageClosureTimeQuery->whereBetween('actual_end_time', [$startDate, $endDate]);
+        $averageClosureTime = $averageClosureTimeQuery->avg(DB::raw($getTimeDiffExpression('actual_end_time', 'actual_start_time', 'hour')));
 
         // Efficacité de l'équipe (changement du nombre de tâches terminées par rapport à la période précédente)
-        $completedTasksCurrent = Activity::where('status', 'completed')->whereBetween('actual_end_time', [$startDate, $endDate])->count();
-        $completedTasksPrevious = Activity::where('status', 'completed')->whereBetween('actual_end_time', [$previousStartDate, $previousEndDate])->count();
+        $completedTasksCurrentQuery = Activity::where('status', 'completed');
+        if ($startDate && $endDate) $completedTasksCurrentQuery->whereBetween('actual_end_time', [$startDate, $endDate]);
+        $completedTasksCurrent = $completedTasksCurrentQuery->count();
+        $completedTasksPreviousQuery = Activity::where('status', 'completed');
+        if ($previousStartDate && $previousEndDate) $completedTasksPreviousQuery->whereBetween('actual_end_time', [$previousStartDate, $previousEndDate]);
+        $completedTasksPrevious = $completedTasksPreviousQuery->count();
         $teamEfficiencyChange = 0;
         if ($completedTasksPrevious > 0) {
             $teamEfficiencyChange = (($completedTasksCurrent - $completedTasksPrevious) / $completedTasksPrevious) * 100;
@@ -704,8 +771,8 @@ class DashboardController extends Controller
 
             // Filtres appliqués
             'filters' => [
-                'startDate' => $startDate->toDateString(),
-                'endDate' => $endDate->toDateString(),
+                'startDate' => $startDate ? $startDate->toDateString() : null,
+                'endDate' => $endDate ? $endDate->toDateString() : null,
                 'equipment_id' => $equipmentId,
                 'zone_id' => $zoneId,
             ],

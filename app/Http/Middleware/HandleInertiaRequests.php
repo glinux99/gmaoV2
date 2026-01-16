@@ -32,9 +32,9 @@ class HandleInertiaRequests extends Middleware
     {
         // Logique pour déterminer les dates par défaut si elles ne sont pas dans la requête
         // Par défaut: le mois en cours.
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
-        $filterType = $request->input('filterType', 'this_month');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $filterType = $request->input('filterType');
 
         return array_merge(parent::share($request), [
             'flash' => [

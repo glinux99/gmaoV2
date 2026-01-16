@@ -33,7 +33,7 @@ import OverlayPanel from 'primevue/overlaypanel';
 
 const { t } = useI18n();
 const props = defineProps({
-    regions: Array,
+    regions: Object, // Modifié de Array à Object pour la pagination
     filters: Object,
 });
 
@@ -70,6 +70,27 @@ const filters = ref({
     status: { value: null, matchMode: FilterMatchMode.EQUALS }
 });
 
+const lazyParams = ref({
+    first: props.regions.from - 1,
+    rows: props.regions.per_page,
+    sortField: 'created_at',
+    sortOrder: -1, // -1 pour desc
+    filters: filters.value
+});
+
+const loadLazyData = () => {
+    loading.value = true;
+    const queryParams = {
+        ...lazyParams.value,
+        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+    };
+
+    router.get(route('regions.index'), queryParams, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
+
 const initFilters = () => {
     filters.value = {
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -78,6 +99,13 @@ const initFilters = () => {
         puissance_centrale: { value: [0, 1000], matchMode: FilterMatchMode.BETWEEN },
         status: { value: null, matchMode: FilterMatchMode.EQUALS }
     };
+    lazyParams.value.filters = filters.value;
+    loadLazyData();
+};
+
+const onPage = (event) => {
+    lazyParams.value = event;
+    loadLazyData();
 };
 
 // --- CONFIGURATION DES COLONNES ---
@@ -98,11 +126,11 @@ const toggleColumnSelection = (event) => {
 
 // --- LOGIQUE DE CALCUL DES STATS ---
 const stats = computed(() => {
-    const data = props.regions || [];
+    const data = props.regions.data || []; // Utiliser props.regions.data
     const totalMWValue = data.reduce((acc, curr) => acc + (parseFloat(curr.puissance_centrale) || 0), 0);
     return {
-        total: data.length,
-        totalMW: totalMWValue.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+        total: props.regions.total || 0, // Utiliser le total de la pagination
+        totalMW: totalMWValue.toLocaleString('fr-FR', { minimumFractionDigits: 2 }), // Le calcul reste sur les données visibles
         avgPower: data.length > 0 ? (totalMWValue / data.length).toFixed(1) : 0,
         highPerf: data.filter(r => r.puissance_centrale > 500).length
     };
@@ -198,6 +226,10 @@ const getSeverity = (type) => {
     const map = { solaire: 'yellow', thermique: 'danger', hydraulique: 'info', eolienne: 'success', 'reseau Electrique': 'primary' };
     return map[type] || 'secondary';
 };
+const onFilter = (event) => {
+    lazyParams.value.filters = filters.value;
+    loadLazyData();
+};
 </script>
 
 <template>
@@ -241,16 +273,24 @@ const getSeverity = (type) => {
             <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
                 <DataTable
                     ref="dt"
-                    :value="regions"
+                    :value="regions.data"
                     v-model:selection="selectedRegions"
                     v-model:filters="filters"
                     dataKey="id"
+                    :loading="loading"
                     :paginator="true"
-                    :rows="10"
+                    :rows="regions.per_page"
+                    :totalRecords="regions.total"
+                    :lazy="true"
+                    @page="onPage($event)"
+                     @filter="onFilter($event)"
+                    @sort="onPage($event)"
+                    v-model:first="lazyParams.first"
+                    :sortField="lazyParams.sortField"
+                    :sortOrder="lazyParams.sortOrder"
                     filterDisplay="menu"
-                    :globalFilterFields="['designation', 'type_centrale']"
-                    class="p-datatable-custom"
-                    removableSort
+                    :globalFilterFields="['designation', 'type_centrale', 'code', 'status']"
+                    class="p-datatable-custom" removableSort
                 >
                     <template #header>
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
@@ -262,7 +302,7 @@ const getSeverity = (type) => {
                                 <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" />
                                 <Button icon="pi pi-cog" text rounded severity="secondary" @click="toggleColumnSelection" />
                                 <Button v-if="selectedRegions && selectedRegions.length > 0"
-                                        :label="t('common.deleteSelected', { count: selectedRegions.length })"
+                                        :label="t('common.deleteSelection', { count: selectedRegions.length })"
                                         icon="pi pi-trash" severity="danger" raised
                                         @click="deleteSelectedRegions" />
                             </div>

@@ -53,7 +53,7 @@ const op = ref(); // Ref for OverlayPanel
 // --- FORMULAIRES ---
 const form = useForm({
     id: null,
-    name: '',
+    // name: '',
     title: '',
     description: '',
     region_id: null,
@@ -64,22 +64,59 @@ const form = useForm({
 // --- SYSTÈME DE FILTRES AVANCÉS (V11 Custom) ---
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    nomenclature: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    title: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
 });
+
+const lazyParams = ref({
+    first: props.zones.from - 1,
+    rows: props.zones.per_page,
+    sortField: 'created_at',
+    sortOrder: -1, // -1 pour desc
+    filters: filters.value
+});
+
+const loadLazyData = () => {
+    loading.value = true;
+    const queryParams = {
+        ...lazyParams.value,
+        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+        sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc',
+    };
+
+    router.get(route('zones.index'), queryParams, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
 
 const initFilters = () => {
     filters.value = {
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-        name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        nomenclature: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        title: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
         'region.designation': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     };
+    lazyParams.value.filters = filters.value;
+    loadLazyData();
+};
+
+const onPage = (event) => {
+    lazyParams.value = event;
+    loadLazyData();
+};
+
+const onFilter = (event) => {
+    lazyParams.value.filters = filters.value;
+    loadLazyData();
 };
 
 // --- CONFIGURATION DES COLONNES ---
 const allColumns = ref([
- { field: 'name', header: 'Nom de la Zone', default: true },
+ { field: 'nomenclature', header: 'Nomenclature', default: true },
  { field: 'region.designation', header: 'Région Parente', default: true },
+ { field: 'title', header: 'Titre', default: true },
  { field: 'description', header: 'Description', default: false },
 ]);
 const visibleColumns = ref(allColumns.value.filter(col => col.default).map(col => col.field));
@@ -87,6 +124,13 @@ const visibleColumns = ref(allColumns.value.filter(col => col.default).map(col =
 const toggleColumnSelection = (event) => {
  op.value.toggle(event);
 };
+
+const rowsPerPageOptions = ref([10, 25, 50, 100]);
+
+watch(() => lazyParams.value.rows, (newValue) => {
+    // Recharger les données quand le nombre de lignes par page change
+    loadLazyData();
+});
 
 
 // --- LOGIQUE DE CALCUL DES STATS ---
@@ -129,7 +173,7 @@ const openNew = () => {
 const editZone = (zone) => {
     form.clearErrors();
     form.id = zone.id;
-    form.name = zone.name;
+    // form.name = zone.name;
     form.title = zone.title;
     form.nomenclature = zone.nomenclature;
     form.number = zone.number;
@@ -244,10 +288,19 @@ const statLabels = computed(() => ({
                     v-model:selection="selectedZones"
                     v-model:filters="filters"
                     dataKey="id"
+                    :loading="loading"
                     :paginator="true"
-                    :rows="10"
+                    :rows="zones.per_page"
+                    :totalRecords="zones.total"
+                    :lazy="true"
+                    @page="onPage($event)"
+                    @sort="onPage($event)"
+                    @filter="onFilter($event)"
+                    v-model:first="lazyParams.first"
+                    :sortField="lazyParams.sortField"
+                    :sortOrder="lazyParams.sortOrder"
                     filterDisplay="menu"
-                    :globalFilterFields="['name', 'region.designation']"
+                    :globalFilterFields="['nomenclature', 'title', 'region.designation']"
                     class="p-datatable-custom"
                     removableSort
                 >
@@ -257,6 +310,12 @@ const statLabels = computed(() => ({
                                 <InputIcon class="pi pi-search text-slate-400" />
                                 <InputText v-model="filters['global'].value" placeholder="Rechercher une zone..." class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
+                            <div class="flex items-center gap-2">
+                                <label for="rowsPerPage" class="text-sm font-medium text-slate-600">Lignes par page:</label>
+                                <Dropdown v-model="lazyParams.rows" :options="rowsPerPageOptions"
+                                          class="p-dropdown-sm rounded-xl border-slate-200"
+                                          id="rowsPerPage" />
+                            </div>
                             <div class="flex items-center gap-2">
                                 <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" />
                                 <Button icon="pi pi-cog" text rounded severity="secondary" @click="toggleColumnSelection" />
@@ -270,7 +329,7 @@ const statLabels = computed(() => ({
 
                     <Column selectionMode="multiple" headerStyle="width: 3rem" />
 
-                    <Column field="nomenclature" header="Nomenclature de la Zone" sortable filterField="nomenclature">
+                    <Column field="nomenclature" header="Nomenclature" sortable filterField="nomenclature" :showFilterMatchModes="false" v-if="visibleColumns.includes('nomenclature')">
                         <template #body="{ data }" v-if="visibleColumns.includes('nomenclature')">
                             <div class="flex items-center gap-3">
                                 <Avatar :label="data.nomenclature[0]" shape="circle" class="bg-primary-50 text-primary-600 font-bold" />
@@ -278,15 +337,24 @@ const statLabels = computed(() => ({
                             </div>
                         </template>
                         <template #filter="{ filterModel }">
-                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Chercher par nom" />
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Chercher par nomenclature" />
                         </template>
                     </Column>
-                    <Column field="region.designation" header="Région Parente" sortable filterField="region.designation" v-if="visibleColumns.includes('region.designation')">
+                    <Column field="title" header="Titre" sortable filterField="title" :showFilterMatchModes="false" v-if="visibleColumns.includes('title')">
+                        <template #body="{ data }">
+                            <span class="font-medium text-slate-600">{{ data.title }}</span>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Chercher par titre" />
+                        </template>
+                    </Column>
+
+                    <Column field="region.designation" header="Région Parente" sortable filterField="region.designation" :showFilterMatchModes="false" v-if="visibleColumns.includes('region.designation')">
                         <template #body="{ data }">
                             <Tag :value="data.region?.designation || 'N/A'" severity="info" class="rounded-lg px-3 uppercase text-[10px]" />
                         </template>
                         <template #filter="{ filterModel }">
-                            <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Chercher par région" />
+                            <Dropdown v-model="filterModel.value" :options="props.regions" optionLabel="designation" optionValue="designation" placeholder="Toutes les régions" class="p-column-filter" showClear />
                         </template>
                     </Column>
 

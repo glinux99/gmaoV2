@@ -86,11 +86,9 @@ class TaskController extends Controller
     public function index(Request $request)
     {
         $tasks = Task::with(['assignable', 'equipments', 'instructions', 'team', 'region'])
-            ->when($request->input('start_date') && $request->input('end_date'), function ($query) use ($request) {
-                $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d H:i:s'));
-                $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d H:i:s'));
-                $query->whereBetween('created_at', [$startDate, $endDate]);
-            })
+            ->when($request->filled('start_date') && $request->filled('end_date'), function ($query) use ($request) {
+                $query->whereBetween('created_at', [$request->input('start_date'), $request->input('end_date')]);
+            }) // Le filtre de date ne s'applique que si les dates sont fournies
             ->when($request->input('search'), function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
             })

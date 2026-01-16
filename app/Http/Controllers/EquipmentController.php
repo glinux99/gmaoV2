@@ -45,7 +45,7 @@ class EquipmentController extends Controller
     // 1. Query pour le Tableau (avec pagination et filtres temporels)
     $tableQuery = Equipment::with(['equipmentType', 'region', 'user', 'parent', 'characteristics'])->latest();
 
-    if ($startDate && $endDate) {
+    if ($startDate && $endDate && $request->filled('start_date') && $request->filled('end_date')) {
         $tableQuery->whereBetween('created_at', [$startDate, $endDate]);
     }
 
