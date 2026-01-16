@@ -206,14 +206,17 @@ public function store(Request $request)
                 'order_date' => now(),
             ]);
 
-            $activity->expenses()->create([
-                'description' => 'Coût de la prestation: ' . $serviceOrder->description,
-                'amount' => $serviceOrder->cost,
-                'expense_date' => now(),
-                'category' => 'external_service',
-                'user_id' => Auth::id(),
-                'status' => 'pending',
-            ]);
+            // Ne créer la dépense que si l'activité n'est pas liée à une maintenance
+            if (!$activity->maintenance_id) {
+                $activity->expenses()->create([
+                    'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'expense_date' => now(),
+                    'category' => 'external_service',
+                    'user_id' => Auth::id(),
+                    'status' => 'pending',
+                ]);
+            }
         }
 
         // 3. GESTION DES PIÈCES UTILISÉES
@@ -221,14 +224,17 @@ public function store(Request $request)
         foreach ($sparePartsUsed as $sparePartData) {
             $sparePart = \App\Models\SparePart::find($sparePartData['id']);
             if ($sparePart) {
-                $activity->expenses()->create([
-                    'description' => 'Pièce utilisée: ' . $sparePart->reference,
-                    'amount' => ($sparePart->price ?? 0) * $sparePartData['quantity'],
-                    'expense_date' => now(),
-                    'category' => 'parts',
-                    'user_id' => Auth::id(),
-                    'status' => 'pending',
-                ]);
+                // Ne créer la dépense que si l'activité n'est pas liée à une maintenance
+                if (!$activity->maintenance_id) {
+                    $activity->expenses()->create([
+                        'description' => 'Pièce utilisée: ' . $sparePart->reference,
+                        'amount' => ($sparePart->price ?? 0) * $sparePartData['quantity'],
+                        'expense_date' => now(),
+                        'category' => 'parts',
+                        'user_id' => Auth::id(),
+                        'status' => 'pending',
+                    ]);
+                }
 
                 SparePartActivity::create([
                     'activity_id' => $activity->id,
@@ -452,16 +458,18 @@ public function bulkStore(Request $request)
                         if ($sparePart) {
                             $totalCost = ($sparePart->price ?? 0) * $quantity;
 
-                            // Créer l'Expense
-                            $activity->expenses()->create([
-                                'description' => 'Pièce détachée utilisée: ' . ($sparePart->reference ?? 'N/A') . ' (x' . $quantity . ')',
-                                'amount' => $totalCost,
-                                'expense_date' => now(),
-                                'category' => 'parts',
-                                'user_id' => Auth::id(),
-                                'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
-                                'status' => 'pending',
-                            ]);
+                            // Ne créer la dépense que si l'activité n'est pas liée à une maintenance
+                            if (!$activity->maintenance_id) {
+                                $activity->expenses()->create([
+                                    'description' => 'Pièce détachée utilisée: ' . ($sparePart->reference ?? 'N/A') . ' (x' . $quantity . ')',
+                                    'amount' => $totalCost,
+                                    'expense_date' => now(),
+                                    'category' => 'parts',
+                                    'user_id' => Auth::id(),
+                                    'notes' => 'Dépense générée automatiquement pour la pièce détachée utilisée.',
+                                    'status' => 'pending',
+                                ]);
+                            }
 
                             // Créer l'enregistrement de liaison (pivot)
                             SparePartActivity::create([
@@ -527,15 +535,18 @@ public function bulkStore(Request $request)
                         'actual_completion_date' => now(),
                     ]);
 
-                    $activity->expenses()->create([
-                        'description' => 'Coût de la prestation: ' . $serviceOrder->description,
-                        'amount' => $serviceOrder->cost,
-                        'expense_date' => now(),
-                        'category' => 'external_service',
-                        'user_id' => Auth::id(),
-                        'notes' => 'Dépense générée automatiquement pour la prestation de service.',
-                        'status' => 'pending',
-                    ]);
+                    // Ne créer la dépense que si l'activité n'est pas liée à une maintenance
+                    if (!$activity->maintenance_id) {
+                        $activity->expenses()->create([
+                            'description' => 'Coût de la prestation: ' . $serviceOrder->description,
+                            'amount' => $serviceOrder->cost,
+                            'expense_date' => now(),
+                            'category' => 'external_service',
+                            'user_id' => Auth::id(),
+                            'notes' => 'Dépense générée automatiquement pour la prestation de service.',
+                            'status' => 'pending',
+                        ]);
+                    }
                 }
             }
 
@@ -840,15 +851,17 @@ private function updateMaintenanceCost(Activity $activity)
                 'quantity' => $qty // Sécurité: on remplit les deux colonnes possibles
             ]);
 
-            // Création de la dépense
-            $activity->expenses()->create([
-                'description' => 'Pièce utilisée: ' . $sparePart->reference,
-                'amount' => ($sparePart->price ?? 0) * $qty,
-                'category' => 'parts',
-                'user_id' => Auth::id(),
-                'expense_date' => now(),
-                'status' => 'pending'
-            ]);
+            // Ne créer la dépense que si l'activité n'est pas liée à une maintenance
+            if (!$activity->maintenance_id) {
+                $activity->expenses()->create([
+                    'description' => 'Pièce utilisée: ' . $sparePart->reference,
+                    'amount' => ($sparePart->price ?? 0) * $qty,
+                    'category' => 'parts',
+                    'user_id' => Auth::id(),
+                    'expense_date' => now(),
+                    'status' => 'pending'
+                ]);
+            }
 
             // Décrémenter le stock
             $partInRegion->decrement('quantity', $qty);
@@ -1030,14 +1043,17 @@ private function createStockMovement(Activity $activity, SparePart $sparePart, s
                 'order_date' => now(),
             ]);
 
-            $activity->expenses()->create([
-                'description' => 'Coût prestation: ' . $serviceOrder->description,
-                'amount' => $serviceOrder->cost,
-                'category' => 'external_service',
-                'user_id' => Auth::id(),
-                'expense_date' => now(),
-                'status' => 'pending',
-            ]);
+            // Ne créer la dépense que si l'activité n'est pas liée à une maintenance
+            if (!$activity->maintenance_id) {
+                $activity->expenses()->create([
+                    'description' => 'Coût prestation: ' . $serviceOrder->description,
+                    'amount' => $serviceOrder->cost,
+                    'category' => 'external_service',
+                    'user_id' => Auth::id(),
+                    'expense_date' => now(),
+                    'status' => 'pending',
+                ]);
+            }
         }
         // Also delete any expenses that might have been created for a service order that is now removed
         // This needs to be done carefully to avoid deleting expenses not related to service orders
