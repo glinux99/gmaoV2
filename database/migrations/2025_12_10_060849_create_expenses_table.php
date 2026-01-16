@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('description');
             $table->decimal('amount', 10, 2);
             $table->date('expense_date');
-            $table->enum('category', ['parts', 'labor', 'travel', 'external_service', 'other'])->default('other');
+            $table->string('category')->nullable()->default('other');
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null'); // Qui a enregistré la dépense
             $table->nullableMorphs('expensable'); // Pour lier à une tâche, une maintenance, un équipement, etc.
             $table->text('notes')->nullable();

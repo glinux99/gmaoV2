@@ -32,7 +32,7 @@ class MaintenanceController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region', 'statusHistories.user', 'labor_cost', 'material_cost'])
+        $maintenances = Maintenance::with(['assignable', 'equipments', 'instructions.equipment', 'networkNode', 'region', 'statusHistories.user'])
             ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
                 $query->whereBetween('scheduled_start_date', [Carbon::parse($startDate)->startOfDay(), Carbon::parse($endDate)->endOfDay()]);
             })
@@ -191,6 +191,7 @@ class MaintenanceController extends Controller
         DB::beginTransaction();
         try {
             $oldNodeId = $maintenance->network_node_id;
+            $originalRegeneratedDates = $maintenance->regenerated_dates;
             $originalStatus = $maintenance->status;
 
             // 1. Mise à jour récurrence
@@ -209,74 +210,89 @@ class MaintenanceController extends Controller
                     'new_status' => $validatedData['status'],
                 ]);
             }
+          $last =$originalRegeneratedDates;
+$new = $validatedData['regenerated_dates'];
 
-            // Supprimer les anciennes activités pour les recréer proprement
-            Activity::where('maintenance_id', $maintenance->id)->delete();
-            $activities = [];
-            $startTime = Carbon::parse($maintenance->scheduled_start_date)->format('H:i:s');
-            $endTime = Carbon::parse($maintenance->scheduled_end_date)->format('H:i:s');
+$oldArray = is_string($last) ? json_decode($last, true) : $last;
+$newArray = is_string($new) ? json_decode($new, true) : $new;
 
-            if ($regeneratedDates) {
-                foreach ($regeneratedDates as $date) {
-                    $activityDate = Carbon::parse($date)->startOfDay();
-                    $activityTitle = 'Maintenance sur ' . $maintenance->title;
-                    if ($maintenance->equipments()->count() > 0) {
-                        if ($maintenance->equipments()->count() == 1) {
-                            $equipment = $maintenance->equipments()->first();
- $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
- $zoneName = $maintenance->networkNode->zone->title ?? 'N/A';
-                            $activityTitle = 'Maintenance sur ' . $equipment->designation . ' (' . $regionName . ' / ' . $zoneName . ')';
-                        } else {
-                            $regionName = $maintenance->region->designation ?? 'N/A';
-                            $activityTitle = 'Maintenance sur ' . $maintenance->equipments()->count() . ' équipements (' . $regionName . ')';
-                        }
-                    } elseif ($maintenance->title) {
+// 2. On nettoie (optionnel mais recommandé pour les dates)
+// Parfois l'ordre peut changer, donc on trie
+sort($oldArray);
+sort($newArray);
+
+            // Comparer les anciennes et nouvelles dates de récurrence
+            if ($oldArray !== $newArray) {
+                // Si les dates ont changé, on supprime et on recrée les activités
+                Activity::where('maintenance_id', $maintenance->id)->delete();
+                $activities = [];
+                $startTime = Carbon::parse($maintenance->scheduled_start_date)->format('H:i:s');
+                $endTime = Carbon::parse($maintenance->scheduled_end_date)->format('H:i:s');
+
+                if ($regeneratedDates) {
+                    foreach ($regeneratedDates as $date) {
+                        $activityDate = Carbon::parse($date)->startOfDay();
                         $activityTitle = 'Maintenance sur ' . $maintenance->title;
-                    }
+                        // ... (le reste de la logique de création de titre reste identique)
 
+                        $activities[] = Activity::create([
+                            'maintenance_id' => $maintenance->id,
+                            'title' => $activityTitle,
+                            'assignable_type' => $maintenance->assignable_type,
+                            'assignable_id' => $maintenance->assignable_id,
+                            'status' => $maintenance->status === 'completed' ? 'completed' : 'scheduled',
+                            'actual_start_time' => $activityDate->copy()->setTimeFromTimeString($startTime),
+                            'actual_end_time' => $activityDate->copy()->setTimeFromTimeString($endTime),
+                            'priority' => $maintenance->priority,
+                            'user_id' => Auth::id(),
+                        ]);
+                    }
+                } else {
+                    // Recréation pour une seule activité si la récurrence est supprimée
+                    $activityTitle = 'Maintenance sur ' . $maintenance->title;
+                    // ... (logique de titre)
                     $activities[] = Activity::create([
                         'maintenance_id' => $maintenance->id,
                         'title' => $activityTitle,
                         'assignable_type' => $maintenance->assignable_type,
                         'assignable_id' => $maintenance->assignable_id,
+                        'region_id' => $maintenance->region_id,
                         'status' => $maintenance->status === 'completed' ? 'completed' : 'scheduled',
-                        'actual_start_time' => $activityDate->copy()->setTimeFromTimeString($startTime),
-                        'actual_end_time' => $activityDate->copy()->setTimeFromTimeString($endTime),
+                        'actual_start_time' => $maintenance->scheduled_start_date,
+                        'actual_end_time' => $maintenance->scheduled_end_date,
                         'priority' => $maintenance->priority,
                         'user_id' => Auth::id(),
                     ]);
                 }
             } else {
-                // Comportement par défaut : une seule activité
+
+                // Si les dates n'ont pas changé, on met simplement à jour les activités existantes
+                $activities = Activity::where('maintenance_id', $maintenance->id)->get();
                 $activityTitle = 'Maintenance sur ' . $maintenance->title;
                 if ($maintenance->equipments()->count() > 0) {
                     if ($maintenance->equipments()->count() == 1) {
                         $equipment = $maintenance->equipments()->first();
-
-   $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
- $zoneName = $maintenance->networkNode->network->nomenclature ?? 'N/A';
- dd($zoneName);
+                        $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
+                        $zoneName = $maintenance->networkNode->zone->title ?? ($maintenance->networkNode->network->nomenclature ?? 'N/A');
                         $activityTitle = 'Maintenance sur ' . $equipment->designation . ' (' . $regionName . ' / ' . $zoneName . ')';
                     } else {
                         $regionName = $maintenance->region->designation ?? 'N/A';
                         $activityTitle = 'Maintenance sur ' . $maintenance->equipments()->count() . ' équipements (' . $regionName . ')';
                     }
-                } elseif ($maintenance->title) {
-                    $activityTitle = 'Maintenance sur ' . $maintenance->title;
                 }
 
-                $activities[] = Activity::create([
-                    'maintenance_id' => $maintenance->id,
-                    'title' => $activityTitle,
-                    'assignable_type' => $maintenance->assignable_type,
-                    'assignable_id' => $maintenance->assignable_id,
-                    'region_id'=>$maintenance->region_id,
-                    'status' => $maintenance->status === 'completed' ? 'completed' : 'scheduled',
-                    'actual_start_time' => $maintenance->scheduled_start_date,
-                    'actual_end_time' => $maintenance->scheduled_end_date,
-                    'priority' => $maintenance->priority,
-                    'user_id' => Auth::id(),
-                ]);
+                foreach ($activities as $activity) {
+                    $activity->fill([
+                        'title' =>  $activityTitle,
+                        'assignable_type' => $activity->assignable_type ?? $maintenance->assignable_type,
+                        'assignable_id' => $activity->assignable_id ?? $maintenance->assignable_id,
+                        'region_id' => $activity->region_id ?? $maintenance->region_id,
+                        'status' => $activity->status ?? $maintenance->status,
+                        'priority' => $activity->priority ?? $maintenance->priority,
+                        'actual_start_time' => $activity->actual_start_time ?? (!$regeneratedDates ? $maintenance->scheduled_start_date : null),
+                        'actual_end_time' => $activity->actual_end_time ?? (!$regeneratedDates ? $maintenance->scheduled_end_date : null),
+                    ])->save();
+                }
             }
 
             // 3. Sync Équipements

@@ -36,7 +36,7 @@ class ActivityController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         // Requête pour les statistiques globales (avant la pagination)
         $statsQuery = Activity::query();
@@ -73,8 +73,11 @@ class ActivityController extends Controller
             }
         }
 
-        if (request()->has('sortField') && request()->has('sortOrder')) {
-            $query->orderBy(request('sortField'), request('sortOrder') === '1' ? 'asc' : 'desc');
+        // Correction: S'assurer que sortField n'est pas vide avant d'appliquer le tri.
+        // La vue envoie déjà 'asc' ou 'desc', donc la conversion n'est pas nécessaire.
+        $sortField = request('sortField');
+        if ($sortField && request()->has('sortOrder')) {
+            $query->orderBy($sortField, request('sortOrder', 'desc'));
         }
 
         // Eager load all necessary relationships for display and edit
@@ -98,7 +101,7 @@ class ActivityController extends Controller
         })->values();
 
         return Inertia::render('Tasks/MyActivities', [
-            'activities' => $query->paginate(100),
+            'activities' => $query->paginate($request->input('per_page', 15))->withQueryString(),
             'filters' => request()->only(['search', 'status', 'team_id']),
             'activityStats' => $activityStats,
             'users' => \App\Models\User::all(),
@@ -108,6 +111,13 @@ class ActivityController extends Controller
             'teams' => \App\Models\Team::all(),
             'regions' => \App\Models\Region::all(),
             'zones' => \App\Models\Zone::all(),
+            'queryParams' => $request->all([
+                'page',
+                'rows',
+                'sortField',
+                'sortOrder',
+                'filters'
+            ]),
         ]);
     }
     /**
@@ -655,6 +665,9 @@ public function bulkStore(Request $request)
             // --- 4. GESTION DU SERVICE ORDER ---
             $this->processServiceOrder($activity, $validated);
 
+            // --- 5. MISE À JOUR DES COÛTS CONSOLIDÉS DE LA MAINTENANCE ---
+            $this->updateMaintenanceCost($activity);
+
             // --- 5. MISE À JOUR DU STATUT PARENT ---
             // Si l'activité mise à jour est une sous-activité (a un parent)
             if ($activity->parent_id) {
@@ -676,8 +689,6 @@ public function bulkStore(Request $request)
                 }
             }
 
-            // Mettre à jour le coût de la maintenance parente
-            $this->updateMaintenanceCost($activity);
 
             DB::commit();
             return redirect()->route('activities.index')->with('success', 'Activité mise à jour avec succès.');
@@ -692,67 +703,91 @@ public function bulkStore(Request $request)
     /**
      * Recalculate and update the cost of the parent maintenance.
      */
-    private function updateMaintenanceCost(Activity $activity)
-    {
-        // Trouver la maintenance parente, soit directement, soit via une activité parente.
-        $maintenance = null;
-        if ($activity->maintenance_id) {
-            $maintenance = $activity->maintenance;
-        } elseif ($activity->parent_id) {
-            $maintenance = $activity->parent->maintenance;
+private function updateMaintenanceCost(Activity $activity)
+{
+    $maintenance = $activity->maintenance ?? $activity->parent->maintenance ?? null;
+    if (!$maintenance) return;
+
+    // 1. Nettoyer les anciennes dépenses consolidées sur la maintenance
+    $maintenance->expenses()->whereIn('category', ['parts', 'labor_technician', 'labor_tacheron'])->delete();
+
+    // 2. Récupérer toutes les activités liées à la maintenance
+    $allActivities = Activity::where('maintenance_id', $maintenance->id)
+        ->orWhereIn('parent_id', function ($query) use ($maintenance) {
+            $query->select('id')->from('activities')->where('maintenance_id', $maintenance->id);
+        })
+        ->with(['assignable', 'sparePartActivities.sparePart'])
+        ->get();
+
+    // 3. Calculer les coûts consolidés
+    $totalMaterialCost = 0;
+    $totalTechnicianLaborCost = 0;
+    $totalTacheronLaborCost = 0;
+
+    $tacheronRate = 0.76;
+    $technicianRate = 2.92;
+
+    foreach ($allActivities as $act) {
+        // Coût des pièces
+        foreach ($act->sparePartActivities->where('type', 'used') as $spa) {
+            $totalMaterialCost += ($spa->sparePart->price ?? 0) * $spa->quantity_used;
         }
 
-        // Si aucune maintenance n'est associée, on arrête.
-        if (!$maintenance) {
-            return;
-        }
-
-        // Récupérer toutes les activités (principales et sous-activités) liées à cette maintenance.
-        $allActivities = Activity::where('maintenance_id', $maintenance->id)
-            ->orWhereIn('parent_id', function ($query) use ($maintenance) {
-                $query->select('id')->from('activities')->where('maintenance_id', $maintenance->id);
-            })
-            ->with(['assignable', 'expenses' => function ($query) {
-                $query->where('category', 'parts');
-            }])
-            ->get();
-
-        $totalLaborCost = 0;
-        $totalMaterialCost = 0;
-
-        $tacheronRate = 0.76;
-        $technicianRate = 2.92;
-
-        foreach ($allActivities as $act) {
-            // Calcul du coût du matériel
-            $totalMaterialCost += $act->expenses->sum('amount');
-
-            // Calcul du coût de la main d'œuvre
-            if ($act->actual_start_time && $act->actual_end_time) {
-                $durationInHours = $act->actual_start_time->diffInHours($act->actual_end_time);
-
-                if ($durationInHours > 0) {
-                    $assignable = $act->assignable;
-                    if ($assignable instanceof \App\Models\Team) {
-                        $technicianCount = $assignable->members()->count();
-                        $tacheronCount = $assignable->nombre_tacherons ?? 0;
-
-                        $totalLaborCost += ($technicianCount * $technicianRate * $durationInHours);
-                        $totalLaborCost += ($tacheronCount * $tacheronRate * $durationInHours);
-                    } elseif ($assignable instanceof \App\Models\User) {
-                        // Un utilisateur seul est considéré comme un technicien
-                        $totalLaborCost += (1 * $technicianRate * $durationInHours);
-                    }
+        // Coût de la main d'œuvre
+        if ($act->actual_start_time && $act->actual_end_time) {
+            $durationInHours = $act->actual_start_time->diffInHours($act->actual_end_time);
+            if ($durationInHours > 0) {
+                $assignable = $act->assignable;
+                if ($assignable instanceof \App\Models\Team) {
+                    $totalTechnicianLaborCost += ($assignable->members()->count() * $technicianRate * $durationInHours);
+                    $totalTacheronLaborCost += (($assignable->nombre_tacherons ?? 0) * $tacheronRate * $durationInHours);
+                } elseif ($assignable instanceof \App\Models\User) {
+                    $totalTechnicianLaborCost += (1 * $technicianRate * $durationInHours);
                 }
             }
         }
-
-        // Mise à jour du coût total dans la maintenance
-        $maintenance->labor_cost = $totalLaborCost;
-        $maintenance->material_cost = $totalMaterialCost;
-        $maintenance->cost = $totalLaborCost + $totalMaterialCost; // Le coût total est la somme des deux
-        $maintenance->save();
     }
+
+    // 4. Créer les nouvelles dépenses consolidées sur la maintenance
+    if ($totalMaterialCost > 0) {
+        $maintenance->expenses()->create([
+            'description' => 'Coût total des pièces pour la maintenance #' . $maintenance->id,
+            'amount' => $totalMaterialCost,
+            'category' => 'parts',
+            'user_id' => Auth::id(),
+            'expense_date' => now(),
+            'status' => 'pending',
+        ]);
+    }
+
+    if ($totalTechnicianLaborCost > 0) {
+        $maintenance->expenses()->create([
+            'description' => 'Coût total main d\'œuvre (Techniciens) pour la maintenance #' . $maintenance->id,
+            'amount' => $totalTechnicianLaborCost,
+            'category' => 'labor_technician',
+            'user_id' => Auth::id(),
+            'expense_date' => now(),
+            'status' => 'pending',
+        ]);
+    }
+
+    if ($totalTacheronLaborCost > 0) {
+        $maintenance->expenses()->create([
+            'description' => 'Coût total main d\'œuvre (Tâcherons) pour la maintenance #' . $maintenance->id,
+            'amount' => $totalTacheronLaborCost,
+            'category' => 'labor_tacheron',
+            'user_id' => Auth::id(),
+            'expense_date' => now(),
+            'status' => 'pending',
+        ]);
+    }
+
+    // 5. Mettre à jour les champs de coût sur le modèle Maintenance
+    $maintenance->labor_cost = $totalTechnicianLaborCost + $totalTacheronLaborCost;
+    $maintenance->material_cost = $totalMaterialCost;
+    $maintenance->cost = $maintenance->labor_cost + $maintenance->material_cost;
+    $maintenance->save();
+}
 
 
     /**

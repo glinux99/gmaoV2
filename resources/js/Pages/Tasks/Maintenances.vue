@@ -1712,7 +1712,7 @@ const formatDate = (dateString) => {
                     <div class="field">
                         <label for="title" class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">{{ t('maintenances.formDialog.interventionTitle') }}</label>
                         <InputText id="title" v-model.trim="form.title"
-                                  class="w-full quantum-input "
+                                  class="w-full  "
                                   :class="{ 'p-invalid': submitted && !form.title }"
                                   :placeholder="t('maintenances.formDialog.interventionTitlePlaceholder')" />
                         <small class="p-error block mt-1" v-if="form.errors.title">{{ form.errors.title }}</small>

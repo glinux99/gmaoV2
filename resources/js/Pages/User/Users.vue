@@ -99,11 +99,10 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     phone: '',
-    fonction: '',
     region_id: null,
     pointure: '',
     size: '',
-    role: null,
+    roles: [],
     profile_photo: null,
     profile_photo_preview: null,
 });
@@ -161,8 +160,7 @@ const openEdit = (user) => {
     form.name = user.name;
     form.email = user.email;
     form.phone = user.phone;
-    form.role = user.roles.length > 0 ? user.roles[0].name : null;
-    form.fonction = user.fonction;
+    form.roles = user.roles.map(r => r.name);
     form.region_id = user.region_id;
     form.pointure = user.pointure;
     form.size = user.size;
@@ -497,13 +495,13 @@ watch(
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div class="flex flex-col gap-2">
                                     <label for="role" class="v11-label">{{ t('users.fields.role') }}</label>
-                                    <Dropdown v-model="form.role" :options="props.roles" optionLabel="name" optionValue="name" :placeholder="t('users.placeholders.selectRole')" class="v11-dropdown-ultimate" id="role" :invalid="!!form.errors.role" />
-                                    <small class="p-error">{{ form.errors.role }}</small>
+                                    <MultiSelect v-model="form.roles" :options="props.roles" optionLabel="name" optionValue="name" :placeholder="t('users.placeholders.selectRole')" display="chip" class="v11-dropdown-ultimate" id="role" :invalid="!!form.errors.roles" />
+                                    <small class="p-error">{{ form.errors.roles }}</small>
                                 </div>
                                 <div class="flex flex-col gap-2">
-                                    <label for="fonction" class="v11-label">{{ t('users.fields.function') }}</label>
-                                    <InputText id="fonction" v-model="form.fonction" class="v11-input-ultimate" :placeholder="t('users.placeholders.function')" :invalid="!!form.errors.fonction" />
-                                    <small class="p-error">{{ form.errors.fonction }}</small>
+                                    <label for="phone" class="v11-label">{{ t('users.fields.phone') }}</label>
+                                    <InputText id="phone" v-model="form.phone" class="v11-input-ultimate" :placeholder="t('users.placeholders.phone')" :invalid="!!form.errors.phone" />
+                                    <small class="p-error">{{ form.errors.phone }}</small>
                                 </div>
                                 <div class="flex flex-col gap-2">
                                     <label for="region" class="v11-label">{{ t('users.fields.region') }}</label>
@@ -511,9 +509,6 @@ watch(
                                     <small class="p-error">{{ form.errors.region_id }}</small>
                                 </div>
                                 <div class="flex flex-col gap-2">
-                                    <label for="phone" class="v11-label">{{ t('users.fields.phone') }}</label>
-                                    <InputText id="phone" v-model="form.phone" class="v11-input-ultimate" :placeholder="t('users.placeholders.phone')" :invalid="!!form.errors.phone" />
-                                    <small class="p-error">{{ form.errors.phone }}</small>
                                 </div>
                             </div>
                         </div>

@@ -77,7 +77,7 @@ class UserController extends Controller
             'region_id' => 'nullable|exists:regions,id',
             'pointure' => 'nullable|string|max:10',
             'size' => 'nullable|string|max:10',
-            'role' => 'nullable|string|exists:roles,name',
+            'roles' => 'nullable|array',
             'profile_photo' => 'nullable|image|max:2048',
         ]);
 
@@ -85,15 +85,15 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'phone' => $validated['phone'],
-            'fonction' => $validated['fonction'],
-            'region_id' => $validated['region_id'],
-            'pointure' => $validated['pointure'],
-            'size' => $validated['size'],
+            'phone' => $validated['phone'] ?? null,
+            'fonction' => $validated['fonction'] ?? null,
+            'region_id' => $validated['region_id'] ?? null,
+            'pointure' => $validated['pointure'] ?? null,
+            'size' => $validated['size'] ?? null,
         ]);
 
-        if (!empty($validated['role'])) {
-            $user->assignRole($validated['role']);
+        if (!empty($validated['roles'])) {
+            $user->syncRoles($validated['roles']);
         }
 
         if ($request->hasFile('profile_photo')) {
@@ -117,7 +117,7 @@ class UserController extends Controller
             'region_id' => 'nullable|exists:regions,id',
             'pointure' => 'nullable|string|max:10',
             'size' => 'nullable|string|max:10',
-            'role' => 'nullable|string|exists:roles,name',
+            'roles' => 'nullable|array',
             'profile_photo' => 'nullable|image|max:2048',
         ]);
 
@@ -129,8 +129,8 @@ class UserController extends Controller
 
         $user->update($updateData);
 
-        if ($request->filled('role')) {
-            $user->syncRoles([$request->input('role')]);
+        if ($request->filled('roles')) {
+            $user->syncRoles($request->input('roles'));
         }
 
         if ($request->hasFile('profile_photo')) {

@@ -182,6 +182,7 @@ const sparePartOptions = computed(() => {
 // --- FILTRES & COLONNES DATATABLE ---
 const lazyParams = ref({
     first: props.activities.from - 1,
+    page: props.activities.current_page,
     rows: props.activities.per_page,
     sortField: 'created_at',
     sortOrder: -1,
@@ -192,17 +193,31 @@ const lazyParams = ref({
         'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     }
 });
+const loading = ref(false);
+const selectedActivities = ref([]);
 
 const onPage = (event) => {
-    lazyParams.value = event;
+    // Conserver les paramètres de tri et de filtre actuels lors du changement de page
+    lazyParams.value.page = event.page + 1; // L'événement de PrimeVue est 0-indexed
+    lazyParams.value.rows = event.rows;
+    lazyParams.value.first = event.first;
     loadLazyData();
 };
 
 const onSort = (event) => {
-    lazyParams.value = event;
+    // Mettre à jour uniquement les paramètres de tri
+    lazyParams.value.sortField = event.sortField;
+    lazyParams.value.sortOrder = event.sortOrder;
+    // Réinitialiser à la première page lors d'un nouveau tri
+    lazyParams.value.page = 1;
+    lazyParams.value.first = 0;
     loadLazyData();
 };
 
+const onFilter = (event) => {
+    lazyParams.value.filters = event.filters;
+    loadLazyData();
+};
 
 const resetFilters = () => {
     filters.value = {
@@ -215,19 +230,24 @@ const resetFilters = () => {
 };
 
 const loadLazyData = () => {
+    loading.value = true;
     router.get(route('activities.index'), {
-        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
-        rows: lazyParams.value.rows,
+        page: lazyParams.value.page,
+        per_page: lazyParams.value.rows,
         sortField: lazyParams.value.sortField,
-        sortOrder: lazyParams.value.sortOrder,
+        sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc',
         search: lazyParams.value.filters.global.value,
         status: lazyParams.value.filters.status.value,
         team_id: lazyParams.value.filters.team_id.value,
-    }, { preserveState: true, replace: true });
+    }, { preserveState: true, replace: true, onFinish: () => { loading.value = false; } });
 };
 
-watch(() => lazyParams.value.filters, () => {
-    loadLazyData();
+watch(() => lazyParams.value.filters.global.value, () => {
+    if (lazyParams.value.page !== 1) {
+        lazyParams.value.page = 1;
+    } else {
+        loadLazyData();
+    }
 });
 
 const allColumns = computed(() => [
@@ -772,19 +792,24 @@ const exportCSV = () => {
                <DataTable
     ref="dt"
     :value="parentActivities"
+    v-model:selection="selectedActivities"
     dataKey="id"
     v-model:expandedRows="expandedRows"
-    lazy
-    paginator
+    :lazy="true"
+    :paginator="true"
+    :rowsPerPageOptions="[5,15, 30, 50, 100,500]"
     :totalRecords="activities.total"
     :rows="activities.per_page"
+    :loading="loading"
     @page="onPage($event)"
     @sort="onSort($event)"
+    @filter="onFilter($event)"
     v-model:filters="lazyParams.filters"
     filterDisplay="menu"
     :globalFilterFields="['title', 'jobber', 'status']"
-    class="p-datatable-sm quantum-table"
-    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+    class="p-datatable-sm quantum-table p-datatable-custom"
+    removableSort
+    paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
     responsiveLayout="scroll"
     :currentPageReportTemplate="t('myActivities.table.report')"
 >

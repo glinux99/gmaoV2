@@ -59,7 +59,8 @@ class Activity extends Model implements HasMedia
                 ];
 
                 if ($activity->task_id) $activity->task()->update($updateData);
-                if ($activity->maintenance_id) $activity->maintenance()->update($updateData);
+                // On désactive la propagation de l'assignation de l'activité vers la maintenance.
+                // if ($activity->maintenance_id) $activity->maintenance()->update($updateData);
                 if ($activity->intervention_request_id) $activity->interventionRequest()->update($updateData);
             }
         });

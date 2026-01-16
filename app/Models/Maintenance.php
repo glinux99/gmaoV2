@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 class Maintenance extends Model implements HasMedia
@@ -145,5 +146,10 @@ class Maintenance extends Model implements HasMedia
     public function statusHistories(): HasMany
     {
         return $this->hasMany(MaintenanceStatusHistory::class)->latest();
+    }
+
+    public function expenses(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Expenses::class, 'expensable');
     }
 }

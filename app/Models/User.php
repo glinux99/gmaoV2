@@ -95,6 +95,11 @@ class User extends Authenticatable implements HasMedia
     return $this->belongsTo(Region::class);
 }
 
+ public function zone()
+{
+ return $this->belongsTo(Zone::class);
+}
+
 // Dans app/Models/User.php
 
 /**
