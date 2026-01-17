@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\InterventionRequestImport;
+use App\Imports\InterventionRequestImport as ImportsInterventionRequestImport;
 use App\Models\Connection;
 use App\Models\InterventionRequest;
 use App\Models\Region;
@@ -14,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InterventionRequestController extends Controller
 {
@@ -40,38 +43,45 @@ class InterventionRequestController extends Controller
     public function index(Request $request)
     {
         $query = InterventionRequest::query()
-            ->with(['requestedByUser:id,name', 'requestedByConnection:id,customer_code,first_name,last_name', 'assignable', 'region:id,designation', 'zone:id,title']);
+            ->with(['requestedByUser:id,name', 'requestedByConnection:id,customer_code,first_name,last_name', 'assignable', 'region:id,designation', 'zone:id,nomenclature']);
 
-        // --- FILTRES ---
-        $query->when($request->status && $request->status !== 'all', fn($q) => $q->where('status', $request->status))
-              ->when($request->region_id && $request->region_id !== 'all', fn($q) => $q->where('region_id', $request->region_id))
-              ->when($request->zone_id && $request->zone_id !== 'all', fn($q) => $q->where('zone_id', $request->zone_id))
-              ->when($request->priority && $request->priority !== 'all', fn($q) => $q->where('priority', $request->priority));
-
-        // --- RECHERCHE ---
-        if ($request->filled('search')) {
-            $search = $request->search;
+        // --- FILTRES & RECHERCHE (Lazy Loading) ---
+        $filters = $request->input('filters', []);
+        if (isset($filters['global']['value'])) {
+            $search = $filters['global']['value'];
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('intervention_reason', 'like', "%{$search}%")
                   ->orWhereHas('requestedByConnection', fn($sq) =>
                         $sq->where('customer_code', 'like', "%{$search}%")
                            ->orWhere('last_name', 'like', "%{$search}%")
+                           ->orWhere('first_name', 'like', "%{$search}%")
                     );
             });
         }
 
-        // --- TRI PAR PROXIMITÉ (GPS) ---
-        $isSortingByDistance = false;
-        if ($request->has(['user_lat', 'user_lng']) && $request->user_lat != null) {
-            $lat = (float) $request->user_lat;
-            $lng = (float) $request->user_lng;
-            $isSortingByDistance = true;
-
-            $query->selectRaw("*, (6371 * ACOS(COS(RADIANS(?)) * COS(RADIANS(gps_latitude)) * COS(RADIANS(gps_longitude) - RADIANS(?)) + SIN(RADIANS(?)) * SIN(RADIANS(gps_latitude)))) AS distance", [$lat, $lng, $lat])
-                  ->orderBy('distance', 'asc');
+        // Filtres par colonne
+        if (isset($filters['status']['value'])) {
+            $query->where('status', $filters['status']['value']);
+        }
+        if (isset($filters['priority']['value'])) {
+            $query->where('priority', $filters['priority']['value']);
         }
 
-        if (!$isSortingByDistance) {
+        // --- TRI (Lazy Loading) ---
+        $sortField = $request->input('sortField', 'created_at');
+        $sortOrder = $request->input('sortOrder', 'desc');
+
+        if ($sortField) {
+            // Gérer le tri sur les relations
+            if (str_contains($sortField, '.')) {
+                // Exemple pour trier par nom de région (à adapter si besoin)
+                // [$relation, $field] = explode('.', $sortField);
+                // $query->join('regions', 'intervention_requests.region_id', '=', 'regions.id')->orderBy("regions.{$field}", $sortOrder);
+            } else {
+                $query->orderBy($sortField, $sortOrder);
+            }
+        } else {
             $query->latest();
         }
 
@@ -81,7 +91,7 @@ class InterventionRequestController extends Controller
             'users' => User::all(['id', 'name']),
             'teams' => Team::all(['id', 'name']),
             'regions' => Region::all(['id', 'designation']),
-            'zones' => Zone::all(['id', 'title']),
+            'zones' => Zone::all(['id', 'nomenclature']),
             'connections' => Connection::all(['id', 'customer_code', 'first_name', 'last_name', 'gps_latitude', 'gps_longitude','zone_id','region_id']),
         ], $this->getConstants()));
     }
@@ -314,39 +324,50 @@ class InterventionRequestController extends Controller
         return Redirect::route('interventions.index')->with('success', 'Demande validée avec succès.');
     }
 
-    public function import(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:csv,txt,xlsx,xls',
+public function import(Request $request)
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+    ]);
+
+    try {
+        // Utilisation d'une transaction pour éviter les imports partiels corrompus
+        DB::beginTransaction();
+
+        Excel::import(new ImportsInterventionRequestImport, $request->file('file'));
+
+        DB::commit();
+        return redirect()->route('interventions.index')
+            ->with('success', "L'importation a été effectuée avec succès.");
+
+    } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        DB::rollBack(); // On annule tout si une ligne est invalide
+        return $e;
+        $failures = $e->failures();
+        $errors = [];
+
+        foreach ($failures as $failure) {
+            $row = $failure->row();
+            $attribute = $failure->attribute();
+            $errorMessages = implode(', ', $failure->errors());
+            // On récupère la valeur qui a posé problème
+            $providedValue = $failure->values()[$attribute] ?? 'N/A';
+
+            $errors[] = "Ligne {$row} (Champ '{$attribute}'): {$errorMessages} [Valeur: {$providedValue}]";
+        }
+
+        return back()->with('import_errors', $errors)
+                     ->with('error', 'L\'importation a échoué à cause d\'erreurs de validation.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        Log::error("Erreur import interventions: " . $e->getMessage(), [
+            'exception' => $e,
+            'user_id' => auth()->id()
         ]);
 
-        try {
-            $file = $request->file('file');
-            $data = array_map('str_getcsv', file($file->getRealPath()));
-
-            // Supposer que la première ligne est l'en-tête
-            $header = array_shift($data);
-
-            foreach ($data as $row) {
-                if (count($header) !== count($row)) {
-                    Log::warning('Ligne ignorée : le nombre de colonnes ne correspond pas à l\'en-tête.', ['row' => $row]);
-                    continue;
-                }
-                $interventionData = array_combine($header, $row);
-
-                // Créer la demande d'intervention avec les données mappées
-                InterventionRequest::create([
-                    'title' => $interventionData['title'] ?? 'Titre non défini',
-                    'description' => $interventionData['description'] ?? null,
-                    'status' => $interventionData['status'] ?? 'pending',
-                    'priority' => $interventionData['priority'] ?? 'Moyenne',
-                    // Ajoutez d'autres champs ici en fonction des colonnes de votre CSV
-                ]);
-            }
-
-            return Redirect::route('interventions.index')->with('success', 'Demandes d\'intervention importées avec succès.');
-        } catch (\Exception $e) {
-            return Redirect::back()->with('error', 'Une erreur est survenue lors de l\'importation : ' . $e->getMessage());
-        }
+        return back()->with('error', "Une erreur technique est survenue. Vérifiez le format de votre fichier.");
     }
+}
 }

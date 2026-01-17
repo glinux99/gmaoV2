@@ -13,6 +13,7 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import SelectButton from 'primevue/selectbutton';
 import RadioButton from 'primevue/radiobutton';
 import MultiSelect from 'primevue/multiselect';
 import SplitButton from 'primevue/splitbutton';
@@ -73,6 +74,7 @@ const dt = ref();
 const op = ref();
 const selectedItems = ref([]);
 const lastAssignable = ref({ type: null, id: null });
+// const loading = ref(false);
 const isImportModalOpen = ref(false);
 const requester_type = ref('client');
 
@@ -110,32 +112,36 @@ const selectedColumnFields = ref(['title', 'status', 'client_name', 'priority', 
 const displayedColumns = computed(() => allColumns.value.filter(col => selectedColumnFields.value.includes(col.field)));
 
 // --- LOGIQUE FILTRES ---
-const filters = ref({
-    'global': { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
-    'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    'status': { value: props.filters?.status || null, matchMode: FilterMatchMode.EQUALS },
-    'priority': { value: props.filters?.priority || null, matchMode: FilterMatchMode.EQUALS },
-    'region_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    'client_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+const lazyParams = ref({
+    first: props.interventionRequests.from - 1,
+    rows: props.interventionRequests.per_page,
+    sortField: 'created_at',
+    sortOrder: -1,
+    filters: {
+        'global': { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
+        'status': { value: props.filters?.status || null, matchMode: FilterMatchMode.EQUALS },
+        'priority': { value: props.filters?.priority || null, matchMode: FilterMatchMode.EQUALS },
+    }
 });
 
-const resetFilters = () => {
-    filters.value = {
-        'global': { value: null, matchMode: FilterMatchMode.CONTAINS },
-        'title': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-        'status': { value: null, matchMode: FilterMatchMode.EQUALS },
-        'priority': { value: null, matchMode: FilterMatchMode.EQUALS },
-        'region_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-        'client_name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    };
-};
+const loadLazyData = (event) => {
+    loading.value = true;
+    const { first, rows, sortField, sortOrder, filters } = { ...lazyParams.value, ...event };
 
-const applyFilters = () => {
-    const search = filters.value.global.value;
     router.get(route('interventions.index'), {
-        search: search.value,
-        ...filterForm.value
-    }, { preserveState: true, replace: true });
+        per_page: rows,
+        page: (first / rows) + 1,
+        sortField: sortField,
+        sortOrder: sortOrder === 1 ? 'asc' : 'desc',
+        filters: {
+            global: { value: filters.global.value },
+            status: { value: filters.status.value },
+            priority: { value: filters.priority.value },
+        }
+    }, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
 };
 
 const activeFiltersCount = computed(() => {
@@ -248,11 +254,9 @@ const submit = () => {
 
     form.submit(method, url, {
         onSuccess: () => {
-            labelDialog.value = false;
             toast.add({ severity: 'success', summary: 'Succès', detail: 'Région enregistrée', life: 3000 });
             isModalOpen.value = false ;
-        },
-        onError: () => {  isModalOpen.value = false ; }
+        }, onFinish: () => { loading.value = false; }
     });
 };
 
@@ -301,6 +305,10 @@ const interventionStatuses = ref( ['pending', 'assigned', 'in_progress', 'comple
 
 const exportCSV = () => {
     dt.value.exportCSV();
+};
+
+const onPage = (event) => {
+    loadLazyData(event);
 };
 </script>
 
@@ -362,23 +370,31 @@ const exportCSV = () => {
             </div>
 
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <DataTable :value="formattedList" v-model:selection="selectedItems" dataKey="id"
-                           v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['title', 'client_name', 'status', 'priority', 'region_name']"
-                           :rows="10" paginator class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                <DataTable :value="formattedList" v-model:selection="selectedItems" dataKey="id" ref="dt"
+                           :totalRecords="interventionRequests.total" :loading="loading" lazy
+                           v-model:filters="lazyParams.filters" filterDisplay="menu" :globalFilterFields="['title', 'client_name', 'status', 'priority', 'region_name']"
+                           :rows="interventionRequests.per_page" paginator class="p-datatable-sm quantum-table" paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                           @page="onPage($event)" @sort="onPage($event)" @filter="onPage($event)"
                            :currentPageReportTemplate="t('interventions.table.report')">
                     <template #header>
 
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="filters['global'].value" :placeholder="t('interventions.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                                <InputText v-model="lazyParams.filters['global'].value" @keydown.enter="onPage($event)" :placeholder="t('interventions.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
                             <div class="flex items-center gap-2">
+                                <Dropdown v-model="lazyParams.rows" :options="[10, 20, 50, 100]" @change="loadLazyData" class="p-inputtext-sm" />
                                 <Button v-if="selectedItems.length" icon="pi pi-trash" :label="t('interventions.deleteSelected')" class="p-button-danger p-button-text p-button-sm animate-fadein" @click="deleteDialog = true" />
-                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="resetFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
+                                <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="lazyParams.filters.global.value = ''" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
                                 <Button icon="pi pi-download" text rounded severity="secondary" @click="exportCSV" />
                                 <Button icon="pi pi-cog" text rounded severity="secondary" @click="op.toggle($event)" v-tooltip.bottom="'Colonnes'" />
                             </div>
+                        </div>
+                    </template>
+                    <template #empty>
+                        <div class="p-8 text-center text-slate-500">
+                            {{ t('interventions.table.noRecords') }}
                         </div>
                     </template>
                     <Column selectionMode="multiple" headerStyle="width: 3rem" />

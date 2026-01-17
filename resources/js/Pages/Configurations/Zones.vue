@@ -35,7 +35,6 @@ const { t } = useI18n();
 const props = defineProps({
     zones: Object, // Changed from regions to zones (paginated)
     regions: Array,
-    filters: Object,
 });
 
 // --- ÉTATS RÉACTIFS ---
@@ -44,7 +43,6 @@ const confirm = useConfirm();
 const dt = ref();
 const zoneDialog = ref(false); // Renamed from labelDialog
 const importDialog = ref(false);
-const submitted = ref(false);
 const editing = ref(false);
 const loading = ref(false);
 const selectedZones = ref(null); // Renamed from selectedRegions
@@ -71,7 +69,7 @@ const filters = ref({
 
 const lazyParams = ref({
     first: props.zones.from - 1,
-    rows: props.zones.per_page,
+    rows: props.zones.per_page || 10,
     sortField: 'created_at',
     sortOrder: -1, // -1 pour desc
     filters: filters.value
@@ -79,14 +77,19 @@ const lazyParams = ref({
 
 const loadLazyData = () => {
     loading.value = true;
+
     const queryParams = {
-        ...lazyParams.value,
         page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+        rows: lazyParams.value.rows,
+        sortField: lazyParams.value.sortField,
         sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc',
+        // On envoie l'objet filtres tel quel, le contrôleur s'en occupera
+        filters: lazyParams.value.filters
     };
 
     router.get(route('zones.index'), queryParams, {
         preserveState: true,
+        preserveScroll: true, // Évite que la page remonte au changement de page
         onFinish: () => { loading.value = false; }
     });
 };
@@ -132,19 +135,6 @@ watch(() => lazyParams.value.rows, (newValue) => {
     loadLazyData();
 });
 
-
-// --- LOGIQUE DE CALCUL DES STATS ---
-const stats = computed(() => {
-    const data = props.regions || [];
-    const totalMWValue = data.reduce((acc, curr) => acc + (parseFloat(curr.puissance_centrale) || 0), 0);
-    return {
-        total: data.length,
-        totalMW: totalMWValue.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
-        avgPower: data.length > 0 ? (totalMWValue / data.length).toFixed(1) : 0,
-        highPerf: data.filter(r => r.puissance_centrale > 500).length
-    };
-});
-
 // Watch for changes to auto-complete nomenclature
 watch([() => form.region_id, () => form.number, () => form.title], ([newRegionId, newNumber, newTitle]) => {
     let nomenclatureParts = [];
@@ -166,25 +156,18 @@ watch([() => form.region_id, () => form.number, () => form.title], ([newRegionId
 // --- MÉTHODES D'ACTION ---
 const openNew = () => {
     form.reset();
-    submitted.value = false;
+    editing.value = false;
     zoneDialog.value = true;
 };
 
 const editZone = (zone) => {
     form.clearErrors();
-    form.id = zone.id;
-    // form.name = zone.name;
-    form.title = zone.title;
-    form.nomenclature = zone.nomenclature;
-    form.number = zone.number;
-    form.region_id = zone.region_id;
+    Object.assign(form, zone);
     editing.value = true;
     zoneDialog.value = true;
 };
 
 const saveZone = () => {
-    // submitted.value = true; // No longer needed as validation is handled by form.submit
-
     loading.value = true;
     const url = editing.value ? route('zones.update', form.id) : route('zones.store');
     const method = editing.value ? 'put' : 'post';
@@ -214,33 +197,22 @@ const deleteZone = (zone) => {
 };
 
 const deleteSelectedZones = () => {
-    confirm.require({
-        message: `Voulez-vous vraiment supprimer les ${selectedZones.value.length} zones sélectionnées ?`,
-        header: 'Confirmation de suppression multiple',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClass: 'p-button-danger',
-        accept: () => {
-            const ids = selectedZones.value.map(z => z.id);
-            router.post(route('zones.bulkDestroy'), { ids: ids }, {
-                onSuccess: () => { toast.add({ severity: 'info', summary: 'Info', detail: 'Zones supprimées', life: 3000 }); selectedZones.value = null; },
-                onError: () => toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la suppression', life: 3000 })
-            });
-        }
-    });
+     confirm.require({
+         message: `Voulez-vous vraiment supprimer les ${selectedZones.value.length} zones sélectionnées ?`,
+         header: 'Confirmation de suppression multiple',
+         icon: 'pi pi-exclamation-triangle',
+         acceptClass: 'p-button-danger',
+         accept: () => {
+             const ids = selectedZones.value.map(z => z.id);
+             router.post(route('zones.bulkDestroy'), { ids: ids }, {
+                 onSuccess: () => { toast.add({ severity: 'info', summary: 'Info', detail: 'Zones supprimées', life: 3000 }); selectedZones.value = null; },
+                 onError: (errors) => toast.add({ severity: 'error', summary: 'Erreur', detail: errors.error || 'Échec de la suppression', life: 3000 })
+             });
+         }
+     });
 };
 
 // --- OPTIONS DE CONFIGURATION (I18N) ---
-const statusOptions = computed(() => [
-    { label: t('regions.status.active'), value: 'active' },
-    { label: t('regions.status.inactive'), value: 'inactive' },
-]);
-
-const statLabels = computed(() => ({
-    total: t('regions.stats.total'),
-    totalMW: t('regions.stats.totalMW'),
-    avgPower: t('regions.stats.avgPower'),
-    highPerf: t('regions.stats.highPerf')
-}));
 
 </script>
 
@@ -267,20 +239,6 @@ const statLabels = computed(() => ({
                 </div>
             </div>
 
-            <!-- <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div v-for="(val, key) in stats" :key="key" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
-                    <div class="flex flex-column gap-2">
-                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ statLabels[key] }}</span>
-                        <div class="flex items-center justify-between">
-                            <span class="text-3xl font-black text-slate-800">{{ val }}</span>
-                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
-                                <i :class="key === 'totalMW' ? 'pi pi-bolt' : 'pi pi-database'" class="text-slate-400"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> -->
-
             <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
                 <DataTable
                     ref="dt"
@@ -290,7 +248,7 @@ const statLabels = computed(() => ({
                     dataKey="id"
                     :loading="loading"
                     :paginator="true"
-                    :rows="zones.per_page"
+                    :rows="lazyParams.rows"
                     :totalRecords="zones.total"
                     :lazy="true"
                     @page="onPage($event)"
@@ -303,6 +261,7 @@ const statLabels = computed(() => ({
                     :globalFilterFields="['nomenclature', 'title', 'region.designation']"
                     class="p-datatable-custom"
                     removableSort
+
                 >
                     <template #header>
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
@@ -320,7 +279,7 @@ const statLabels = computed(() => ({
                                 <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" />
                                 <Button icon="pi pi-cog" text rounded severity="secondary" @click="toggleColumnSelection" />
                                 <Button v-if="selectedZones && selectedZones.length > 0"
-                                        :label="`Supprimer (${selectedZones.length})`"
+                                        :label="t('common.deleteSelection', { count: selectedZones.length })"
                                         icon="pi pi-trash" severity="danger" raised
                                         @click="deleteSelectedZones" />
                             </div>
@@ -332,7 +291,7 @@ const statLabels = computed(() => ({
                     <Column field="nomenclature" header="Nomenclature" sortable filterField="nomenclature" :showFilterMatchModes="false" v-if="visibleColumns.includes('nomenclature')">
                         <template #body="{ data }" v-if="visibleColumns.includes('nomenclature')">
                             <div class="flex items-center gap-3">
-                                <Avatar :label="data.nomenclature[0]" shape="circle" class="bg-primary-50 text-primary-600 font-bold" />
+                                <Avatar :label="data.nomenclature ? data.nomenclature[0] : 'Z'" shape="circle" class="bg-primary-50 text-primary-600 font-bold" />
                                 <span class="font-bold text-slate-700">{{ data.nomenclature }}</span>
                             </div>
                         </template>
@@ -425,6 +384,7 @@ const statLabels = computed(() => ({
             <small v-if="form.errors.region_id" class="text-red-500 font-medium italic">{{ form.errors.region_id }}</small>
         </div>
  <div class="flex flex-col gap-2">
+
             <label class="text-xs font-black text-slate-500 uppercase tracking-wider">Numéro de la zone</label>
             <InputNumber
                 v-model="form.number"

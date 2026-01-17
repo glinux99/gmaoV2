@@ -1822,13 +1822,7 @@
     "addNew": "Activité Mpya",
     "subActivityFor": "Sous-activité kwa ajili ya : {title}",
     "unknownReference": "Référence haijulikani",
-    "stats": {
-      "total": "Jumla ya ma Activités",
-      "in_progress": "Ziko mu kazi",
-      "completed": "Zimeisha",
-      "scheduled": "Zimepangwa"
-    },
-    "status": {
+        "status": {
       "scheduled": "Planifiée",
       "in_progress": "En cours",
       "completed": "Terminée",
@@ -1836,8 +1830,24 @@
       "suspended": "Suspendue",
       "canceled": "Annulée",
       "awaiting_resources": "Inangojea ma ressources",
-      "pending": "En attente"
+      "pending": "En attente",
+      "Planifiée": "Planifiée",
+      "En_cours": "En cours",
+      "Terminée": "Terminée",
+      "Terminée_avec_problèmes": "Terminée avec problèmes",
+      "Suspendue": "Suspendue",
+      "Annulée": "Annulée",
+      "En_attente_de_ressources": "En attente de ressources",
+      "to_be_reviewed_later": "À revoir plus tard"
+
     },
+    "stats": {
+      "total": "Jumla ya ma Activités",
+      "in_progress": "Ziko mu kazi",
+      "completed": "Zimeisha",
+      "scheduled": "Zimepangwa"
+    },
+
     "instructionTypes": {
       "text": "Texte",
       "number": "Nombre",

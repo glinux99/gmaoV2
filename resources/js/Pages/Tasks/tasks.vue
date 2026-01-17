@@ -1132,7 +1132,7 @@ const updateInstructions = (taskId, instructions) => {
                         Inventaire des pièces
                         <span class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[10px]">{{ form.spare_parts.length }}</span>
                     </h4>
-                    <Button icon="pi pi-plus" label="Ajouter" severity="primary" size="small" @click="addSparePart" class="p-button-sm" />
+                    <Button icon="pi pi-plus" label="Ajouter"  size="small" @click="addSparePart" class="p-button-sm" />
                 </div>
 
                 <div v-if="form.spare_parts.length === 0" class="flex-grow flex flex-col items-center justify-center py-10 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/30">
@@ -1249,7 +1249,7 @@ const updateInstructions = (taskId, instructions) => {
 
     <div class="shrink-0 flex justify-between items-center w-full px-8 py-4 bg-white/50 backdrop-blur-md border-t border-slate-200">
             <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="taskDialog = false" class="font-bold uppercase text-[10px] tracking-widest" />
-            <Button label="Enregistrer l'Ordre" icon="pi pi-check-circle" severity="primary" @click="saveMaintenance" :loading="form.processing" class="px-8 h-12 rounded-xl shadow-lg shadow-primary-100 font-black uppercase text-xs" />
+            <Button label="Enregistrer l'Ordre" icon="pi pi-check-circle"  @click="saveMaintenance" :loading="form.processing" class="px-8 h-12 rounded-xl shadow-lg shadow-primary-100 font-black uppercase text-xs" />
         </div>
 </div>
 </Dialog>

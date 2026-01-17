@@ -422,7 +422,7 @@ watch(() => filters.value.global.value, (newValue) => {
                     <Button icon="pi pi-file-pdf" severity="secondary" text class="rounded-full" @click="exportData('pdf')" v-tooltip.bottom="'Export PDF'" />
                     <Button icon="pi pi-upload" severity="secondary" text class="rounded-full" @click="importDialog = true" v-tooltip.bottom="'Importer'" />
                     <div class="h-8 w-[1px] bg-slate-100 mx-2"></div>
-                    <Button :label="t('technicians.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openCreate" class="rounded-lg font-bold" />
+                    <Button :label="t('technicians.actions.add')" icon="pi pi-plus"  raised @click="openCreate" class="rounded-lg font-bold" />
                 </div>
             </div>
 
@@ -700,7 +700,7 @@ watch(() => filters.value.global.value, (newValue) => {
                 </div>
  <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
                 <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="isModalOpen = false" class="font-bold uppercase text-[10px] tracking-widest" />
-                <Button :label="form.id ? t('common.save') : t('common.create')"  icon="pi pi-check-circle" severity="primary"
+                <Button :label="form.id ? t('common.save') : t('common.create')"  icon="pi pi-check-circle"
                         class="px-10 h-14 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
                         @click="submit" :loading="form.processing" />
             </div>

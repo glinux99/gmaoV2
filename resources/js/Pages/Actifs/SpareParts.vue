@@ -103,19 +103,22 @@ const lazyParams = ref({
 });
 
 const onPage = (event) => {
-    loading.value = true;
     lazyParams.value = event;
-    const queryParams = {
-        ...event,
-        page: event.page + 1,
-        per_page: event.rows,
-        search: search.value,
-        region_id: selectedRegion.value,
-    };
+    loadLazyData();
+};
 
+const onFilter = () => {
+    lazyParams.value.filters = filters.value;
+    loadLazyData();
+}
+
+const loadLazyData = () => {
+    loading.value = true;
+    const queryParams = { ...lazyParams.value, page: (lazyParams.value.first / lazyParams.value.rows) + 1 };
     router.get(route('spare-parts.index'), queryParams, {
         preserveState: true,
-        onFinish: () => { loading.value = false; }
+        preserveScroll: true,
+        onFinish: () => loading.value = false
     });
 };
 
@@ -381,7 +384,7 @@ const bulkDeleteButtonIsDisabled = computed(() => !selectedSpareParts.value || s
             <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
                 <DataTable :value="spareParts.data" ref="dt" dataKey="id" v-model:selection="selectedSpareParts" :paginator="true"
                            :rows="spareParts.per_page"
-                           :lazy="true" @page="onPage($event)" @sort="onPage($event)"
+                           :lazy="true" @page="onPage($event)" @sort="onPage($event)" @filter="onFilter"
                            :totalRecords="spareParts.total" :loading="loading"
                            v-model:first="lazyParams.first"
                            :sortField="lazyParams.sortField" :sortOrder="lazyParams.sortOrder"

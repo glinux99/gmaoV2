@@ -13,53 +13,60 @@ class RegionController extends Controller
      */
     public function index(Request $request)
     {
-        $perPage = $request->input('rows', 10); // 'rows' est utilisé par PrimeVue
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $filters = $request->input('filters', []);
-        $search = $filters['global']['value'] ?? null;
+           $query = Region::query();
 
-        $query = Region::query();
+        // Gestion du tri
+        $sortField = $request->input('sortField', 'created_at');
+        $sortOrder = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
+        $query->orderBy($sortField, $sortOrder);
 
-        // Filtre de date global
-        if ($startDate && $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
-        }
+        // Gestion des filtres
+        if ($request->has('filters')) {
+            $filters = $request->input('filters');
 
-        // Filtre de recherche global
-        if (!empty($filters)) {
-            if (isset($filters['global']['value'])) {
+            // Filtre global
+            if (!empty($filters['global']['value'])) {
                 $globalFilter = $filters['global']['value'];
                 $query->where(function ($q) use ($globalFilter) {
-                    $q->where('designation', 'like', "%{$globalFilter}%")
-                      ->orWhere('type_centrale', 'like', "%{$globalFilter}%")
-                      ->orWhere('code', 'like', "%{$globalFilter}%")
-                      ->orWhere('status', 'like', "%{$globalFilter}%");
+                    $q->where('designation', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('type_centrale', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('code', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('status', 'like', '%' . $globalFilter . '%');
                 });
             }
 
-            // Filtres par colonne (exemple)
-            $this->applyColumnFilter($query, $filters, 'designation');
-            $this->applyColumnFilter($query, $filters, 'code');
-            $this->applyColumnFilter($query, $filters, 'type_centrale');
+            // Filtre par désignation
+            if (!empty($filters['designation']['constraints'][0]['value'])) {
+                $query->where('designation', 'like', $filters['designation']['constraints'][0]['value'] . '%');
+            }
+
+            // Filtre par type de centrale (MultiSelect)
+            if (!empty($filters['type_centrale']['value'])) {
+                $query->whereIn('type_centrale', $filters['type_centrale']['value']);
+            }
+
+            // Filtre par puissance (Range)
+            if (isset($filters['puissance_centrale']['value'])) {
+                $range = $filters['puissance_centrale']['value'];
+                if (is_array($range) && isset($range[0]) && isset($range[1])) {
+                    $query->whereBetween('puissance_centrale', [$range[0], $range[1]]);
+                }
+            }
+
+            // Filtre par statut
+            if (!empty($filters['status']['value'])) {
+                $query->where('status', $filters['status']['value']);
+            }
         }
 
-
-        // Gestion du tri
-        if ($request->has('sortField') && $request->input('sortField')) {
-            $sortOrder = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
-            $query->orderBy($request->input('sortField'), $sortOrder);
-        } else {
-            $query->latest(); // Tri par défaut
-        }
-
-        // Pagination
-        $regions = $query->paginate($perPage)->withQueryString();
+        $perPage = $request->input('rows', 15);
 
         return Inertia::render('Configurations/Regions', [
-            'regions' => $regions,
-            'filters' => $request->input('filters'),
+            'regions' => $query->paginate($perPage)->withQueryString(),
+            'filters' => $request->only(['filters']),
+            'queryParams' => $request->all(['sortField', 'sortOrder', 'rows']),
         ]);
+
     }
 
     /**

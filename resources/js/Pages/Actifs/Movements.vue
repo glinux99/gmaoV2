@@ -113,7 +113,7 @@ const allColumns = ref([
     { field: 'stock_at_movement', header: 'Stock au Mvt.' }, // NOUVELLE COLONNE
     { field: 'date', header: t('stockMovements.table.date') },
 ]);
-const visibleColumns = ref(['movable_type', 'movable', 'type', 'quantity', 'user', 'date']);
+const visibleColumns = ref(['movable_type', 'movable', 'type', 'quantity', 'user', 'date','source_region', 'destination_region' ]);
 
 
 // --- Logique du formulaire ---
@@ -596,9 +596,9 @@ const movementStats = computed(() => {
 
                     <Column v-if="visibleColumns.includes('movable')" field="movable" :header="t('stockMovements.table.item')" sortable style="min-width: 15rem;">
                         <template #body="{ data }">
-                           <div class=" text-center">
+                           <div class=" ">
                                <span class="font-bold text-slate-800 tracking-tight block">{{ getMovableItemDisplay(data.movable) }}</span>
-                               <span class="font-mono text-xs text-slate-500 block">{{ data.movable?.reference || data.movable?.tag || data.movable?.serial_number || 'N/A' }}</span>
+                               <span class="font-mono text-xs text-slate-500  rounded-md bg-slate-100 py-0.5 px-2.5 border border-transparent transition-all shadow-sm">{{ data.movable?.reference || data.movable?.tag || data.movable?.serial_number || 'N/A' }}</span>
                            </div>
                         </template>
                     </Column>
@@ -840,7 +840,7 @@ const movementStats = computed(() => {
                     <div class="flex justify-between items-center w-full px-8 py-4 bg-slate-50 border-t border-slate-100">
                         <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
                         <Button :label="t('common.save')" icon="pi pi-check-circle"
-                                severity="primary"
+
                                 class="px-10 h-14 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
                                 @click="saveMovement" :loading="form.processing" />
                     </div>

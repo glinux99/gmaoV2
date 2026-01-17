@@ -370,7 +370,7 @@ const exportCSV = () => {
                     <div class="flex justify-between items-center w-full px-8 py-4 bg-slate-50 border-t border-slate-100">
                         <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
                         <Button :label="t('common.save')" icon="pi pi-check-circle"
-                                severity="primary"
+
                                 class="px-10 h-14 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
                                 @click="saveSparePartMovement" :loading="form.processing" />
                     </div>

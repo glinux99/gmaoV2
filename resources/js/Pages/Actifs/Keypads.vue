@@ -36,6 +36,7 @@ const props = defineProps({
     regions: Array,
     zones: Array,
     meters: Array, // Pour lier un clavier à un compteur
+    queryParams: Object,
 });
 
 const toast = useToast();
@@ -80,6 +81,37 @@ const initFilters = () => {
 };
 initFilters();
 
+const loading = ref(false);
+
+const lazyParams = ref({
+    first: props.keypads.from - 1,
+    rows: props.keypads.per_page,
+    sortField: props.queryParams?.sortField || 'created_at',
+    sortOrder: props.queryParams?.sortOrder === 'desc' ? -1 : 1,
+    filters: filters.value
+});
+
+const loadLazyData = (event) => {
+    loading.value = true;
+    lazyParams.value = { ...lazyParams.value, ...event };
+    const queryParams = {
+        ...lazyParams.value,
+        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+        sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc',
+    };
+
+    router.get(route('keypads.index'), queryParams, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
+
+const onPage = (event) => loadLazyData(event);
+const onSort = (event) => loadLazyData(event);
+const onFilter = (event) => {
+    lazyParams.value.filters = filters.value;
+    loadLazyData(event);
+};
 const keypadStats = computed(() => {
     const stats = {
         total: props.keypads.data.length,
@@ -425,7 +457,7 @@ const selectRegionForStock = (regionName) => {
                         <Button :label="t('keypads.actions.delete') + ` (${selectedKeypads.length})`" icon="pi pi-trash" severity="danger" @click="confirmDeleteSelected" class="rounded-xl px-4" />
                     </div>
                     <div class="flex gap-2">
-                        <Button :label="t('keypads.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
+                        <Button :label="t('keypads.actions.add')" icon="pi pi-plus"  raised @click="openNew" class="rounded-xl px-6" />
                     </div>
                 </div>
             </div>
@@ -513,8 +545,23 @@ const selectRegionForStock = (regionName) => {
 
             <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
                 <DataTable
-                    ref="dt" :value="formattedKeypads" v-model:filters="filters" v-model:selection="selectedKeypads"
-                    dataKey="id" :paginator="true" :rows="15" filterDisplay="menu"
+                    ref="dt"
+                    :value="formattedKeypads"
+                    v-model:selection="selectedKeypads"
+                    v-model:filters="filters"
+                    dataKey="id"
+                    :loading="loading"
+                    :paginator="true"
+                    :rows="keypads.per_page"
+                    :totalRecords="keypads.total"
+                    :lazy="true"
+                    @page="onPage($event)"
+                    @filter="onFilter($event)"
+                    @sort="onSort($event)"
+                    v-model:first="lazyParams.first"
+                    :sortField="lazyParams.sortField"
+                    :sortOrder="lazyParams.sortOrder"
+                    filterDisplay="menu"
                     :globalFilterFields="['serial_number', 'model', 'manufacturer', 'type', 'status', 'connection_full_name', 'meter_serial_number']"
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
                     :currentPageReportTemplate="t('keypads.table.report')"

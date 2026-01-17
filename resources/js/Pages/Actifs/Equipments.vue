@@ -1222,7 +1222,7 @@ defineExpose({
             <Button
                 :label="t('equipments.typeDialog.create')"
                 icon="pi pi-check-circle"
-                severity="primary"
+
                 class="px-8 h-12 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
                 @click="saveEquipmentType"
                 :loading="equipmentTypeForm.processing"

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Imports\ConnectionsImport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ConnectionController extends Controller
 {
@@ -92,7 +94,11 @@ class ConnectionController extends Controller
 
             // 1. Liaison des équipements (Meters / Keypads)
             if (!empty($validated['meter_id'])) {
-                Meter::where('id', $validated['meter_id'])->update(['connection_id' => $connection->id]);
+                Meter::where('id', $validated['meter_id'])->update([
+                    'connection_id' => $connection->id,
+                    'region_id' => $connection->region_id,
+                    'zone_id' => $connection->zone_id,
+                ]);
             }
             if (!empty($validated['keypad_id'])) {
                 Keypad::where('id', $validated['keypad_id'])->update(['connection_id' => $connection->id]);
@@ -146,7 +152,11 @@ class ConnectionController extends Controller
 
             // Relier les nouveaux équipements
             if (!empty($validated['meter_id'])) {
-                Meter::where('id', $validated['meter_id'])->update(['connection_id' => $connection->id]);
+                Meter::where('id', $validated['meter_id'])->update([
+                    'connection_id' => $connection->id,
+                    'region_id' => $connection->region_id,
+                    'zone_id' => $connection->zone_id,
+                ]);
             }
             if (!empty($validated['keypad_id'])) {
                 Keypad::where('id', $validated['keypad_id'])->update(['connection_id' => $connection->id]);
@@ -289,6 +299,54 @@ class ConnectionController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Importe des raccordements depuis un fichier Excel/CSV.
+     */
+    public function import(Request $request)
+    {
+        // La validation est gérée par Laravel. Le try/catch ici n'est pas nécessaire
+        // et peut masquer les erreurs de validation.
+        // La règle 'max:10240' (10MB) fournit un message d'erreur plus clair si le fichier est trop grand,
+        // mais ne remplace pas la configuration de php.ini.
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // 10240 KB = 10 MB
+        ]);
+
+        try {
+            Excel::import(new ConnectionsImport, $request->file('file'));
+
+            return redirect()->route('connections.index')->with('success', "Importation des raccordements réussie.");
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+             return $e;
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Ligne {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            return back()->with('import_errors', $errors)->with('error', 'Certaines lignes n\'ont pas pu être importées.');
+        } catch (\Exception $e) {
+             return $e;
+            Log::error("Erreur d'importation des raccordements: " . $e->getMessage());
+            return back()->with('error', "Une erreur est survenue lors de l'importation: " . $e->getMessage());
+        }
+
+    }
+
+    private function convertToDecimal($coordinate) {
+        if (empty($coordinate)) return null;
+        $cleaned = preg_replace('/[^\d.,-]/', '', $coordinate);
+        return (float) str_replace(',', '.', $cleaned);
+    }
+
+    private function transformDate($value) {
+        if (empty($value)) return null;
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
         }
     }
 }

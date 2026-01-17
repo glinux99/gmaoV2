@@ -168,7 +168,7 @@ onMounted(() => loadEnginTypes());
                 <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
                     <Button :label="t('engins.toolbar.resetFilters')" icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" />
                     <Button icon="pi pi-download" text severity="secondary" @click="dt.exportCSV()" :aria-label="t('engins.toolbar.export')" />
-                    <Button :label="t('engins.toolbar.addEngin')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
+                    <Button :label="t('engins.toolbar.addEngin')" icon="pi pi-plus"  raised @click="openNew" class="rounded-xl px-6" />
                 </div>
             </div>
 

@@ -719,14 +719,27 @@ $backlogHours = $backlogTasksQuery->sum('estimated_duration') +
             ->get();
 
         $workOrders = $workOrders->map(function ($activity) {
-                $tech = $activity->assignable_type === 'App\Models\User' ? $activity->assignable : null;
+                $assignable = $activity->assignable;
+                $technicianName = 'Non assigné';
+                $technicianImage = null;
+
+                if ($assignable) {
+                    $technicianName = $assignable->name;
+                    if ($activity->assignable_type === 'App\Models\User') {
+                        $technicianImage = $assignable->profile_photo_url;
+                    }
+                } elseif ($activity->assignable_type === 'App\Models\Team') {
+                    // Assuming Team model has a 'leader' relationship or similar
+                    $technicianName = $assignable->name; // Display team name
+                    $technicianImage = $assignable->leader->profile_photo_url ?? null; // Display leader's photo if available
+                }
                 return [
                     'id' => $activity->id,
-                    'asset' => $activity->equipments->first()->designation ?? $activity->title ?? 'N/A',
-                    'location' => $activity->equipments->first()->location ?? 'N/A',
+                    'asset' => $activity->equipments->first()->designation ?? $activity->title ?? 'Activité sur le réseau/ Client',
+                    'location' => $activity->equipments->first()->location ?? '',
                     'priority' => $activity->task->priority ?? 'MOYENNE',
-                    'technician' => $tech ? $tech->name : 'Non assigné',
-                    'tech_img' => $tech ? $tech->profile_photo_url : null,
+                    'technician' => $technicianName,
+                    'tech_img' => $technicianImage,
                     'progress' => rand(10, 90), // Placeholder for progress
                 ];
             });
@@ -734,7 +747,7 @@ $backlogHours = $backlogTasksQuery->sum('estimated_duration') +
         $urgentWorkOrdersCount = Activity::whereIn('status', ['in_progress', 'scheduled', 'en cours', 'planifiée', 'Planifiée'])
             ->count();
 
-        $inProgressWorkOrdersCount = Activity::whereIn('status', ['in_progress', 'en cours', "Planifiée"])->count();
+        $inProgressWorkOrdersCount = Activity::whereIn('status', ['in_progress', 'en cours', ""])->count();
 
         // --- NOUVEAU : Statistiques pour le flux d'interventions ---
         $awaitingWorkOrdersQuery = Activity::whereIn('status', ['awaiting_resources', 'En attente']);

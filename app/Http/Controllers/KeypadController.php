@@ -18,39 +18,71 @@ class KeypadController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+     public function index(Request $request)
     {
-        $query = Keypad::query()->with(['connection', 'region', 'zone', 'meter']);
+        $query = Keypad::with(['region', 'zone', 'meter', 'connection'])->select('keypads.*');
 
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where('serial_number', 'like', "%{$search}%")
-                ->orWhere('model', 'like', "%{$search}%")
-                ->orWhere('manufacturer', 'like', "%{$search}%")
-                ->orWhere('type', 'like', "%{$search}%")
-                ->orWhere('status', 'like', "%{$search}%")
-                ->orWhereHas('connection', fn ($q) => $q->where('customer_code', 'like', "%{$search}%"))
-                ->orWhereHas('region', fn ($q) => $q->where('designation', 'like', "%{$search}%"))
-                ->orWhereHas('zone', fn ($q) => $q->where('title', 'like', "%{$search}%"))
-                ->orWhereHas('meter', fn ($q) => $q->where('serial_number', 'like', "%{$search}%"));
+        // Gestion du tri
+        $sortField = $request->input('sortField', 'created_at');
+        $sortOrder = $request->input('sortOrder') === 'asc' ? 'asc' : 'desc';
+
+        // Tri sur des relations
+        if ($sortField === 'connection.full_name') {
+            $query->leftJoin('connections', 'keypads.connection_id', '=', 'connections.id')
+                  ->orderBy(DB::raw("CONCAT(connections.first_name, ' ', connections.last_name)"), $sortOrder);
+        } elseif ($sortField === 'meter.serial_number') {
+            $query->leftJoin('meters', 'keypads.meter_id', '=', 'meters.id')
+                  ->orderBy('meters.serial_number', $sortOrder);
+        } else {
+            $query->orderBy($sortField, $sortOrder);
         }
 
+        // Gestion des filtres
+        if ($request->has('filters')) {
+            $filters = $request->input('filters');
+
+            // Filtre global
+            if (!empty($filters['global']['value'])) {
+                $globalFilter = $filters['global']['value'];
+                $query->where(function ($q) use ($globalFilter) {
+                    $q->where('keypads.serial_number', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('keypads.model', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('keypads.manufacturer', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('keypads.type', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('keypads.status', 'like', '%' . $globalFilter . '%')
+                      ->orWhereHas('connection', fn ($subQ) => $subQ->where(DB::raw("CONCAT(first_name, ' ', last_name)"), 'like', '%' . $globalFilter . '%'))
+                      ->orWhereHas('meter', fn ($subQ) => $subQ->where('serial_number', 'like', '%' . $globalFilter . '%'));
+                });
+            }
+
+            // Filtres spécifiques
+            if (!empty($filters['serial_number']['constraints'][0]['value'])) {
+                $query->where('keypads.serial_number', 'like', $filters['serial_number']['constraints'][0]['value'] . '%');
+            }
+            if (!empty($filters['type']['value'])) {
+                $query->where('keypads.type', $filters['type']['value']);
+            }
+            if (!empty($filters['status']['value'])) {
+                $query->where('keypads.status', $filters['status']['value']);
+            }
+            if (!empty($filters['connection.full_name']['constraints'][0]['value'])) {
+                $query->whereHas('connection', fn ($q) => $q->where(DB::raw("CONCAT(first_name, ' ', last_name)"), 'like', $filters['connection.full_name']['constraints'][0]['value'] . '%'));
+            }
+            if (!empty($filters['meter.serial_number']['constraints'][0]['value'])) {
+                $query->whereHas('meter', fn ($q) => $q->where('serial_number', 'like', $filters['meter.serial_number']['constraints'][0]['value'] . '%'));
+            }
+        }
+
+        $perPage = $request->input('rows', 15);
+
         return Inertia::render('Actifs/Keypads', [
-            'keypads' => $query->paginate($request->input('per_page', 10)),
-            'filters' => $request->only(['search']),
-            'connections' => Connection::all()->map(fn($conn) => [
-              'id' => $conn->id,
-            'full_name' => $conn->first_name . ' ' . $conn->last_name,
-            'customer_code'=> $conn->customer_code,
-            'region_id' => $conn->region_id,
-            'zone_id' => $conn->zone_id,
-            'status' => $conn->status,
-            'meter_id' => $conn->meter_id,
-            'keypad_id' => $conn->keypad_id
-        ]),
-            'regions' => Region::all(['id', 'designation']),
-            'zones' => Zone::all(['id', 'title']),
-            'meters' => Meter::all(['id', 'serial_number', 'region_id','zone_id']),
+            'keypads' => $query->paginate($perPage)->withQueryString(),
+            'connections' => Connection::all(),
+            'regions' => Region::all(),
+            'zones' => Zone::all(),
+            'meters' => Meter::all(),
+            'filters' => $request->only(['filters']),
+            'queryParams' => $request->all(['sortField', 'sortOrder', 'rows']),
         ]);
     }
 

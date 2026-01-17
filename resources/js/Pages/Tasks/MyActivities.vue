@@ -81,7 +81,8 @@ const statusOptions = computed(() => {
             'completed_with_issues': 'Terminée avec problèmes',
             'to_be_reviewed_later': 'À revoir plus tard',
             'awaiting_resources': 'En attente de ressources',
-            'pending': 'En attente'
+            'pending': 'En attente',
+            "Planifiée": "Planifiée",
         };
     }
 
@@ -431,10 +432,11 @@ const editActivity = (activity) => {
     form.task_id = activity.task_id;
     form.region_id = activity.region_id;
     form.zone_id = activity.zone_id;
+    form.status = activity.status;
     form.maintenance_id = activity.maintenance_id;
     form.service_order_cost = activity.service_order_cost || 0;
     form.service_order_description = activity.service_order_description || t('myActivities.defaults.sparePartPayment');
-
+        console.log(form.status);
     // 3. Dates (Objets Date pour PrimeVue Calendar)
     form.actual_start_time = activity.actual_start_time ? new Date(activity.actual_start_time) : null;
     form.scheduled_start_time = activity.scheduled_start_time ? new Date(activity.scheduled_start_time) : null;

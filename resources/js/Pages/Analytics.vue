@@ -73,9 +73,9 @@ const syncAllWidgets = async () => {
                 widget.isSyncing = true;
                 const payload = {
                     type: widget.type,
-                    config: widget.type === 'chart'
+                    config: widget.type === 'chart' // Correction de la structure de la charge utile pour les KPI
                         ? { sources: widget.dataSources, timeScale: widget.config.timeScale || 'days' }
-                        : { model: widget.dataSource, column: widget.dataColumn, method: widget.dataMethod || 'COUNT' }
+                        : { ...widget.dataSource, timeScale: widget.config?.timeScale || 'days' }
                 };
 
                 const p = axios.post(route('quantum.query'), payload)
@@ -225,6 +225,23 @@ const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { 
                             <div v-for="w in pages[currentPageIdx].widgets" :key="w.id" :style="getWidgetStyle(w)">
                                 <div v-if="w.type === 'text'" :style="{ fontFamily: w.config.font, fontSize: w.config.size+'px', color: w.config.color, textAlign: w.config.align, fontWeight: w.config.weight }">
                                     {{ w.content }}
+                                </div>
+                                <!-- AJOUT : Logique d'affichage pour les tableaux -->
+                                <div v-if="w.type === 'table'" class="w-full h-full overflow-auto custom-scrollbar">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead :style="{ background: w.config.headerBg || '#1e293b', color: w.config.headerColor || '#ffffff' }" class="sticky top-0">
+                                            <tr>
+                                                <th v-for="col in w.data.columns" :key="col" class="p-2 text-xs font-bold uppercase">{{ col }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="text-slate-700 text-sm">
+                                            <tr v-for="(row, ri) in w.data.rows" :key="ri" :class="w.config.striped && ri % 2 === 0 ? 'bg-slate-50' : 'bg-white'">
+                                                <td v-for="col in w.data.columns" :key="col" class="p-2 border-b border-slate-100">
+                                                    {{ row[col] }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                                 <div v-if="w.type === 'chart'" class="w-full h-full p-2">
                                     <component :is="getChartComponent(w.chartType)" :data="w.data" :options="chartOptions" />

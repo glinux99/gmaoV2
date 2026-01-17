@@ -40,6 +40,7 @@ const labelDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
 const search = ref(props.filters?.search || '');
+const selectedLabels = ref([]); // Gardé pour la suppression en masse
 
 // --- TYPES DE CARACTÉRISTIQUES ---
 const characteristicTypes = ref([
@@ -69,17 +70,58 @@ const stats = computed(() => {
     };
 });
 
-// --- CONFIGURATION DES FILTRES ---
-const filters = ref({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+// --- GESTION DU DATATABLE LAZY ---
+const loading = ref(false);
+
+const lazyParams = ref({
+    first: props.labels.from - 1,
+    rows: props.labels.per_page,
+    sortField: 'created_at',
+    sortOrder: -1, // Descendant par défaut
+    filters: {
+        global: { value: props.filters?.search || null, matchMode: FilterMatchMode.CONTAINS },
+        designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+    }
 });
 
 const initFilters = () => {
-    filters.value = {
+    lazyParams.value.filters = {
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
         designation: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
     };
+    loadLazyData();
+};
+
+const loadLazyData = () => {
+    loading.value = true;
+    router.get(route('labels.index'), {
+        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+        per_page: lazyParams.value.rows,
+        sortField: lazyParams.value.sortField,
+        sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc',
+        search: lazyParams.value.filters.global.value,
+    }, {
+        preserveState: true,
+        replace: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
+
+const onPage = (event) => {
+    lazyParams.value.first = event.first;
+    lazyParams.value.rows = event.rows;
+    loadLazyData();
+};
+
+const onSort = (event) => {
+    lazyParams.value.sortField = event.sortField;
+    lazyParams.value.sortOrder = event.sortOrder;
+    loadLazyData();
+};
+
+const onFilter = (event) => {
+    lazyParams.value.filters = event.filters;
+    loadLazyData();
 };
 
 // --- LOGIQUE MÉTIER ---
@@ -151,6 +193,27 @@ const deleteLabel = (label) => {
     });
 };
 
+const confirmDeleteSelected = () => {
+    confirm.require({
+        message: t('labels.messages.confirmBulkDelete'),
+        header: t('common.deleteConfirmation'),
+        icon: 'pi pi-exclamation-circle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            const form = useForm({
+                ids: selectedLabels.value.map(l => l.id)
+            });
+            form.post(route('labels.bulkDestroy'), {
+                onSuccess: () => {
+                    toast.add({ severity: 'success', summary: 'Supprimé', detail: t('labels.messages.bulkDeleteSuccess'), life: 3000 });
+                    selectedLabels.value = [];
+                },
+                onError: () => toast.add({ severity: 'error', summary: 'Erreur', detail: t('common.errorOccurred'), life: 3000 })
+            });
+        }
+    });
+};
+
 // --- GESTION CARACTÉRISTIQUES ---
 const addCharacteristic = () => {
     form.characteristics.push({ id: null, name: '', type: 'text', is_required: false });
@@ -158,15 +221,6 @@ const addCharacteristic = () => {
 
 const removeCharacteristic = (index) => {
     form.characteristics.splice(index, 1);
-};
-
-// --- RECHERCHE & EXPORT ---
-let timeoutId = null;
-const performSearch = () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-        router.get(route('labels.index'), { search: search.value }, { preserveState: true, replace: true });
-    }, 300);
 };
 
 const dialogTitle = computed(() => editing.value ? t('labels.dialog.editTitle') : t('labels.dialog.createTitle'));
@@ -205,22 +259,43 @@ const dialogTitle = computed(() => editing.value ? t('labels.dialog.editTitle') 
                 <Toast />
                 <ConfirmDialog />
 
-                <DataTable ref="dt" :value="labels.data" dataKey="id" :paginator="true" :rows="10"
-                    v-model:filters="filters" filterDisplay="menu" :globalFilterFields="['designation', 'description']"
-                    class="p-datatable-custom" responsiveLayout="scroll">
+                <DataTable ref="dt"
+                    :value="labels.data"
+                    v-model:selection="selectedLabels"
+                    dataKey="id"
+                    :lazy="true"
+                    :paginator="true"
+                    :rowsPerPageOptions="[15, 30, 50, 100, 500]"
+                    :totalRecords="labels.total"
+                    :rows="labels.per_page"
+                    :loading="loading"
+                    @page="onPage($event)"
+                    @sort="onSort($event)"
+                    @filter="onFilter($event)"
+                    v-model:filters="lazyParams.filters"
+                    filterDisplay="menu"
+                    :globalFilterFields="['designation', 'description']"
+                    class="p-datatable-custom"
+                    removableSort
+                    paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                    responsiveLayout="scroll"
+                    :currentPageReportTemplate="t('myActivities.table.report')">
 
                     <template #header>
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-4">
                             <IconField iconPosition="left">
                                 <InputIcon class="pi pi-search text-slate-400" />
-                                <InputText v-model="filters['global'].value" :placeholder="t('labels.toolbar.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                                <InputText v-model="lazyParams.filters['global'].value" :placeholder="t('labels.toolbar.searchPlaceholder')" class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
                             <div class="flex gap-2">
+                                <Button v-if="selectedLabels.length" :label="`Supprimer (${selectedLabels.length})`" icon="pi pi-trash" severity="danger" @click="confirmDeleteSelected" class="rounded-xl" />
                                 <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('labels.toolbar.resetFilters')" />
                                 <Button :label="t('common.export')" icon="pi pi-upload" severity="secondary" text @click="dt.exportCSV()" />
                             </div>
                         </div>
                     </template>
+
+                    <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
                     <Column field="designation" :header="t('labels.fields.name')" sortable>
                         <template #body="{ data }">

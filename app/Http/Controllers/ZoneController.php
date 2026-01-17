@@ -14,63 +14,74 @@ class ZoneController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
-    {
-        $query = Zone::with('region');
 
-        // Gestion des filtres
-        $filters = $request->input('filters', []);
+public function index(Request $request)
+{
+    // 1. On commence par définir explicitement ce qu'on veut extraire de la table zones
+    $query = Zone::select('zones.*')->with('region');
 
-        if (!empty($filters)) {
-            // Filtre global
-            if (isset($filters['global']['value'])) {
-                $globalFilter = $filters['global']['value'];
-                $query->where(function ($q) use ($globalFilter) {
-                    $q->where('title', 'like', "%{$globalFilter}%")
-                      ->orWhere('nomenclature', 'like', "%{$globalFilter}%")
-                      ->orWhereHas('region', fn($subQ) => $subQ->where('designation', 'like', "%{$globalFilter}%"));
-                });
-            }
+    // --- GESTION DES FILTRES ---
+    $filters = $request->input('filters', []);
 
-            // Filtres par colonne
-            $this->applyColumnFilter($query, $filters, 'nomenclature');
-            $this->applyColumnFilter($query, $filters, 'title');
+    // if (!empty($filters)) {
+    //     // Filtre global
+    //     if (!empty($filters['global']['value'])) {
+    //         $globalFilter = $filters['global']['value'];
+    //         $query->where(function ($q) use ($globalFilter) {
+    //             // Utilisation du préfixe 'zones.' pour éviter toute ambiguïté
+    //             $q->where('zones.title', 'like', "%{$globalFilter}%")
+    //               ->orWhere('zones.nomenclature', 'like', "%{$globalFilter}%")
+    //               ->orWhereHas('region', function($subQ) use ($globalFilter) {
+    //                   $subQ->where('designation', 'like', "%{$globalFilter}%");
+    //               });
+    //         });
+    //     }
 
-            // Filtre pour la colonne 'region.designation'
-            // Le Dropdown envoie une valeur simple (matchMode: EQUALS), pas un objet 'constraints'
-            // On vérifie les deux structures possibles pour plus de robustesse.
-            $regionFilter = $filters['region.designation']['value'] ?? $filters['region.designation']['constraints'][0]['value'] ?? null;
-            if ($regionFilter) {
-                // Utiliser 'where' pour une correspondance exacte car c'est un Dropdown
-                $query->whereHas('region', fn($q) => $q->where('designation', $regionFilter));
-            }
-        }
+    //     // Filtres par colonne
+    //     $this->applyColumnFilter($query, $filters, 'nomenclature');
+    //     $this->applyColumnFilter($query, $filters, 'title');
 
-        // Gestion du tri
-        $sortField = $request->input('sortField', 'created_at');
-        $sortOrder = $request->input('sortOrder', 'desc');
+    //     // Filtre spécifique pour la relation Region
+    //     if (!empty($filters['region.designation']['constraints'][0]['value'])) {
+    //         $regionVal = $filters['region.designation']['constraints'][0]['value'];
+    //         $query->whereHas('region', fn($q) => $q->where('designation', 'like', $regionVal . '%'));
+    //     }
+    // }
 
-        if (str_contains($sortField, '.')) {
-            // Tri sur une relation (ex: region.designation)
-            [$relation, $field] = explode('.', $sortField);
-            if ($relation === 'region') {
-                $query->join('regions', 'zones.region_id', '=', 'regions.id')
-                      ->orderBy("regions.designation", $sortOrder)
-                      ->select('zones.*'); // Important pour éviter les conflits d'ID
-            }
-        } else {
-            $query->orderBy($sortField, $sortOrder);
-        }
+    // // --- GESTION DU TRI ---
+    // $sortField = $request->input('sortField', 'created_at');
+    // $sortOrder = $request->input('sortOrder', 'desc');
 
-        $perPage = $request->input('rows', 10);
+    // if ($sortField === 'region.designation') {
+    //     $query->join('regions', 'zones.region_id', '=', 'regions.id')
+    //           ->orderBy('regions.designation', $sortOrder)
+    //           // On ré-insiste sur zones.* pour que 'number' et 'nomenclature'
+    //           // ne soient pas pollués par la table jointe
+    //           ->select('zones.*');
+    // } else {
+    //     // Sécurité : si le sortField ne contient pas de point, on préfixe par zones.
+    //     $safeSortField = str_contains($sortField, '.') ? $sortField : "zones.{$sortField}";
+    //     $query->orderBy($safeSortField, $sortOrder);
+    // }
 
-        return Inertia::render('Configurations/Zones', [
-            'zones' => $query->paginate($perPage)->withQueryString(),
-            'regions' => Region::all(['id', 'designation', 'code']),
-            'filters' => $request->input('filters'),
-            'queryParams' => $request->all(['page', 'rows', 'sortField', 'sortOrder', 'filters']),
-        ]);
+    return Inertia::render('Configurations/Zones', [
+        'zones' => $query->paginate($request->input('rows', 10))->withQueryString(),
+        'regions' => Region::orderBy('designation')->get(['id', 'designation', 'code']),
+        'filters' => $filters,
+    ]);
+}
+
+/**
+ * Correction de la méthode helper pour inclure le préfixe de table
+ */
+private function applyColumnFilter(&$query, $filters, $field)
+{
+    $filterValue = $filters[$field]['constraints'][0]['value'] ?? null;
+    if ($filterValue) {
+        // On force le préfixe "zones." pour éviter les conflits lors des jointures
+        $query->where("zones.{$field}", 'like', $filterValue . '%');
     }
+}
 
     /**
      * Applique un filtre simple sur une colonne.
@@ -79,15 +90,7 @@ class ZoneController extends Controller
      * @param array $filters
      * @param string $field
      */
-    private function applyColumnFilter(&$query, $filters, $field)
-    {
-        // Les filtres de colonne de type texte envoient un objet 'constraints'
-        $filterValue = $filters[$field]['constraints'][0]['value'] ?? null;
-        if ($filterValue) {
-            // Utiliser 'like' avec 'starts with' comme défini dans le frontend
-            $query->where($field, 'like', $filterValue . '%');
-        }
-    }
+
     /**
      * Store a newly created resource in storage.
      */

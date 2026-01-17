@@ -48,6 +48,7 @@ const meterDialog = ref(false);
 const deleteMetersDialog = ref(false);
 const editing = ref(false);
 const expandedRows = ref([]);
+const loading = ref(false);
 
 const op = ref();
 
@@ -70,7 +71,7 @@ const filters = ref();
 
 const initFilters = () => {
     filters.value = {
-        global: { value: null, matchMode: FilterMatchMode.CUSTOM },
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
         serial_number: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
         type: { value: null, matchMode: FilterMatchMode.EQUALS },
         status: { value: null, matchMode: FilterMatchMode.EQUALS },
@@ -78,22 +79,35 @@ const initFilters = () => {
     };
 };
 initFilters();
+const lazyParams = ref({
+    first: props.meters.from - 1,
+    rows: props.meters.per_page,
+    sortField: 'created_at',
+    sortOrder: -1, // -1 pour desc
+    filters: filters.value
+});
 
-const customGlobalFilter = (value, data, filterMeta) => {
-    if (!value) return true;
-    const searchTerms = value.toLowerCase().split(',').map(term => term.trim()).filter(term => term);
-    if (searchTerms.length === 0) return true;
+const loadLazyData = () => {
+    loading.value = true;
+    const queryParams = {
+        ...lazyParams.value,
+        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
+    };
 
-    const serialNumber = data.serial_number?.toLowerCase() || '';
-    const connectionName = data.connection_full_name?.toLowerCase() || '';
+    router.get(route('meters.index'), queryParams, {
+        preserveState: true,
+        onFinish: () => { loading.value = false; }
+    });
+};
 
-    // Si la recherche contient des virgules, on cherche uniquement dans les numéros de série
-    if (value.includes(',')) {
-        return searchTerms.some(term => serialNumber.includes(term));
-    }
+const onPage = (event) => {
+    lazyParams.value = event;
+    loadLazyData();
+};
 
-    // Sinon, recherche globale classique
-    return serialNumber.includes(value.toLowerCase()) || connectionName.includes(value.toLowerCase());
+const onFilter = (event) => {
+    lazyParams.value.filters = filters.value;
+    loadLazyData();
 };
 
 const meterStats = computed(() => {
@@ -318,15 +332,6 @@ const importMeters = (event) => {
     });
 };
 
-const formattedMeters = computed(() => {
-    return props.meters.data.map(meter => ({
-        ...meter,
-        connection_full_name: meter.connection ? `${meter.connection.first_name} ${meter.connection.last_name}`.trim() : t('meters.table.unassigned'),
-        region_name: meter.region?.designation || t('common.notApplicable'),
-        zone_name: meter.zone?.nomenclature || t('common.notApplicable'),
-    }));
-});
-
 const selectedMeters = ref([]);
 const allMeters = computed(() => props.meters.data);
 
@@ -419,7 +424,7 @@ watch(() => form.connection_id, (newConnectionId) => {
                     <div class="flex gap-2">
                         <input type="file" id="import-file" class="hidden" accept=".csv,.xlsx" @change="importMeters" />
                         <Button :label="t('meters.actions.import')" icon="pi pi-upload" severity="secondary" @click="triggerImportInput" class="rounded-xl px-4" />
-                        <Button :label="t('meters.actions.add')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
+                        <Button :label="t('meters.actions.add')" icon="pi pi-plus"  raised @click="openNew" class="rounded-xl px-6" />
                     </div>
                 </div>
             </div>
@@ -509,12 +514,25 @@ watch(() => form.connection_id, (newConnectionId) => {
             <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
                 <DataTable
                     v-model:expandedRows="expandedRows"
-                    ref="dt" :value="formattedMeters" v-model:filters="filters" v-model:selection="selectedMeters"
-                    dataKey="id" :paginator="true" :rows="15" filterDisplay="menu" :custom-global-filter="customGlobalFilter"
-                    :globalFilterFields="['serial_number', 'model', 'manufacturer', 'type', 'status', 'connection_full_name']"
-                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
-                    :currentPageReportTemplate="t('meters.table.report')"
-                    class="ultimate-table"
+                    ref="dt"
+                    :value="meters.data"
+                    v-model:selection="selectedMeters"
+                    v-model:filters="filters"
+                    dataKey="id"
+                    :loading="loading"
+                    :paginator="true"
+                    :rows="meters.per_page"
+                    :totalRecords="meters.total"
+                    :lazy="true"
+                    @page="onPage($event)"
+                    @filter="onFilter($event)"
+                    @sort="onPage($event)"
+                    v-model:first="lazyParams.first"
+                    :sortField="lazyParams.sortField"
+                    :sortOrder="lazyParams.sortOrder"
+                    filterDisplay="menu"
+                    :globalFilterFields="['serial_number', 'model', 'manufacturer', 'type', 'status', 'connection.full_name']"
+                    class="p-datatable-custom" removableSort
                 >
                     <template #header>
                         <div class="flex justify-between items-center p-4">
@@ -575,7 +593,7 @@ watch(() => form.connection_id, (newConnectionId) => {
                             <a v-if="data.connection" :href="route('connections.show', data.connection.id)" class="flex items-center gap-2 group">
                                 <i class="pi pi-user text-primary-400 text-xs group-hover:text-primary-600"></i>
                                 <span class="text-sm font-bold text-slate-600 group-hover:text-primary-600 group-hover:underline">
-                                    {{ data.connection_full_name }}
+                                    {{ data.connection.first_name }} {{ data.connection.last_name}}
                                 </span>
                             </a>
                              <span v-else class="text-slate-400 text-xs italic">{{ t('meters.table.unassigned') }}</span>
@@ -598,13 +616,13 @@ watch(() => form.connection_id, (newConnectionId) => {
 
                     <Column v-if="visibleColumns.includes('region_name')" field="region_name" :header="t('meters.table.region_name')" sortable>
                         <template #body="{ data }">
-                            <span class="text-xs font-medium text-slate-500">{{ data.region_name }}</span>
+                            <span class="text-xs font-medium text-slate-500">{{ data.region?.designation }}</span>
                         </template>
                     </Column>
 
                     <Column v-if="visibleColumns.includes('zone_name')" field="zone_name" :header="t('meters.table.zone_name')" sortable>
                         <template #body="{ data }">
-                            <span class="text-xs font-medium text-slate-500">{{ data.zone_name }}</span>
+                            <span class="text-xs font-medium text-slate-500">{{ data.zone?.nomenclature }}</span>
                         </template>
                     </Column>
 

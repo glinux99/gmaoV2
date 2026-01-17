@@ -199,7 +199,7 @@ const updateLeaveStatus = (leave, status) => {
                 </div>
                 <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
                     <Button icon="pi pi-upload" text severity="secondary" @click="dt.exportCSV()" />
-                    <Button :label="t('leaves.newRequest')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-lg font-bold" />
+                    <Button :label="t('leaves.newRequest')" icon="pi pi-plus"  raised @click="openNew" class="rounded-lg font-bold" />
                 </div>
             </div>
 
@@ -374,7 +374,7 @@ const updateLeaveStatus = (leave, status) => {
 
             <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
                 <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="leaveDialog = false" class="font-bold uppercase text-[10px] tracking-widest" />
-                <Button :label="t('leaves.dialog.sendRequest')" icon="pi pi-check-circle" severity="primary"
+                <Button :label="t('leaves.dialog.sendRequest')" icon="pi pi-check-circle"
                         class="px-10 h-14 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
                         @click="saveLeave" :loading="form.processing" />
             </div>

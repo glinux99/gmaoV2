@@ -944,7 +944,9 @@
       "confirmChange": "Vous avez modifié des caractéristiques. Cela peut affecter les données existantes. Continuer ?",
       "confirmCharDelete": "Supprimer la caractéristique \"{name}\" ? Cette action est irréversible.",
       "charRemovedInfo": "La caractéristique sera supprimée lors de la sauvegarde.",
-      "deleteError": "Erreur lors de la suppression."
+      "deleteError": "Erreur lors de la suppression.",
+      "confirmBulkDelete": "Êtes-vous sûr de vouloir supprimer les {count} labels sélectionnés",
+      "bulkDeleteSuccess": "Les labels supprimées avec succès."
     }
   },
   "common": {
@@ -1869,7 +1871,16 @@
       "suspended": "Suspendue",
       "canceled": "Annulée",
       "awaiting_resources": "En attente de ressources",
-      "pending": "En attente"
+      "pending": "En attente",
+      "Planifiée": "Planifiée",
+      "En_cours": "En cours",
+      "Terminée": "Terminée",
+      "Terminée_avec_problèmes": "Terminée avec problèmes",
+      "Suspendue": "Suspendue",
+      "Annulée": "Annulée",
+      "En_attente_de_ressources": "En attente de ressources",
+      "to_be_reviewed_later": "À revoir plus tard"
+
     },
 
     "instructionTypes": {

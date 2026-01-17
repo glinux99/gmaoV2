@@ -299,7 +299,17 @@ const confirmDeleteSelected = () => {
 
 const handleFileUpload = (event) => {
     const file = event.files[0];
-    router.post(route('connections.import'), { file }, { onSuccess: () => { isImportModalOpen.value = false; toast.add({ severity: 'success', summary: 'Succès', detail: 'Importation démarrée avec succès.' }); } });
+    router.post(route('connections.import'), { file }, {
+        onSuccess: () => {
+            isImportModalOpen.value = false;
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Importation démarrée avec succès.' });
+        },
+        onError: (errors) => {
+            // Affiche la première erreur de validation reçue du backend.
+            const errorMsg = errors.file || Object.values(errors)[0] || 'Une erreur est survenue.';
+            toast.add({ severity: 'error', summary: 'Erreur d\'importation', detail: errorMsg, life: 5000 });
+        }
+    });
 };
 const generateCustomerCode = () => {
     // Génère un code unique basé sur le temps et un aléa, commençant par 15.

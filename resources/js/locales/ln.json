@@ -1799,6 +1799,25 @@
       "completed": "Esili",
       "scheduled": "Ebongisami"
     },
+        "status": {
+      "scheduled": "Planifiée",
+      "in_progress": "En cours",
+      "completed": "Terminée",
+      "completed_with_issues": "Terminée avec problèmes",
+      "suspended": "Suspendue",
+      "canceled": "Annulée",
+      "awaiting_resources": "En attente de ressources",
+      "pending": "En attente",
+      "Planifiée": "Planifiée",
+      "En_cours": "En cours",
+      "Terminée": "Terminée",
+      "Terminée_avec_problèmes": "Terminée avec problèmes",
+      "Suspendue": "Suspendue",
+      "Annulée": "Annulée",
+      "En_attente_de_ressources": "En attente de ressources",
+      "to_be_reviewed_later": "À revoir plus tard"
+
+    },
     "instructionTypes": {
       "text": "Texte",
       "number": "Nombre",

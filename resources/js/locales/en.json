@@ -937,7 +937,9 @@
             "confirmChange": "You have modified some features. This may affect existing data. Continue?",
             "confirmCharDelete": "Delete the feature \"{name}\"? This action is irreversible.",
             "charRemovedInfo": "The feature will be removed during saving.",
-            "deleteError": "Error during deletion."
+            "deleteError": "Error during deletion.",
+              "confirmBulkDelete": "Are you sure you want to delete the selected labels?",
+      "bulkDeleteSuccess": "Equipment successfully deleted."
         }
     },
     "common": {
@@ -1984,16 +1986,26 @@
             "completed": "Finished(s)",
             "scheduled": "Planned"
         },
-        "status": {
-            "scheduled": "Planned",
+
+           "status": {
+       "scheduled": "Planned",
             "in_progress": "In progress",
             "completed": "Finished",
             "completed_with_issues": "Completed with problems",
             "suspended": "Suspended",
             "canceled": "Cancelled",
             "awaiting_resources": "Waiting for resources",
-            "pending": "Pending"
-        },
+            "pending": "Pending",
+      "Planifiée": "Pending",
+      "En_cours": "In progress",
+      "Terminée": "Finished",
+      "Terminée_avec_problèmes": "Completed with problems",
+      "Suspendue": "suspended",
+      "Annulée": "Canceled",
+      "En_attente_de_ressources": "Waiting for resourcess",
+      "to_be_reviewed_later": "To be reviewed later"
+
+    },
         "instructionTypes": {
             "text": "Text",
             "number": "Number",

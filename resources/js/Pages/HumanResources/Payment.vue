@@ -205,7 +205,7 @@ const getPayableAvatarLabel = (type, id) => {
                     </div>
                 </div>
                 <div class="flex gap-3">
-                    <Button :label="t('payments.newTransaction')" icon="pi pi-plus" severity="primary" raised @click="openNew" class="rounded-xl px-6" />
+                    <Button :label="t('payments.newTransaction')" icon="pi pi-plus"  raised @click="openNew" class="rounded-xl px-6" />
                     <Button :label="t('common.resetFilters')" icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" />
                 </div>
             </div>

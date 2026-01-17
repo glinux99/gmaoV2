@@ -319,6 +319,69 @@ const getPrioritySeverity = (priority) => {
 };
 
 const showWODialog = ref(false);
+const formattedChartData = computed(() => {
+    const movement = props.sparePartsMovement;
+
+    return {
+        labels: movement?.labels?.length ? movement.labels : ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+        datasets: [
+            {
+                label: t('dashboard.stockFlow.entries'),
+                data: movement?.entries || [0, 0, 0, 0],
+                borderColor: '#10B981', // Emerald 500
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            },
+            {
+                label: t('dashboard.stockFlow.exits'),
+                data: movement?.exits || [0, 0, 0, 0],
+                borderColor: '#EF4444', // Rose 500
+                backgroundColor: 'transparent',
+                borderWidth: 3,
+                borderDash: [5, 5], // Ligne pointillée pour les sorties
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }
+        ]
+    };
+});
+
+// Options avancées pour un look "Premium"
+const advancedChartOptions = computed(() => ({
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: {
+                usePointStyle: true,
+                padding: 20,
+                font: { size: 12, weight: '600' }
+            }
+        },
+        tooltip: {
+            backgroundColor: '#1e293b',
+            padding: 12,
+            cornerRadius: 10,
+            titleFont: { size: 14 }
+        }
+    },
+    scales: {
+        x: {
+            grid: { display: false },
+            ticks: { color: '#94a3b8' }
+        },
+        y: {
+            grid: { color: '#f1f5f9', drawBorder: false },
+            ticks: { color: '#94a3b8' },
+            beginAtZero: true
+        }
+    }
+}));
 </script>
 
 <template>
@@ -429,7 +492,7 @@ const showWODialog = ref(false);
                             <Column field="asset" :header="t('dashboard.workOrders.columns.equipment')">
                                 <template #body="{data}">
                                     <div class="flex flex-col">
-                                        <span class="font-bold text-slate-700">{{ data.asset }}</span>
+                                        <span class="font-bold text-[10px] text-slate-700">{{ data.asset }}</span>
                                         <span class="text-[9px] text-slate-400">{{ data.location }}</span>
                                     </div>
                                 </template>
@@ -438,12 +501,13 @@ const showWODialog = ref(false);
                                 <template #body="{data}">
                                     <span :class="priorityClass(data.priority)">{{ data.priority }}</span>
                                 </template>
+                                <template #filterclear="slotProps"></template>
                             </Column>
                             <Column field="technician" :header="t('dashboard.workOrders.columns.assigned')">
                                 <template #body="{data}">
                                     <div class="flex items-center gap-2">
                                         <Avatar :image="data.tech_img" shape="circle" size="small" />
-                                        <span class="text-xs font-medium">{{ data.technician }}</span>
+                                        <span class="text-[9px] font-medium">{{ data.technician }}</span>
                                     </div>
                                 </template>
                             </Column>
@@ -764,36 +828,51 @@ const showWODialog = ref(false);
             </div>
             </div>
             <section v-show="sections.stockFlow.visible" data-section-id="stockFlow" class="mt-10 section-container">
-                <Card class="!rounded-xl border-none shadow-xl shadow-slate-200/50 bg-white overflow-hidden">
-                    <template #content>
-                        <div @dblclick="toggleSection('stockFlow')" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-4 section-title">
-                            <div class="lg:col-span-4">
-                                <h3 class="text-2xl font-black text-slate-800 mb-2">{{ t('dashboard.stockFlow.title') }}</h3>
-                                <p class="text-slate-400 text-sm mb-6 font-medium">{{ t('dashboard.stockFlow.description') }}</p>
-                                <div class="space-y-4">
-                                    <div class="flex justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-100 transition hover:shadow-lg hover:border-emerald-200">
-                                        <span class="text-emerald-700 font-bold">{{ t('dashboard.stockFlow.restock') }}</span>
-                                        <span class="font-black text-emerald-800">+{{ props.totalStockIn || 0 }} art.</span>
-                                    </div>
-                                    <div class="flex justify-between p-4 bg-rose-50 rounded-xl border border-rose-100 transition hover:shadow-lg hover:border-rose-200">
-                                        <span class="text-rose-700 font-bold">{{ t('dashboard.stockFlow.consumption') }}</span>
-                                        <span class="font-black text-rose-800">-{{ props.totalStockOut || 0 }} art.</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="lg:col-span-8 h-[300px]">
-                                <Chart type="line" :data="{
-                                    labels: props.sparePartsMovement?.labels || ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'], // Keep as is, data driven
-                                    datasets: [
-                                        { label: t('dashboard.stockFlow.entries'), borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, data: props.sparePartsMovement?.entries || [20, 45, 30, 60], tension: 0.4 },
-                                        { label: t('dashboard.stockFlow.exits'), borderColor: '#EF4444', data: props.sparePartsMovement?.exits || [15, 30, 45, 25], tension: 0.4 }
-                                    ]
-                                }" :options="{ ...mainChartOptions, plugins: { legend: { position: 'bottom' } } }" class="h-full" />
-                                <Chart type="line" :data="stockFlowChartData" :options="{ ...globalChartOptions, plugins: { legend: { position: 'bottom' } } }" class="h-full" />
-                            </div>
+<Card class="!rounded-2xl border-none shadow-xl shadow-slate-200/50 bg-white overflow-hidden transition-all duration-300">
+    <template #content>
+        <div @dblclick="toggleSection('stockFlow')" class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center p-6 cursor-pointer">
+
+            <div class="lg:col-span-4 flex flex-col h-full justify-center">
+                <div class="mb-8">
+                    <h3 class="text-2xl font-black text-slate-800 tracking-tight mb-2">
+                        {{ t('dashboard.stockFlow.title') }}
+                    </h3>
+                    <p class="text-slate-400 text-sm font-medium leading-relaxed">
+                        {{ t('dashboard.stockFlow.description') }}
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="group flex justify-between items-center p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 hover:bg-emerald-50 transition-all duration-300">
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-arrow-down-left text-emerald-600 font-bold"></i>
+                            <span class="text-emerald-700 font-bold uppercase text-xs tracking-wider">{{ t('dashboard.stockFlow.restock') }}</span>
                         </div>
-                    </template>
-                </Card>
+                        <span class="font-black text-xl text-emerald-800">+{{ props.totalStockIn || 0 }}</span>
+                    </div>
+
+                    <div class="group flex justify-between items-center p-5 bg-rose-50/50 rounded-2xl border border-rose-100 hover:bg-rose-50 transition-all duration-300">
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-arrow-up-right text-rose-600 font-bold"></i>
+                            <span class="text-rose-700 font-bold uppercase text-xs tracking-wider">{{ t('dashboard.stockFlow.consumption') }}</span>
+                        </div>
+                        <span class="font-black text-xl text-rose-800">-{{ props.totalStockOut || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 h-[350px] relative">
+                <Chart
+                    type="line"
+                    :data="formattedChartData"
+                    :options="advancedChartOptions"
+                    class="h-full w-full"
+                />
+            </div>
+
+        </div>
+    </template>
+</Card>
             </section>
 
         </div>

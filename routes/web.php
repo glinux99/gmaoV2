@@ -10,6 +10,7 @@ use App\Http\Controllers\EquipmentCharacteristicController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\EquipmentMovementController;
 use App\Http\Controllers\EquipmentTypeController;
+use App\Http\Controllers\LabelController;
 use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\EmployeeController;
@@ -30,7 +31,6 @@ use App\Http\Controllers\UserController;
 use Spatie\Permission\Models\Permission;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\LabelController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SparePartMovementController;
@@ -149,6 +149,8 @@ Route::post('/spare-parts/import', [SparePartController::class, 'import'])->name
 Route::post('/technicians/import', [TechnicianController::class, 'import'])->name('technicians.import');
 Route::post('/regions/bulk-destroy', [RegionController::class, 'bulkDestroy'])->name('regions.bulkDestroy');
 Route::post('/interventions/import', [InterventionRequestController::class, 'import'])->name('interventions.import');
+// Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
+Route::post('/labels/bulk-destroy', [LabelController::class, 'bulkDestroy'])->name('labels.bulkDestroy');
 
 
 });
