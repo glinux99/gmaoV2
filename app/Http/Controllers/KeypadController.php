@@ -83,6 +83,10 @@ class KeypadController extends Controller
             'meters' => Meter::all(),
             'filters' => $request->only(['filters']),
             'queryParams' => $request->all(['sortField', 'sortOrder', 'rows']),
+            'installed' => Keypad::where('status', 'installed')->count(),
+            'available' => Keypad::where('status', 'available')->count(),
+            'faulty' => Keypad::where('status', 'faulty')->count(),
+            'total' => Keypad::count(),
         ]);
     }
 

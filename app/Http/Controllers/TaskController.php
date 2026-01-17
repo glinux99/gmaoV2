@@ -452,4 +452,37 @@ private function transformForTreeSelect($equipments)
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de la tâche.');
         }
     }
+
+    /**
+     * Remove multiple resources from storage.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate(['ids' => 'required|array']);
+
+        DB::beginTransaction();
+        try {
+            $tasks = Task::whereIn('id', $request->ids)->get();
+
+            foreach ($tasks as $task) {
+                // Supprimer les ServiceOrders et leurs dépenses associées
+                $task->serviceOrders()->each(function ($serviceOrder) {
+                    $serviceOrder->expenses()->delete();
+                    $serviceOrder->delete();
+                });
+
+                $task->activity()->delete();
+                $task->instructions()->delete();
+                $task->equipments()->detach();
+                $task->delete();
+            }
+
+            DB::commit();
+            return redirect()->route('tasks.index')->with('success', 'Les tâches sélectionnées ont été supprimées avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la suppression en masse des tâches: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression des tâches.');
+        }
+    }
 }

@@ -11,130 +11,96 @@ import Toast from 'primevue/toast';
 import { useI18n } from 'vue-i18n';
 
 const { layoutConfig, layoutState, isSidebarActive, resetMenu } = useLayout();
-
 const outsideClickListener = ref(null);
 
-watch(isSidebarActive, (newVal) => {
-    if (newVal) {
-        bindOutsideClickListener();
-    } else {
-        unbindOutsideClickListener();
+// --- GESTION DU SCROLL PROFESSIONNELLE ---
+
+// Variable pour savoir si on vient de cliquer sur un lien du menu
+const isNavigatingToNewPage = ref(false);
+
+router.on('before', (event) => {
+    // Si l'URL change vraiment (nouvelle page), on autorise la remontée
+    // Si c'est juste un paramètre de filtre (?start_date=...), on reste stable
+    const isFilter = event.detail.visit.data?.hasOwnProperty('start_date');
+    isNavigatingToNewPage.value = !isFilter;
+
+    // Sauvegarde du menu
+    const sidebarEl = document.querySelector('.layout-sidebar');
+    if (sidebarEl) sessionStorage.setItem('sidebar-scroll', sidebarEl.scrollTop);
+});
+
+router.on('finish', () => {
+    // 1. Remonter la PAGE uniquement si c'est une nouvelle navigation
+    if (isNavigatingToNewPage.value) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 2. Restaurer le MENU (toujours)
+    const sidebarEl = document.querySelector('.layout-sidebar');
+    const scrollPos = sessionStorage.getItem('sidebar-scroll');
+    if (sidebarEl && scrollPos) {
+        sidebarEl.scrollTop = scrollPos;
     }
 });
 
-const containerClass = computed(() => {
-    return {
-        'layout-overlay': layoutConfig.menuMode === 'overlay',
-        'layout-static': layoutConfig.menuMode === 'static',
-        'layout-static-inactive': layoutState.staticMenuDesktopInactive && layoutConfig.menuMode === 'static',
-        'layout-overlay-active': layoutState.overlayMenuActive,
-        'layout-mobile-active': layoutState.staticMenuMobileActive
-    };
+// --- LOGIQUE SAKAI ---
+watch(isSidebarActive, (newVal) => {
+    if (newVal) bindOutsideClickListener();
+    else unbindOutsideClickListener();
 });
+
+const containerClass = computed(() => ({
+    'layout-overlay': layoutConfig.menuMode === 'overlay',
+    'layout-static': layoutConfig.menuMode === 'static',
+    'layout-static-inactive': layoutState.staticMenuDesktopInactive && layoutConfig.menuMode === 'static',
+    'layout-overlay-active': layoutState.overlayMenuActive,
+    'layout-mobile-active': layoutState.staticMenuMobileActive
+}));
+
 const bindOutsideClickListener = () => {
     if (!outsideClickListener.value) {
         outsideClickListener.value = (event) => {
-            if (isOutsideClicked(event)) {
-                resetMenu();
-            }
+            if (isOutsideClicked(event)) resetMenu();
         };
         document.addEventListener('click', outsideClickListener.value);
     }
 };
+
 const unbindOutsideClickListener = () => {
     if (outsideClickListener.value) {
-        document.removeEventListener('click', outsideClickListener);
+        document.removeEventListener('click', outsideClickListener.value);
         outsideClickListener.value = null;
     }
 };
+
 const isOutsideClicked = (event) => {
     const sidebarEl = document.querySelector('.layout-sidebar');
     const topbarEl = document.querySelector('.layout-menu-button');
-
+    if (!sidebarEl || !topbarEl) return false;
     return !(sidebarEl.isSameNode(event.target) || sidebarEl.contains(event.target) || topbarEl.isSameNode(event.target) || topbarEl.contains(event.target));
 };
 
-// --- Gestion des Filtres de Date ---
+// --- FILTRES DE DATE ---
 const { t } = useI18n();
-
 const page = usePage();
-
-// 1. Récupérer les filtres depuis les props partagées par Inertia
 const filters = computed(() => page.props.filters || {});
-
-// 2. Initialisation des dates
-const getInitialDateRange = () => {
-    const startDate = filters.value.startDate ? new Date(filters.value.startDate) : null;
-    const endDate = filters.value.endDate ? new Date(filters.value.endDate) : null;
-    return startDate && endDate ? [startDate, endDate] : null;
-};
-
-// 3. Les `ref` pour l'état du filtre
-const dateRange = ref(getInitialDateRange());
+const dateRange = ref(null);
 const filterType = ref(filters.value.filterType || 'this_month');
 
-// 4. Fonction de calcul des plages prédéfinies
-const updateDateRange = () => {
-    let startDate, endDate;
-    const today = new Date();
-
-    switch (filterType.value) {
-        case 'this_month':
-            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            break;
-        case 'last_month':
-            startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            endDate = new Date(today.getFullYear(), today.getMonth(), 0);
-            break;
-        case 'last_week':
-            const dayOfWeek = today.getDay(); // 0=Dimanche, 1=Lundi...
-            const lastSunday = new Date(today);
-            lastSunday.setDate(today.getDate() - dayOfWeek); // Aller au dimanche de la semaine en cours
-            endDate = new Date(lastSunday);
-            endDate.setDate(lastSunday.getDate() - 1); // Dimanche de la semaine passée
-            startDate = new Date(endDate);
-            startDate.setDate(endDate.getDate() - 6); // Lundi de la semaine passée
-            break;
-        default: // 'custom'
-            return;
-    }
-
-    if (startDate && endDate) {
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        dateRange.value = [startDate, endDate];
-    }
-};
-
-// 5. Cycle de vie et écouteurs
-onMounted(() => {
-    if (!filters.value.startDate && !filters.value.endDate) {
-       //  updateDateRange();
-    }
-});
-
-watch(filterType, (newFilterType) => {
-    if (newFilterType !== 'custom') {
-        updateDateRange();
-    }
-});
-
 watch(dateRange, (newDates) => {
-    if (newDates && newDates[0] && newDates[1]) {
-        const newStartDate = newDates[0].toISOString().split('T')[0];
-        const newEndDate = newDates[1].toISOString().split('T')[0];
+    if (newDates?.[0] && newDates?.[1]) {
+        const start = newDates[0].toISOString().split('T')[0];
+        const end = newDates[1].toISOString().split('T')[0];
 
-        const currentStartDate = filters.value.startDate;
-        const currentEndDate = filters.value.endDate;
-
-        if (newStartDate !== currentStartDate || newEndDate !== currentEndDate) {
-            router.get(page.url, {
-                start_date: newStartDate,
-                end_date: newEndDate,
-                filterType: filterType.value,
-            }, { preserveState: true, replace: true, preserveScroll: true });
-        }
+        router.get(page.url, {
+            start_date: start,
+            end_date: end,
+            filterType: filterType.value,
+        }, {
+            preserveState: true,
+            replace: true,
+            preserveScroll: true // IMPORTANT: Ne bouge pas l'écran quand on filtre
+        });
     }
 }, { deep: true });
 </script>
@@ -143,12 +109,10 @@ watch(dateRange, (newDates) => {
     <div class="layout-wrapper" :class="containerClass">
         <app-topbar></app-topbar>
         <app-sidebar></app-sidebar>
-        <div class="layout-main-container">
-            <div class="px-0 py-4">
-                <div class="flex items-center justify-end gap-2 p-3 bg-white rounded-lg shadow-sm border">
-                    <i class="pi pi-calendar text-xl text-gray-600"></i>
-                    <h4 class="font-semibold text-gray-700 m-0 hidden md:block">{{ t('period') }} :</h4>
 
+        <div class="layout-main-container">
+            <div class="px-0 py-4 sticky top-0 z-10 bg-[#f8fafc]/80 backdrop-blur-md">
+                <div class="flex items-center justify-end gap-2 p-3 bg-white rounded-lg shadow-sm border">
                     <Dropdown
                         v-model="filterType"
                         :options="[
@@ -159,17 +123,34 @@ watch(dateRange, (newDates) => {
                         ]"
                         optionLabel="label"
                         optionValue="value"
-                        placeholder="Sélectionner une période" class="w-full md:w-48" />
-
-                    <Calendar v-if="filterType === 'custom'" v-model="dateRange" selectionMode="range" :manualInput="false" dateFormat="dd/mm/yy" placeholder="Plage personnalisée" class="w-full md:w-64" />
+                        class="w-full md:w-48"
+                    />
+                    <Calendar v-if="filterType === 'custom'" v-model="dateRange" selectionMode="range" dateFormat="dd/mm/yy" class="w-full md:w-64" />
                 </div>
             </div>
+
             <div class="layout-main">
                 <slot></slot>
             </div>
+
             <app-footer></app-footer>
         </div>
+
         <div class="layout-mask animate-fadein"></div>
     </div>
     <Toast />
 </template>
+
+<style>
+/* Sidebar indépendante */
+.layout-sidebar {
+    overflow-y: auto;
+    max-height: 100vh;
+    position: fixed;
+}
+
+/* Scroll fluide uniquement pour la page */
+html {
+    scroll-behavior: smooth;
+}
+</style>

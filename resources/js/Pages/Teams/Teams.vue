@@ -105,10 +105,16 @@ const exportCSV = () => dt.value.exportCSV();
 
 const openCreate = () => {
     form.reset();
+     form.id = null;
+    form.name ="";
+    form.team_leader_id = null;
+    form.nombre_tacherons = 0;
+    form.members =  [];
     isModalOpen.value = true;
 };
 
 const editTeam = (team) => {
+
     form.id = team.id;
     form.name = team.name;
     form.team_leader_id = team.team_leader_id;

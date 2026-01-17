@@ -31,6 +31,7 @@ const confirm = useConfirm();
 const taskDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
+const openingNew = ref(false); // Ajout de l'état de chargement
 const search = ref(props.filters?.search || '');
 const dt = ref(); // Référence au DataTable pour l'export
 const selectedTasks = ref([]);
@@ -857,7 +858,7 @@ const updateInstructions = (taskId, instructions) => {
                     <p class="text-slate-500 text-xs font-medium uppercase tracking-widest">Planification & Suivi des Tâches</p>
                 </div></div>
                 <div class="flex gap-2">
-                    <Button label="Nouvel Ordre de Travail" icon="pi pi-plus"
+                    <Button label="Nouvel Ordre de Travail" icon="pi pi-plus" :loading="openingNew"
                             class="shadow-lg shadow-primary-200" @click="openNew" />
                 </div>
             </div>
@@ -1043,7 +1044,9 @@ const updateInstructions = (taskId, instructions) => {
                 </div>
                 <div class="field">
                     <label class="text-[10px] font-bold uppercase text-slate-500 mb-1 block ml-1">Département Bénéficiaire</label>
-                    <TreeSelect v-model="form.department" :options="transformedDepartments" placeholder="Service" class="w-full" />
+                    <TreeSelect v-model="form.department" :options="transformedDepartments" placeholder="Service" class="w-full" >
+                      <template #header="slotProps"></template>
+                    </TreeSelect>
                 </div>
             </div>
         </div>

@@ -34,7 +34,7 @@ class PermissionSeeder extends Seeder
             'export-stock-movements', 'create-stock-entry', 'create-stock-exit', 'create-stock-transfer',
 
             // Task Management
-            'create-task', 'read-task', 'update-task', 'delete-task', 'assign-task', 'export-tasks',
+            'create-task', 'read-task', 'update-task', 'delete-task', 'assign-task', 'export-tasks','bulk-delete-task',
             'create-activity', 'read-activity', 'update-activity', 'delete-activity', 'assign-activity',
             'create-maintenance', 'read-maintenance', 'update-maintenance', 'delete-maintenance',
             'create-intervention-request', 'read-intervention-request', 'update-intervention-request', 'delete-intervention-request',

@@ -218,8 +218,12 @@ $newArray = is_string($new) ? json_decode($new, true) : $new;
 
 // 2. On nettoie (optionnel mais recommandé pour les dates)
 // Parfois l'ordre peut changer, donc on trie
-sort($oldArray);
+try {
+    sort($oldArray);
 sort($newArray);
+} catch (\Throwable $th) {
+    //throw $th;
+}
 
             // Comparer les anciennes et nouvelles dates de récurrence
             if ($oldArray !== $newArray) {
@@ -273,10 +277,10 @@ sort($newArray);
                     if ($maintenance->equipments()->count() == 1) {
                         $equipment = $maintenance->equipments()->first();
                         $regionName = $maintenance->networkNode->region->designation ?? 'N/A';
-                        $zoneName = $maintenance->networkNode->zone->title ?? ($maintenance->networkNode->network->nomenclature ?? 'N/A');
+                        $zoneName = $maintenance->networkNode->zone->title ?? ($maintenance->networkNode->network->nomenclature ?? '');
                         $activityTitle = 'Maintenance sur ' . $equipment->designation . ' (' . $regionName . ' / ' . $zoneName . ')';
                     } else {
-                        $regionName = $maintenance->region->designation ?? 'N/A';
+                        $regionName = $maintenance->region->designation ?? '';
                         $activityTitle = 'Maintenance sur ' . $maintenance->equipments()->count() . ' équipements (' . $regionName . ')';
                     }
                 }

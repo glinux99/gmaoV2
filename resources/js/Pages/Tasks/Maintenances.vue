@@ -50,6 +50,7 @@ const maintenanceDialog = ref(false);
 const submitted = ref(false);
 const editing = ref(false);
 const searchFilter = ref(props.filters?.search || '');
+const loading = ref(false);
 const dt = ref(); // Référence au DataTable pour l'export
 const op = ref(); // Référence à l'OverlayPanel pour la sélection de colonnes
 
@@ -324,7 +325,10 @@ watch(() => form.monthly_recurrence_type, (newValue) => {
 // Réinitialiser la région et les équipements si le réseau change
 watch(() => form.network_id, (newValue) => {
     form.placementType = null;
-    form.region_id = null;
+
+      if(!editing.value) {
+         form.region_id = null; // On réinitialise aussi la région
+       }
     form.zone_id = null;
     form.network_node_id = null; // Réinitialiser le noeud de réseau sélectionné
 });
@@ -488,6 +492,8 @@ const saveMaintenance = () => {
         return;
     }
 
+    loading.value = true;
+
     // --- NOUVELLE LOGIQUE DE PRÉPARATION DES DONNÉES ---
     let equipmentIds = []; // Initialiser le tableau d'IDs d'équipements
 
@@ -538,6 +544,7 @@ const data = {
                 maintenanceDialog.value = false;
                 toast.add({ severity: 'success', summary: 'Succès', detail: 'Maintenance mise à jour avec succès.', life: 3000 });
                 form.reset();
+                loading.value = false;
                 instructionsCache.value = {}; // Vider le cache après succès
             },
             onError: (errors) => {
@@ -545,6 +552,7 @@ const data = {
                 toast.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue.', life: 3000 });
                 form.errors = errors;
             }
+            , onFinish: () => loading.value = false
         });
     } else {
     console.log(data);
@@ -553,6 +561,7 @@ const data = {
             maintenanceDialog.value = false;
             toast.add({ severity: 'success', summary: 'Succès', detail: 'Maintenance créée avec succès.', life: 3000 });
             form.reset();
+            loading.value = false;
             instructionsCache.value = {}; // Vider le cache après succès
         },
         onError: (errors) => {
@@ -561,6 +570,7 @@ const data = {
             // Réassigner les erreurs au formulaire pour les afficher dans l'UI
             form.errors = errors;
         }
+        , onFinish: () => loading.value = false
     });
     }
 };
@@ -1175,7 +1185,9 @@ watch(() => form.network_node_id, (newNodeId) => {
     // Si on désélectionne le nœud, on vide les équipements liés (ou on garde selon votre besoin)
     if (!newNodeId) {
         form.related_equipments = [];
-        form.region_id = null; // On réinitialise aussi la région
+       if(!editing.value) {
+         form.region_id = null; // On réinitialise aussi la région
+       }
         return;
     }
 
@@ -1196,7 +1208,10 @@ watch(() => form.network_node_id, (newNodeId) => {
 
         console.log(`Région ID ${activeNode.region_id} et Équipement ID ${activeNode.equipment_id} liés automatiquement au nœud ${newNodeId}`);
     } else {
-        form.region_id = null;
+
+          if(!editing.value) {
+         form.region_id = null; // On réinitialise aussi la région
+       }
         form.related_equipments = [];
     }
 }, { immediate: true });
@@ -2058,8 +2073,8 @@ const formatDate = (dateString) => {
             <Button :label="t('maintenances.formDialog.cancelChanges')" icon="pi pi-times" class="p-button-text p-button-secondary font-bold" @click="hideDialog" />
             <div class="flex gap-3">
                  <Button :label="t('maintenances.formDialog.savePlan')" icon="pi pi-check-circle"
-                        class="p-button-primary px-8 py-4 !rounded-2xl shadow-xl shadow-primary-100 font-black tracking-tight transition-all hover:scale-[1.02] active:scale-95"
-                        @click="saveMaintenance" :loading="form.processing" />
+                        class="px-8 py-4 !rounded-2xl shadow-xl shadow-primary-100 font-black tracking-tight transition-all hover:scale-[1.02] active:scale-95"
+                        @click="saveMaintenance" :loading="loading" />
             </div>
         </div>
     </template>

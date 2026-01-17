@@ -112,7 +112,7 @@ const onFilter = (event) => {
 
 const meterStats = computed(() => {
     const stats = {
-        total: props.meters.data.length,
+        total: props.meters.total,
         active: 0,
         in_stock: 0,
         faulty: 0,

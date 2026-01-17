@@ -20,7 +20,7 @@ class EquipmentSeed extends Seeder
         // Créer 20 équipements (ils piocheront au hasard dans les types)
         Equipment::factory()->count(20)->create();
 
-        Label::factory()->count(10)->create();
-        SparePart::factory()->count(10)->create();
+        // Label::factory()->count(10)->create();
+        // SparePart::factory()->count(10)->create();
     }
 }

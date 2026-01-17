@@ -178,11 +178,13 @@ class TechnicianController extends Controller
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = $e->failures();
             $errors = [];
+            // return $e;
             foreach ($failures as $failure) {
                 $errors[] = "Ligne {$failure->row()}: " . implode(', ', $failure->errors());
             }
             return back()->with('import_errors', $errors)->with('error', 'Certaines lignes n\'ont pas pu être importées.');
         } catch (\Exception $e) {
+            //  return $e;
             Log::error("Erreur d'importation des techniciens: " . $e->getMessage());
             return back()->with('error', "Une erreur est survenue lors de l'importation: " . $e->getMessage());
         }
@@ -194,4 +196,5 @@ class TechnicianController extends Controller
         // Vous pouvez utiliser une librairie comme Maatwebsite/Excel pour générer le fichier
         return redirect()->back()->with('info', 'La fonctionnalité d\'exportation est en cours de développement.');
     }
+
 }

@@ -147,7 +147,9 @@ Route::post('quantum/query', [ReportController::class, 'fetchData'])->name('quan
 Route::post('/meters/import', [MeterController::class, 'import'])->name('meters.import');
 Route::post('/spare-parts/import', [SparePartController::class, 'import'])->name('spare-parts.import');
 Route::post('/technicians/import', [TechnicianController::class, 'import'])->name('technicians.import');
+Route::post('/technicians/bulk-destroy', [TechnicianController::class, 'bulkDestroy'])->name('technicians.bulkDestroy');
 Route::post('/regions/bulk-destroy', [RegionController::class, 'bulkDestroy'])->name('regions.bulkDestroy');
+Route::post('/tasks/bulk-destroy', [TaskController::class, 'bulkDestroy'])->name('tasks.bulkDestroy');
 Route::post('/interventions/import', [InterventionRequestController::class, 'import'])->name('interventions.import');
 // Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
 Route::post('/labels/bulk-destroy', [LabelController::class, 'bulkDestroy'])->name('labels.bulkDestroy');

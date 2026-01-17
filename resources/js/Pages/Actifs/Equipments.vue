@@ -928,7 +928,7 @@ defineExpose({
                     <div class="grid grid-cols-12 gap-4">
                         <div class="col-span-12 flex flex-col gap-1.5">
                             <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Unité Parent (Hierarchie)</label>
-                            <Dropdown v-model="form.parent_id" :options="parentEquipments" optionLabel="designation" optionValue="id" filter class="w-full rounded-xl border-slate-200" placeholder="Aucun parent" />
+                            <Dropdown v-model="form.parent_id" :options="parentEquipments" optionLabel="designation" optionValue="id" filter class="w-full rounded-xl border-slate-200 font-black text-slate-400" placeholder="Aucun parent" />
                         </div>
 
                         <div class="col-span-4 flex flex-col gap-1.5">
@@ -1260,43 +1260,6 @@ defineExpose({
 
 <style scoped>
 /* STYLE V11 CUSTOM TOKENS */
-.p-button-primary {
-    background: #4f46e5;
-    border: none;
-    color: white;
-    font-weight: 700;
-    border-radius: 12px;
-}
 
-.card-v11 :deep(.p-datatable-thead > tr > th) {
-    background: #fdfdfd;
-    padding: 1rem;
-    border-bottom: 1px solid #f1f5f9;
-}
 
-.card-v11 :deep(.p-datatable-tbody > tr) {
-    transition: all 0.2s;
-}
-
-.card-v11 :deep(.p-datatable-tbody > tr:hover) {
-    background: #f8faff !important;
-}
-/* Styles spécifiques si nécessaire */
-/* Correction des classes de grille si le projet utilise PrimeFlex */
-.p-grid {
-    display: flex;
-    flex-wrap: wrap;
-    margin-right: -0.5rem;
-    margin-left: -0.5rem;
-    margin-top: -0.5rem;
-}
-.p-grid > [class*="col"] {
-    padding: 0.5rem;
-}
-.col-12 { width: 100%; }
-.md\:col-6 { width: 50%; } /* Si vous utilisez les classes md:col-6 de PrimeFlex */
-
-/* S'assurer que les éléments flex-grow-x se comportent bien dans le dialogue des caractéristiques */
-.flex-grow-1 { flex-grow: 1; }
-.flex-grow-2 { flex-grow: 2; }
 </style>

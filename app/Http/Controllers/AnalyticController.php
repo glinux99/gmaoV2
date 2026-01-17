@@ -10,7 +10,7 @@ class AnalyticController extends Controller
 {
     public function index(){
            return Inertia::render('Analytics', [
-            'reportTemplates' => ReportTemplate::latest()->get(['id', 'name', 'content']),
+            'reportTemplates' => ReportTemplate::latest()->get(),
         ]);
     }
 }

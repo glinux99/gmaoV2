@@ -37,6 +37,10 @@ const props = defineProps({
     zones: Array,
     meters: Array, // Pour lier un clavier à un compteur
     queryParams: Object,
+    installed: Number,
+    available: Number,
+    faulty: Number,
+    total : Number
 });
 
 const toast = useToast();
@@ -114,16 +118,16 @@ const onFilter = (event) => {
 };
 const keypadStats = computed(() => {
     const stats = {
-        total: props.keypads.data.length,
-        available: 0,
-        installed: 0,
-        faulty: 0,
+        total: props.total,
+        available: props.available ?? 0,
+        installed: props.installed,
+        faulty: props.faulty ?? 0,
     };
-    props.keypads.data.forEach(keypad => {
-        if (stats.hasOwnProperty(keypad.status)) {
-            stats[keypad.status]++;
-        }
-    });
+    // props.keypads.data.forEach(keypad => {
+    //     if (stats.hasOwnProperty(keypad.status)) {
+    //         stats[keypad.status]++;
+    //     }
+    // });
     return stats;
 });
 
@@ -230,11 +234,20 @@ const openNew = () => {
 };
 
 const editKeypad = (keypad) => {
-    form.clearErrors();
-    Object.assign(form, {
-        ...keypad,
-        installation_date: keypad.installation_date ? new Date(keypad.installation_date) : null,
-    });
+    // form.clearErrors();
+    form.id = keypad.id;
+    form.serial_number = keypad.serial_number;
+    form.model = keypad.model;
+    form.manufacturer = keypad.manufacturer;
+    form.type = keypad.type;
+    form.status = keypad.status;
+    form.installation_date = keypad.installation_date;
+    form.connection_id = keypad.connection_id;
+    form.region_id = keypad.region_id;
+    // form.zone_id = keypad.zone_id;
+    form.meter_id = keypad.meter_id;
+    form.notes = keypad.notes;
+
     editing.value = true;
     keypadDialog.value = true;
 };
@@ -346,12 +359,15 @@ const filteredZones = computed(() => {
 });
 
 watch(() => form.region_id, (newRegionId) => {
+    if(editing.value) return ;
+
     if (!filteredZones.value.some(z => z.id === form.zone_id)) {
         form.zone_id = null;
     }
 });
 
 watch(() => form.meter_id, (newMeterId) => {
+    if(editing.value) return ;
      if(!form.connection_id){
         form.region_id = null;
         form.zone_id = null;
@@ -379,7 +395,9 @@ watch(() => form.meter_id, (newMeterId) => {
 });
 
 watch(() => form.connection_id, (newConnectionId) => {
-    form.region_id = null;
+
+    if(!editing.value){
+        form.region_id = null;
     form.zone_id = null;
     form.meter_id = null;
     if (newConnectionId) {
@@ -390,6 +408,7 @@ watch(() => form.connection_id, (newConnectionId) => {
             form.zone_id = selectedConnection.zone_id;
             form.meter_id = selectedConnection.meter_id;
         }
+    }
     }
 });
 

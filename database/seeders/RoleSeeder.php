@@ -34,7 +34,7 @@ class RoleSeeder extends Seeder
             'read-role', 'read-permission',
             // Gestion complète des entités principales
             'create-equipment', 'read-equipment', 'update-equipment', 'delete-equipment',
-            'create-task', 'read-task', 'update-task', 'delete-task', 'assign-task',
+            'create-task', 'read-task', 'update-task', 'delete-task', 'assign-task', 'bulk-delete-task',
             'create-activity', 'read-activity', 'update-activity', 'delete-activity', 'assign-activity',
             'create-maintenance', 'read-maintenance', 'update-maintenance', 'delete-maintenance',
             'create-intervention-request', 'read-intervention-request', 'update-intervention-request', 'delete-intervention-request', 'assign-intervention-request', 'validate-intervention-request', 'cancel-intervention-request',
