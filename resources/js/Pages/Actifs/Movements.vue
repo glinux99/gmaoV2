@@ -101,7 +101,7 @@ const form = useForm({
     destination_region_id: null,
 });
 
-// --- GESTION DES COLONNES ---
+// --- GESTION DES COLONNES X234---
 const allColumns = ref([
     { field: 'movable_type', header: t('stockMovements.table.itemType') },
     { field: 'movable', header: t('stockMovements.table.item') },
