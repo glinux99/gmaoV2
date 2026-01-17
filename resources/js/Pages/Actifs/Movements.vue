@@ -113,7 +113,7 @@ const allColumns = ref([
     { field: 'stock_at_movement', header: 'Stock au Mvt.' }, // NOUVELLE COLONNE
     { field: 'date', header: t('stockMovements.table.date') },
 ]);
-const visibleColumns = ref(['movable_type', 'movable', 'type', 'quantity', 'user', 'date','source_region', 'destination_region' ]);
+const visibleColumns = ref(['movable_type', 'movable', 'type', 'quantity', 'user', 'date', 'destination_region' ]);
 
 
 // --- Logique du formulaire ---
