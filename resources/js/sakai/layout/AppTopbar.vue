@@ -10,7 +10,7 @@ import DropdownLink from "@/Components/DropdownLink.vue";
 import { usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 
-/**
+/**s
  * LOGIQUE DE GESTION DU LAYOUT ET DES THÈMES
  */
 const { layoutConfig, setPrimary, setSurface, setPreset, isDarkTheme, setMenuMode, onMenuToggle, toggleDarkMode } = useLayout();
