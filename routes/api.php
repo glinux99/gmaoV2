@@ -30,7 +30,7 @@ Route::put('/interventions/{intervention}/validate', [InterventionRequestControl
 Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::get('quantumx/models', [ReportController::class, 'fetchData']);
 
-Route::apiResource("maintenancesx", TechnicianController::class);
+Route::apiResource("maintenancesx", ConnectionController::class);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

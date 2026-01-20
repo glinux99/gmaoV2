@@ -117,8 +117,8 @@ const {
     getSparePartReference,
     openSparePartDialog,
     saveSparePart,
-    removeSparePart,
-} = useSpareParts(form, ref(localSpareParts), 'spare_parts_used');
+    removeSparePart
+} = useSpareParts(form, localSpareParts, 'spare_parts_used');
 
 const sparePartOptions = computed(() => {
     const regionId = form.region_id;
@@ -141,6 +141,33 @@ const filteredZones = computed(() => {
     return props.zones.filter(zone => zone.region_id === form.region_id);
 });
 
+// --- OPTIONS POUR COMPTEURS ET CLAVIERS ---
+// Cette logique garantit que lors de l'édition, le compteur/clavier déjà assigné
+// reste sélectionnable même s'il n'est plus dans la liste des "disponibles".
+const meterOptions = computed(() => {
+    const availableMeters = props.meters || [];
+    // Si on est en mode édition et que la connexion a un compteur assigné (form.meter est l'objet complet)
+    if (form.id && form.meter) {
+        const isCurrentMeterInList = availableMeters.some(m => m.id === form.meter.id);
+        // S'il n'y est pas, on l'ajoute à la liste pour qu'il soit sélectionnable
+        if (!isCurrentMeterInList) {
+            return [...availableMeters, form.meter];
+        }
+    }
+    return availableMeters;
+});
+
+const keypadOptions = computed(() => {
+    const availableKeypads = props.keypads || [];
+    // Si on est en mode édition et que la connexion a un clavier assigné (form.keypad est l'objet complet)
+    if (form.id && form.keypad) {
+        const isCurrentKeypadInList = availableKeypads.some(k => k.id === form.keypad.id);
+        if (!isCurrentKeypadInList) {
+            return [...availableKeypads, form.keypad];
+        }
+    }
+    return availableKeypads;
+});
 // --- GESTION DATATABLE & FILTRES ---
 const dt = ref();
 const op = ref();
@@ -240,6 +267,7 @@ const submit = () => {
             toast.add({ severity: 'error', summary: t('common.error'), detail: t('connections.toast.saveError'), life: 3000 });
         }
     };
+    console.log(dataToSend);
     if (method === 'post') {
         form.transform(() => dataToSend).post(route(routeName), handler);
     } else {
@@ -341,7 +369,7 @@ watch(() => isModalOpen.value, (isOpen) => {
 
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div class="flex items-center gap-5">
-                    <div class="h-16 w-16 bg-slate-900 rounded-3xl flex items-center justify-center shadow-2xl">
+                    <div class="h-16 w-16 bg-slate-900 rounded-xl flex items-center justify-center shadow-2xl">
                         <i class="pi pi-bolt text-2xl text-yellow-400"></i>
                     </div>
                     <div>
@@ -357,7 +385,7 @@ watch(() => isModalOpen.value, (isOpen) => {
 
             <!-- Section des statistiques -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div v-for="stat in ['total', 'active', 'verified', 'pending']" :key="stat" class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                <div v-for="stat in ['total', 'active', 'verified', 'pending']" :key="stat" class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center gap-5">
                     <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center">
                         <i :class="`pi ${ {total: 'pi-box', active: 'pi-check-circle', verified: 'pi-shield', pending: 'pi-clock'}[stat] } text-2xl text-slate-500`"></i>
                     </div>
@@ -368,7 +396,7 @@ watch(() => isModalOpen.value, (isOpen) => {
                 </div>
             </div>
 
-            <div class="card-v11 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-sm">
+            <div class="card-v11 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm">
                 <DataTable ref="dt" :value="connections.data" paginator :rows="connections.per_page" class="p-datatable-sm quantum-table" dataKey="id" filterDisplay="menu"
                            :lazy="true" @page="onPage" @sort="onPage" @filter="onPage"
                            :totalRecords="connections.total" :loading="loading"
@@ -383,7 +411,7 @@ watch(() => isModalOpen.value, (isOpen) => {
                                 <InputIcon class="pi pi-search text-slate-400" />
                                 <InputText v-model="lazyParams.filters['global'].value" :placeholder="t('connections.searchPlaceholder')"
                                            @keydown.enter="loadLazyData"
-                                           class="w-full md:w-80 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white" />
+                                           class="w-full md:w-80 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white" />
                             </IconField>
                             <div class="flex items-center gap-2">
                                 <Button v-if="selectedConnections.length" icon="pi pi-trash" :label="t('common.deleteSelected', { count: selectedConnections.length })" severity="danger" text @click="confirmDeleteSelected" />
@@ -432,14 +460,14 @@ watch(() => isModalOpen.value, (isOpen) => {
   <Dialog v-model:visible="isModalOpen" modal :header="false" :closable="false"
     class="w-full max-w-7xl border-none shadow-2xl"
     :pt="{
-        root: { class: 'rounded-2xl overflow-hidden' },
+        root: { class: 'rounded-xl overflow-hidden' },
         mask: { style: 'backdrop-filter: blur(8px); background: rgba(15, 23, 42, 0.6)' }
     }">
 
 
         <div class="px-8 py-5 bg-slate-900 flex justify-between items-center shadow-xl relative z-10 rounded-xl">
             <div class="flex items-center gap-5">
-                <div class="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                <div class="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
                     <i class="pi pi-bolt text-blue-400 text-2xl animate-pulse"></i>
                 </div>
                 <div class="flex flex-col">
@@ -466,50 +494,50 @@ watch(() => isModalOpen.value, (isOpen) => {
                     </template>
 
                     <div class="p-8 space-y-8 animate-fadein">
-                        <div class="flex flex-col md:flex-row gap-6 p-6 bg-blue-50/30 rounded-3xl border border-blue-100 items-end">
+                        <div class="flex flex-col md:flex-row gap-6 p-6 bg-blue-50/30 rounded-xl border border-blue-100 items-end">
                             <div class="flex flex-col gap-2 w-full md:w-1/3">
                                 <label class="text-[10px] font-black uppercase text-blue-600 tracking-[0.2em] ml-1 flex items-center gap-2">
                                     <i class="pi pi-lock text-[9px]"></i> Code Client Système
                                 </label>
                                 <div class="relative">
                                     <i class="pi pi-id-card absolute left-4 top-1/2 -translate-y-1/2 text-blue-400"></i>
-                                    <InputText v-model="form.customer_code" readonly class="w-full h-11 !pl-12 !bg-blue-50/50 !border-blue-200 !text-blue-700 font-mono font-bold rounded-2xl cursor-not-allowed shadow-inner" />
+                                    <InputText v-model="form.customer_code" readonly class="w-full h-11 !pl-12 !bg-blue-50/50 !border-blue-200 !text-blue-700 font-mono font-bold rounded-xl cursor-not-allowed shadow-inner" />
                                 </div>
                             </div>
                             <p class="text-[11px] text-blue-500/70 pb-2 italic font-medium"><i class="pi pi-info-circle mr-1"></i> Généré automatiquement.</p>
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div class="space-y-6 bg-white p-7 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                            <div class="space-y-6 bg-white p-7 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
                                 <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
                                 <h3 class="text-xs font-black uppercase text-slate-800 tracking-widest flex items-center gap-2 mb-6">Identité & Contacts</h3>
                                 <div class="grid grid-cols-2 gap-5">
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Prénom</label>
-                                        <InputText v-model="form.first_name" class="h-11 rounded-2xl border-slate-200" /></div>
+                                        <InputText v-model="form.first_name" class="h-11 rounded-xl border-slate-200" /></div>
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Nom</label>
-                                        <InputText v-model="form.last_name" class="h-11 rounded-2xl border-slate-200" /></div>
+                                        <InputText v-model="form.last_name" class="h-11 rounded-xl border-slate-200" /></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-5 pt-2">
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Téléphone 1</label>
-                                        <InputText v-model="form.phone_number" class="h-11 rounded-2xl border-slate-200" /></div>
+                                        <InputText v-model="form.phone_number" class="h-11 rounded-xl border-slate-200" /></div>
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Téléphone 2</label>
-                                        <InputText v-model="form.secondary_phone_number" class="h-11 rounded-2xl border-slate-200" /></div>
+                                        <InputText v-model="form.secondary_phone_number" class="h-11 rounded-xl border-slate-200" /></div>
                                 </div>
                             </div>
-                            <div class="space-y-6 bg-white p-7 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                            <div class="space-y-6 bg-white p-7 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
                                 <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
                                 <h3 class="text-xs font-black uppercase text-slate-800 tracking-widest flex items-center gap-2 mb-6">Secteur & Classification</h3>
                                 <div class="grid grid-cols-2 gap-5">
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Type</label>
-                                        <Dropdown v-model="form.customer_type" :options="['individual', 'business', 'government']" class="h-11 !rounded-2xl" /></div>
+                                        <Dropdown v-model="form.customer_type" :options="['individual', 'business', 'government']" class="h-11 !rounded-xl" /></div>
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Agent</label>
-                                        <InputText v-model="form.commercial_agent_name" class="h-11 rounded-2xl" /></div>
+                                        <InputText v-model="form.commercial_agent_name" class="h-11 rounded-xl" /></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-5 pt-2">
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Région</label>
-                                        <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="name" optionValue="id" class="h-11 !rounded-2xl" /></div>
+                                        <Dropdown v-model="form.region_id" :options="props.regions" optionLabel="name" optionValue="id" class="h-11 !rounded-xl" /></div>
                                     <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-500 uppercase">Zone</label>
-                                        <Dropdown v-model="form.zone_id" :options="filteredZones" optionLabel="name" optionValue="id" :disabled="!form.region_id" class="h-11 !rounded-2xl" /></div>
+                                        <Dropdown v-model="form.zone_id" :options="filteredZones" optionLabel="name" optionValue="id" :disabled="!form.region_id" class="h-11 !rounded-xl" /></div>
                                 </div>
                             </div>
                         </div>
@@ -522,10 +550,10 @@ watch(() => isModalOpen.value, (isOpen) => {
                     </template>
                     <div class="p-8 space-y-8 animate-fadein">
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div class="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                            <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm space-y-4">
                                 <label class="text-[10px] font-black uppercase text-blue-600 tracking-widest block mb-4 underline decoration-2 underline-offset-8">Matériel Central</label>
-                                <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500">Compteur</label><Dropdown v-model="form.meter_id" filter class="h-11 !rounded-xl" /></div>
-                                <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500">Clavier</label><Dropdown v-model="form.keypad_id" filter class="h-11 !rounded-xl" /></div>
+                                <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500">Compteur</label><Dropdown v-model="form.meter_id" :options="meterOptions" optionLabel="name" optionValue="id" filter class="h-11 !rounded-xl" /></div>
+                                <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500">Clavier</label><Dropdown v-model="form.keypad_id" :options="keypadOptions" optionLabel="name" optionValue="id" filter class="h-11 !rounded-xl" /></div>
 
                                 <!-- Section Matériaux Utilisés -->
                                 <div class="pt-4 border-t border-slate-100">
@@ -535,7 +563,7 @@ watch(() => isModalOpen.value, (isOpen) => {
                                     </div>
 
                                     <div class="space-y-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-2">
-                                        <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-2 p-2 bg-blue-50/50 rounded-lg text-[10px] border border-blue-100 group">
+                                        <div v-for="(part, idx) in form.spare_parts_used" :key="idx" class="flex items-center gap-2 p-2 bg-blue-50/50 rounded-xl text-[10px] border border-blue-100 group">
                                             <b class="text-blue-700">x{{ part.quantity }}</b>
                                             <span class="flex-grow truncate text-slate-600 font-medium">{{ getSparePartReference(part.id) }}</span>
                                             <i class="pi pi-trash text-red-400 cursor-pointer opacity-0 group-hover:opacity-100" @click="removeSparePart('used', idx)"></i>
@@ -543,7 +571,7 @@ watch(() => isModalOpen.value, (isOpen) => {
                                     </div>
                                 </div>
                             </div>
-                            <div class="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                            <div class="p-6 bg-white rounded-xl border border-slate-200 shadow-sm space-y-4">
                                 <label class="text-[10px] font-black uppercase text-blue-600 tracking-widest block mb-4 underline decoration-2 underline-offset-8">Spécifications</label>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Phasage</label><InputText v-model="form.phase_number" inputClass="h-11 rounded-xl w-full" /></div>
@@ -554,36 +582,36 @@ watch(() => isModalOpen.value, (isOpen) => {
                                     <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Tarif</label><InputText v-model="form.tariff" class="h-11 rounded-xl" /></div>
                                 </div>
                             </div>
-                            <div class="p-6 bg-slate-900 rounded-3xl text-white space-y-4 shadow-xl relative overflow-hidden">
+                            <div class="p-6 bg-slate-900 rounded-xl text-white space-y-4 shadow-xl relative overflow-hidden">
                                 <label class="text-[10px] font-black uppercase text-blue-400 tracking-widest block mb-4">Scellés & Sécurité</label>
-                                <div class="flex flex-col gap-1.5"><label class="text-[11px] text-slate-400 uppercase">Scellé Compteur</label><InputText v-model="form.meter_seal_number" class="h-10 !bg-white/10 !border-none !text-white !rounded-lg" /></div>
-                                <div class="flex flex-col gap-1.5"><label class="text-[11px] text-slate-400 uppercase">Scellé Coffret</label><InputText v-model="form.box_seal_number" class="h-10 !bg-white/10 !border-none !text-white !rounded-lg" /></div>
+                                <div class="flex flex-col gap-1.5"><label class="text-[11px] text-slate-400 uppercase">Scellé Compteur</label><InputText v-model="form.meter_seal_number" class="h-10 !bg-white/10 !border-none !text-white !rounded-xl" /></div>
+                                <div class="flex flex-col gap-1.5"><label class="text-[11px] text-slate-400 uppercase">Scellé Coffret</label><InputText v-model="form.box_seal_number" class="h-10 !bg-white/10 !border-none !text-white !rounded-xl" /></div>
                                 <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 mt-2">
                                     <label class="text-[10px] font-bold uppercase">Ready Box</label>
-                                    <ToggleButton v-model="form.with_ready_box" onIcon="pi pi-check" offIcon="pi pi-times" class="h-8 w-14 !rounded-lg" />
+                                    <ToggleButton v-model="form.with_ready_box" onIcon="pi pi-check" offIcon="pi pi-times" class="h-8 w-14 !rounded-xl" />
                                 </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-3xl border border-slate-100 shadow-inner">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-xl border border-slate-100 shadow-inner">
                             <div class="space-y-4">
                                 <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
                                     <i class="pi pi-sitemap text-blue-500"></i> Réseau & Raccordement
                                 </h3>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm font-bold text-slate-700">
+                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-xl border border-slate-100 shadow-sm font-bold text-slate-700">
                                         <label class="text-[10px] text-slate-500 uppercase">N° Poteau</label>
                                         <InputText v-model="form.pole_number" class="w-full !border-none !p-0 focus:!ring-0 text-sm bg-transparent" />
                                     </div>
-                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm font-bold text-slate-700">
+                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-xl border border-slate-100 shadow-sm font-bold text-slate-700">
                                         <label class="text-[10px] text-slate-500 uppercase">Dist. (m)</label>
                                         <InputNumber v-model="form.distance_to_pole" class="w-full" inputClass="!border-none !p-0 focus:!ring-0 text-sm bg-transparent" />
                                     </div>
-                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm font-bold text-slate-700">
+                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-xl border border-slate-100 shadow-sm font-bold text-slate-700">
                                         <label class="text-[10px] text-slate-500 uppercase">Câble (mm²)</label>
                                         <InputText v-model="form.cable_section" class="w-full !border-none !p-0 focus:!ring-0 text-sm bg-transparent" />
                                     </div>
-                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm font-bold text-slate-700">
+                                    <div class="flex flex-col gap-1.5 p-3 bg-white rounded-xl border border-slate-100 shadow-sm font-bold text-slate-700">
                                         <label class="text-[10px] text-slate-500 uppercase">Long. (m)</label>
                                         <InputNumber v-model="form.cable_length" class="w-full" inputClass="!border-none !p-0 focus:!ring-0 text-sm bg-transparent" />
                                     </div>
@@ -594,14 +622,14 @@ watch(() => isModalOpen.value, (isOpen) => {
                                     <i class="pi pi-compass text-red-500"></i> Coordonnées GPS
                                 </h3>
                                 <div class="grid grid-cols-1 gap-4">
-                                    <div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                                    <div class="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
                                         <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500"><i class="pi pi-map-marker"></i></div>
                                         <div class="flex flex-col flex-grow">
                                             <label class="text-[9px] font-black text-slate-400 uppercase">Latitude</label>
                                             <InputText v-model="form.gps_latitude" class="w-full !border-none !p-0 focus:!ring-0 text-base font-mono font-bold text-slate-800 bg-transparent" placeholder="0.000000" />
                                         </div>
                                     </div>
-                                    <div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                                    <div class="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
                                         <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500"><i class="pi pi-map-marker rotate-90"></i></div>
                                         <div class="flex flex-col flex-grow">
                                             <label class="text-[9px] font-black text-slate-400 uppercase">Longitude</label>
@@ -619,12 +647,12 @@ watch(() => isModalOpen.value, (isOpen) => {
                         <div class="flex items-center gap-2 px-2"><i class="pi pi-wallet text-lg"></i><span class="font-bold">Administratif & Paiement</span></div>
                     </template>
                     <div class="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadein">
-                        <div class="p-8 bg-gradient-to-br from-blue-700 to-indigo-900 rounded-[2rem] text-white shadow-2xl relative overflow-hidden border border-white/10">
+                        <div class="p-8 bg-gradient-to-br from-blue-700 to-indigo-900 rounded-xl text-white shadow-2xl relative overflow-hidden border border-white/10">
                             <label class="text-[10px] font-black uppercase text-blue-200 tracking-widest block mb-8 opacity-70">Transactions & Ledger</label>
                             <div class="space-y-8 relative z-10">
                                 <div class="flex flex-col gap-2">
                                     <label class="text-xs font-bold text-blue-100 uppercase ml-1">Montant Versé (USD)</label>
-                                    <InputNumber v-model="form.amount_paid" mode="currency" currency="USD" inputClass="!bg-white/10 !border-none !text-4xl !font-black !text-white w-full !p-3 !rounded-2xl" />
+                                    <InputNumber v-model="form.amount_paid" mode="currency" currency="USD" inputClass="!bg-white/10 !border-none !text-4xl !font-black !text-white w-full !p-3 !rounded-xl" />
                                 </div>
                                 <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/10">
                                     <div class="flex flex-col gap-1"><label class="text-[10px] text-blue-200">N° Transaction</label>
@@ -634,11 +662,11 @@ watch(() => isModalOpen.value, (isOpen) => {
                                 </div>
                             </div>
                         </div>
-                        <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
+                        <div class="p-6 bg-slate-50 rounded-xl border border-slate-100 space-y-5">
                             <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Dossier de Validation</h3>
                             <div class="flex flex-col gap-2"><label class="text-[11px] font-bold text-slate-600 uppercase">RCCM</label>
                                 <InputText v-model="form.rccm_number" class="h-11 rounded-xl shadow-sm border-slate-200" /></div>
-                            <div class="flex items-center justify-between p-4 bg-white rounded-2xl border-2 border-dashed border-slate-200 mt-4">
+                            <div class="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-dashed border-slate-200 mt-4">
                                 <div class="flex flex-col"><span class="text-sm font-black text-slate-700">Approbation Dossier</span><span class="text-[10px] text-slate-400 uppercase">Vérifié</span></div>
                                 <ToggleButton v-model="form.is_verified" onIcon="pi pi-verified" offIcon="pi pi-times" class="h-10 px-6 !rounded-xl" />
                             </div>
@@ -679,11 +707,11 @@ watch(() => isModalOpen.value, (isOpen) => {
         <!-- MODALE DE SÉLECTION DES MATÉRIAUX -->
         <Dialog v-model:visible="sparePartDialogVisible" modal :closable="false"
                 class="quantum-dialog w-full max-w-lg shadow-2xl"
-                :pt="{ mask: { style: 'backdrop-filter: blur(8px)' }, content: { class: 'p-0 rounded-2xl overflow-hidden' } }">
+                :pt="{ mask: { style: 'backdrop-filter: blur(8px)' }, content: { class: 'p-0 rounded-xl overflow-hidden' } }">
 
             <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
+                    <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center">
                         <i class="pi pi-box text-blue-400 text-lg"></i>
                     </div>
                     <div>
@@ -709,7 +737,7 @@ watch(() => isModalOpen.value, (isOpen) => {
                     <InputNumber v-model="sparePartData.quantity" showButtons :min="1" buttonLayout="horizontal" class="w-full" />
                 </div>
             </div>
-            <div class="p-4 bg-slate-100/60 flex justify-end gap-3 border-t border-slate-200"><Button label="Fermer" severity="secondary" @click="sparePartDialogVisible = false" class="font-bold text-xs" /><Button label="Valider" severity="info" @click="saveSparePart" class="font-bold text-xs rounded-lg shadow-lg shadow-blue-100" /></div>
+            <div class="p-4 bg-slate-100/60 flex justify-end gap-3 border-t border-slate-200"><Button label="Fermer" severity="secondary" @click="sparePartDialogVisible = false" class="font-bold text-xs" /><Button label="Valider" severity="info" @click="saveSparePart" class="font-bold text-xs rounded-xl shadow-lg shadow-blue-100" /></div>
         </Dialog>
     </AppLayout>
 </template>

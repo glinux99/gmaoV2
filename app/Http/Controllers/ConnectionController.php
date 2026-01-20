@@ -60,8 +60,8 @@ class ConnectionController extends Controller
             'filters' => $request->all(['search']),
             'regions' => Region::all(['id', 'designation as name']),
             'zones' => Zone::all(['id', 'title as name']),
-            'meters' => Meter::whereNull('connection_id')->get(['id', 'serial_number as name']),
-            'keypads' => Keypad::whereNull('connection_id')->get(['id', 'serial_number as name']),
+            'meters' => Meter::get(['id', 'serial_number as name']),
+            'keypads' => Keypad::get(['id', 'serial_number as name']),
             'spareParts' => $sparePartsByRef,
             'connectionStatuses' => [
                 ['label' => 'Raccordé', 'value' => '5 - Raccordé'],
@@ -138,7 +138,11 @@ class ConnectionController extends Controller
     public function update(Request $request, Connection $connection)
     {
         $rules = $this->getValidationRules($connection->id);
-        $validated = $request->validate($rules);
+       try {
+         $validated = $request->validate($rules);
+       } catch (\Throwable $th) {
+        return $th;
+       }
 
         DB::beginTransaction();
         try {
@@ -179,15 +183,19 @@ class ConnectionController extends Controller
     {
         return [
             // Identifiants & Localisation
-            'customer_code'          => ['required', 'string', Rule::unique('connections')->ignore($id)],
-            'region_id'              => 'required|exists:regions,id',
+            'customer_code' => [
+                'required',
+                'string',
+                Rule::unique('connections', 'customer_code')->ignore($id, 'id')
+            ],
+            'region_id'              => 'nullable|exists:regions,id',
             'zone_id'                => 'nullable|exists:zones,id',
             'gps_latitude'           => 'nullable|numeric|between:-90,90',
             'gps_longitude'          => 'nullable|numeric|between:-180,180',
 
             // Informations Client
-            'status'                 => 'required|string|max:50',
-            'first_name'             => 'required|string|max:255',
+            'status'                 => 'nullable|string|max:50',
+            'first_name'             => 'nullable|string|max:255',
             'last_name'              => 'nullable|string|max:255',
             'phone_number'           => 'nullable|string|max:20',
             'secondary_phone_number' => 'nullable|string|max:20',
@@ -209,7 +217,7 @@ class ConnectionController extends Controller
             'cable_length'           => 'nullable|integer|min:0',
             'box_type'               => 'nullable|string|max:100',
             'meter_type_connected'   => 'nullable|string|max:100',
-            'phase_number'           => 'nullable|in:1,3',
+            'phase_number'           => 'nullable',
             'amperage'               => 'nullable|string|max:50',
             'voltage'                => 'nullable|min:0',
             'with_ready_box'         => 'boolean',
@@ -228,8 +236,14 @@ class ConnectionController extends Controller
             'box_seal_number'        => 'nullable|string|max:100',
 
             // Équipements (Relations)
-            'meter_id'               => 'nullable|exists:meters,id',
-            'keypad_id'              => 'nullable|exists:keypads,id',
+            'meter_id' => [
+                'nullable',
+                Rule::unique('meters', 'id')->where(fn ($query) => $query->where('connection_id', '!=', $id)),
+            ],
+            'keypad_id' => [
+                'nullable',
+                Rule::unique('keypads', 'id')->where(fn ($query) => $query->where('connection_id', '!=', $id)),
+            ],
 
             // Tableaux de données liées
             'spare_parts_used'       => 'nullable|array',
