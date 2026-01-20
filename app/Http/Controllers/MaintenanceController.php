@@ -177,7 +177,7 @@ class MaintenanceController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur Store Maintenance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la création : ' . $e->getMessage())->withInput();
+            return redirect()->route('maintenances.index')->with('error', 'Erreur lors de la création : ' . $e->getMessage())->withInput();
         }
     }
 
@@ -334,7 +334,7 @@ sort($newArray);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur Update Maintenance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la mise à jour.');
+            return redirect()->route('maintenances.index')->with('error', 'Erreur lors de la mise à jour.');
         }
     }
 
@@ -355,7 +355,7 @@ sort($newArray);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur Delete Maintenance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la suppression.');
+            return redirect()->route('maintenances.index')->with('error', 'Erreur lors de la suppression.');
         }
     }
 

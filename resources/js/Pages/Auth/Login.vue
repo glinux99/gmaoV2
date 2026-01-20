@@ -1,5 +1,6 @@
 <script setup>
 import { useForm } from "@inertiajs/vue3";
+import { ref } from 'vue';
 
 const form = useForm({
     email: "",
@@ -7,10 +8,17 @@ const form = useForm({
     remember: false,
 });
 
+const socialLoginProcessing = ref(null);
+
 const submit = () => {
     form.post(route("login"), {
         onFinish: () => form.reset("password"),
     });
+};
+
+const socialLogin = (provider) => {
+    socialLoginProcessing.value = provider;
+    window.location.href = route('socialite.redirect', provider);
 };
 
 </script>
@@ -22,7 +30,7 @@ const submit = () => {
                 <div class="w-full bg-surface-0 light:bg-surface-900 py-10 px-8 sm:px-12 shadow-lg" style="border-radius: 10px">
                     <div class="text-center mb-8">
                         <img src="/assets/media/logos/logo.png" alt="" class="h-16 inline-block mb-4">
-                        <div class="text-surface-900 light:text-surface-0 text-2xl font-medium mb-2">Bienvenue sur MaintVE</div>
+                        <div class="text-surface-900 light:text-surface-0 text-2xl font-medium mb-2">Bienvenu sur MaintenXVE</div>
                         <span class="text-muted-color font-medium text-sm">Connectez-vous pour continuer</span>
                     </div>
 
@@ -51,15 +59,9 @@ const submit = () => {
                 <div class="flex-grow border-t border-gray-300"></div>
             </div>
                             <div class="flex flex-col gap-4 mb-4">
-                                <a :href="route('socialite.redirect', 'google')" class="no-underline">
-                                    <Button label="Se connecter avec Google" icon="pi pi-google" class="p-button-outlined p-button-secondary w-full"></Button>
-                                </a>
-                                <a :href="route('socialite.redirect', 'facebook')" class="no-underline">
-                                    <Button label="Se connecter avec Facebook" icon="pi pi-facebook" class="p-button-outlined p-button-secondary w-full"></Button>
-                                </a>
-                                <a href="/login/linkedin" class="no-underline d-none">
-                                    <Button label="Se connecter avec LinkedIn" icon="pi pi-linkedin" class="p-button-outlined p-button-secondary w-full"></Button>
-                                </a>
+                                <Button @click="socialLogin('google')" :loading="socialLoginProcessing === 'google'" label="Se connecter avec Google" icon="pi pi-google" class="p-button-outlined p-button-secondary w-full"></Button>
+                                <Button @click="socialLogin('facebook')" :loading="socialLoginProcessing === 'facebook'" label="Se connecter avec Facebook" icon="pi pi-facebook" class="p-button-outlined p-button-secondary w-full"></Button>
+                                <Button @click="socialLogin('linkedin')" :loading="socialLoginProcessing === 'linkedin'" label="Se connecter avec LinkedIn" icon="pi pi-linkedin" class="p-button-outlined p-button-secondary w-full d-none"></Button>
                             </div>
 
 

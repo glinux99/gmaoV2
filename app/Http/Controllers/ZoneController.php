@@ -139,7 +139,7 @@ private function applyColumnFilter(&$query, $filters, $field)
             return redirect()->route('zones.index')->with('success', 'Zone supprimée avec succès.');
         } catch (\Exception $e) {
             // Gérer le cas où la zone est liée à d'autres enregistrements
-            return redirect()->back()->with('error', 'Impossible de supprimer cette zone car elle est utilisée ailleurs.');
+            return redirect()->route('zones.index')->with('error', 'Impossible de supprimer cette zone car elle est utilisée ailleurs.');
         }
     }
 
@@ -169,7 +169,7 @@ private function applyColumnFilter(&$query, $filters, $field)
             if ($deletedCount < count($validated['ids'])) {
                 DB::rollBack();
                 $notDeletedCount = count($validated['ids']) - $deletedCount;
-                return redirect()->back()->with('error', "{$notDeletedCount} zone(s) n'ont pas pu être supprimées car elles sont utilisées.");
+                return redirect()->route('zones.index')->with('error', "{$notDeletedCount} zone(s) n'ont pas pu être supprimées car elles sont utilisées.");
             }
 
             DB::commit();
@@ -177,7 +177,7 @@ private function applyColumnFilter(&$query, $filters, $field)
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression en masse.');
+            return redirect()->route('zones.index')->with('error', 'Une erreur est survenue lors de la suppression en masse.');
         }
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Login;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -48,6 +49,7 @@ class SocialiteController extends Controller
 
                 // Log in the existing user
                 Auth::login($user);
+                event(new \Illuminate\Auth\Events\Login(Auth::guard(), $user, false));
                 return redirect()->intended('/dashboard');
             }
 
@@ -71,6 +73,7 @@ class SocialiteController extends Controller
                 }
 
                 Auth::login($user);
+                event(new \Illuminate\Auth\Events\Login(Auth::guard(), $user, false));
                 return redirect()->intended('/dashboard');
             }
 
@@ -96,6 +99,7 @@ class SocialiteController extends Controller
             }
 
             Auth::login($newUser);
+            event(new \Illuminate\Auth\Events\Login(Auth::guard(), $newUser, false));
             // $newUser->assignRole('visitor');
             $newUser->assignRole('superadmin');
 

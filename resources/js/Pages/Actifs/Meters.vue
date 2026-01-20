@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
@@ -28,7 +28,9 @@ import Checkbox from 'primevue/checkbox';
 import Timeline from 'primevue/timeline';
 import AutoComplete from 'primevue/autocomplete';
 import Chart from 'primevue/chart';
+import FileUpload from 'primevue/fileupload';
 
+import ProgressBar from 'primevue/progressbar';
 
 const { t } = useI18n();
 const props = defineProps({
@@ -37,8 +39,16 @@ const props = defineProps({
     connections: Array, // For linking a meter to a connection
     regions: Array,
     zones: Array,
+    queryParams: Object,
+    total: Number,
+    active: Number,
+    in_stock: Number,
+    faulty: Number,
+     stockByRegion: Array, // Reçoit les données pré-calculées du backend
+    stockByZone: Object,  // Reçoit les données pré-calculées du backend
 });
 
+const page = usePage();
 const toast = useToast();
 const confirm = useConfirm();
 const dt = ref();
@@ -49,6 +59,8 @@ const deleteMetersDialog = ref(false);
 const editing = ref(false);
 const expandedRows = ref([]);
 const loading = ref(false);
+const importDialog = ref(false);
+const importProgress = ref(0);
 
 const op = ref();
 
@@ -80,28 +92,32 @@ const initFilters = () => {
 };
 initFilters();
 const lazyParams = ref({
-    first: props.meters.from - 1,
-    rows: props.meters.per_page,
-    sortField: 'created_at',
-    sortOrder: -1, // -1 pour desc
+    first: props.meters.from ? props.meters.from - 1 : 0,
+    rows: props.queryParams?.rows || 15,
+    sortField: props.queryParams?.sortField || 'created_at',
+    sortOrder: props.queryParams?.sortOrder === 'desc' ? -1 : 1,
     filters: filters.value
 });
 
-const loadLazyData = () => {
+const loadLazyData = (event) => {
     loading.value = true;
-    const queryParams = {
-        ...lazyParams.value,
-        page: (lazyParams.value.first / lazyParams.value.rows) + 1,
-    };
+    lazyParams.value = { ...lazyParams.value, ...event };
+    const queryParams = { ...lazyParams.value, page: (lazyParams.value.first / lazyParams.value.rows) + 1, sortOrder: lazyParams.value.sortOrder === 1 ? 'asc' : 'desc' };
 
     router.get(route('meters.index'), queryParams, {
         preserveState: true,
         onFinish: () => { loading.value = false; }
     });
 };
+const onSort = (event) => loadLazyData(event);
 
 const onPage = (event) => {
-    lazyParams.value = event;
+    // Si le nombre de lignes change, on réinitialise à la première page
+    if (event.rows !== lazyParams.value.rows) {
+        event.first = 0;
+        lazyParams.value.first = 0;
+    }
+    lazyParams.value = { ...lazyParams.value, ...event };
     loadLazyData();
 };
 
@@ -112,47 +128,18 @@ const onFilter = (event) => {
 
 const meterStats = computed(() => {
     const stats = {
-        total: props.meters.total,
-        active: 0,
-        in_stock: 0,
-        faulty: 0,
+        total: props.total,
+        active: props.active ?? 0,
+        in_stock: props.in_stock ?? 0,
+        faulty: props.faulty ?? 0,
     };
-    props.meters.data.forEach(meter => {
-        if (stats.hasOwnProperty(meter.status)) {
-            stats[meter.status]++;
-        }
-    });
     return stats;
 });
 
-const stockByRegion = computed(() => {
-    const stock = {};
-    props.meters.data.forEach(meter => { // Correction: on ne compte que les compteurs qui ont une région
-        if (meter.status === 'in_stock' && meter.region) {
-            const regionName = meter.region?.designation || 'Non spécifiée';
-            if (!stock[regionName]) {
-                stock[regionName] = 0;
-            }
-            stock[regionName]++;
-        }
-    });
-    return Object.entries(stock).map(([name, count]) => ({ name, count }));
-});
-
-const stockByZone = computed(() => {
+const currentStockByZone = computed(() => {
     if (!selectedRegionForStock.value) return [];
-
-    const stock = {};
-    props.meters.data.forEach(meter => {
-        const regionName = meter.region?.designation || 'Non spécifiée';
-        if (meter.status === 'in_stock' && regionName === selectedRegionForStock.value) {
-            const zoneName = meter.zone?.nomenclature || 'Hors-zone';
-            if (!stock[zoneName]) stock[zoneName] = 0;
-            stock[zoneName]++;
-        }
-    });
-
-    return Object.entries(stock).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
+    // Utilise directement les données pré-calculées du backend
+    return props.stockByZone[selectedRegionForStock.value] || [];
 });
 
 const chartData = computed(() => {
@@ -227,6 +214,11 @@ const form = useForm({
     is_additional: false,
 
     notes: '',
+});
+
+const importForm = useForm({
+    file: null,
+    region_id: null,
 });
 
 const openNew = () => {
@@ -310,24 +302,33 @@ const deleteSelectedMeters = () => {
     });
 };
 
-const triggerImportInput = () => {
-    document.getElementById('import-file').click();
+const openImportDialog = () => {
+    importForm.reset();
+    importDialog.value = true;
 };
 
-const importMeters = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
 
-    router.post(route('meters.import'), formData, {
-        onSuccess: () => {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: t('meters.toast.importStarted'), life: 3000 });
+
+const onFileSelect = (event) => {
+    importForm.file = event.files[0];
+};
+
+const submitImport = () => {
+    if (!importForm.file || !importForm.region_id) {
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('meters.toast.importFieldsRequired'), life: 4000 });
+        return;
+    }
+    importForm.post(route('meters.import'), { // La soumission se fait ici
+        onProgress: (progress) => {
+            importProgress.value = progress.percentage;
         },
-        onError: (errors) => {
-            const errorDetails = Object.values(errors).join(', ');
-            toast.add({ severity: 'error', summary: t('meters.toast.importError'), detail: errorDetails || t('meters.toast.fileInvalid'), life: 5000 });
+        onSuccess: () => {
+            importDialog.value = false;
+            importProgress.value = 0;
+        },
+        onError: () => {
+            importProgress.value = 0;
         }
     });
 };
@@ -396,6 +397,30 @@ watch(() => form.connection_id, (newConnectionId) => {
     }
 });
 
+watch(() => page.props.flash.import_summary, (summary) => {
+    if (summary) {
+        toast.add({
+            severity: 'info',
+            summary: 'Résumé de l\'importation',
+            detail: `Lignes traitées: ${summary.processed}\nCompteurs créés: ${summary.created}\nCompteurs transférés: ${summary.transferred}`,
+            life: 10000 // Durée plus longue pour lire le résumé
+        });
+    }
+}, {
+    immediate: true,
+    deep: true
+});
+
+
+const rowsPerPageOptions = ref([
+    { label: '15', value: 15 },
+    { label: '30', value: 30 },
+    { label: '50', value: 50 },
+    { label: '500', value: 500 },
+    { label: '1000', value: 1000 },
+    { label: '10000', value: 10000 },
+    { label: 'Tous', value: props.total }
+]);
 </script>
 
 
@@ -418,12 +443,11 @@ watch(() => form.connection_id, (newConnectionId) => {
                 </div>
                 <div class="flex gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
                     <div v-if="selectedMeters.length > 0" class="flex gap-2">
-                        <Button :label="t('meters.actions.transfer') + ` (${selectedMeters.length})`" icon="pi pi-arrows-h" severity="info" @click="openTransferDialog" class="rounded-xl px-4" />
+                        <Button :label="t('meters.actions.transfer') + ` (${selectedMeters.length})`" icon="pi pi-arrows-h" severity="info" @click="openTransferDialog" class="rounded-xl px-4" :disabled="!selectedMeters.every(m => ['in_stock', 'available'].includes(m.status))" />
                         <Button :label="t('meters.actions.delete') + ` (${selectedMeters.length})`" icon="pi pi-trash" severity="danger" @click="confirmDeleteSelected" class="rounded-xl px-4" />
                     </div>
                     <div class="flex gap-2">
-                        <input type="file" id="import-file" class="hidden" accept=".csv,.xlsx" @change="importMeters" />
-                        <Button :label="t('meters.actions.import')" icon="pi pi-upload" severity="secondary" @click="triggerImportInput" class="rounded-xl px-4" />
+                        <Button :label="t('meters.actions.import')" icon="pi pi-upload" severity="secondary" @click="openImportDialog" class="rounded-xl px-4" />
                         <Button :label="t('meters.actions.add')" icon="pi pi-plus"  raised @click="openNew" class="rounded-xl px-6" />
                     </div>
                 </div>
@@ -482,7 +506,7 @@ watch(() => form.connection_id, (newConnectionId) => {
                     </div>
 
                     <!-- NOUVEAU : Section des stocks par zone (conditionnelle) -->
-                    <div v-if="selectedRegionForStock && stockByZone.length > 0" class="mt-6 p-6 bg-primary-50 border-2 border-dashed border-primary-200 rounded-2xl animate-fade-in">
+                    <div v-if="selectedRegionForStock && currentStockByZone.length > 0" class="mt-6 p-6 bg-primary-50 border-2 border-dashed border-primary-200 rounded-2xl animate-fade-in">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-sm font-black text-primary-800 uppercase tracking-widest">
                                 {{ t('meters.stats.stock_detail_for') }} <span class="text-primary-600">{{ selectedRegionForStock }}</span>
@@ -490,7 +514,7 @@ watch(() => form.connection_id, (newConnectionId) => {
                             <Button icon="pi pi-times" text rounded severity="secondary" @click="selectedRegionForStock = null" v-tooltip.bottom="t('meters.actions.close_details')" />
                         </div>
                         <div class="flex flex-wrap gap-3">
-                            <div v-for="zoneStock in stockByZone" :key="zoneStock.name" class="p-3 bg-white rounded-lg border border-primary-100 shadow-sm flex items-center gap-3">
+                            <div v-for="zoneStock in currentStockByZone" :key="zoneStock.name" class="p-3 bg-white rounded-lg border border-primary-100 shadow-sm flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-md bg-primary-100 flex items-center justify-center">
                                     <i class="pi pi-compass text-sm text-primary-700"></i>
                                 </div>
@@ -526,13 +550,15 @@ watch(() => form.connection_id, (newConnectionId) => {
                     :lazy="true"
                     @page="onPage($event)"
                     @filter="onFilter($event)"
-                    @sort="onPage($event)"
+                    @sort="onSort($event)"
                     v-model:first="lazyParams.first"
                     :sortField="lazyParams.sortField"
                     :sortOrder="lazyParams.sortOrder"
                     filterDisplay="menu"
                     :globalFilterFields="['serial_number', 'model', 'manufacturer', 'type', 'status', 'connection.full_name']"
-                    class="p-datatable-custom" removableSort
+                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+                    :currentPageReportTemplate="t('meters.table.report')"
+                    class="ultimate-table"
                 >
                     <template #header>
                         <div class="flex justify-between items-center p-4">
@@ -540,6 +566,9 @@ watch(() => form.connection_id, (newConnectionId) => {
                                 <InputIcon class="pi pi-search text-primary-500" />
                                 <InputText v-model="filters['global'].value" :placeholder="t('meters.table.search_placeholder')" class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
                             </IconField>
+                            <div class="flex items-center gap-2">
+                                   <Dropdown :options="rowsPerPageOptions" optionLabel="label" optionValue="value" :modelValue="lazyParams.rows" @change="onPage({ rows: $event.value })" class="w-24" />
+                            </div>
                              <div class="flex items-center gap-2">
                                 <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
                                 <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" v-tooltip.bottom="t('common.exportCSV')" />
@@ -842,6 +871,57 @@ watch(() => form.connection_id, (newConnectionId) => {
         <ConfirmDialog />
     </AppLayout>
 
+    <!-- DIALOGUE D'IMPORTATION -->
+    <Dialog v-model:visible="importDialog" modal :header="false" :closable="false" :style="{ width: '95vw', maxWidth: '500px' }"
+            :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
+        <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50 rounded-xl">
+            <div class="flex items-center gap-4">
+                <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                    <i class="pi pi-upload text-blue-400 text-xl"></i>
+                </div>
+                <div class="flex flex-col">
+                    <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">{{ t('meters.dialog.importTitle') }}</h2>
+                    <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">{{ t('meters.dialog.importSubtitle') }}</span>
+                </div>
+            </div>
+            <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="importDialog = false" class="text-white hover:bg-white/10" />
+        </div>
+
+        <div class="p-8 bg-white space-y-6">
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.dialog.destination_region') }} <span class="text-red-500">*</span></label>
+                <Dropdown v-model="importForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter class="w-full" :placeholder="t('meters.form.region_placeholder')" :invalid="importForm.errors.region_id" />
+                <small class="p-error" v-if="importForm.errors.region_id">{{ importForm.errors.region_id }}</small>
+            </div>
+             <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.form.import_file') }} <span class="text-red-500">*</span></label>
+                <FileUpload
+                    name="importFile"
+                    @select="onFileSelect"
+                    :multiple="false"
+                    accept=".csv,.xlsx,.xls"
+                    :maxFileSize="1000000"
+                    chooseLabel="Choisir un fichier"
+                    :showUpload="false" :showCancel="false"
+                >
+                    <template #empty>
+                        <p>Glissez-déposez le fichier ici.</p>
+                    </template>
+                </FileUpload>
+                <div v-if="importForm.processing" class="mt-4">
+                    <ProgressBar :value="importProgress" />
+                    <small class="text-slate-500 italic mt-2">{{ t('common.import_in_progress') }}</small>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-end items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+                <Button :label="t('meters.actions.importAndProcess')" icon="pi pi-check-circle" @click="submitImport" :loading="importForm.processing" class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs" />
+            </div>
+        </template>
+    </Dialog>
+
     <!-- DIALOGUE DE TRANSFERT -->
     <Dialog v-model:visible="transferDialog" modal :header="false" :closable="false" :style="{ width: '95vw', maxWidth: '600px' }"
             :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
@@ -859,60 +939,15 @@ watch(() => form.connection_id, (newConnectionId) => {
         </div>
 
         <div class="p-8 bg-white max-h-[70vh] overflow-y-auto scroll-smooth space-y-6">
-             <div class="flex flex-col gap-2">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.dialog.destination_region') }}</label>
-                <Dropdown v-model="transferForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter
-                          class="w-full" :placeholder="t('meters.form.region_placeholder')" :invalid="transferForm.errors.region_id" />
-                <small class="p-error" v-if="transferForm.errors.region_id">{{ transferForm.errors.region_id }}</small>
-            </div>
             <div class="flex flex-col gap-2">
-
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.dialog.add_by_serial') }}</label>
-                 <AutoComplete v-model="transferSearchQuery" :suggestions="availableMetersForTransfer" @complete="searchMetersForTransfer($event)"
-                              @item-select="addMeterToTransfer" field="serial_number" placeholder="Rechercher et ajouter un compteur en stock..."
-                              class="w-full" inputClass="p-inputtext-lg">
-                    <template #option="slotProps">
-                        <div class="flex items-center justify-between w-full">
-                            <div class="flex flex-col">
-                                <span class="font-bold text-sm">{{ slotProps.option.serial_number }}</span>
-                                <div class="flex items-center gap-2 text-xs text-slate-500">
-                                    <i class="pi pi-map-marker text-[10px]"></i>
-                                    <span class="font-semibold text-slate-600">{{ slotProps.option.region?.designation || t('common.notApplicable') }}</span>
-                                    <i class="pi pi-angle-right text-[8px] text-primary-500"></i>
-                                    <span class="font-black text-primary-600">
-                                        {{ transferForm.region_id ? regions.find(r => r.id === transferForm.region_id)?.designation : '...' }}
-                                    </span>
-                                </div>
-                            </div>
-                            <div>
-                                <Tag :value="t(`meters.status.${slotProps.option.status}`)" :severity="getStatusSeverity(slotProps.option.status)" />
-                            </div>
-                        </div>
-                    </template>
-                </AutoComplete>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('meters.dialog.destination_region') }} <span class="text-red-500">*</span></label>
+                <Dropdown v-model="importForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter class="w-full" :placeholder="t('meters.form.region_placeholder')" :invalid="importForm.errors.region_id" />
+                <small class="p-error" v-if="importForm.errors.region_id">{{ importForm.errors.region_id }}</small>
             </div>
-
-            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                    {{ t('meters.dialog.to_transfer_count', { count: metersToTransfer.length }) }}
-                </h4>
-                <div class="max-h-48 overflow-y-auto space-y-2 pr-2">
-                    <div v-for="meter in metersToTransfer" :key="meter.id" class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
-                        <span class="text-sm font-bold text-slate-700">{{ meter.serial_number }}</span>
-                        <Button icon="pi pi-times" text rounded severity="danger" @click="removeMeterFromTransfer(meter.id)" class="w-6 h-6" />
-                    </div>
-                    <div v-if="metersToTransfer.length === 0" class="text-center py-4 text-slate-400 italic text-xs">
-                        {{ t('meters.messages.no_meter_selected') }}
-                    </div>
-                </div>
-            </div>
-
-
         </div>
 
         <template #footer>
-            <div class="flex justify-between items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
-                <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="transferDialog = false" class="font-bold uppercase text-[10px] tracking-widest" />
+            <div class="flex justify-end items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
                 <Button :label="t('meters.actions.confirm_transfer')" icon="pi pi-check-circle"  @click="confirmTransfer" :loading="transferForm.processing" class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs" :disabled="metersToTransfer.length === 0" />
             </div>
         </template>

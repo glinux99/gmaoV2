@@ -8,6 +8,7 @@ use App\Models\Region;
 use App\Models\Zone;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
+use App\Imports\MeterImport;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -16,36 +17,78 @@ class MeterController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $query = Meter::query()->with('connection', 'region', 'zone');
+        $query = Meter::with(['connection', 'region', 'zone']);
 
-        if (request()->has('search')) {
-            $search = request('search');
-            $query->where('serial_number', 'like', '%' . $search . '%')
-                  ->orWhere('model', 'like', '%' . $search . '%')
-                  ->orWhere('manufacturer', 'like', '%' . $search . '%')
-                  ->orWhere('type', 'like', '%' . $search . '%')
-                  ->orWhereHas('connection', fn($q) => $q->where('customer_code', 'like', '%' . $search . '%'))
-                  ->orWhere('status', 'like', '%' . $search . '%');
+        // Gestion du tri
+        $sortField = $request->input('sortField', 'created_at');
+        $sortOrder = $request->input('sortOrder') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortField, $sortOrder);
+
+        // Gestion des filtres
+        if ($request->has('filters')) {
+            $filters = $request->input('filters');
+            if (!empty($filters['global']['value'])) {
+                $globalFilter = $filters['global']['value'];
+                $query->where(function ($q) use ($globalFilter) {
+                    $q->where('serial_number', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('model', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('manufacturer', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('type', 'like', '%' . $globalFilter . '%')
+                      ->orWhere('status', 'like', '%' . $globalFilter . '%')
+                      ->orWhereHas('connection', fn ($subQ) => $subQ->where(DB::raw("CONCAT(first_name, ' ', last_name)"), 'like', '%' . $globalFilter . '%'));
+                });
+            }
         }
 
-       return Inertia::render('Actifs/Meters', [
-        'meters' => Meter::with(['connection', 'region', 'zone'])->paginate(), // Assurez-vous de charger les relations
-        'connections' => Connection::all()->map(fn($conn) => [
-            'id' => $conn->id,
-            'full_name' => $conn->first_name . ' ' . $conn->last_name,
-            'customer_code'=> $conn->customer_code,
-            'region_id' => $conn->region_id,
-            'zone_id' => $conn->zone_id,
-            'status' => $conn->status,
-            'meter_id' => $conn->meter_id,
-            'keypad_id' => $conn->keypad_id
-        ]),
-        'regions' => Region::all(),
-        // Important : Assurez-vous que vos zones ont un attribut 'region_id'
-        'zones' => Zone::all(),
-        'filters' => request()->all('search', 'status'),
+        $perPage = $request->input('rows', 15);
+
+        // Calcul optimisé des stocks par région
+        $stockByRegion = Meter::where('meters.status', 'in_stock')
+            ->orWhereNull('region_id')
+            ->leftJoin('regions', 'meters.region_id', '=', 'regions.id')
+            ->select(DB::raw('COALESCE(regions.designation, "Non spécifiée") as name'), DB::raw('count(meters.id) as count'))
+            ->groupBy('name')
+            ->orderBy('name')
+            ->get();
+
+        // Calcul optimisé des stocks par zone pour chaque région
+        $stockByZoneData = Meter::where('meters.status', 'in_stock')
+            ->whereNotNull('meters.region_id') // On ne peut pas grouper par zone si la région est nulle
+            ->leftJoin('regions', 'meters.region_id', '=', 'regions.id')
+            ->leftJoin('zones', 'meters.zone_id', '=', 'zones.id')
+            ->select(
+                'regions.designation as region_name',
+                DB::raw('COALESCE(zones.nomenclature, "Hors-zone") as zone_name'),
+                DB::raw('count(meters.id) as count')
+            )
+            ->groupBy('regions.designation', 'zone_name')
+            ->orderBy('regions.designation')->orderBy('zone_name')
+            ->get();
+
+        $stockByZone = $stockByZoneData->groupBy('region_name')
+            ->map(function ($zonesInRegion) {
+                return $zonesInRegion->map(fn($item) => ['name' => $item->zone_name, 'count' => $item->count])->values();
+            });
+
+        return Inertia::render('Actifs/Meters', [
+        'meters' => $query->paginate($perPage)->withQueryString(),
+        // 'connections' => Connection::all(),
+        // 'regions' => Region::all(),
+        // 'zones' => Zone::all(),
+        'connections' => Connection::all(['id', 'customer_code', 'first_name', 'last_name', 'keypad_id', 'zone_id', 'region_id']),
+        'regions' => Region::all(['id', 'designation']),
+        'zones' => Zone::all(['id', 'nomenclature', 'region_id']),
+        'filters' => $request->only(['filters']),
+        'queryParams' => $request->all(['sortField', 'sortOrder', 'rows']),
+        // Statistiques globales
+        'total' => Meter::count(),
+        'active' => Meter::where('status', 'active')->count(),
+        'in_stock' => Meter::where('status', 'in_stock')->count(),
+        'faulty' => Meter::where('status', 'faulty')->count(),
+        'stockByRegion' => $stockByRegion, // Nouvelle prop
+        'stockByZone' => $stockByZone,     // Nouvelle prop
     ]);
     }
 
@@ -136,35 +179,57 @@ class MeterController extends Controller
     }
 
     /**
+     * Remove multiple resources from storage.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:meters,id',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            // Vous pouvez ajouter ici la logique pour supprimer les relations (ex: StockMovement) si nécessaire
+            Meter::whereIn('id', $validated['ids'])->delete();
+        });
+
+        return redirect()->route('meters.index')->with('success', 'Les compteurs sélectionnés ont été supprimés avec succès.');
+    }
+
+
+
+    /**
      * Import meters from a file.
      */
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt,xlsx,xls',
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+            'region_id' => 'nullable|exists:regions,id',
         ]);
 
-        $file = $request->file('file');
-        $data = array_map('str_getcsv', file($file->getRealPath()));
-        $header = array_shift($data); // Assuming the first row is the header
+        $destinationRegionId = $request->input('region_id');
 
-        foreach ($data as $row) {
-            $meterData = array_combine($header, $row);
-            Meter::create([
-                'serial_number' => $meterData['serial_number'],
-                'model' => $meterData['model'] ?? null,
-                'manufacturer' => $meterData['manufacturer'] ?? null,
-                'type' => $meterData['type'] ?? null,
-                'status' => $meterData['status'] ?? 'active',
-                'installation_date' => $meterData['installation_date'] ?? null,
-                'connection_id' => $meterData['connection_id'] ?? null,
-                'is_additional' => $meterData['is_additional'] ?? false,
-                'region_id' => $meterData['region_id'] ?? null,
-                'zone_id' => $meterData['zone_id'] ?? null,
+        $import = new MeterImport($destinationRegionId);
+
+        try {
+            DB::transaction(function () use ($import, $request) {
+                \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+            });
+
+            return redirect()->route('meters.index')->with([
+                'success' => 'Importation terminée avec succès.',
+                'import_summary' => $import->getSummary()
             ]);
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            // Gérer les erreurs de validation
+            return $e;
+            return back()->with('import_errors', $e->failures());
+        } catch (\Exception $e) {
+               return $e;
+            // Gérer les autres erreurs
+            return back()->with('error', "Une erreur est survenue: " . $e->getMessage());
         }
-
-        return redirect()->route('meters.index')->with('success', 'Compteurs importés avec succès.');
     }
 
     /**

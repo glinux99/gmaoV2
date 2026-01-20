@@ -189,7 +189,8 @@
       "import": "Importer",
       "add": "Ajouter Compteur",
       "close_details": "Fermer les détails",
-      "confirm_transfer": "Confirmer le transfert"
+      "confirm_transfer": "Confirmer le transfert",
+      "importAndProcess": "Importer et Traiter"
     },
     "stats": {
       "total": "Total Compteurs",
@@ -254,7 +255,8 @@
       "zone_placeholder": "Sélectionnez une zone",
       "is_additional": "Compteur supplémentaire",
       "notes": "Notes",
-      "notes_placeholder": "Ajoutez des notes ici"
+      "notes_placeholder": "Ajoutez des notes ici",
+      "import_file": "Importer le fichier"
     },
     "history": {
       "title": "Historique des Transferts",
@@ -274,6 +276,10 @@
       "byType": "Filtrer par type",
       "brand": "Filtrer par marque",
       "byUser": "Filtrer par utilisateur"
+    },
+    "toast":{
+        "bulkDeleteSuccess":"Les labels supprimées avec succès.",
+        "bulkDeleteError":"Une erreur est survenue lors de la suppression en masse."
     }
   },
     "keypads": {

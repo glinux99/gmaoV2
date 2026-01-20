@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from "@/sakai/layout/AppLayout.vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
@@ -26,6 +26,8 @@ import OverlayPanel from 'primevue/overlaypanel';
 import MultiSelect from 'primevue/multiselect';
 import AutoComplete from 'primevue/autocomplete';
 import Chart from 'primevue/chart';
+import FileUpload from 'primevue/fileupload';
+import ProgressBar from 'primevue/progressbar';
 
 
 const { t } = useI18n();
@@ -40,8 +42,11 @@ const props = defineProps({
     installed: Number,
     available: Number,
     faulty: Number,
-    total : Number
+    total : Number,
+    stockByRegion: Array, // Reçoit les données pré-calculées du backend
+    stockByZone: Object,  // Reçoit les données pré-calculées du backend
 });
+const page = usePage();
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -51,6 +56,8 @@ const dt = ref();
 const keypadDialog = ref(false);
 const editing = ref(false);
 const selectedKeypads = ref([]);
+const importDialog = ref(false);
+const importProgress = ref(0);
 
 const op = ref();
 
@@ -88,12 +95,22 @@ initFilters();
 const loading = ref(false);
 
 const lazyParams = ref({
-    first: props.keypads.from - 1,
-    rows: props.keypads.per_page,
+    first: props.keypads.from ? props.keypads.from - 1 : 0,
+    rows: props.queryParams?.rows || 15,
     sortField: props.queryParams?.sortField || 'created_at',
     sortOrder: props.queryParams?.sortOrder === 'desc' ? -1 : 1,
     filters: filters.value
 });
+
+const rowsPerPageOptions = ref([
+    { label: '15', value: 15 },
+    { label: '30', value: 30 },
+    { label: '50', value: 50 },
+    { label: '100', value: 100 },
+    { label: '1000', value: 1000 },
+    { label: '10000', value: 10000 },
+    { label: 'Tous', value: props.total }
+]);
 
 const loadLazyData = (event) => {
     loading.value = true;
@@ -110,7 +127,14 @@ const loadLazyData = (event) => {
     });
 };
 
-const onPage = (event) => loadLazyData(event);
+const onPage = (event) => {
+    // Si le nombre de lignes change, on réinitialise à la première page
+    if (event.rows !== lazyParams.value.rows) {
+        event.first = 0;
+        lazyParams.value.first = 0;
+    }
+    loadLazyData(event);
+};
 const onSort = (event) => loadLazyData(event);
 const onFilter = (event) => {
     lazyParams.value.filters = filters.value;
@@ -123,42 +147,13 @@ const keypadStats = computed(() => {
         installed: props.installed,
         faulty: props.faulty ?? 0,
     };
-    // props.keypads.data.forEach(keypad => {
-    //     if (stats.hasOwnProperty(keypad.status)) {
-    //         stats[keypad.status]++;
-    //     }
-    // });
     return stats;
 });
 
-const stockByRegion = computed(() => {
-    const stock = {};
-    props.keypads.data.forEach(keypad => {
-        if (keypad.status === 'available' && keypad.region) {
-            const regionName = keypad.region?.designation || 'Non spécifiée';
-            if (!stock[regionName]) {
-                stock[regionName] = 0;
-            }
-            stock[regionName]++;
-        }
-    });
-    return Object.entries(stock).map(([name, count]) => ({ name, count }));
-});
-
-const stockByZone = computed(() => {
+const currentStockByZone = computed(() => {
     if (!selectedRegionForStock.value) return [];
-
-    const stock = {};
-    props.keypads.data.forEach(keypad => {
-        const regionName = keypad.region?.designation || 'Non spécifiée';
-        if (keypad.status === 'available' && regionName === selectedRegionForStock.value) {
-            const zoneName = keypad.zone?.nomenclature || 'Hors-zone';
-            if (!stock[zoneName]) stock[zoneName] = 0;
-            stock[zoneName]++;
-        }
-    });
-
-    return Object.entries(stock).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
+    // Utilise directement les données pré-calculées du backend
+    return props.stockByZone[selectedRegionForStock.value] || [];
 });
 
 const chartData = computed(() => {
@@ -225,6 +220,11 @@ const form = useForm({
     zone_id: null,
     meter_id: null,
     notes: '',
+});
+
+const importForm = useForm({
+    file: null,
+    region_id: null,
 });
 const openNew = () => {
     form.reset();
@@ -313,6 +313,31 @@ const deleteSelectedKeypads = () => {
     });
 };
 
+const openImportDialog = () => {
+    importForm.reset();
+    importDialog.value = true;
+};
+
+const onFileSelect = (event) => {
+    importForm.file = event.files[0];
+};
+
+const submitImport = () => {
+    if (!importForm.file || !importForm.region_id) {
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('keypads.toast.importFieldsRequired'), life: 4000 });
+        return;
+    }
+    importForm.post(route('keypads.import'), {
+        onProgress: (progress) => {
+            importProgress.value = progress.percentage;
+        },
+        onSuccess: () => {
+            importDialog.value = false;
+            importProgress.value = 0;
+        },
+        onError: () => importProgress.value = 0,
+    });
+};
 // --- LOGIQUE DE TRANSFERT (Refactorisée) ---
 const allKeypads = computed(() => props.keypads.data);
 const {
@@ -450,6 +475,32 @@ const selectRegionForStock = (regionName) => {
     }
 };
 
+watch(() => page.props.flash.import_summary, (summary) => {
+    if (summary) {
+        toast.add({
+            severity: 'info',
+            summary: 'Résumé de l\'importation',
+            detail: `Lignes traitées: ${summary.processed}\nClaviers créés: ${summary.created}\nClaviers transférés: ${summary.transferred}`,
+            life: 10000
+        });
+    }
+}, { immediate: true, deep: true });
+
+watch(() => page.props.flash.import_errors, (errors) => {
+    if (errors && errors.length > 0) {
+        const errorDetails = errors.map(e => `Ligne ${e.row}: ${e.errors.join(', ')} (valeur: ${e.values[e.attribute]})`).join('\n');
+        toast.add({
+            severity: 'error',
+            summary: 'Erreurs d\'importation',
+            detail: `Certaines lignes n'ont pas pu être importées.\n${errorDetails}`,
+            life: 15000 // Durée plus longue pour lire les erreurs
+        });
+    }
+}, { immediate: true, deep: true });
+
+watch(() => page.props.flash.error, (error) => {
+    if (error) toast.add({ severity: 'error', summary: 'Erreur', detail: error, life: 5000 });
+}, { immediate: true, deep: true });
 </script>
 
 
@@ -476,6 +527,7 @@ const selectRegionForStock = (regionName) => {
                         <Button :label="t('keypads.actions.delete') + ` (${selectedKeypads.length})`" icon="pi pi-trash" severity="danger" @click="confirmDeleteSelected" class="rounded-xl px-4" />
                     </div>
                     <div class="flex gap-2">
+                        <Button :label="t('keypads.actions.import')" icon="pi pi-upload" severity="secondary" @click="openImportDialog" class="rounded-xl px-4" />
                         <Button :label="t('keypads.actions.add')" icon="pi pi-plus"  raised @click="openNew" class="rounded-xl px-6" />
                     </div>
                 </div>
@@ -534,7 +586,7 @@ const selectRegionForStock = (regionName) => {
                     </div>
 
                     <!-- Section des stocks par zone (conditionnelle) -->
-                    <div v-if="selectedRegionForStock && stockByZone.length > 0" class="mt-6 p-6 bg-primary-50 border-2 border-dashed border-primary-200 rounded-2xl animate-fade-in">
+                    <div v-if="selectedRegionForStock && currentStockByZone.length > 0" class="mt-6 p-6 bg-primary-50 border-2 border-dashed border-primary-200 rounded-2xl animate-fade-in">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-sm font-black text-primary-800 uppercase tracking-widest">
                                 {{ t('keypads.stats.stock_detail_for') }} <span class="text-primary-600">{{ selectedRegionForStock }}</span>
@@ -542,7 +594,7 @@ const selectRegionForStock = (regionName) => {
                             <Button icon="pi pi-times" text rounded severity="secondary" @click="selectedRegionForStock = null" v-tooltip.bottom="t('keypads.actions.close_details')" />
                         </div>
                         <div class="flex flex-wrap gap-3">
-                            <div v-for="zoneStock in stockByZone" :key="zoneStock.name" class="p-3 bg-white rounded-lg border border-primary-100 shadow-sm flex items-center gap-3">
+                            <div v-for="zoneStock in currentStockByZone" :key="zoneStock.name" class="p-3 bg-white rounded-lg border border-primary-100 shadow-sm flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-md bg-primary-100 flex items-center justify-center">
                                     <i class="pi pi-compass text-sm text-primary-700"></i>
                                 </div>
@@ -592,6 +644,9 @@ const selectRegionForStock = (regionName) => {
                                 <InputIcon class="pi pi-search text-primary-500" />
                                 <InputText v-model="filters['global'].value" :placeholder="t('keypads.table.search_placeholder')" class="w-full md:w-96 rounded-2xl border-none bg-slate-100" />
                             </IconField>
+                             <div class="flex items-center gap-2">
+                                <Dropdown :options="rowsPerPageOptions" optionLabel="label" optionValue="value" :modelValue="lazyParams.rows" @change="onPage({ rows: $event.value })" class="w-24" />
+                            </div>
                              <div class="flex items-center gap-2">
                                 <Button icon="pi pi-filter-slash" outlined severity="secondary" @click="initFilters" class="rounded-xl" v-tooltip.bottom="t('common.resetFilters')" />
                                 <Button icon="pi pi-download" text rounded severity="secondary" @click="dt.exportCSV()" v-tooltip.bottom="t('common.exportCSV')" />
@@ -896,6 +951,54 @@ const selectRegionForStock = (regionName) => {
         <Toast position="bottom-right" />
         <ConfirmDialog />
     </AppLayout>
+
+    <!-- DIALOGUE D'IMPORTATION -->
+    <Dialog v-model:visible="importDialog" modal :header="false" :closable="false" :style="{ width: '95vw', maxWidth: '500px' }"
+            :pt="{ root: { class: 'rounded-[3rem] overflow-hidden border-none shadow-2xl' }, mask: { style: 'backdrop-filter: blur(8px)' } }">
+        <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50 rounded-xl">
+            <div class="flex items-center gap-4">
+                <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                    <i class="pi pi-upload text-blue-400 text-xl"></i>
+                </div>
+                <div class="flex flex-col">
+                    <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">{{ t('keypads.dialog.importTitle') }}</h2>
+                    <span class="text-[9px] text-blue-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">{{ t('keypads.dialog.importSubtitle') }}</span>
+                </div>
+            </div>
+            <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="importDialog = false" class="text-white hover:bg-white/10" />
+        </div>
+
+        <div class="p-8 bg-white space-y-6">
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('keypads.dialog.destination_region') }} <span class="text-red-500">*</span></label>
+                <Dropdown v-model="importForm.region_id" :options="regions" optionLabel="designation" optionValue="id" filter class="w-full" :placeholder="t('keypads.form.region_placeholder')" :invalid="importForm.errors.region_id" />
+                <small class="p-error" v-if="importForm.errors.region_id">{{ importForm.errors.region_id }}</small>
+            </div>
+             <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{{ t('keypads.form.import_file') }} <span class="text-red-500">*</span></label>
+                <FileUpload name="importFile" @select="onFileSelect" :multiple="false" accept=".csv,.xlsx,.xls" :maxFileSize="1000000" :showUpload="false" :showCancel="false">
+                    <template #header="{ chooseCallback }">
+                        <div class="flex items-center justify-between w-full">
+                            <Button @click="chooseCallback()" icon="pi pi-file" label="Choisir" outlined></Button>
+                        </div>
+                    </template>
+                    <template #empty>
+                        <p>Glissez-déposez le fichier ici.</p>
+                    </template>
+                </FileUpload>
+                <div v-if="importForm.processing" class="mt-4">
+                    <ProgressBar :value="importProgress" />
+                    <small class="text-slate-500 italic mt-2">{{ t('common.import_in_progress') }}</small>
+                </div>
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-end items-center w-full px-8 py-5 bg-slate-50 border-t border-slate-100">
+                <Button :label="t('keypads.actions.importAndProcess')" icon="pi pi-check-circle" @click="submitImport" :loading="importForm.processing" class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs" />
+            </div>
+        </template>
+    </Dialog>
 
     <!-- DIALOGUE DE TRANSFERT -->
     <Dialog v-model:visible="transferDialog" modal :header="false" :closable="false" :style="{ width: '95vw', maxWidth: '600px' }"

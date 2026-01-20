@@ -194,7 +194,7 @@ class TechnicianController extends Controller
     {
         // Logique d'exportation à implémenter
         // Vous pouvez utiliser une librairie comme Maatwebsite/Excel pour générer le fichier
-        return redirect()->back()->with('info', 'La fonctionnalité d\'exportation est en cours de développement.');
+        return redirect()->route('technicians.index')->with('info', 'La fonctionnalité d\'exportation est en cours de développement.');
     }
 
 }

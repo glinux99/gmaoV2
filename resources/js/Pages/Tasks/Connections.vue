@@ -546,8 +546,8 @@ watch(() => isModalOpen.value, (isOpen) => {
                             <div class="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4">
                                 <label class="text-[10px] font-black uppercase text-blue-600 tracking-widest block mb-4 underline decoration-2 underline-offset-8">Spécifications</label>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Phasage</label><InputNumber v-model="form.phase_number" inputClass="h-11 rounded-xl w-full" /></div>
-                                    <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Voltage</label><InputNumber v-model="form.voltage" class="h-11 rounded-xl w-full" /></div>
+                                    <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Phasage</label><InputText v-model="form.phase_number" inputClass="h-11 rounded-xl w-full" /></div>
+                                    <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Voltage</label><InputText v-model="form.voltage" class="h-11 rounded-xl w-full" /></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="flex flex-col gap-1.5"><label class="text-[11px] font-bold text-slate-500 uppercase">Ampérage</label><InputText v-model="form.amperage" class="h-11 rounded-xl" /></div>

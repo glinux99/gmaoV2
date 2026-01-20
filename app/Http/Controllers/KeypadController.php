@@ -9,6 +9,7 @@ use App\Models\Region;
 use App\Models\StockMovement;
 use App\Models\Zone;
 
+use App\Imports\KeypadImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -75,18 +76,48 @@ class KeypadController extends Controller
 
         $perPage = $request->input('rows', 15);
 
+        // Calcul optimisé des stocks par région
+        $stockByRegion = Keypad::where('keypads.status', 'available')
+            ->orWhereNull('region_id')
+            ->leftJoin('regions', 'keypads.region_id', '=', 'regions.id')
+            ->select(DB::raw('COALESCE(regions.designation, "Non spécifiée") as name'), DB::raw('count(keypads.id) as count'))
+            ->groupBy('name')
+            ->orderBy('name')
+            ->get();
+
+        // Calcul optimisé des stocks par zone pour chaque région
+        $stockByZoneData = Keypad::where('keypads.status', 'available')
+            ->whereNotNull('keypads.region_id') // On ne peut pas grouper par zone si la région est nulle
+            ->leftJoin('regions', 'keypads.region_id', '=', 'regions.id')
+            ->leftJoin('zones', 'keypads.zone_id', '=', 'zones.id')
+            ->select(
+                'regions.designation as region_name',
+                DB::raw('COALESCE(zones.nomenclature, "Hors-zone") as zone_name'),
+                DB::raw('count(keypads.id) as count')
+            )
+            ->groupBy('regions.designation', 'zone_name')
+            ->orderBy('regions.designation')->orderBy('zone_name')
+            ->get();
+
+        $stockByZone = $stockByZoneData->groupBy('region_name')
+            ->map(function ($zonesInRegion) {
+                return $zonesInRegion->map(fn($item) => ['name' => $item->zone_name, 'count' => $item->count])->values();
+            });
+
         return Inertia::render('Actifs/Keypads', [
             'keypads' => $query->paginate($perPage)->withQueryString(),
-            'connections' => Connection::all(),
-            'regions' => Region::all(),
-            'zones' => Zone::all(),
-            'meters' => Meter::all(),
+             'connections' => Connection::all(['id', 'customer_code', 'first_name', 'last_name', 'keypad_id', 'zone_id', 'region_id']),
+        'regions' => Region::all(['id', 'designation']),
+        'zones' => Zone::all(['id', 'nomenclature', 'region_id']),
+            'meters' => Meter::all(['id', 'serial_number']),
             'filters' => $request->only(['filters']),
             'queryParams' => $request->all(['sortField', 'sortOrder', 'rows']),
             'installed' => Keypad::where('status', 'installed')->count(),
             'available' => Keypad::where('status', 'available')->count(),
             'faulty' => Keypad::where('status', 'faulty')->count(),
             'total' => Keypad::count(),
+            'stockByRegion' => $stockByRegion,
+            'stockByZone' => $stockByZone,
         ]);
     }
 
@@ -182,6 +213,38 @@ class KeypadController extends Controller
     {
         $keypad->delete();
         return redirect()->route('keypads.index')->with('success', 'Clavier supprimé avec succès.');
+    }
+
+    /**
+     * Import keypads from a file.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+            'region_id' => 'nullable|exists:regions,id',
+        ]);
+
+        $destinationRegionId = $request->input('region_id');
+
+        $import = new KeypadImport($destinationRegionId);
+
+        try {
+            DB::transaction(function () use ($import, $request) {
+                \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+            });
+
+            return redirect()->route('keypads.index')->with([
+                'success' => 'Importation des claviers terminée.',
+                'import_summary' => $import->getSummary()
+            ]);
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            // Gérer les erreurs de validation du fichier Excel
+            return back()->with('import_errors', $e->failures());
+        } catch (\Exception $e) {
+            // Gérer les autres erreurs inattendues
+            return back()->with('error', "Une erreur est survenue: " . $e->getMessage());
+        }
     }
 
     /**

@@ -321,7 +321,7 @@ public function store(Request $request)
 
     } catch (\Exception $e) {
         DB::rollBack();
-        return redirect()->back()->with('error', 'Erreur : ' . $e->getMessage());
+        return redirect()->route('stock-movements.index')->with('error', 'Erreur : ' . $e->getMessage());
     }
 }
 
@@ -709,7 +709,7 @@ public function bulkStore(Request $request)
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur Update Activity: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
-            return redirect()->back()->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage())->withInput();
+            return redirect()->route('stock-movements.index')->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage())->withInput();
         }
     }
 
@@ -1100,7 +1100,7 @@ private function createStockMovement(Activity $activity, SparePart $sparePart, s
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la suppression de l\'activité:', ['exception' => $e->getMessage()]);
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de l\'activité: ' . $e->getMessage());
+            return redirect()->route('stock-movements.index')->with('error', 'Une erreur est survenue lors de la suppression de l\'activité: ' . $e->getMessage());
         }
     }
 }

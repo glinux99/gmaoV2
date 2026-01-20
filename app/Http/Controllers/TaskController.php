@@ -164,7 +164,7 @@ private function transformForTreeSelect($equipments)
 
         if ($validator->fails()) {
 
-            return redirect()->back()->withErrors($validator)->withInput();
+            return redirect()->route('tasks.index')->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
@@ -250,7 +250,7 @@ private function transformForTreeSelect($equipments)
             return $e;
             DB::rollBack();
             Log::error('Erreur lors de la création de la tâche: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la création de la tâche. ' . $e->getMessage());
+            return redirect()->route('tasks.index')->with('error', 'Une erreur est survenue lors de la création de la tâche. ' . $e->getMessage());
         }
     }
 
@@ -291,7 +291,7 @@ private function transformForTreeSelect($equipments)
             // return $request;
         if ($validator->fails()) {
 
-            return redirect()->back()->withErrors($validator)->withInput();
+            return redirect()->route('tasks.index')->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
@@ -418,7 +418,7 @@ private function transformForTreeSelect($equipments)
             return $e;
             DB::rollBack();
             Log::error('Erreur lors de la mise à jour de la tâche: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de la tâche.');
+            return redirect()->route('tasks.index')->with('error', 'Une erreur est survenue lors de la mise à jour de la tâche.');
         }
     }
 
@@ -449,7 +449,7 @@ private function transformForTreeSelect($equipments)
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la suppression de la tâche: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression de la tâche.');
+            return redirect()->route('tasks.index')->with('error', 'Une erreur est survenue lors de la suppression de la tâche.');
         }
     }
 
@@ -482,7 +482,7 @@ private function transformForTreeSelect($equipments)
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la suppression en masse des tâches: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la suppression des tâches.');
+            return redirect()->route('tasks.index')->with('error', 'Une erreur est survenue lors de la suppression des tâches.');
         }
     }
 }

@@ -81,7 +81,7 @@ class ConnectionController extends Controller
 
         if ($validator->fails()) {
 
-            return redirect()->back()->withErrors($validator)->withInput();
+            return redirect()->route('connections.index')->withErrors($validator)->withInput();
         }
 
         $validated = $validator->validated();
@@ -128,7 +128,7 @@ class ConnectionController extends Controller
             DB::rollBack();
             return $e;
             Log::error("Erreur Store Connection: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur critique: ' . $e->getMessage())->withInput();
+            return redirect()->route('connections.index')->with('error', 'Erreur critique: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -168,7 +168,7 @@ class ConnectionController extends Controller
             return redirect()->route('connections.index')->with('success', 'Mise à jour réussie.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', $e->getMessage());
+            return redirect()->route('connections.index')->with('error', $e->getMessage());
         }
     }
 
@@ -209,9 +209,9 @@ class ConnectionController extends Controller
             'cable_length'           => 'nullable|integer|min:0',
             'box_type'               => 'nullable|string|max:100',
             'meter_type_connected'   => 'nullable|string|max:100',
-            'phase_number'           => 'nullable|integer|in:1,3',
+            'phase_number'           => 'nullable|in:1,3',
             'amperage'               => 'nullable|string|max:50',
-            'voltage'                => 'nullable|integer|min:0',
+            'voltage'                => 'nullable|min:0',
             'with_ready_box'         => 'boolean',
             'tariff'                 => 'nullable|string|max:50',
             'tariff_index'           => 'nullable|string|max:50',
@@ -295,10 +295,10 @@ class ConnectionController extends Controller
 
             $connection->delete();
             DB::commit();
-            return redirect()->back()->with('success', 'Raccordement supprimé et stock rendu.');
+            return redirect()->route('connections.index')->with('success', 'Raccordement supprimé et stock rendu.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', $e->getMessage());
+            return redirect()->route('connections.index')->with('error', $e->getMessage());
         }
     }
 

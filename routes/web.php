@@ -80,6 +80,9 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::post('/sessions/{session_id}', [SettingController::class, 'logoutSession'])->name('sessions.logout');
     Route::resource('/permission', PermissionController::class)->except('create', 'show', 'edit');
       // Déclarer les routes spécifiques AVANT les routes 'resource' pour éviter les conflits.
+      // NOUVEAU : Déplacer la route de recherche AVANT la route resource
+      Route::get('/stock-movements/search-items', [StockMovementController::class, 'searchMovableItems'])->name('stock-movements.search-items');
+
       Route::resources([
     'labels'=>LabelController::class,
     'unities'=> UnityController::class,
@@ -153,7 +156,8 @@ Route::post('/tasks/bulk-destroy', [TaskController::class, 'bulkDestroy'])->name
 Route::post('/interventions/import', [InterventionRequestController::class, 'import'])->name('interventions.import');
 // Route::post('/connections/import', [ConnectionController::class, 'import'])->name('connections.import');
 Route::post('/labels/bulk-destroy', [LabelController::class, 'bulkDestroy'])->name('labels.bulkDestroy');
-
+Route::post('/meters/bulk-destroy', [MeterController::class, 'bulkDestroy'])->name('meters.bulkdestroy');
+Route::post('/keypads/bulk-destroy', [KeypadController::class, 'bulkDestroy'])->name('keypads.bulkDestroy');
 
 });
 

@@ -37,6 +37,7 @@ const props = defineProps({
     movableItems: Object, // Ex: { spare_parts: [...], equipments: [...], meters: [...], keypads: [...] }
     masterMovableItems: Object, // NOUVEAU: Liste complète pour les entrées
     queryParams: Object,
+    stockStats: Object, // NOUVEAU: Statistiques globales
 });
 
 const { t } = useI18n();
@@ -92,7 +93,7 @@ const onPage = (event) => {
 const form = useForm({
     id: null,
     items: [], // Le "panier" d'articles
-    type: 'sortie',
+    type: 'exit',
     date: new Date(),
     notes: null,
     responsible_user_id: null,
@@ -171,29 +172,58 @@ const newItem = ref({
     quantity: 1,
 });
 
+// NOUVEAU: État pour la sélection multiple des articles sérialisés
+const selectedSerializedItems = ref([]);
+
+const isSerializedSelection = computed(() => {
+    return ['App\\Models\\Meter', 'App\\Models\\Keypad', 'App\\Models\\Engin'].includes(newItem.value.movable_type);
+});
+
+// MODIFIÉ: Logique pour regrouper les articles identiques
 const addItemToCart = () => {
     if (!newItem.value.movable_type || !newItem.value.movable_id) return;
 
-    // 1. Déterminer la liste source (complète pour les entrées, filtrée pour le reste)
-    let sourceList;
-    if (form.type === 'entry') sourceList = props.masterMovableItems;
-    else sourceList = props.movableItems;
-
-    // 2. Trouver la clé correspondante de manière fiable (ex: 'spare_parts')
-    // On extrait le nom du modèle (ex: 'SparePart') de la chaîne 'App\Models\SparePart'
-    const modelName = newItem.value.movable_type.split('\\').pop().toLowerCase();
-    // On cherche une clé dans sourceList qui contient ce nom de modèle (ex: 'spare_parts' contient 'sparepart')
-    const itemTypeKey = Object.keys(sourceList).find(key => key.replace('_', '').includes(modelName));
-
-    if (!itemTypeKey) return; // Sécurité: si aucune clé ne correspond
-
-    // 3. Trouver l'article dans la bonne liste
-    const itemToAdd = sourceList[itemTypeKey]?.find(i => i.id === newItem.value.movable_id);
+    const itemToAdd = searchedItems.value.find(i => i.id === newItem.value.movable_id)
+                      || availableItems.value.find(i => i.id === newItem.value.movable_id);
     if (!itemToAdd) return;
 
-    // 4. Ajouter au panier et réinitialiser
-    form.items.push({ ...newItem.value, item_details: itemToAdd });
-    newItem.value = { movable_type: null, movable_id: null, quantity: 1 }; // Reset
+    // Vérifier si l'article existe déjà dans le panier
+    const existingItem = form.items.find(item =>
+        item.movable_id === newItem.value.movable_id &&
+        item.movable_type === newItem.value.movable_type
+    );
+
+    if (existingItem) {
+        // Si oui, on incrémente la quantité
+        existingItem.quantity += newItem.value.quantity;
+    } else {
+        // Sinon, on l'ajoute au panier
+        form.items.push({ ...newItem.value, item_details: itemToAdd });
+    }
+
+    // Réinitialiser pour la prochaine sélection (sauf le type)
+    newItem.value.movable_id = null;
+    newItem.value.quantity = 1;
+};
+
+// NOUVEAU: Logique pour ajouter plusieurs articles sérialisés en une fois
+const addSerializedItemsToCart = () => {
+    if (!isSerializedSelection.value || selectedSerializedItems.value.length === 0) return;
+
+    selectedSerializedItems.value.forEach(itemId => {
+        const itemToAdd = availableItems.value.find(i => i.id === itemId);
+        if (itemToAdd) {
+            form.items.push({
+                movable_type: newItem.value.movable_type,
+                movable_id: itemToAdd.id,
+                quantity: 1, // Toujours 1 pour les articles sérialisés
+                item_details: itemToAdd,
+            });
+        }
+    });
+
+    // Réinitialiser la sélection
+    selectedSerializedItems.value = [];
 };
 
 const removeItemFromCart = (index) => {
@@ -202,13 +232,13 @@ const removeItemFromCart = (index) => {
 
 const itemLabel = (item) => {
     // Retourne un label formaté selon le type d'objet
-    if (!item) return '';
+    if (!item) return 'N/A';
 
     // Affiche le stock calculé pour la région si disponible
-    const stockInfo = item.stock_in_region !== null ? ` - Stock: ${item.stock_in_region}` : '';
+    const stockInfo = item.stock_in_region != null ? ` - Stock: ${item.stock_in_region}` : '';
 
-    if (item.serial_number) return `${item.serial_number} (${item.model || 'N/A'})`; // Pour Meters, Keypads
-    // Pour les pièces détachées, on affiche le stock calculé
+    if (item.serial_number) return `${item.serial_number} (${item.model || ''})`; // Pour Meters, Keypads
+    if (item.designation) return `${item.designation} (${item.tag || 'N/A'})${stockInfo}`;
     if (item.reference) return `${item.reference} (${item.label?.designation || 'N/A'})${stockInfo}`;
     if (item.tag) return `${item.tag} - ${item.designation}`; // Pour Equipments
     return `ID: ${item.id}`;
@@ -216,7 +246,41 @@ const itemLabel = (item) => {
 
 watch(() => newItem.value.movable_type, () => {
     newItem.value.movable_id = null; // Réinitialiser l'item sélectionné quand le type change
+    selectedSerializedItems.value = []; // Vider la sélection multiple
 });
+
+const searchedItems = ref([]);
+const searchItems = debounce(async (event) => {
+    // 1. Sécurité : Vérifier si le type est sélectionné
+    if (!newItem.value.movable_type) {
+        searchedItems.value = [];
+        return;
+    }
+
+    // 2. Vérifier si on a besoin d'une région source pour filtrer
+    if (['exit', 'transfer'].includes(form.type) && !form.source_region_id) {
+        // Optionnel : Vous pouvez afficher une petite notification ici
+        searchedItems.value = [];
+        return;
+    }
+
+    try {
+        const response = await axios.get(route('stock-movements.search-items'), {
+            params: {
+                type: newItem.value.movable_type,
+                query: event.query,
+                region_id: form.source_region_id,
+                movement_type: form.type,
+            }
+        });
+
+        // On stocke les résultats pour l'Autocomplete ou le Dropdown
+        searchedItems.value = response.data; // Le backend retourne déjà les données formatées
+    } catch (error) {
+        console.error("Erreur recherche articles:", error);
+        searchedItems.value = [];
+    }
+}, 300);
 
 watch(() => form.type, () => {
     // Réinitialiser les régions lors du changement de type
@@ -451,18 +515,90 @@ const getMovementTypeIcon = (type) => {
 };
 
 // --- STATISTIQUES ---
-const movementStats = computed(() => {
-    const stats = {
-        total: props.stockMovements.data.length,
-        entry: 0,
-        exit: 0,
-        transfer: 0,
-    };
-    props.stockMovements.data.forEach(movement => {
-        stats[movement.type.toLowerCase()]++;
-    });
-    return stats;
+const movementStats = computed(() => { // utiliser ces props ici dans les stats
+    return props.stockStats;
 });
+
+// MODIFIÉ ET FUSIONNÉ : Watcher unique pour l'ajout direct des articles sérialisés
+watch(() => newItem.value.movable_id, (newId, oldId) => {
+    // S'assurer que l'ID a bien une valeur, qu'il a changé, et que c'est un type sérialisé
+    if (!newId || newId === oldId || !isSerializedSelection.value) {
+        return;
+    }
+
+    // Vérifier si l'article est déjà dans le panier pour éviter les doublons
+    const isAlreadyInCart = form.items.some(item =>
+        item.movable_id === newId && item.movable_type === newItem.value.movable_type
+    );
+
+    if (isAlreadyInCart) {
+        toast.add({ severity: 'warn', summary: 'Article déjà présent', detail: 'Cet article est déjà dans le panier.', life: 3000 });
+        newItem.value.movable_id = null; // Réinitialiser la sélection
+        return;
+    }
+
+    // Trouver l'objet complet dans les résultats de la recherche
+    const itemToAdd = searchedItems.value.find(i => i.id === newId);
+    if (itemToAdd) {
+        form.items.push({
+            movable_type: newItem.value.movable_type,
+            movable_id: newId,
+            quantity: 1, // Toujours 1 pour les articles sérialisés
+            item_details: itemToAdd,
+        });
+
+        toast.add({
+            severity: 'success',
+            summary: 'Ajouté',
+            detail: `L'article "${itemToAdd.serial_number || itemToAdd.designation}" a été ajouté.`,
+            life: 2000
+        });
+
+        // Réinitialiser pour la prochaine sélection
+        newItem.value.movable_id = null;
+    }
+});
+const handleAutoAdd = (event) => {
+    // PrimeVue passe l'objet complet dans event.value
+    const selectedItem = event.value;
+
+    if (!selectedItem || !selectedItem.id) return;
+
+    // 1. Vérifier si l'article est déjà dans le panier (pour éviter les doublons de S/N)
+    const isAlreadyInCart = form.items.some(item =>
+        item.movable_id === selectedItem.id &&
+        item.movable_type === newItem.value.movable_type
+    );
+
+    if (isAlreadyInCart) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Déjà ajouté',
+            detail: `L'élément ${selectedItem.serial_number || selectedItem.tag} est déjà dans votre liste.`,
+            life: 3000
+        });
+        newItem.value.movable_id = null; // Reset le champ
+        return;
+    }
+
+    // 2. Ajouter directement au panier
+    form.items.push({
+        movable_type: newItem.value.movable_type,
+        movable_id: selectedItem.id,
+        quantity: 1, // Forcé à 1 car c'est du sérialisé (Meter/Engin)
+        item_details: selectedItem // On garde les détails pour l'affichage dans la liste
+    });
+
+    // 3. Feedback visuel et Reset
+    toast.add({
+        severity: 'success',
+        summary: 'Ajouté',
+        detail: `${selectedItem.serial_number || selectedItem.tag} ajouté au mouvement`,
+        life: 2000
+    });
+
+    newItem.value.movable_id = null; // Vide le champ de recherche pour le suivant
+};
 </script>
 
 <template>
@@ -496,28 +632,28 @@ const movementStats = computed(() => {
                 <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
                     <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center"><i class="pi pi-sync text-2xl text-slate-500"></i></div>
                     <div>
-                        <div class="text-2xl font-black text-slate-800">{{ movementStats.total }}</div>
+                        <div class="text-2xl font-black text-slate-800">{{ movementStats.totalMovements }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('stockMovements.stats.total') }}</div>
                     </div>
                 </div>
                 <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
                     <div class="w-14 h-14 rounded-xl bg-green-50 flex items-center justify-center"><i class="pi pi-arrow-down text-2xl text-green-500"></i></div>
                     <div>
-                        <div class="text-2xl font-black text-slate-800">{{ movementStats.entry }}</div>
+                        <div class="text-2xl font-black text-slate-800">{{ movementStats.totalEntries }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('stockMovements.stats.entries') }}</div>
                     </div>
                 </div>
                 <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
                     <div class="w-14 h-14 rounded-xl bg-red-50 flex items-center justify-center"><i class="pi pi-arrow-up text-2xl text-red-500"></i></div>
                     <div>
-                        <div class="text-2xl font-black text-slate-800">{{ movementStats.exit }}</div>
+                        <div class="text-2xl font-black text-slate-800">{{ movementStats.totalExits }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('stockMovements.stats.exits') }}</div>
                     </div>
                 </div>
                 <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
                     <div class="w-14 h-14 rounded-xl bg-sky-50 flex items-center justify-center"><i class="pi pi-arrows-h text-2xl text-sky-500"></i></div>
                     <div>
-                        <div class="text-2xl font-black text-slate-800">{{ movementStats.transfer }}</div>
+                        <div class="text-2xl font-black text-slate-800">{{ movementStats.totalStockValue }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('stockMovements.stats.transfers') }}</div>
                     </div>
                 </div>
@@ -693,159 +829,170 @@ const movementStats = computed(() => {
                 />
             </OverlayPanel>
 
-            <Dialog v-model:visible="movementDialog" modal :header="false" :closable="false" :style="{ width: '55rem' }"
-                class="quantum-dialog" :pt="{ mask: { style: 'backdrop-filter: blur(6px)' }, content: { class: 'p-0 rounded-3xl border-none shadow-2xl' } }">
-
-                <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center rounded-xl">
-                    <div class="flex items-center gap-4">
-                        <div class="p-2.5 bg-primary-500/20 rounded-xl border border-primary-500/30">
-                            <i class="pi pi-sync text-blue-400 text-xl"></i>
-                        </div>
-                        <div class="flex flex-col">
-                            <h2 class="text-sm font-black uppercase tracking-[0.15em] text-white leading-none">{{ dialogTitle }}</h2>
-                            <span class="text-[9px] text-primary-300 font-bold uppercase tracking-tighter mt-1.5 opacity-80 italic">{{ editing ? t('stockMovements.dialog.editSubtitle') : t('stockMovements.dialog.createSubtitle') }}</span>
-                        </div>
-                    </div>
-                    <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
-                </div>
-
-                <div class="p-8 bg-white max-h-[70vh] overflow-y-auto scroll-smooth">
-                    <!-- Colonne de gauche : Identification de l'item et du flux -->
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                        <!-- Colonne de droite : Détails et validation -->
-                        <div class="md:col-span-5 space-y-6 p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                            <h4 class="text-xs font-black uppercase text-primary-600 tracking-widest flex items-center gap-2"><i class="pi pi-list-check"></i> {{ t('stockMovements.dialog.detailsValidation') }}</h4>
-
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.movementType') }}</label>
-                                <SelectButton v-model="form.type" :options="movementTypeOptions" optionLabel="label" optionValue="value" class="v16-select-button" />
-                            </div>
-
-                            <div class="space-y-6">
-                                <div class="field" v-if="form.type === 'exit' || form.type === 'transfer'">
-                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.sourceRegion') }}</label>
-                                    <Dropdown v-model="form.source_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.sourceRegionPlaceholder')" class="w-full quantum-input-v16" />
-                                </div>
-                                <div class="field" v-if="form.type === 'entry' || form.type === 'transfer'">
-                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.destinationRegion') }}</label>
-                                    <Dropdown v-model="form.destination_region_id" :options="regions" optionLabel="designation" optionValue="id" :placeholder="t('stockMovements.form.destinationRegionPlaceholder')" class="w-full quantum-input-v16" />
-                                </div>
-                            </div>
-
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.responsibleUser') }}</label>
-                                <Dropdown v-model="form.responsible_user_id" :options="users" optionLabel="name" optionValue="id" :placeholder="t('stockMovements.form.userPlaceholder')" class="w-full quantum-input-v16" filter />
-                            </div>
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.intendedForUser') }}</label>
-                                <Dropdown v-model="form.intended_for_user_id" :options="users" optionLabel="name" optionValue="id" :placeholder="t('stockMovements.form.userPlaceholder')" class="w-full quantum-input-v16" filter />
-                            </div>
-                            <div class="field">
-                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.notes') }}</label>
-                                <Textarea v-model="form.notes" rows="2" class="w-full text-sm quantum-input-v16" />
-                            </div>
-                        </div>
-                        <div class="md:col-span-7 space-y-6">
-                            <h4 class="text-xs font-black uppercase text-primary-600 tracking-widest flex items-center gap-2"><i class="pi pi-box"></i> {{ t('stockMovements.dialog.itemSelection') }}</h4>
-                            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                                <div class="field">
-                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.itemType') }}</label>
-                                    <Dropdown v-model="newItem.movable_type" :options="movableTypeOptions" optionLabel="label" optionValue="value" :placeholder="t('stockMovements.form.itemTypePlaceholder')" class="w-full quantum-input-v16" :disabled="isItemSelectionDisabled"/>
-                                </div>
-<div class="field max-w-full">
-  <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">
-    {{ t('stockMovements.form.item') }}
-  </label>
- <Dropdown
-  v-model="newItem.movable_id"
-  :options="availableItems"
-  optionValue="id"
-  :placeholder="t('stockMovements.form.itemPlaceholder')"
-  :disabled="!newItem.movable_type || isItemSelectionDisabled"
-  filter
-  class="w-full quantum-input-v16"
-  :scrollHeight="'200px'"
-  :panelStyle="{'max-width': '100%'}"
+    <Dialog
+    v-model:visible="movementDialog"
+    modal
+    :header="false"
+    :closable="false"
+    :style="{ width: '90rem' }"
+    :pt="{
+        root: { class: 'rounded-[2.5rem] overflow-hidden border-none shadow-2xl bg-white' },
+        mask: { style: 'backdrop-filter: blur(8px)' }
+    }"
 >
-  <template #value="slotProps">
-    <div v-if="slotProps.value" class="flex flex-col min-w-0">
-      <span class="font-bold text-sm truncate leading-tight text-slate-700 flex justify-between items-center">
-        <span>
-            {{
-              availableItems.find(i => i.id === slotProps.value)?.label?.designation ||
-              availableItems.find(i => i.id === slotProps.value)?.designation ||
-              slotProps.value
-            }}
-        </span>
-        <span v-if="form.type !== 'entry'" class="text-xs bg-slate-200 text-slate-600 font-mono px-1.5 py-0.5 rounded ml-2">
-           {{
-                availableItems.find(i => i.id === slotProps.value)?.stock_in_region ?? 'N/A'
-            }}
-        </span>
-      </span>
-    </div>
-    <span v-else>
-      {{ slotProps.placeholder }}
-    </span>
-  </template>
-
-  <template #option="slotProps">
-    <div class="flex flex-col min-w-0 overflow-hidden">
-        <div class="flex justify-between items-center">
-            <span class="font-bold text-sm truncate leading-tight">
-                {{ slotProps.option.label?.designation || slotProps.option.designation || 'N/A' }}
-            </span>
-            <span v-if="form.type !== 'entry'" class="text-xs bg-primary-100 text-primary-700 font-mono px-1.5 py-0.5 rounded">
-       Stock:   {{ slotProps.option.stock_in_region ?? slotProps.option.quantity ?? 'N/A' }}
-            </span>
+    <div class="px-8 py-5 bg-slate-900 text-white flex justify-between items-center relative z-50">
+        <div class="flex items-center gap-4">
+            <div class="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                <i class="pi pi-sync text-blue-400 text-xl"></i>
+            </div>
+            <div class="flex flex-col">
+                <h2 class="text-sm font-black uppercase tracking-[0.15em] leading-none">{{ dialogTitle }}</h2>
+                <span class="text-[9px] text-blue-300 font-bold uppercase mt-1.5 opacity-80">Module de gestion des mouvements de stock</span>
+            </div>
         </div>
-      <span class="text-[10px] text-slate-500 truncate">
-        {{ slotProps.option.reference || slotProps.option.serial_number || slotProps.option.tag || `ID: ${slotProps.option.id}` }}
-      </span>
+        <div class="flex items-center gap-3">
+            <Tag :value="form.type" severity="info" class="uppercase font-black px-4 py-2 rounded-lg" />
+            <Button icon="pi pi-times" variant="text" severity="secondary" rounded @click="hideDialog" class="text-white hover:bg-white/10" />
+        </div>
     </div>
-  </template>
-</Dropdown>
-</div>
 
-                                <div class="field">
-                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-2 mb-1 block">{{ t('stockMovements.form.quantity') }}</label>
-                                    <InputNumber v-model="newItem.quantity" showButtons :min="1" inputClass="font-black text-center" class="w-full" :disabled="isQuantityDisabled || isItemSelectionDisabled" />
-                                </div>
-                                <Button icon="pi pi-plus" :label="t('stockMovements.form.addItem')" @click="addItemToCart" :disabled="!newItem.movable_id || isItemSelectionDisabled" class="p-button-sm" />
-                            </div>
+    <div class="flex gap-0 h-[70vh] bg-slate-50">
 
-                            <div class="mt-4 border-t border-slate-200 pt-4">
-                                <h4 class="text-xs font-black uppercase text-slate-500 tracking-widest mb-3">{{ t('stockMovements.dialog.itemsInMovement') }} ({{ form.items.length }})</h4>
-                                <div class="max-h-60 overflow-y-auto space-y-2 pr-2">
-                                    <div v-for="(item, index) in form.items" :key="index" class="flex items-center justify-between p-3 bg-slate-100 rounded-lg">
-                                        <div>
-                                            <p class="font-bold text-sm text-slate-800">{{ itemLabel(item.item_details) }}</p>
-                                            <p class="text-xs text-slate-500">{{ getMovableTypeLabel(item.movable_type) }}</p>
-                                        </div>
-                                        <div class="flex items-center gap-4">
-                                            <span class="font-mono font-black text-lg">x{{ item.quantity }}</span>
-                                            <Button icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" @click="removeItemFromCart(index)" />
-                                        </div>
-                                    </div>
-                                    <p v-if="form.items.length === 0" class="text-center text-sm text-slate-400 italic py-4">{{ t('stockMovements.dialog.noItems') }}</p>
-                                </div>
-                            </div>
-                        </div>
+        <div class="w-1/4 p-6 border-r border-slate-200 bg-white">
+            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3 mb-6 flex items-center gap-2">
+                <i class="pi pi-map-marker text-blue-500"></i> Logistique
+            </h4>
+            <div class="space-y-5">
+                <div class="field uppercase">
+                    <label class="quantum-label">Type de Flux</label>
+                    <SelectButton v-model="form.type" :options="movementTypeOptions" optionLabel="label" optionValue="value" class="v16-select-button-premium w-full" />
+                </div>
+                <div class="field">
+                    <label class="quantum-label">Région Source</label>
+                    <Dropdown v-model="form.source_region_id" :options="regions" optionLabel="designation" optionValue="id" class="w-full premium-input" :disabled="form.type === 'entry'" />
+                </div>
+                <div class="field">
+                    <label class="quantum-label">Région Destination</label>
+                    <Dropdown v-model="form.destination_region_id" :options="regions" optionLabel="designation" optionValue="id" class="w-full premium-input" :disabled="form.type === 'exit'" />
+                </div>
+                <div class="field">
+                    <label class="quantum-label">Notes</label>
+                    <Textarea v-model="form.notes" rows="4" class="w-full premium-input resize-none" placeholder="Motif..." />
+                </div>
+            </div>
+        </div>
 
+        <div class="flex-1 p-8 bg-white border-r border-slate-200">
+            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3 mb-6 flex items-center gap-2">
+                <i class="pi pi-plus-circle text-blue-500"></i> Sélection des équipements
+            </h4>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-5">
+                <div class="field col-span-2">
+                    <label class="quantum-label">Catégorie d'article</label>
+                    <Dropdown v-model="newItem.movable_type" :options="movableTypeOptions" optionLabel="label" optionValue="value" class="w-full premium-input h-11" />
+                </div>
 
+                <div class="field col-span-2">
+                    <label class="quantum-label">Rechercher un article</label>
+                   <AutoComplete
+    v-if="isSerializedSelection"
+    v-model="newItem.movable_id"
+    :suggestions="searchedItems"
+    @complete="searchItems"
+    @item-select="handleAutoAdd"
+    optionLabel="serial_number"
+    optionValue="id"
+    class="w-full"
+    inputClass="premium-input h-11"
+    placeholder="Saisir un numéro de série, tag ou référence..."
+>
+    <template #option="slotProps">
+        <div class="flex flex-col">
+            <span class="font-bold text-blue-600">
+                {{ slotProps.option.serial_number || slotProps.option.tag || slotProps.option.designation }}
+            </span>
+            <small class="text-slate-500">{{ slotProps.option.designation }}</small>
+        </div>
+    </template>
+</AutoComplete>
+                    <Dropdown v-else v-model="newItem.movable_id" :options="availableItems" :option-label="itemLabel" optionValue="id" filter class="w-full premium-input h-11" />
+                </div>
+
+                <div class="field" v-if="!isSerializedSelection">
+                    <label class="quantum-label">Quantité</label>
+                    <InputNumber v-model="newItem.quantity" showButtons :min="1" class="w-full h-11" inputClass="font-bold h-full" />
+                </div>
+
+                <div class="field">
+                    <label class="quantum-label">Responsable</label>
+                    <Dropdown v-model="form.responsible_user_id" :options="users" optionLabel="name" optionValue="id" filter class="w-full premium-input h-11" />
+                </div>
+
+                <div class="field">
+                    <label class="quantum-label">Destinataire</label>
+                    <Dropdown v-model="form.intended_for_user_id" :options="users" optionLabel="name" optionValue="id" filter class="w-full premium-input h-11" />
+                </div>
+
+                <div class="col-span-2 pt-2">
+                    <Button v-if="!isSerializedSelection"
+                        label="Ajouter à la liste"
+                        icon="pi pi-plus"
+                        class="w-full h-11 rounded-xl shadow-lg font-bold text-xs uppercase tracking-wider"
+                        @click="addItemToCart()"
+                        :disabled="!newItem.movable_id"
+                    />
+                </div>
+            </div>
+        </div>
+
+        <div class="w-80 bg-slate-50 flex flex-col">
+            <div class="p-5 border-b border-slate-200 bg-slate-100/50 flex justify-between items-center">
+                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Panier de mouvement</h4>
+                <Badge :value="form.items.length" severity="info" />
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                <div v-for="(item, index) in form.items" :key="index"
+                     class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors group relative">
+                    <div class="pr-6">
+                        <p class="font-bold text-slate-800 text-[12px] leading-tight mb-1">{{ itemLabel(item.item_details) }}</p>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{{ getMovableTypeLabel(item.movable_type) }}</p>
+                    </div>
+                    <div class="mt-3 flex justify-between items-center">
+                        <span class="text-[11px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-black italic">x{{ item.quantity }}</span>
+                        <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="removeItemFromCart(index)" class="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                 </div>
 
-                <template #footer>
-                    <div class="flex justify-between items-center w-full px-8 py-4 bg-slate-50 border-t border-slate-100">
-                        <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
-                        <Button :label="t('common.save')" icon="pi pi-check-circle"
+                <div v-if="form.items.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 py-20">
+                    <i class="pi pi-shopping-cart text-4xl mb-2"></i>
+                    <p class="text-[10px] font-bold uppercase tracking-widest">Panier vide</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                                class="px-10 h-14 rounded-2xl shadow-xl shadow-primary-100 font-black uppercase tracking-widest text-xs"
-                                @click="saveMovement" :loading="form.processing" />
-                    </div>
-                </template>
-            </Dialog>
+    <div class="flex justify-between items-center w-full px-8 py-4 bg-white border-t border-slate-100">
+        <Button :label="t('common.cancel')" icon="pi pi-times" text severity="secondary" @click="hideDialog" class="font-bold uppercase text-[10px] tracking-widest" />
+
+        <div class="flex gap-8 items-center">
+            <div class="text-right">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Total Articles</span>
+                <span class="text-xl font-black text-slate-900 leading-none font-mono">
+                    {{ form.items.reduce((acc, i) => acc + i.quantity, 0) }}
+                </span>
+            </div>
+            <Button
+                :label="t('common.save')"
+                icon="pi pi-check-circle"
+                class="px-10 h-14 rounded-2xl shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs"
+                @click="saveMovement"
+                :loading="form.processing"
+                :disabled="form.items.length === 0"
+            />
+        </div>
+    </div>
+</Dialog>
         </div>
     </AppLayout>
 </template>
