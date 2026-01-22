@@ -2106,28 +2106,4 @@ const formatDate = (dateString) => {
     </AppLayout>
 </template>
 
-<style>
-/* Style spécifique pour la table afin d'affiner le rendu Tailwind avec PrimeVue */
-.v11-table .p-datatable-thead > tr > th {
-    background: #f8fafc !important;
-    color: #94a3b8 !important;
-    font-size: 10px !important;
-    font-weight: 900 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.15em !important;
-    padding: 1.5rem 1rem !important;
-    border: none !important;
-}
 
-.v11-table .p-datatable-tbody > tr {
-    transition: all 0.2s ease;
-}
-
-.v11-table .p-datatable-tbody > tr:hover {
-    background: #f1f5f9/50 !important;
-}
-
-.p-dialog-mask {
-    backdrop-filter: blur(4px);
-}
-</style>
