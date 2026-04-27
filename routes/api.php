@@ -35,7 +35,7 @@ Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::get('quantumx/models', [ReportController::class, 'fetchData']);
 
 
-Route::post('/login', [ApiAuthController::class, 'socialLogin']);
+Route::post('/login', [ApiAuthController::class, 'login']);
 
 Route::apiResources([
     "maintenancesx" =>ActivityApiController::class,

@@ -20,9 +20,9 @@ class ApiAuthController extends Controller
         // 1. Validation croisée
         // Exige SOIT (login + password) SOIT (provider + provider_token)
         $request->validate([
-            'login'          => 'required_without:provider|string',
-            'password'       => 'required_with:login|string',
-            'provider'       => 'required_without:login|string',
+            'email'          => 'required_without:provider|string',
+            'password'       => 'required_with:email|string',
+            'provider'       => 'required_without:email|string',
             'provider_token' => 'required_with:provider|string',
         ]);
 
@@ -61,24 +61,27 @@ class ApiAuthController extends Controller
             // ==========================================
             // SCÉNARIO B : CONNEXION CLASSIQUE
             // ==========================================
-            elseif ($request->has('login')) {
+            elseif ($request->has('email')) {
 
                 // Vérifie si le 'login' est un email ou un nom d'utilisateur
-                $fieldType = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
+                $fieldType = filter_var($request->email, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
                 $credentials = [
-                    $fieldType => $request->login,
+                    $fieldType => $request->email,
                     'password' => $request->password,
                 ];
 
-                if (!Auth::attempt($credentials)) {
+                // Use Auth::guard('web')->validate() or manual check to avoid triggering
+                // session-based listeners (like LoginAttemptListener) during a stateless API login.
+                $user = User::where($fieldType, $request->email)->first();
+
+                if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
                     return response()->json([
                         'status' => false,
                         'message' => 'Identifiants incorrects. Veuillez vérifier vos informations.'
                     ], 401);
                 }
 
-                $user = Auth::user();
             }
             // ==========================================
             // SÉCURITÉ : FOURNISSEUR NON RECONNU
@@ -118,7 +121,7 @@ class ApiAuthController extends Controller
 
             return response()->json([
                 'status'  => false,
-                'message' => 'Erreur serveur lors de la connexion.'
+                'message' => 'Erreur serveur lors de la connexion. '.$e
             ], 500);
         }
     }
