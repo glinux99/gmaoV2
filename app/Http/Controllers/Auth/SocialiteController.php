@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Login;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx\Rels;
 
 class SocialiteController extends Controller
 {
@@ -19,7 +22,15 @@ class SocialiteController extends Controller
     {
         return Socialite::driver($provider)->redirect();
     }
+    public function visitor (Request $request){
+         return Inertia::render('Visitor', [
+            // On passe l'utilisateur connecté pour personnaliser le message (ex: "Bienvenue, Marc !")
+            'user' => $request->user()->only('id', 'name', 'email'),
 
+            // Optionnel : On peut passer des infos système (email du support, etc.)
+            'supportEmail' => config('mail.from.address', 'dkikimba@virunga.org')
+        ]);
+    }
     /**
      * Obtain the user information from the provider.
      */
@@ -100,10 +111,10 @@ class SocialiteController extends Controller
 
             Auth::login($newUser);
             event(new \Illuminate\Auth\Events\Login(Auth::guard(), $newUser, false));
-            // $newUser->assignRole('visitor');
-            $newUser->assignRole('superadmin');
+            $newUser->assignRole('visitor');
+            // $newUser->assignRole('superadmin');
 
-            return redirect()->intended('/dashboard');
+            return redirect()->intended('/visitor');
 
         } catch (\Exception $e) {
             return $e;

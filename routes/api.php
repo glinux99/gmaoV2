@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Api\ActivityApiController;
+use App\Http\Controllers\Api\ApiAuthController;
+use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\InterventionRequestController;
@@ -10,6 +12,7 @@ use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TechnicianController;
+use App\Http\Controllers\TransformerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -31,7 +34,14 @@ Route::put('/interventions/{intervention}/validate', [InterventionRequestControl
 Route::get('quantum/models', [ReportController::class, 'getModels']);
 Route::get('quantumx/models', [ReportController::class, 'fetchData']);
 
-Route::apiResource("maintenancesx", ActivityApiController::class);
+
+Route::post('/login', [ApiAuthController::class, 'socialLogin']);
+
+Route::apiResources([
+    "maintenancesx" =>ActivityApiController::class,
+    'dashboard'=> DashboardApiController::class,
+    "transformers" => TransformerController::class
+    ]);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

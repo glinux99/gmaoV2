@@ -11,6 +11,7 @@
     "title": "Dashboard",
     "generatedAt": "Généré à : {time}",
     "liveData": "LIVE",
+
     "manageSections": "Gérer l'affichage des sections",
     "mainChart":{
         "title":"Gestion des Ressources",
@@ -455,7 +456,8 @@
         "dashboard": {
             "title": "Tableau de bord",
             "home": "Accueil",
-            "analytics": "Analytiques"
+            "analytics": "Analytiques",
+             "transformers" : "Transformateurs"
         },
         "assetManagement": {
             "title": "Gestion des actifs",

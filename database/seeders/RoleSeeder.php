@@ -107,14 +107,14 @@ class RoleSeeder extends Seeder
         // Visiteur - Accès en lecture seule
         $visitor = Role::firstOrCreate(['name' => 'visitor']);
         $visitor->givePermissionTo([
-            'view-dashboard',
-            'read-equipment',
-            'read-equipment-type',
-            'read-task',
-            'read-maintenance',
-            'read-network',
-            'read-region', 'read-zone', 'read-map',
-            'read-technician',
+            // 'view-dashboard',
+            // 'read-equipment',
+            // 'read-equipment-type',
+            // 'read-task',
+            // 'read-maintenance',
+            // 'read-network',
+            // 'read-region', 'read-zone', 'read-map',
+            // 'read-technician',
         ]);
          $superadmin->givePermissionTo(Permission::all());
     }

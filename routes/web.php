@@ -43,6 +43,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTemplateController;
 use App\Http\Controllers\UnityController;
 use App\Http\Controllers\NetworkController;
+use App\Http\Controllers\TransformerController;
 use App\Http\Controllers\ZoneController;
 
 /*
@@ -68,7 +69,7 @@ Route::get('/', function () {
 //     ]);
 // })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth', 'verified')->group(function () {
+Route::middleware(['auth', 'verified', 'redirect.visitor'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -118,7 +119,8 @@ Route::middleware('auth', 'verified')->group(function () {
     'zones'=> ZoneController::class,
     'roles'=> RoleController::class,
     'permissions'=> PermissionController::class,
-    'users' =>UserController::class
+    'users' =>UserController::class,
+    'transformers'=> TransformerController::class
   ]);
 
   Route::get('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
@@ -160,7 +162,9 @@ Route::post('/meters/bulk-destroy', [MeterController::class, 'bulkDestroy'])->na
 Route::post('/keypads/bulk-destroy', [KeypadController::class, 'bulkDestroy'])->name('keypads.bulkDestroy');
 
 });
-
+Route::middleware('auth', 'verified')->group(function () {
+    Route::get('visitor', [SocialiteController::class, 'visitor'])->name('socialite.visitor');
+});
 Route::group(['middleware' => ['web']], function () {
     Route::get('/auth/{provider}/redirect', [SocialiteController ::class, 'redirect'])->name('socialite.redirect');
     Route::get('/auth/{provider}/callback', [SocialiteController::class, 'callback'])->name('socialite.callback');

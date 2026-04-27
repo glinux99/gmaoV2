@@ -433,7 +433,8 @@
     "dashboard": {
       "title": "Tableau de bord",
       "home": "Ebandeli",
-      "analytics": "Analytiques"
+      "analytics": "Analytiques",
+       "transformers" : "Transformateur"
     },
     "assetManagement": {
       "title": "Gestion ya ba actifs",

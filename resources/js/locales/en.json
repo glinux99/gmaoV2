@@ -434,7 +434,8 @@
         "dashboard": {
             "title": "Dashboard",
             "home": "Home",
-            "analytics": "Analytics"
+            "analytics": "Analytics",
+             "transformers" : "Transformers"
         },
         "assetManagement": {
             "title": "Asset Management",
