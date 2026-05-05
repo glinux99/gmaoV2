@@ -197,7 +197,7 @@ const avgLoad = computed(() => {
     return (total / data.length).toFixed(1);
 });
 const viewTransformerDetails = (id) => {
-    // Redirige vers la route Laravel 'transformers.show' avec l'ID du transformateur toujiurs
+    // Redirige vers la route Laravel 'transformers.show' avec l'ID du transformateur
     router.get(route('transformers.show', id));
 };
 </script>
