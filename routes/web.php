@@ -122,7 +122,7 @@ Route::middleware(['auth', 'verified', 'redirect.visitor'])->group(function () {
     'users' =>UserController::class,
     'transformers'=> TransformerController::class
   ]);
-
+    Route::get('/transformers/{transformer}', [TransformerController::class, 'show'])->name('transformers.show');
   Route::get('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
   Route::get('/users/leave-impersonate', [UserController::class, 'leaveImpersonate'])->name('users.leave-impersonate');
 

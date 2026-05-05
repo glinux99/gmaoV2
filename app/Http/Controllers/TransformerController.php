@@ -51,7 +51,6 @@ class TransformerController extends Controller
         $query->when($request->date_to, function ($q, $date) {
             $q->whereDate('measured_at', '<=', $date);
         });
-
         $transformers = $query->latest('measured_at')->paginate(15);
 
         // Réponse API
@@ -91,14 +90,33 @@ class TransformerController extends Controller
     /**
      * Affichage d'un élément (CORRIGÉ : Ajout de Request $request)
      */
-    public function show(Request $request, Transformer $transformer)
-    {
-        $data = $transformer->load(['equipment', 'networkNode']);
+  public function show(Request $request, Transformer $transformer)
+{
+    $transformer->load(['equipment', 'networkNode']);
+    $history = $transformer->orderBy('measured_at', 'desc')
+                           ->take(100)
+                           ->get();
+    $equipments = Equipment::select('id', 'designation')->get();
+    $networkNodes = NetworkNode::get();
+    $filters = $request->only(['date_from', 'date_to', 'search']);
+    $query = Transformer::with(['equipment:id,designation', 'networkNode:id,name']);
+    $transformers = $query->latest('measured_at')->paginate(15);
+    $payload = [
+        'transformer'  => $transformer,
+        'transformers'  => $transformers,
+        'history'      => $history,
+        'equipments'   => $equipments,
+        'networkNodes' => $networkNodes,
+       'filters' => $request->only(['search', 'status', 'equipment_id', 'network_node_id', 'date_from', 'date_to']),
+    ];
 
-        return $request->wantsJson()
-            ? response()->json($data)
-            : Inertia::render('Monitoring/Show', ['transformer' => $data]);
+    // 6. Réponse API ou Inertia
+    if ($request->wantsJson()) {
+        return response()->json($payload);
     }
+
+    return Inertia::render('TransformerDetail', $payload);
+}
 
     /**
      * Mise à jour (CORRIGÉ : Sécurisé avec validation au lieu de $request->all())

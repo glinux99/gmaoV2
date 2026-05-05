@@ -196,6 +196,10 @@ const avgLoad = computed(() => {
     const total = data.reduce((acc, curr) => acc + parseFloat(curr.load_percentage || 0), 0);
     return (total / data.length).toFixed(1);
 });
+const viewTransformerDetails = (id) => {
+    // Redirige vers la route Laravel 'transformers.show' avec l'ID du transformateur
+    router.get(route('transformers.show', id));
+};
 </script>
 
 <template>
@@ -271,99 +275,108 @@ const avgLoad = computed(() => {
                     </div>
                 </template>
                 <template #content>
-                    <DataTable :value="props.transformers.data"
-                               v-model:selection="selectedTransformers"
-                               dataKey="id"
-                               responsiveLayout="scroll"
-                               class="p-datatable-sm custom-erp-table mt-4"
-                               :loading="isLoading">
+                   <DataTable :value="props.transformers.data"
+           v-model:selection="selectedTransformers"
+           dataKey="id"
+           responsiveLayout="scroll"
+           class="p-datatable-sm custom-erp-table mt-4"
+           :loading="isLoading">
 
-                        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+    <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
 
-                        <Column field="transformer_id" header="ID / UUID">
-                            <template #body="{data}">
-                                <div class="flex flex-col">
-                                    <span class="font-black text-[11px] text-primary-600 uppercase">{{ data.transformer_id }}</span>
-                                    <span class="text-[9px] text-slate-400 font-mono">{{ data.uuid?.substring(0,8) || 'N/A' }}...</span>
-                                </div>
-                            </template>
-                        </Column>
+    <!-- COLONNE ID (Adaptée : Cliquable vers les détails) -->
+    <Column field="transformer_id" header="ID / UUID">
+        <template #body="{data}">
+            <div class="flex flex-col cursor-pointer group" @click="viewTransformerDetails(data.id)">
+                <span class="font-black text-[11px] text-primary-600 uppercase group-hover:underline group-hover:text-primary-800 transition-colors" v-tooltip.top="'Voir les courbes et détails'">
+                    {{ data.transformer_id }}
+                </span>
+                <span class="text-[9px] text-slate-400 font-mono">{{ data.uuid?.substring(0,8) || 'N/A' }}...</span>
+            </div>
+        </template>
+    </Column>
 
-                        <Column header="Localisation">
-                            <template #body="{data}">
-                                <div class="flex flex-col gap-1">
-                                    <div class="flex items-center gap-1 text-[10px] font-bold text-slate-700">
-                                        <i class="pi pi-cog text-slate-400"></i>
-                                        {{ data.equipment?.designation || 'N/A' }}
-                                    </div>
-                                    <div class="flex items-center gap-1 text-[9px] text-slate-500">
-                                        <i class="pi pi-sitemap text-slate-400"></i>
-                                        {{ data.network_node?.name || 'N/A' }}
-                                    </div>
-                                </div>
-                            </template>
-                        </Column>
+    <Column header="Localisation">
+        <template #body="{data}">
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-1 text-[10px] font-bold text-slate-700">
+                    <i class="pi pi-cog text-slate-400"></i>
+                    {{ data.equipment?.designation || 'N/A' }}
+                </div>
+                <div class="flex items-center gap-1 text-[9px] text-slate-500">
+                    <i class="pi pi-sitemap text-slate-400"></i>
+                    {{ data.network_node?.name || 'N/A' }}
+                </div>
+            </div>
+        </template>
+    </Column>
 
-                        <Column field="status" header="Statut">
-                            <template #body="{data}">
-                                <Tag :value="getStatusConfig(data.status).label"
-                                     :severity="getStatusConfig(data.status).severity"
-                                     :icon="getStatusConfig(data.status).icon"
-                                     class="!px-3 !py-1 !rounded-full !text-[10px] !font-black uppercase tracking-wider shadow-sm" />
-                            </template>
-                        </Column>
+    <Column field="status" header="Statut">
+        <template #body="{data}">
+            <Tag :value="getStatusConfig(data.status).label"
+                 :severity="getStatusConfig(data.status).severity"
+                 :icon="getStatusConfig(data.status).icon"
+                 class="!px-3 !py-1 !rounded-full !text-[10px] !font-black uppercase tracking-wider shadow-sm" />
+        </template>
+    </Column>
 
-                        <Column header="Télémétrie">
-                            <template #body="{data}">
-                                <div class="flex flex-col gap-2 w-32">
-                                    <div class="flex items-center justify-between text-[9px] font-black uppercase text-slate-500">
-                                        <span>Charge</span>
-                                        <span :class="data.load_percentage > 80 ? 'text-rose-500' : 'text-primary-600'">{{ data.load_percentage || 0 }}%</span>
-                                    </div>
-                                    <ProgressBar :value="parseFloat(data.load_percentage || 0)" :showValue="false" class="!h-1.5 !bg-slate-100">
-                                        <template #default>
-                                            <div class="h-full rounded-full" :class="data.load_percentage > 80 ? 'bg-rose-500' : 'bg-primary-500'" :style="{width: (data.load_percentage || 0) + '%'}"></div>
-                                        </template>
-                                    </ProgressBar>
-                                    <div class="flex gap-3 text-[10px] font-bold text-slate-600">
-                                        <span v-tooltip.top="'Température Huile'"><i class="pi pi-thermometer text-orange-400"></i> {{ data.oil_temperature || '--' }}°C</span>
-                                        <span v-tooltip.top="'Température Ambiante'"><i class="pi pi-cloud text-blue-400"></i> {{ data.ambient_temperature || '--' }}°C</span>
-                                    </div>
-                                </div>
-                            </template>
-                        </Column>
+    <Column header="Télémétrie">
+        <template #body="{data}">
+            <div class="flex flex-col gap-2 w-32">
+                <div class="flex items-center justify-between text-[9px] font-black uppercase text-slate-500">
+                    <span>Charge</span>
+                    <span :class="data.load_percentage > 80 ? 'text-rose-500' : 'text-primary-600'">{{ data.load_percentage || 0 }}%</span>
+                </div>
+                <ProgressBar :value="parseFloat(data.load_percentage || 0)" :showValue="false" class="!h-1.5 !bg-slate-100">
+                    <template #default>
+                        <div class="h-full rounded-full" :class="data.load_percentage > 80 ? 'bg-rose-500' : 'bg-primary-500'" :style="{width: (data.load_percentage || 0) + '%'}"></div>
+                    </template>
+                </ProgressBar>
+                <div class="flex gap-3 text-[10px] font-bold text-slate-600">
+                    <span v-tooltip.top="'Température Huile'"><i class="pi pi-thermometer text-orange-400"></i> {{ data.oil_temperature || '--' }}°C</span>
+                    <span v-tooltip.top="'Température Ambiante'"><i class="pi pi-cloud text-blue-400"></i> {{ data.ambient_temperature || '--' }}°C</span>
+                </div>
+            </div>
+        </template>
+    </Column>
 
-                        <Column header="Alarmes Actives">
-                            <template #body="{data}">
-                                <div class="flex flex-wrap gap-1 w-40">
-                                    <span v-if="getActiveAlarms(data).length === 0" class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-md">
-                                        Aucune anomalie
-                                    </span>
-                                    <span v-for="(alarm, idx) in getActiveAlarms(data)" :key="idx"
-                                          class="text-[9px] text-white font-black px-2 py-0.5 rounded-md shadow-sm"
-                                          :class="alarm.color">
-                                        {{ alarm.label }}
-                                    </span>
-                                </div>
-                            </template>
-                        </Column>
+    <Column header="Alarmes Actives">
+        <template #body="{data}">
+            <div class="flex flex-wrap gap-1 w-40">
+                <span v-if="getActiveAlarms(data).length === 0" class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-md">
+                    Aucune anomalie
+                </span>
+                <span v-for="(alarm, idx) in getActiveAlarms(data)" :key="idx"
+                      class="text-[9px] text-white font-black px-2 py-0.5 rounded-md shadow-sm"
+                      :class="alarm.color">
+                    {{ alarm.label }}
+                </span>
+            </div>
+        </template>
+    </Column>
 
-                        <Column field="measured_at" header="Dernière Mesure">
-                            <template #body="{data}">
-                                <span class="text-[10px] font-bold text-slate-500"><i class="pi pi-clock mr-1"></i>{{ formatDate(data.measured_at) }}</span>
-                            </template>
-                        </Column>
+    <Column field="measured_at" header="Dernière Mesure">
+        <template #body="{data}">
+            <span class="text-[10px] font-bold text-slate-500"><i class="pi pi-clock mr-1"></i>{{ formatDate(data.measured_at) }}</span>
+        </template>
+    </Column>
 
-                        <!-- ACTIONS -->
-                        <Column header="Actions" alignFrozen="right" :frozen="true">
-                            <template #body="{data}">
-                                <div class="flex gap-1">
-                                    <Button icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-warning p-button-sm" @click="openDialog(data)" v-tooltip.top="'Modifier'" />
-                                    <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger p-button-sm" @click="deleteTransformer(data.id)" v-tooltip.top="'Supprimer'" />
-                                </div>
-                            </template>
-                        </Column>
-                    </DataTable>
+    <!-- ACTIONS (Adaptée : Ajout du bouton Voir Détails) -->
+    <Column header="Actions" alignFrozen="right" :frozen="true">
+        <template #body="{data}">
+            <div class="flex gap-1">
+                <!-- Bouton Voir Détails -->
+                <Button icon="pi pi-chart-line"
+                        class="p-button-rounded p-button-text p-button-info p-button-sm"
+                        @click="viewTransformerDetails(data.id)"
+                        v-tooltip.top="'Voir les courbes et détails (Tension, Puissance...)'" />
+
+                <Button icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-warning p-button-sm" @click="openDialog(data)" v-tooltip.top="'Modifier'" />
+                <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger p-button-sm" @click="deleteTransformer(data.id)" v-tooltip.top="'Supprimer'" />
+            </div>
+        </template>
+    </Column>
+</DataTable>
 
                     <!-- PAGINATION -->
                     <div class="flex justify-between items-center p-4 border-t border-slate-50">
