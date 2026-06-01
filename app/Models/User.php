@@ -2,22 +2,21 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-
-
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use App\Models\Region;
-use App\Models\Zone;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+
 class User extends Authenticatable implements HasMedia
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles,InteractsWithMedia;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, InteractsWithMedia;
 
     /**
      * The attributes that are mass assignable.
@@ -25,20 +24,24 @@ class User extends Authenticatable implements HasMedia
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'team_id',          // Équipe principale (optionnel)
+        'name',             // Prénom
+        'last_name',        // Nom
         'email',
         'password',
-         'provider_name',
+        'provider_name',
         'provider_id',
-        'fonction',
-        'numero',
-        'region_id',
-        'pointure',
-        'size',
-        'profile_photo', // This field is likely for a direct path, consider using Spatie Media Library for file uploads
-        'hourly_rate', // Added for DashboardController's labor cost calculation
-        'zone_id'
-
+        'hourly_rate',
+        'position',
+        'phone',
+        'contract_type',
+        'hiring_date',
+        'linkedin_url',
+        'bio',
+        'avatar',           // Chemin local (fallback)
+        'is_active',
+        'status',           // online/offline/busy/away
+        'last_activity_at',
     ];
 
     /**
@@ -59,76 +62,160 @@ class User extends Authenticatable implements HasMedia
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_active' => 'boolean',
+        'last_activity_at' => 'datetime',
     ];
 
-    // Expose Spatie Media avatar URL as profile_photo_url in arrays/JSON
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
     protected $appends = [
-        'profile_photo_url',
+        'profile_photo_url', // URL de l’avatar (Spatie Media)
+        'full_name',         // Nom complet
     ];
- public function logins(): HasMany
+ public function likedPosts(): BelongsToMany
+    {
+        return $this->belongsToMany(Post::class, 'post_likes', 'user_id', 'post_id')
+                    ->withTimestamps();
+    }
+    // ==================== RELATIONS ====================
+
+    /**
+     * Connexions enregistrées (pour journalisation).
+     */
+    public function logins(): HasMany
     {
         return $this->hasMany(Login::class);
     }
-    public function getCreatedAtAttribute()
+
+    /**
+     * Région géographique (optionnelle).
+     */
+    public function region()
     {
-        return date('d-m-Y H:i', strtotime($this->attributes['created_at']));
+        return $this->belongsTo(Region::class);
     }
 
-    public function getUpdatedAtAttribute()
+    /**
+     * Équipes auxquelles l’utilisateur appartient (relation many-to-many).
+     */
+    public function team(): BelongsToMany
     {
-        return date('d-m-Y H:i', strtotime($this->attributes['updated_at']));
+        return $this->belongsToMany(Team::class, 'team_user');
     }
 
-    public function getEmailVerifiedAtAttribute()
+    /**
+     * Activités créées par l’utilisateur.
+     */
+    public function activities(): HasMany
     {
-        return $this->attributes['email_verified_at'] == null ? null:date('d-m-Y H:i', strtotime($this->attributes['email_verified_at']));
+        return $this->hasMany(Activity::class, 'user_id');
     }
 
-    public function getPermissionArray()
+    // ==================== CHAT ====================
+
+    /**
+     * Conversations (canaux publics/privés et messages directs).
+     */
+    public function conversations(): BelongsToMany
     {
-        return $this->getAllPermissions()->mapWithKeys(function ($pr) {
-            return [$pr['name'] => true];
-        });
+        return $this->belongsToMany(Conversation::class, 'conversation_user')
+                    ->withPivot('last_read_at', 'is_muted')
+                    ->withTimestamps();
     }
-        public function region()
-{
-    return $this->belongsTo(Region::class);
-}
 
- public function zone()
-{
- return $this->belongsTo(Zone::class);
-}
-
-// Dans app/Models/User.php
-
-/**
- * Les équipes auxquelles l'utilisateur appartient.
- */
-
-public function teams()
-{
-    return $this->belongsToMany(Team::class);
-}
-
-/**
- * Accessor: profile_photo_url from Spatie Media (collection 'avatar').
- */
-public function getProfilePhotoUrlAttribute(): ?string
-{
-    if (method_exists($this, 'getLastMediaUrl')) {
-        $url = $this->getLastMediaUrl('avatar');
-        return $url ?: null;
+    /**
+     * Messages envoyés par l’utilisateur.
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
     }
-    return null;
-}
 
-/**
- * Get the activities assigned to the user.
- */
-public function activities(): HasMany
-{
-    return $this->hasMany(Activity::class, 'user_id');
-}
+    /**
+     * Réactions envoyées par l’utilisateur sur des messages.
+     */
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(MessageReaction::class);
+    }
 
+    // ==================== MÉTHODES UTILITAIRES ====================
+
+    /**
+     * Récupère le nombre de messages non lus dans toutes les conversations.
+     */
+    public function unreadMessagesCount(): int
+    {
+        $total = 0;
+        foreach ($this->conversations as $conv) {
+            $total += $conv->unread_count_for_user($this->id);
+        }
+        return $total;
+    }
+
+    /**
+     * Retourne la liste des permissions sous forme de tableau associatif.
+     */
+    public function getPermissionArray(): array
+    {
+        return $this->getAllPermissions()->mapWithKeys(fn($pr) => [$pr['name'] => true])->toArray();
+    }
+
+    // ==================== ACCESSORS & MUTATORS ====================
+
+    /**
+     * Accesseur pour l’avatar (URL).
+     * Priorité à l’image depuis Spatie Media, sinon le champ `avatar` (chemin local), sinon null.
+     */
+    protected function avatar(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if ($this->profile_photo_url) {
+                    return $this->profile_photo_url;
+                }
+                return $value ? asset('storage/' . $value) : null;
+            }
+        );
+    }
+
+    /**
+     * Accesseur pour l’URL de la photo de profil (Spatie Media).
+     */
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        $media = $this->getLastMediaUrl('avatar');
+        return $media ?: null;
+    }
+
+    /**
+     * Accesseur pour le nom complet.
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim($this->name . ' ' . $this->last_name);
+    }
+
+    /**
+     * Formate la date de création pour l’API (ISO 8601, mais adaptable).
+     */
+    protected function serializeDate(\DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
+
+    // Garder les accesseurs personnalisés si vous voulez un format spécifique
+    // (ils ne doivent pas interférer avec la sérialisation par défaut)
+    public function getCreatedAtFrenchAttribute()
+    {
+        return $this->created_at?->format('d-m-Y H:i');
+    }
+
+    public function getUpdatedAtFrenchAttribute()
+    {
+        return $this->updated_at?->format('d-m-Y H:i');
+    }
 }

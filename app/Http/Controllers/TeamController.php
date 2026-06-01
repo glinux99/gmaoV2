@@ -2,155 +2,112 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Team;
-use App\Models\TeamUser;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Illuminate\Support\Str;
 
 class TeamController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Affiche la page Organisation (Teams/Index)
+     * Charge les équipes (avec leur parent) et les utilisateurs.
      */
     public function index()
     {
-        $request = request();
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        // Récupération des équipes triées par 'order', avec le parent et le comptage des membres
+        $teams = Team::with('parent')
+            ->ordered()                       // Utilise le scope qui trie par 'order'
+            ->withCount('users as members_count')
+            ->get();
 
-        $query = Team::query()->with(['members','teamLeader'])
-            ->whereBetween('created_at', [$startDate, $endDate]);
+        // Récupération des utilisateurs avec leur équipe associée
+        $users = User::with('team:id,name,color')
+            ->orderBy('name')
+            ->get();
 
-        if (request()->has('search')) {
-            $search = request('search');
-            $query->where('name', 'like', '%' . $search . '%')
-                    ->orWhereHas('teamLeader', function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%');
-                })
-                ->orWhereHas('members', function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%');
-                });
-        }
-        return Inertia::render('Teams/Teams', [
-            'teams' => $query->get(),
-            'filters' => $request->only(['search', 'start_date', 'end_date']),
-            'technicians' => User::role('technician')->get(), // Pass all users for dropdowns
-            'filters' => request()->only(['search']),
+        return Inertia::render('Teams', [
+            'teams' => $teams,
+            'users' => $users
         ]);
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Enregistre une nouvelle équipe.
      */
-    public function create()
+    public function store(Request $request)
     {
-        return Inertia::render('Teams/Teams', [
-            'allUsers' => User::all(['id', 'name']),
-        ]);
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-  public function store(Request $request)
-    {
-        // 1. Validation des données
         $validated = $request->validate([
-           'name' => 'required|string|max:255',
-           // S'assurer que le leader est un ID utilisateur valide ou null
-           'team_leader_id' => 'nullable|exists:users,id',
-           // Le champ 'members' est un tableau d'IDs
-           'members' => 'array',
-           'nombre_tacherons' => 'nullable|integer|min:0',
-           // Chaque élément du tableau 'members' doit exister dans la table 'users'
-           'members.*' => 'exists:users,id',
+            'name'          => 'required|string|max:255',
+            'description'   => 'nullable|string',
+            'color'         => 'required|string|max:50',
+            'max_capacity'  => 'nullable|integer|min:1',
+            'location'      => 'nullable|string|max:255',
+            'is_active'     => 'boolean',
+            'parent_id'     => 'nullable|exists:teams,id',
         ]);
 
-        // 2. Définir le leader si non fourni
-        if (empty($validated['team_leader_id'])) {
-            $validated['team_leader_id'] = null;
-        }
+        $validated['slug'] = Str::slug($validated['name']);
 
-        // 3. Création de la nouvelle équipe
-        $team = Team::create([
-            'name' => $validated['name'],
-            'team_leader_id' => $validated['team_leader_id'],
-            'nombre_tacherons' => $validated['nombre_tacherons'] ?? 0,
-        ]);
+        Team::create($validated);
 
-        // 4. Attacher les membres (Correction majeure ici)
-        if (!empty($validated['members'])) {
-
-
-            $team->members()->attach($validated['members']);
-        }
-
-        // 5. Redirection
-        return redirect()->route('teams.index')->with('success', 'Équipe créée avec succès.');
+        return back()->with('success', 'Équipe créée avec succès.');
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(Team $team)
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function edit(Team $team)
-    {
-        return Inertia::render('Teams/Teams', [
-            'team' => $team->load(['teamLeader', 'members']),
-            'allUsers' => User::all(['id', 'name']),
-        ]);
-    }
-
-    /**
-     * Update the specified resource in storage.
+     * Met à jour une équipe existante.
      */
     public function update(Request $request, Team $team)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'team_leader_id' => 'nullable|exists:users,id',
-            'members' => 'array',
-            'nombre_tacherons' => 'nullable|integer|min:0',
-            'members.*' => 'exists:users,id',
+            'name'          => 'required|string|max:255',
+            'description'   => 'nullable|string',
+            'color'         => 'required|string|max:50',
+            'max_capacity'  => 'nullable|integer|min:1',
+            'location'      => 'nullable|string|max:255',
+            'is_active'     => 'boolean',
+            'parent_id'     => 'nullable|exists:teams,id|not_in:' . $team->id, // Empêche de se prendre soi‑même comme parent
         ]);
 
-        // If team_leader_id is not provided, set the current authenticated user as the team leader
-        if (empty($validated['team_leader_id'])) {
-            $validated['team_leader_id'] = null;
-        }
+        $validated['slug'] = Str::slug($validated['name']);
 
-        $team->update([
-            'name' => $validated['name'],
-            'team_leader_id' => $validated['team_leader_id'],
-            'nombre_tacherons' => $validated['nombre_tacherons'] ?? 0,
+        $team->update($validated);
 
-        ]);
-
-        if (isset($validated['members'])) {
-            $team->members()->sync($validated['members']);
-        } else {
-            $team->members()->detach(); // Remove all members if none are provided
-        }
-
-        return redirect()->route('teams.index')->with('success', 'Équipe mise à jour avec succès.');
+        return back()->with('success', 'Équipe mise à jour avec succès.');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Supprime une équipe.
+     * Les enfants sont reassignés à NULL (ou au parent de l'équipe supprimée selon besoin).
      */
     public function destroy(Team $team)
     {
-        $team->members()->detach(); // Detach all members before deleting the team
+        // Optionnel : réassigner les utilisateurs liés à NULL
+        User::where('team_id', $team->id)->update(['team_id' => null]);
+
+        // Réassigner les sous-équipes (enfants) à NULL
+        Team::where('parent_id', $team->id)->update(['parent_id' => null]);
+
         $team->delete();
-        return redirect()->route('teams.index')->with('success', 'Équipe supprimée avec succès.');
+
+        return back()->with('success', 'Équipe supprimée avec succès.');
+    }
+
+    /**
+     * Met à jour l'ordre d'affichage des équipes (drag & drop).
+     */
+    public function reorder(Request $request)
+    {
+        $request->validate([
+            'order' => 'required|array',
+            'order.*' => 'required|exists:teams,id',
+        ]);
+
+        foreach ($request->order as $index => $teamId) {
+            Team::where('id', $teamId)->update(['order' => $index + 1]);
+        }
+
+        return back()->with('success', 'Ordre mis à jour.');
     }
 }

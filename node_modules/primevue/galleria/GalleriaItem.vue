@@ -1,13 +1,13 @@
 <template>
     <div :class="cx('itemsContainer')" v-bind="ptm('itemsContainer')">
         <div :class="cx('items')" v-bind="ptm('items')">
-            <button v-if="showItemNavigators" v-ripple type="button" :class="cx('prevButton')" @click="navBackward($event)" :disabled="isNavBackwardDisabled()" v-bind="ptm('prevButton')" data-pc-group-section="itemnavigator">
+            <button v-if="showItemNavigators" v-ripple type="button" :class="cx('prevButton')" @click="navBackward($event)" :disabled="isNavBackwardDisabled" v-bind="ptm('prevButton')" data-pc-group-section="itemnavigator">
                 <component :is="templates.previousitemicon || 'ChevronLeftIcon'" :class="cx('prevIcon')" v-bind="ptm('prevIcon')" />
             </button>
             <div :id="id + '_item_' + activeIndex" :class="cx('item')" role="group" :aria-label="ariaSlideNumber(activeIndex + 1)" :aria-roledescription="ariaSlideLabel" v-bind="ptm('item')">
                 <component v-if="templates.item" :is="templates.item" :item="activeItem" />
             </div>
-            <button v-if="showItemNavigators" v-ripple type="button" :class="cx('nextButton')" @click="navForward($event)" :disabled="isNavForwardDisabled()" v-bind="ptm('nextButton')" data-pc-group-section="itemnavigator">
+            <button v-if="showItemNavigators" v-ripple type="button" :class="cx('nextButton')" @click="navForward($event)" :disabled="isNavForwardDisabled" v-bind="ptm('nextButton')" data-pc-group-section="itemnavigator">
                 <component :is="templates.nextitemicon || 'ChevronRightIcon'" :class="cx('nextIcon')" v-bind="ptm('nextIcon')" />
             </button>
             <div v-if="templates['caption']" :class="cx('caption')" v-bind="ptm('caption')">
@@ -29,7 +29,7 @@
                 :data-p-active="isIndicatorItemActive(index)"
             >
                 <button v-if="!templates['indicator']" type="button" :tabindex="activeIndex === index ? '0' : '-1'" :class="cx('indicatorButton')" v-bind="ptm('indicatorButton', getIndicatorPTOptions(index))"></button>
-                <component v-if="templates.indicator" :is="templates.indicator" :index="index" />
+                <component v-if="templates.indicator" :is="templates.indicator" :index="index" :activeIndex="activeIndex" :tabindex="activeIndex === index ? '0' : '-1'" />
             </li>
         </ul>
     </div>
@@ -216,7 +216,7 @@ export default {
             const indicators = [...find(this.$refs.indicatorContent, '[data-pc-section="indicator"]')];
             const highlightedIndex = indicators.findIndex((ind) => getAttribute(ind, 'data-p-active') === true);
 
-            const activeIndicator = findSingle(this.$refs.indicatorContent, '[data-pc-section="indicator"] > button[tabindex="0"]');
+            const activeIndicator = findSingle(this.$refs.indicatorContent, '[data-pc-section="indicator"] > [tabindex="0"]');
             const activeIndex = indicators.findIndex((ind) => ind === activeIndicator.parentElement);
 
             indicators[activeIndex].children[0].tabIndex = '-1';
@@ -224,7 +224,7 @@ export default {
         },
         findFocusedIndicatorIndex() {
             const indicators = [...find(this.$refs.indicatorContent, '[data-pc-section="indicator"]')];
-            const activeIndicator = findSingle(this.$refs.indicatorContent, '[data-pc-section="indicator"] > button[tabindex="0"]');
+            const activeIndicator = findSingle(this.$refs.indicatorContent, '[data-pc-section="indicator"] > [tabindex="0"]');
 
             return indicators.findIndex((ind) => ind === activeIndicator.parentElement);
         },
@@ -238,12 +238,6 @@ export default {
         isIndicatorItemActive(index) {
             return this.activeIndex === index;
         },
-        isNavBackwardDisabled() {
-            return !this.circular && this.activeIndex === 0;
-        },
-        isNavForwardDisabled() {
-            return !this.circular && this.activeIndex === this.value.length - 1;
-        },
         ariaSlideNumber(value) {
             return this.$primevue.config.locale.aria ? this.$primevue.config.locale.aria.slideNumber.replace(/{slideNumber}/g, value) : undefined;
         },
@@ -255,9 +249,14 @@ export default {
         activeItem() {
             return this.value[this.activeIndex];
         },
-
         ariaSlideLabel() {
             return this.$primevue.config.locale.aria ? this.$primevue.config.locale.aria.slide : undefined;
+        },
+        isNavBackwardDisabled() {
+            return !this.circular && this.activeIndex === 0;
+        },
+        isNavForwardDisabled() {
+            return !this.circular && this.activeIndex === this.value.length - 1;
         }
     },
     components: {

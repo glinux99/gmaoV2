@@ -4,10 +4,10 @@
     <div class="">
           <footer class="mt-12  flex flex-col md:flex-row justify-between items-center text-slate-400 text-[10px] font-bold uppercase tracking-widest bg-white/50 p-6 rounded-[1rem]">
                 <div class="flex items-center gap-4">
-                    <span>© 2026 MAINTX</span>
+                    <span>© 2026 Aprojed</span>
                     <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
                     <span class="text-primary-500">
-                      Design by   <a href="https://veoperations.org" target="_blank" rel="noopener noreferrer" class="text-primary font-bold hover:underline">VeOperations</a>
+                      Design by   <a href="https://aprojed.com" target="_blank" rel="noopener noreferrer" class="text-primary font-bold hover:underline">linux99</a>
 
 
                     </span>

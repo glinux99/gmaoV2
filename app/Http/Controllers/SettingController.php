@@ -2,153 +2,120 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Region;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class SettingController extends Controller
 {
     /**
-     * Affiche l'écran des paramètres du profil de l'utilisateur.
-     *
-     * @return \Inertia\Response
+     * Affiche la page des paramètres avec toutes les valeurs actuelles.
      */
     public function index()
     {
-        $user = Auth::user();
-        $logins = $user->logins()->latest()->paginate(10);
+        $settings = \App\Models\Setting::all()->pluck('value', 'key')->toArray();
 
-        return Inertia::render('Configurations/Users/Settings', [
-            'user' => $user,
-            'logins' => $logins,
-            "regions" => Region::get(['id', 'designation']),
-        ]);
-    }
-
-    /**
-     * Met à jour les informations de profil de l'utilisateur.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
-  public function updateProfile(Request $request)
-{
-    /** @var \App\Models\User $user */
-
-        $user = Auth::user();
-
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-        'fonction' => 'nullable|string|max:255',
-        'numero' => 'nullable|string|max:255',
-        'region_id' => 'nullable|exists:regions,id',
-        'pointure' => 'nullable|numeric',
-        'size' => 'nullable|numeric',
-        'profile_photo' => 'nullable|image|max:2048', // Augmenté à 2Mo pour plus de confort
-    ]);
-
-    // 1. Gestion de la photo avec Spatie MediaLibrary
-    if ($request->hasFile('profile_photo')) {
-        // Supprime l'ancienne photo et ajoute la nouvelle dans la collection 'avatar'
-        $user->addMediaFromRequest('profile_photo')
-             ->toMediaCollection('avatar');
-    }
-
-    // 2. Mise à jour des autres champs
-    // On retire 'profile_photo' de l'array pour éviter les erreurs SQL
-    $user->update(collect($validated)->except('profile_photo')->toArray());
-
-    return back()->with('message', 'Profil mis à jour avec succès.');
-}
-
-    /**
-     * Met à jour le mot de passe de l'utilisateur.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
-   public function updatePassword(Request $request)
-{
-    /** @var \App\Models\User $user */
-    $user = Auth::user();
-
-    $validated = $request->validate([
-        // 'current_password' vérifie automatiquement que le mot de passe correspond à celui en DB
-        'current_password' => ['required', 'string', 'current_password'],
-        'password' => [
-            'required',
-            'string',
-            Password::defaults()->mixedCase()->symbols(), // Sécurité renforcée
-            'confirmed'
-        ],
-    ]);
-
-    // Utilisation de la méthode update() simple ou forceFill
-    $user->update([
-        'password' => Hash::make($validated['password']),
-    ]);
-
-    return back()->with('message', 'Votre mot de passe a été modifié avec succès.');
-}
-
-    /**
-     * Déconnecte une session utilisateur spécifique.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  string  $sessionId L'ID de la session à déconnecter.
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function logoutSession(Request $request, $sessionId)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        // On s'assure que la session appartient bien à l'utilisateur connecté
-        // et qu'il ne s'agit pas de sa session actuelle.
-        if ($sessionId === $request->session()->getId()) {
-            return back()->withErrors(['error' => 'Vous ne pouvez pas déconnecter votre session actuelle.']);
+        // Convertir les chemins relatifs des fichiers en URLs publiques
+        $fileKeys = ['logo_url', 'favicon_url'];
+        foreach ($fileKeys as $key) {
+            if (!empty($settings[$key])) {
+                $settings[$key] = Storage::disk('media')->url($settings[$key]);
+            }
         }
 
-            $userId = Auth::id();
-            $ipAddress = $request->ip();
-            $userAgent = substr($request->header('User-Agent'), 0, 500);
-
-        DB::table('sessions')
-              ->where('id', $sessionId)
-                // ->where('user_id', $userId)
-                // ->where('ip_address', $ipAddress)
-                // ->where('user_agent', $userAgent)
-            ->delete();
-
-        return back()->with('message', 'La session a été fermée avec succès.');
+        return Inertia::render('Admin/Settings', [
+            'settings' => $settings,
+        ]);
     }
 
     /**
-     * Supprime le compte de l'utilisateur.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * Enregistre les paramètres (texte + fichiers logo/favicon).
      */
-    public function destroy(Request $request)
+    public function update(Request $request)
     {
-        $user = $request->user();
+        // Liste des champs texte autorisés
+        $textFields = [
+            'site_name', 'tagline', 'description',
+            'email', 'secondary_email', 'phone', 'secondary_phone',
+            'address', 'city', 'postal_code', 'country',
+            'facebook', 'twitter', 'instagram', 'linkedin', 'youtube',
+            'bank_name', 'bank_iban', 'bank_bic', 'bank_account',
+            'rccm', 'tax_id', 'capital',
+            'copyright_text', 'privacy_policy_url', 'terms_url',
+            // Hero Campaign Fields
+            'hero_campaign_active', 'hero_campaign_badge',
+            'hero_campaign_title', 'hero_campaign_description',
+            'hero_campaign_current', 'hero_campaign_target',
+            'hero_campaign_btn_text',
+        ];
 
+        // Validation de base
         $request->validate([
-            'password' => ['required', 'current_password'],
+            'logo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'favicon' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:1024',
+            'delete_logo' => 'boolean',
+            'delete_favicon' => 'boolean',
+            'hero_campaign_active' => 'boolean',
+            'hero_campaign_current' => 'nullable|numeric|min:0',
+            'hero_campaign_target' => 'nullable|numeric|min:0',
         ]);
 
-        Auth::logout();
+        // Mise à jour des champs texte
+        foreach ($textFields as $field) {
+            if ($request->has($field)) {
+                $value = $request->input($field);
+                // Convertir explicitement le booléen pour la base de données si nécessaire
+                if ($field === 'hero_campaign_active') $value = $request->boolean($field) ? '1' : '0';
+                $this->setSetting($field, $value ?? '');
+            }
+        }
 
-        $user->delete();
+        // Gestion du logo
+        if ($request->boolean('delete_logo')) {
+            $this->deleteFileSetting('logo_url');
+            $this->setSetting('logo_url', '');
+        }
+        if ($request->hasFile('logo')) {
+            $this->deleteFileSetting('logo_url'); // supprime l'ancien
+            $path = $request->file('logo')->store('settings', 'media'); // retourne un chemin relatif (ex: settings/abc.jpg)
+            $this->setSetting('logo_url', $path); // stocke le chemin relatif, pas l'URL
+        }
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // Gestion du favicon
+        if ($request->boolean('delete_favicon')) {
+            $this->deleteFileSetting('favicon_url');
+            $this->setSetting('favicon_url', '');
+        }
+        if ($request->hasFile('favicon')) {
+            $this->deleteFileSetting('favicon_url');
+            $path = $request->file('favicon')->store('settings', 'media');
+            $this->setSetting('favicon_url', $path);
+        }
 
-        return redirect('/')->with('success', 'Votre compte a été supprimé.');
+        return redirect()->route('settings.index')
+            ->with('success', 'Paramètres enregistrés avec succès.');
+    }
+
+    /**
+     * Enregistre une valeur pour une clé donnée.
+     */
+    private function setSetting(string $key, $value)
+    {
+        \App\Models\Setting::updateOrCreate(
+            ['key' => $key],
+            ['value' => $value]
+        );
+    }
+
+    /**
+     * Supprime le fichier stocké pour une clé donnée (logo_url, favicon_url).
+     */
+    private function deleteFileSetting(string $key)
+    {
+        $setting = \App\Models\Setting::where('key', $key)->first();
+        if ($setting && !empty($setting->value)) {
+            // La valeur est le chemin relatif (ex: settings/logo.jpg)
+            Storage::disk('media')->delete($setting->value);
+        }
     }
 }

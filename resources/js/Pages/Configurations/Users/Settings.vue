@@ -184,7 +184,7 @@ const exportAsPdf = () => {
     <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none select-none z-10">
         <h2 class="text-[7vw] font-black uppercase tracking-tighter text-transparent"
             style="-webkit-text-stroke: 2px white;">
-            Virunga Energies
+            Aprojed
         </h2>
     </div>
 

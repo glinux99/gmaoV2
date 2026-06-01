@@ -107,7 +107,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyDown));
             </button>
 
             <nav-link href="/dashboard" class="flex items-center">
-                <img src="/assets/media/logos/logo.png" alt="Virunga Energies ERP" class="h-9 w-auto hover:opacity-80 transition-opacity" />
+                <img src="/assets/media/logos/logo.png" alt="Aprojed ERP" class="h-9 w-auto hover:opacity-80 transition-opacity" />
             </nav-link>
         </div>
 

@@ -17,6 +17,7 @@ class ApiAuthController extends Controller
 
    public function login(Request $request)
     {
+
         // 1. Validation croisée
         // Exige SOIT (login + password) SOIT (provider + provider_token)
         $request->validate([
@@ -117,7 +118,8 @@ class ApiAuthController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error("Erreur Login (Unifié): " . $e->getMessage());
+
+            // Log::error("Erreur Login (Unifié): " . $e->getMessage());
 
             return response()->json([
                 'status'  => false,

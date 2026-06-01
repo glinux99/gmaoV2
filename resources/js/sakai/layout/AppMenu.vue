@@ -2,156 +2,81 @@
 import { ref } from 'vue';
 import { useLayout } from '@/sakai/layout/composables/layout';
 import AppMenuItem from './AppMenuItem.vue';
+
 const { resetMenu } = useLayout();
 
 const model = ref([
-    { label: 'menu.dashboard.title',
-        items: [
-            { label: 'menu.dashboard.home', icon: 'pi pi-fw pi-home', to: '/dashboard' },
-            // { label: 'menu.dashboard.analytics', icon: 'pi pi-fw pi-chart-line', to: '/analytics', }
-            { label : 'menu.dashboard.transformers', icon: 'pi pi-fw pi-server', to: '/transformers', },
 
-
-        ]
-    },
-    { label: 'menu.assetManagement.title',
+    // ==================== CONTENU DU SITE (BLOG & PAGES) ====================
+    {
+        label: 'Contenu du site',
+        icon: 'pi pi-fw pi-file',
         items: [
-            { label: 'menu.assetManagement.inventories', icon: 'pi pi-fw pi-sync', to: '/stock-movements',
-             can: 'read-stock-movement'
-             },
-            // { label: 'menu.assetManagement.inventories', icon: 'pi pi-fw pi-sync', to: '/spare-part-movements', /*can: 'inventories'*/ },
-            // { label: 'Sortie', icon: 'pi pi-fw pi-arrow-circle-up', to: '/sorties', /*can: 'sorties'*/ },
-            // { label: 'Entrée', icon: 'pi pi-fw pi-arrow-circle-down', to: '/entries', /*can: 'entries'*/ },
-            { label: 'menu.assetManagement.spareParts', icon: 'pi pi-fw pi-book', to: '/spare-parts', can: 'read-spare-part' },
-            { label: 'menu.assetManagement.equipments', icon: 'pi pi-fw pi-cog', to: '/equipments', can: 'read-equipment' },
-            { label: 'menu.assetManagement.networks', icon: 'pi pi-fw pi-sitemap', to: '/networks', can: 'read-network' },
-                   {
-                label: 'menu.systemConfiguration.meters',
-                icon: 'pi pi-fw pi-bolt',
-                to: '/meters',
-                can: 'read-meter'
-            },
-            {
-                label: 'menu.systemConfiguration.keyboards',
-                icon: 'pi pi-fw pi-key',
-                to: '/keypads',
-                can: 'read-keypad'
-            },
-
-        ]
-    },
-    { label: 'menu.taskManagement.title',
-        items: [
-            { label: 'menu.taskManagement.agenda', icon: 'pi pi-fw pi-calendar', to: '/agenda', can: 'read-task' },
-            { label: 'menu.taskManagement.myActivities', icon: 'pi pi-fw pi-list', to: '/activities', can: 'read-activity' },
-            { label: 'menu.taskManagement.workOrder', icon: 'pi pi-fw pi-check-square', to: '/tasks', can: 'read-task' },
-            { label: 'menu.taskManagement.interventionRequests', icon: 'pi pi-fw pi-exclamation-circle', to: '/interventions', can: 'read-intervention-request' },
-            { label: 'menu.taskManagement.maintenancePlan', icon: 'pi pi-fw pi-wrench', to: '/maintenances', can: 'read-maintenance' },
-            { label: 'menu.taskManagement.connections', icon: 'pi pi-fw pi-sitemap', to: '/connections', can: 'read-connection' },
-            { label: 'menu.taskManagement.expenses', icon: 'pi pi-fw pi-money-bill', to: '/expenses', can: 'read-expense' },
-          ]
-    },
-    { label: 'menu.teamManagement.title',
-        items: [
-            { label: 'menu.teamManagement.teams', icon: 'pi pi-fw pi-users', to: '/teams', can: 'read-team' },
-            { label: 'menu.teamManagement.technicians', icon: 'pi pi-fw pi-user', to: '/technicians', can: 'read-technician' }
-        ]
-    },
-
-    { label: 'menu.hrManagement.title',
-        items: [
-            {
-                label: 'menu.hrManagement.employees',
-                icon: 'pi pi-fw pi-users',
-                to: '/employees',
-                can: 'read-employee'
-            },
-            {
-                label: 'menu.hrManagement.leaves',
-                icon: 'pi pi-fw pi-calendar-times',
-                to: '/leaves',
-                can: 'read-leave'
-            },
-            // {
-            //     label: 'menu.hrManagement.attendances',
-            //     icon: 'pi pi-fw pi-clock',
-            //     to: '/attendances',
-            //     /*can: 'attendances'*/
-            // },
-            {
-                label: 'menu.hrManagement.payroll',
-                icon: 'pi pi-fw pi-money-bill',
-                to: '/payroll',
-                can: 'read-payroll'
-
-            }
-        ]
-    },
-    { label: 'menu.systemConfiguration.title',
-        items: [
-            {
-                label: 'menu.systemConfiguration.userManagement',
-                icon: 'pi pi-fw pi-shield',
-                can: ['read-user', 'read-role', 'read-permission'],
-                items: [
-                    {
- label: 'menu.systemConfiguration.users',
- icon: 'pi pi-fw pi-user',
- to: '/users',
- can: 'read-user'
-                    },
-                    {
- label: 'menu.systemConfiguration.roles',
- icon: 'pi pi-fw pi-users',
- to: '/roles',
- can: 'read-role'
-                    },
-                    {
- label: 'menu.systemConfiguration.permissions',
- icon: 'pi pi-fw pi-lock',
- to: '/permissions',
- can: 'read-permission'
-                    }
-                ]
-            },
-            {
-                label: 'menu.systemConfiguration.reports',
-                icon: 'pi pi-fw pi-chart-bar',
-                to: '/reports',
-                can: 'read-report'
-            },
-                    {
-                label: 'menu.systemConfiguration.regions',
-                icon: 'pi pi-fw pi-map',
-                to: '/regions',
-                can: 'read-region'
-            },
              {
-                label: 'menu.systemConfiguration.zones',
-                icon: 'pi pi-fw pi-map-marker',
-                to: '/zones',
-                can: 'read-zone'
-            },
-            { label: 'menu.systemConfiguration.rollingStock',
-                icon: 'pi pi-fw pi-car',
-                to: '/engins',
-                can: 'read-engin'
-            },
-
-            { label: 'menu.systemConfiguration.units', icon: 'pi pi-fw pi-tag', to: '/unities', can: 'read-unit' },
-            { label: 'menu.systemConfiguration.labels',
-                icon: 'pi pi-fw pi-pencil',
-                to: '/labels',
-                can: 'read-label'
-            },
-            // {
-            //     label: 'menu.systemConfiguration.systemPriority',
-            //     icon: 'pi pi-fw pi-sort-amount-up',
-            //     to: '/priorities',
-            //     can: 'read-priority'
-            // },
-
-
+        label: 'Dashboard',
+        icon: 'pi pi-fw pi-home',
+        to: '/dashboard'
+    },
+            { label: 'Articles / Actualités', icon: 'pi pi-fw pi-megaphone', to: '/posts' },
+            { label: 'Catégories d\'articles', icon: 'pi pi-fw pi-tags', to: '/categories' },
+            // { label: 'Pages statiques', icon: 'pi pi-fw pi-file', to: '/pages' },
+            // { label: 'Médias (images)', icon: 'pi pi-fw pi-image', to: '/media' },
+            // { label: 'Documents PDF', icon: 'pi pi-fw pi-folder', to: '/documents' }
+        ]
+    },
+    // ==================== PAGE D'ACCUEIL (DYNAMIQUE) ====================
+    {
+        label: 'Page d\'accueil',
+        icon: 'pi pi-fw pi-home',
+        items: [
+            { label: 'Sliders héro', icon: 'pi pi-fw pi-images', to: '/admin/hero-slides' },
+            { label: 'Piliers d\'intervention', icon: 'pi pi-fw pi-heart', to: '/admin/initiatives' },
+            { label: 'Projets terrain', icon: 'pi pi-fw pi-briefcase', to: '/admin/projects' },
+            { label: 'Membres de l\'équipe', icon: 'pi pi-fw pi-users', to: '/teams' },
+            { label: 'Statistiques globales', icon: 'pi pi-fw pi-chart-line', to: '/admin/settings?tab=stats' }
+        ]
+    },
+    // ==================== RELATIONS PUBLIQUES ====================
+    {
+        label: 'Relations publiques',
+        icon: 'pi pi-fw pi-globe',
+        items: [
+            { label: 'Partenaires', icon: 'pi pi-fw pi-building', to: '/admin/partners' },
+            { label: 'Témoignages', icon: 'pi pi-fw pi-comment', to: '/admin/testimonials' },
+            { label: 'Donateurs & Dons', icon: 'pi pi-fw pi-heart-fill', to: '/admin/donors' },
+            // { label: 'FAQ (questions/réponses)', icon: 'pi pi-fw pi-question-circle', to: '/admin/faq' }
+        ]
+    },
+    // ==================== COMMUNICATION ====================
+    {
+        label: 'Communication',
+        icon: 'pi pi-fw pi-envelope',
+        items: [
+            { label: 'Contacts', icon: 'pi pi-fw pi-inbox', to: '/contacts' },
+            { label: 'Messages de contact', icon: 'pi pi-fw pi-inbox', to: '/messages' },
+            { label: 'Demandes de bénévolat', icon: 'pi pi-fw pi-heart', to: '/admin/volunteers' },
+            { label: 'Newsletter', icon: 'pi pi-fw pi-send', to: '/admin/newsletters' }
+        ]
+    },
+    // ==================== GESTION D'ÉQUIPE & UTILISATEURS ====================
+    {
+        label: 'Utilisateurs & rôles',
+        icon: 'pi pi-fw pi-shield',
+        items: [
+            { label: 'Utilisateurs', icon: 'pi pi-fw pi-user', to: '/users' },
+            { label: 'Rôles', icon: 'pi pi-fw pi-users', to: '/roles' },
+            { label: 'Permissions', icon: 'pi pi-fw pi-lock', to: '/permissions' },
+            { label: 'Équipes', icon: 'pi pi-fw pi-sitemap', to: '/teams' }
+        ]
+    },
+    // ==================== CONFIGURATION SYSTÈME ====================
+    {
+        label: 'Configuration',
+        icon: 'pi pi-fw pi-cog',
+        items: [
+            { label: 'Paramètres généraux', icon: 'pi pi-fw pi-sliders-h', to: '/admin/settings' },
+            // { label: 'Médias & stockage', icon: 'pi pi-fw pi-database', to: '/media-settings' },
+            // { label: 'Sauvegardes', icon: 'pi pi-fw pi-download', to: '/backups' }
         ]
     }
 ]);
@@ -159,14 +84,14 @@ const model = ref([
 
 <template>
     <ul class="layout-menu">
-        <!-- Bouton de fermeture pour mobile, placé en haut -->
+        <!-- Bouton de fermeture pour mobile -->
         <li class="flex justify-end p-3 lg:hidden">
             <button @click="resetMenu" class="flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200" aria-label="Fermer le menu">
                 <i class="pi pi-times text-xl"></i>
             </button>
         </li>
-        <template v-for="(item, i) in model" :key="item">
-            <app-menu-item v-if="!item.separator" :item="item" :root="true" :index="i"></app-menu-item>
+        <template v-for="(item, i) in model" :key="item.label + i">
+            <app-menu-item v-if="!item.separator" :item="item" :root="true" :index="i" />
             <li v-if="item.separator" class="menu-separator"></li>
         </template>
     </ul>

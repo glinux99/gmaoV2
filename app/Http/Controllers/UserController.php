@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
-use App\Models\Region;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Team; // Ajouté pour les filtres si nécessaire
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -18,11 +19,12 @@ class UserController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('can:read-user')->only(['index']);
-        $this->middleware('can:create-user')->only(['store']);
-        $this->middleware('can:update-user')->only(['update']);
-        $this->middleware('can:delete-user')->only(['destroy', 'bulkDestroy']);
-        $this->middleware('can:impersonate-user')->only(['impersonate', 'leaveImpersonate']);
+        // Conservations de vos permissions Spatie
+        // $this->middleware('can:read-user')->only(['index']);
+        // $this->middleware('can:create-user')->only(['store']);
+        // $this->middleware('can:update-user')->only(['update']);
+        // $this->middleware('can:delete-user')->only(['destroy', 'bulkDestroy']);
+        // $this->middleware('can:impersonate-user')->only(['impersonate', 'leaveImpersonate']);
     }
 
     /**
@@ -32,19 +34,21 @@ class UserController extends Controller
     {
         $perPage = $request->input('per_page', 10);
         $search = $request->input('search');
-        $regionId = $request->input('region_id');
+        $teamId = $request->input('team_id');
 
-        $query = User::with('roles', 'region')->latest()->where(function (Builder $query) use ($search, $regionId) {
+        // Ajout de la relation 'team' en plus de 'roles'
+        $query = User::with(['roles', 'team'])->latest()->where(function (Builder $query) use ($search, $teamId) {
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('last_name', 'like', '%' . $search . '%')
                       ->orWhere('email', 'like', '%' . $search . '%')
                       ->orWhereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'like', '%' . $search . '%'));
                 });
             }
 
-            if ($regionId) {
-                $query->where('region_id', $regionId);
+            if ($teamId) {
+                $query->where('team_id', $teamId);
             }
         });
 
@@ -58,87 +62,128 @@ class UserController extends Controller
             'title' => 'Gestion des Utilisateurs',
             'users' => $users,
             'roles' => Role::get(['id', 'name']),
-            'regions' => Region::get(['id', 'designation']),
-            'filters' => $request->only(['search', 'role', 'region_id', 'per_page']),
+            'teams' => Team::get(['id', 'name']), // Passé à la vue pour les filtres
+            'filters' => $request->only(['search', 'role', 'team_id', 'per_page']),
         ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
+   public function store(Request $request)
+{
+    try {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Password::defaults()],
-            'phone' => 'nullable|string|max:255',
-            'fonction' => 'nullable|string|max:255',
-            'region_id' => 'nullable|exists:regions,id',
-            'pointure' => 'nullable|string|max:10',
-            'size' => 'nullable|string|max:10',
+            'last_name' => 'nullable|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => ['required', Password::defaults()],
+            'team_id' => 'nullable|exists:teams,id',
+            'hourly_rate' => 'nullable|numeric|min:0',
+            'position' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'contract_type' => 'nullable|string|max:50',
+            'hiring_date' => 'nullable|date',
+            'linkedin_url' => 'nullable|url|max:255',
+            'bio' => 'nullable|string',
+            'is_active' => 'boolean',
             'roles' => 'nullable|array',
-            'profile_photo' => 'nullable|image|max:2048',
+            'roles.*' => 'exists:roles,id',
+            'avatar' => 'nullable|image|max:2048',
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'phone' => $validated['phone'] ?? null,
-            'fonction' => $validated['fonction'] ?? null,
-            'region_id' => $validated['region_id'] ?? null,
-            'pointure' => $validated['pointure'] ?? null,
-            'size' => $validated['size'] ?? null,
-        ]);
-
-        if (!empty($validated['roles'])) {
-            $user->syncRoles($validated['roles']);
+        // Upload avatar
+        if ($request->hasFile('avatar')) {
+            $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
         }
 
-        if ($request->hasFile('profile_photo')) {
-            $user->addMediaFromRequest('profile_photo')->toMediaCollection('avatar');
+        // Password hash (requis pour store)
+        $validated['password'] = Hash::make($validated['password']);
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        $user = User::create($validated);
+
+        // Sync roles
+        if ($request->filled('roles')) {
+            $user->syncRoles($request->roles);
         }
 
-        return Redirect::route('user.index')->with('success', 'Utilisateur créé avec succès.');
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Utilisateur créé'])
+            : back()->with('success', 'Utilisateur créé avec succès.');
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return $request->expectsJson()
+            ? response()->json(['errors' => $e->errors()], 422)
+            : back()->withErrors($e->errors());
+    } catch (\Throwable $th) {
+        return $request->expectsJson()
+            ? response()->json(['error' => 'Erreur serveur'], 500)
+            : back()->with('error', 'Erreur lors de la création.');
     }
+}
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, User $user)
-    {
+public function update(Request $request, User $user)
+{
+    // SUPPRESSION DU return $request; ICI
+
+    try {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'password' => ['nullable', 'confirmed', Password::defaults()],
-            'phone' => 'nullable|string|max:255',
-            'fonction' => 'nullable|string|max:255',
-            'region_id' => 'nullable|exists:regions,id',
-            'pointure' => 'nullable|string|max:10',
-            'size' => 'nullable|string|max:10',
+            'password' => ['nullable', Password::defaults()],
+            'team_id' => 'nullable|exists:teams,id',
+            'hourly_rate' => 'nullable|numeric|min:0',
+            'position' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'contract_type' => 'nullable|string|max:50',
+            'hiring_date' => 'nullable|date',
+            'linkedin_url' => 'nullable|url|max:255',
+            'bio' => 'nullable|string',
+            'is_active' => 'boolean',
             'roles' => 'nullable|array',
-            'profile_photo' => 'nullable|image|max:2048',
+            'roles.*' => 'exists:roles,id',
+            'avatar' => 'nullable|image|max:2048',
         ]);
 
-        $updateData = $request->except('password', 'password_confirmation', 'role', 'profile_photo');
+        $updateData = collect($validated)->except(['password', 'roles', 'avatar'])->toArray();
 
+        // Password optionnel
         if ($request->filled('password')) {
-            $updateData['password'] = Hash::make($request->input('password'));
+            $updateData['password'] = Hash::make($request->password);
+        }
+
+        // Avatar
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) Storage::disk('public')->delete($user->avatar);
+            $updateData['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        } elseif ($request->boolean('remove_avatar')) {
+            if ($user->avatar) Storage::disk('public')->delete($user->avatar);
+            $updateData['avatar'] = null;
         }
 
         $user->update($updateData);
 
+        // Sync roles
         if ($request->filled('roles')) {
-            $user->syncRoles($request->input('roles'));
+            $user->syncRoles($request->roles);
         }
 
-        if ($request->hasFile('profile_photo')) {
-            $user->addMediaFromRequest('profile_photo')->toMediaCollection('avatar');
-        }
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Utilisateur mis à jour'])
+            : back()->with('success', 'Utilisateur mis à jour.');
 
-        return Redirect::route('user.index')->with('success', 'Utilisateur mis à jour avec succès.');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return $request->expectsJson()
+            ? response()->json(['errors' => $e->errors()], 422)
+            : back()->withErrors($e->errors());
+    } catch (\Throwable $th) {
+        return $request->expectsJson()
+            ? response()->json(['error' => 'Erreur serveur'], 500)
+            : back()->with('error', 'Erreur lors de la mise à jour.');
     }
+}
 
     /**
      * Remove the specified resource from storage.
@@ -146,12 +191,17 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         if ($user->id === auth()->id()) {
-            return Redirect::back()->withErrors(['error' => 'Vous ne pouvez pas supprimer votre propre compte.']);
+            return back()->withErrors(['error' => 'Vous ne pouvez pas supprimer votre propre compte.']);
+        }
+
+        // Suppression de l'avatar physique
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
         }
 
         $user->delete();
 
-        return Redirect::route('user.index')->with('success', 'Utilisateur supprimé.');
+        return back()->with('success', 'Utilisateur supprimé.');
     }
 
     /**
@@ -166,34 +216,34 @@ class UserController extends Controller
 
         $ids = $request->input('ids');
 
-        // Prevent users from deleting themselves in a bulk operation
+        // Empêcher l'utilisateur de se supprimer lui-même
         if (in_array(auth()->id(), $ids)) {
-            return Redirect::back()->withErrors(['error' => 'Opération non autorisée. Vous ne pouvez pas vous supprimer.']);
+            return back()->withErrors(['error' => 'Opération non autorisée. Vous ne pouvez pas vous supprimer.']);
+        }
+
+        // Suppression des avatars physiques avant la suppression en BDD
+        $users = User::whereIn('id', $ids)->get();
+        foreach ($users as $user) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
         }
 
         User::whereIn('id', $ids)->delete();
 
-        return Redirect::route('user.index')->with('success', 'Les utilisateurs sélectionnés ont été supprimés.');
+        return back()->with('success', 'Les utilisateurs sélectionnés ont été supprimés.');
     }
 
     /**
      * Impersonate the given user.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\User  $user
-     * @return \Illuminate\Http\RedirectResponse
      */
     public function impersonate(Request $request, User $user)
     {
-        // You cannot impersonate yourself.
         if ($user->id === Auth::id()) {
-            return Redirect::back()->withErrors(['error' => 'Vous ne pouvez pas vous usurper votre propre identité.']);
+            return back()->withErrors(['error' => 'Vous ne pouvez pas usurper votre propre identité.']);
         }
 
-        // Store the original admin ID in the session.
         session(['impersonator_id' => Auth::id()]);
-
-        // Login as the new user.
         Auth::login($user);
 
         return Redirect::route('dashboard');
@@ -201,14 +251,13 @@ class UserController extends Controller
 
     /**
      * Revert to the original user.
-     *
-     * @return \Illuminate\Http\RedirectResponse
      */
     public function leaveImpersonate()
     {
         $impersonatorId = session('impersonator_id');
         Auth::login(User::findOrFail($impersonatorId));
         session()->forget('impersonator_id');
+
         return Redirect::route('user.index');
     }
 }

@@ -4,43 +4,37 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Team extends Model
 {
-    use HasFactory;
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
-        'name',
-        'team_leader_id',
-        'nombre_tacherons',
+        'name', 'slug', 'description', 'color',
+        'max_capacity', 'location', 'is_active', 'parent_id', 'order'
     ];
 
-    protected $appends = ['total_members_count'];
+    protected $casts = [
+        'is_active' => 'boolean',
+        'max_capacity' => 'integer',
+        'parent_id' => 'integer',
+    ];
 
-    public function getTotalMembersCountAttribute() {
-        return $this->members()->count() + ($this->nombre_tacherons ?? 0);
-    }
-    /**
-     * Obtenir le chef d'équipe (un utilisateur).
-     */
-    public function teamLeader(): BelongsTo
+    public function users()
     {
-        return $this->belongsTo(User::class, 'team_leader_id');
+        return $this->hasMany(User::class);
     }
 
-    /**
-     * Obtenir les techniciens (membres) de l'équipe.
-     */
-    public function members()
+    public function parent()
     {
-        return $this->belongsToMany(User::class, 'team_user', 'team_id', 'user_id')->using(TeamUser::class);
+        return $this->belongsTo(Team::class, 'parent_id');
     }
 
+    public function children()
+    {
+        return $this->hasMany(Team::class, 'parent_id');
+    }
+
+    public function scopeOrdered($query)
+{
+    return $query->orderBy('order');
+}
 }

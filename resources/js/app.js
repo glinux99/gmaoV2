@@ -1,10 +1,11 @@
 import './bootstrap';
 import '../css/app.css';
-
+import "primeicons/primeicons.css";
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import 'quill/dist/quill.snow.css'; // or quill.bubble.css
 
 import Aura from '@primevue/themes/aura';
 import PrimeVue from 'primevue/config';
@@ -26,16 +27,16 @@ const appName = import.meta.env.VITE_APP_NAME || 'Sakai';
 const MyCustomPreset = definePreset (Aura, {
     semantic: {
         primary: {
-            50: '#fef3ec',
-            100: '#fde5d4',
-            200: '#fbd2b3',
-            300: '#f8b488',
-            400: '#f48f54',
-            500: '#e15f14',
-            600: '#cb5211',
-            700: '#ac440e',
-            800: '#90390c',
-            900: '#79300a'
+           50: '#f0f9f4',  // Très clair, presque blanc teinté
+    100: '#dcf0e3', // Clair et doux
+    200: '#bbe1c8', // Pastel moyen
+    300: '#8ecba5', // Vert tendre
+    400: '#5fb37e', // Vert vibrant
+    500: '#38945a', // Couleur de base (Équivalent de votre orange 500)
+    600: '#2d7a4a', // Plus profond
+    700: '#25623d', // Vert sapin
+    800: '#1e4f32', // Sombre
+    900: '#184129'  // Très sombre
         }
     }
 });
